@@ -1,0 +1,66 @@
+:host {
+    display: block;
+    position: relative;
+}
+
+* { box-sizing: border-box; }
+
+#elMain {
+    width: 100%;
+    height: 100%;
+
+    --splitter-size: 6px;
+    --a-size: 1fr;
+    --b-size: 200px;
+
+    display: grid;
+    overflow: hidden;
+}
+
+#elA {
+    grid-area: a;
+}
+
+#elB {
+    grid-area: b;
+}
+
+#elSplitter {
+    grid-area: splitter;
+
+    background: rgba(0, 0, 0, 0.01);
+}
+
+#elMain.horizontal {
+    grid-template-rows: auto;
+    grid-template-columns: var(--a-size) auto var(--b-size);
+    grid-template-areas:
+        "a splitter b";
+}
+
+#elMain.horizontal #elA {
+}
+
+#elMain.horizontal #elB {
+}
+
+#elMain.horizontal #elSplitter {
+    width: var(--splitter-size);
+    cursor: ew-resize;
+}
+
+
+
+#elMain.vertical {
+    grid-template-rows: var(--a-size) auto var(--b-size);
+    grid-template-columns: auto;
+    grid-template-areas:
+        "a"
+        "splitter"
+        "b";
+}
+
+#elMain.vertical #elSplitter {
+    height: var(--splitter-size);
+    cursor: ns-resize;
+}

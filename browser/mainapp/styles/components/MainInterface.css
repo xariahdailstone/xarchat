@@ -1,0 +1,140 @@
+
+:host {
+    display: block;
+    position: relative;
+    overflow: hidden;
+}
+
+#elMain {
+    width: 100%;
+    height: 100%;
+
+    background-color: black;
+
+    display: grid;
+    grid-template-rows: auto 1fr;
+    grid-template-columns: 100%;
+    grid-template-areas:
+        "titlebar"
+        "clientarea";
+}
+#elMain > * {
+    contain: strict;
+}
+
+.titlebar { grid-area: titlebar; }
+.leftbar { grid-area: leftbar; }
+.splitterhandle { grid-area: splitterhandle; }
+.stage { grid-area: stage; }
+
+
+.titlebar {
+    height: var(--titlebar-height);
+}
+.clientarea {
+    grid-area: clientarea;
+    width: 100%;
+    height: 100%;
+    position: relative;
+
+    contain: paint;
+}
+.chatui {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+
+    /* filter: blur(0px); */
+    /*opacity: 1;
+    transition: filter 0.1s ease-out, opacity 0.1s ease-out;*/
+
+    background: var(--bg-level-4);
+
+    display: grid;
+    grid-template-rows: 100%;
+    grid-template-columns: auto 8px 1fr;
+    grid-template-areas:
+        "leftbar splitterhandle stage";
+
+    contain: strict;
+}
+.chatui.not-loaded { display: none; }
+.dialogstack {
+    display: none;
+    pointer-events: none;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+#elMain.has-unclosed-dialogs .chatui {
+    filter: blur(6px) opacity(0.3);
+    /*opacity: 0.3;*/
+}
+#elMain.has-dialogs .dialogstack {
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: all;
+}
+
+/*
+            <x-titlebar class="titlebar" id="elTitleBar"></x-titlebar>
+            <x-leftbar slot="a" class="leftbar" id="elLeftBar"></x-leftbar>
+            <x-splitterhandle class="splitterhandle" target="elLeftBar" orientation="horizontal" min="200" max="500" modelpath="leftBarWidth"></<x-splitterhandle>
+            <x-stage slot="b" class="stage" modelpath="currentlySelectedSession"></x-stage>
+            */
+
+.leftbar {
+    height: 100%;
+    overflow: hidden;
+    contain: strict;
+}            
+
+
+.popupframe {
+    display: none;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: transparent;
+    z-index: 9999999;
+    pointer-events: none;
+}
+#elMain.has-popups .popupframe { display: block; }
+
+.dialogframe {
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+
+    transform: scale(1);
+    opacity: 1;
+    transition: transform 0.2s, opacity 0.2s;
+}
+
+.dialogstack > .inactive {
+    filter: blur(6px) brightness(0.5);
+}
+
+.dialogframe.new {
+    transform: scale(1.25);
+    opacity: 0;
+}
+.dialogframe.closed {
+    transform: scale(0.75);
+    opacity: 0;
+}

@@ -1,0 +1,484 @@
+
+#elMain {
+    width: calc(var(--main-interface-width) * 0.9);
+    height: 100%;
+
+    font: var(--chat-font);
+
+    --memo-bg: rgb(130, 119, 90);
+    --memo-icon-fg: white;
+    --memo-text-fg: black;
+}
+
+#elMain > * {
+    width: 100%;
+    height: 100%;
+}
+
+.loading-display {
+    display: grid;
+    grid-template-rows: 1fr auto 2fr;
+    grid-template-columns: 1fr auto 1fr;
+    grid-template-areas: 
+        ". . ."
+        ". icon ."
+        ". . .";
+
+    width: 100%;
+    height: 100%;
+}
+.loading-display > * {
+    grid-area: icon;
+    max-width: 200px;
+    max-height: 200px;
+}
+
+.failure-display {
+    display: grid;
+    grid-template-rows: 1fr auto 2fr;
+    grid-template-columns: 1fr auto 1fr;
+    grid-template-areas: 
+        ". . ."
+        ". message ."
+        ". . .";
+
+    width: 100%;
+    height: 100%;
+}
+.failure-message {
+    grid-area: message;
+
+    background: var(--bg-warning-message);
+    color: var(--fg-warning-message);
+    padding: 8px 8px;
+}
+
+.profile-display {
+    display: grid;
+    grid-template-rows: auto auto auto minmax(0, 1fr);
+    grid-template-columns: auto 1fr;
+    grid-template-areas:
+        "infocard summaryinfo"
+        "memo memo"
+        "tabstrip tabstrip"
+        "main main";
+
+    width: 100%;
+    height: 100%;
+}
+.profile-infocard { grid-area: infocard; }
+.profile-summaryinfo { grid-area: summaryinfo; }
+.profile-memo { grid-area: memo; }
+.profile-tabstrip { grid-area: tabstrip; }
+.profile-main { grid-area: main; }
+
+.profile-infocard,
+.profile-summaryinfo,
+.profile-tabstrip,
+.profile-main {
+    background: var(--bg-level-2);
+    color: var(--fg-level-2);
+    
+    padding: 8px 8px;
+    border-radius: 8px;
+
+    justify-self: stretch;
+    align-self: stretch;
+}
+
+.profile-infocard {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
+    grid-template-rows: auto auto auto auto;
+    grid-template-areas:
+        "icon icon icon icon icon"
+        "name name name name name"
+        "title title title title title"
+        "openexternal openpm memo bookmark report";
+
+    width: 180px;
+
+    margin-right: 8px;
+    margin-bottom: 8px;
+    padding: 0px 0px;
+    zz-overflow: hidden;
+}
+.profile-avatar {
+    grid-area: icon;
+    align-self: center;
+    justify-self: center;
+
+    width: 100px;
+    height: 100px;
+    margin-top: 8px;
+    margin-left: 8px;
+    margin-right: 8px;
+}
+.profile-name {
+    grid-area: name;
+    justify-self: center;
+    font-weight: bold;
+    margin-top: 4px;
+    margin-left: 8px;
+    margin-right: 8px;
+}
+.profile-title {
+    grid-area: title;
+    justify-self: center;
+    font-style: italic;
+    margin-left: 8px;
+    margin-right: 8px;
+}
+.profile-buttons {
+    display: contents;
+}
+.profile-button-openexternal {
+    grid-area: openexternal;
+    background-color: cadetblue;
+    color: white;
+    border-bottom-left-radius: 8px;
+}
+.profile-button-openpm {
+    grid-area: openpm;
+    background-color: rgb(81, 98, 81);
+    color: white;
+}
+.profile-button-memo {
+    grid-area: memo;
+    background-color: var(--memo-bg);
+    color: var(--memo-icon-fg);
+}
+.profile-display.has-memo .profile-button-memo {
+    padding-bottom: 8px;
+    margin-bottom: -8px;
+}
+.profile-button-bookmark {
+    grid-area: bookmark;
+    background-color: rgb(86, 149, 83);
+    color: white;
+}
+.profile-button-report {
+    grid-area: report;
+    background-color: rgb(163, 9, 9);
+    color: white;
+    border-bottom-right-radius: 8px;
+}
+
+.profile-button-bookmark.isbookmarked {
+    background-color: rgb(152, 59, 59);
+}
+
+.profile-button {
+    justify-self: stretch;
+    margin-top: 10px;
+    padding: 4px 8px;
+    border: 0;
+    outline: none;
+    cursor: pointer;
+}
+.profile-button > * {
+    width: 16px;
+    height: 16px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.profile-summaryinfo {
+    margin-bottom: 8px;
+
+    display: flex;
+    flex-direction: row;
+}
+
+.profile-summaryinfo table {
+    width: auto;
+    min-width: 200px;
+    max-width: 300px;
+    align-self: start;
+}
+.profile-summaryinfo td:nth-child(1) {
+    width: 1px;
+    font-weight: bold;
+    text-align: right;
+    padding-right: 4px;
+    white-space: nowrap;
+    vertical-align: text-top;
+}
+.profile-summaryinfo td:nth-child(2) {
+    padding-right: 10px;
+}
+
+.profile-memo {
+    background-color: var(--memo-bg);
+    color: var(--memo-icon-fg);
+    padding: 8px 8px;
+    margin-bottom: 8px;
+    border-radius: 8px;
+}
+
+.profile-tabstrip {
+    display: flex;
+    flex-direction: row;
+    padding-top: 0;
+    padding-bottom: 0;
+    padding-left: 8px;
+    padding-right: 8px;
+
+    background: var(--bg-level-2);
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    overflow: hidden;
+}
+.profile-tabstrip-tab {
+    background: var(--bg-level-2);
+    color: var(--fg-level-2);
+
+    padding: 8px 16px;
+}
+.profile-tabstrip-tab.selected {
+    background: var(--bg-level-3-highlight);
+    color: var(--fg-level-3-highlight);
+}
+
+.profile-main {
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+    overflow: hidden;
+    border-top: 2px solid var(--bg-level-3-highlight);
+}
+.profile-main-description {
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    word-break: break-word;
+    user-select: text;
+}
+
+.profile-main-kinks {
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+
+    display: grid;
+    grid-template-rows: auto;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    grid-template-areas:
+        "favorite yes maybe no";
+    
+    gap: 8px;
+}
+.kinks-column-favorite { grid-area: favorite; }
+.kinks-column-yes { grid-area: yes; }
+.kinks-column-maybe { grid-area: maybe; }
+.kinks-column-no { grid-area: no; }
+
+.kinks-column {
+    display: grid;
+    grid-template-columns: auto;
+    grid-template-rows: auto 1fr;
+    grid-template-areas:
+        "title"
+        "content";
+
+    border: 2px solid var(--kink-border-color);
+}
+.kinks-column-title { grid-area: title; }
+.kinks-column-content { grid-area: content; }
+
+.kinks-column-content {
+    display: flex;
+    flex-direction: column;
+    padding: 8px 8px;
+}
+
+.kinks-column-title {
+    background-color: var(--kink-border-color);
+    color: black;
+    font-weight: bold;
+    padding: 8px 8px;
+}
+
+.kinks-column-favorite { 
+    --kink-border-color: #99e;
+}
+.kinks-column-yes { 
+    --kink-border-color: #6d6;
+}
+.kinks-column-maybe { 
+    --kink-border-color: rgb(212, 212, 46);
+}
+.kinks-column-no { 
+    --kink-border-color: rgb(138, 29, 29);
+}
+
+.kink-list-item-arrow-mypref-fave {
+    --kink-arrow-color: #aaf;
+    --kink-arrow-opacity: 1;
+}
+.kink-list-item-arrow-mypref-yes {
+    --kink-arrow-color: #8f8;
+    --kink-arrow-opacity: 1;
+}
+.kink-list-item-arrow-mypref-maybe {
+    --kink-arrow-color: #ff6;
+    --kink-arrow-opacity: 1;
+}
+.kink-list-item-arrow-mypref-no {
+    --kink-arrow-color: #f99;
+    --kink-arrow-opacity: 1;
+}
+
+.kink-list-item {
+    display: flex;
+    flex-direction: row;
+    gap: 6px;
+    align-items: center;
+    width: fit-content;
+    --kink-arrow-color: currentColor;
+    --kink-arrow-opacity: 0.3;
+    --custom-kink-color: #2f2;
+}
+.kink-list-item-arrow {
+    color: var(--kink-arrow-color);
+    opacity: var(--kink-arrow-opacity);
+    width: 1lh;
+    text-align: center;
+}
+.kink-list-item.kink-list-iscustom .kink-list-item-name {
+    font-weight: bold;
+    color: var(--custom-kink-color);
+}
+
+.kink-list-item .collapsearrow {
+    max-height: 0.8lh;
+    max-width: 0.8lh;
+    margin: 0.1lh;
+    transition: transform 0.25s;
+    background-color: var(--custom-kink-color);
+    color: black;
+    border-radius: 0.5lh;
+}
+.kink-list-item .collapsearrow.collapsed {
+    transform: rotate(-90deg);
+}
+.kink-list-item .collapsearrow.expanded {
+    transform: rotate(0deg);
+}
+
+.kink-sublist {
+    display: flex;
+    flex-direction: column;
+    margin-left: 6px;
+    padding: 0px 6px;
+    background-color: rgba(0, 0, 0, 0.4);
+    transition: padding 0.25s;
+}
+.kink-sublist[data-collapsed='true'] {
+    padding: 0px 6px;
+}
+.kink-sublist[data-collapsed='false'] {
+    padding: 3px 6px;
+}
+
+.profile-main-images {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 8px;
+
+    max-height: 100%;
+
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
+.profile-main-images .image-thumbnail {
+    min-width: calc(20% - (8px * 4));
+
+    width: 200px;
+    height: 150px;
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-color: var(--bg-level-1);
+
+    cursor: pointer;
+}
+
+.profile-main-details {
+    overflow-y: auto;
+    max-height: 100%;
+
+    display: grid;
+    grid-template-columns: minmax(auto, 1fr) minmax(auto, 1fr) minmax(auto, 1fr);
+    grid-template-rows: auto;
+    grid-template-areas:
+        "general rppref sexualdetail";
+
+    gap: 8px;
+}
+.detail-infotag-group-general-details { grid-area: general; }
+.detail-infotag-group-rping-preferences { grid-area: rppref; }
+.detail-infotag-group-sexual-details { grid-area: sexualdetail; }
+
+.detail-infotag-group {
+    align-self: flex-start;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    padding-left: 8px;
+    padding-right: 8px;
+    padding-bottom: 8px;
+}
+.detail-infotag-group td:nth-child(1) {
+    width: auto;
+    white-space: nowrap;
+}
+.detail-infotag-group td:nth-child(2) {
+    width: 100%;
+}
+.detail-infotag-group-title {
+    font-weight: bold;
+    font-size: 120%;
+    text-align: center;
+    padding-bottom: 12px;
+}
+.detail-infotag-label {
+    font-weight: bold;
+    text-align: right;
+    vertical-align: baseline;
+}
+
+.profile-main-alts {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 8px;
+
+    max-height: 100%;
+
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+.profile-main-alts-item {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--bg-level-3-highlight);
+    background: var(--bg-level-3);
+    padding: 7px 7px;
+    border-radius: 7px;
+    align-items: center;
+    gap: 7px;
+    cursor: pointer;
+}
+.profile-main-alts-item:hover {
+    background: var(--bg-level-3-highlight);
+}
+.profile-main-alts-item-image {
+    width: 100px;
+    height: 100px;
+}
+.profile-main-alts-item-name {
+    text-wrap: nowrap;
+}

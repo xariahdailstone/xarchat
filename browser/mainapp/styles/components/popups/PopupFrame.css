@@ -1,0 +1,13 @@
+
+:host {
+    display: contents;
+}
+
+#elMain {
+    display: contents;
+}
+
+#elMain > * {
+    pointer-events: auto;
+    box-sizing: border-box;
+}

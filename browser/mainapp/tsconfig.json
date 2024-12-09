@@ -1,0 +1,22 @@
+{
+    "compilerOptions": {
+        "strict": true,
+        "strictFunctionTypes": false,
+        "experimentalDecorators": true,
+        "target": "ES2021",
+        "module": "System",
+        "outDir": "./build",
+        "outFile": "./build/app.js",
+        "lib": [ "DOM", "ESNext" ],
+        "jsx": "react",
+        "jsxFactory": "jsx",
+        "jsxFragmentFactory": "Fragment",
+        "useDefineForClassFields": false,
+        "removeComments": true
+    },
+    "include": [
+        "./src/_polyfill.ts",
+        "./src/**/*.ts",
+        "./src/**/*.tsx"
+    ]
+}

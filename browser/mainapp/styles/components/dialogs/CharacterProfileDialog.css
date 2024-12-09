@@ -1,0 +1,16 @@
+
+#elMain {
+    width: calc(var(--main-interface-width) * 0.9);
+    height: 100%;
+
+    font: var(--chat-font);
+
+    --memo-bg: rgb(130, 119, 90);
+    --memo-icon-fg: white;
+    --memo-text-fg: black;
+}
+
+#elMain > * {
+    width: 100%;
+    height: 100%;
+}

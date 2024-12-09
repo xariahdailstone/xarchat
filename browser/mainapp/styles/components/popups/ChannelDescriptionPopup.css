@@ -1,0 +1,14 @@
+
+:host {
+    position: absolute;
+
+    border: 1px solid var(--fg-level-3);
+    padding: 5px 5px;
+    border-radius: 5px;
+    background-color: var(--bg-level-3);
+    color: var(--fg-level-3);
+    overflow: auto;
+}
+
+#elMain {
+}

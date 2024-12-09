@@ -1,0 +1,54 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <RuntimeIdentifier>osx-arm64</RuntimeIdentifier>
+    <Platforms>AnyCPU</Platforms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <PublishSingleFile>true</PublishSingleFile>
+    <SelfContained>true</SelfContained>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <PublishTrimmed>true</PublishTrimmed>
+
+    <DefineConstants>MAC</DefineConstants>
+  </PropertyGroup>
+  <PropertyGroup Condition="$(AzureBuildNumber)==''">
+    <AzureBuildNumber>none</AzureBuildNumber>
+  </PropertyGroup>
+  
+  <ItemGroup>
+    <!-- <PackageReference Include="Photino.NET" Version="3.0.14" /> -->
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.7" />
+    <PackageReference Include="Mono.Posix" Version="7.1.0-final.1.21458.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\shared\XarChat.AutoUpdate\XarChat.AutoUpdate.csproj" />
+    <ProjectReference Include="..\..\shared\XarChat.Backend\XarChat.Backend.csproj" />
+    <ProjectReference Include="..\..\mac\XarChat.Backend.Mac\XarChat.Backend.Mac.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\shared\photino.NET\Photino.NET\Photino.NET.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="content.zip" />
+    <None Remove="content.dat" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="content.dat" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="..\..\shared\photino.Native\lib\x64\Photino.Native.*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <Target Name="PreBuild" BeforeTargets="PreBuildEvent">
+    <Exec Command="./UpdateAssemblyVersionInfo.sh -AzureBuildNumber $(AzureBuildNumber)&#xD;&#xA;./CreateContentZip.sh -AzureBuildNumber $(AzureBuildNumber)" />
+  </Target>
+
+</Project>

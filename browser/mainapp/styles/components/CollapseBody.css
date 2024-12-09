@@ -1,0 +1,45 @@
+
+:host {
+    display: block;
+}
+
+#elMain {
+    display: block;
+    overflow: hidden;
+
+    height: var(--expandedHeight);
+}
+#elMain.collapsed {
+    height: 0px;
+}
+
+#elMain.expand-animate {
+    animation: expand 0.3s;
+    animation-timing-function: cubic-bezier(1,0,1,0);
+}
+
+#elMain.collapse-animate {
+    animation: collapse 0.3s;
+    animation-timing-function: cubic-bezier(0,1,0,1);
+}
+
+@keyframes expand {
+    0% {
+        height: 0px;
+    }
+    100% {
+        height: var(--expandedHeight);
+    }
+}
+@keyframes collapse {
+    0% {
+        height: var(--expandedHeight);
+    }
+    100% {
+        height: 0px;
+    }
+}
+
+#elMainInner {
+    display: block;
+}

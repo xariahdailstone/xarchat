@@ -1,0 +1,21 @@
+:host {
+    display: block;
+    position: relative;
+}
+
+#elMain {
+    width: 100%;
+    height: 100%;
+
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    grid-template-rows: 1fr auto 1fr;
+    grid-template-areas:
+        ". . ."
+        ". icon ."
+        ". . .";
+}
+
+#elIcon {
+    grid-area: icon;
+}

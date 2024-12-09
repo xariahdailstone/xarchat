@@ -1,0 +1,41 @@
+﻿// User32
+GetWindowPlacement
+RegisterWindowMessage
+PostMessage
+GetMessage
+TranslateMessage
+DispatchMessage
+PostQuitMessage
+DefWindowProc
+CreateWindowEx
+DestroyWindow
+RegisterClassEx
+UnregisterClass
+ShowWindow
+GetClientRect
+GetWindowRect
+MoveWindow
+//GetWindowLongPtr
+//SetWindowLongPtr
+LoadCursor
+SetCursor
+GetDpiForWindow
+GetClientRect
+EnumDisplayMonitors
+GetMonitorInfo
+FindWindow
+SetForegroundWindow
+// Kernel32
+GetModuleHandle
+GetModuleFileName
+CreateMutex
+// Shell32
+ExtractIcon
+//AllocConsole
+//FreeConsole
+//CreateFileW
+BeginPaint
+EndPaint
+GetCursorPos
+InvalidateRect
+MessageBox

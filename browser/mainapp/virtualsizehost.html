@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>XarChat</title>
+        <style>
+            html, body {
+                width: 100%;
+                height: 100%;
+                border: none;
+                margin: 0;
+                padding: 0;
+                background-color: #151515;
+            }
+            #elFrame {
+                position: absolute;
+                top: 0;
+                left: 0;
+                border: none;
+            }
+        </style>
+    </head>
+    <body>
+        <iframe id="elFrame"></iframe>
+
+        <script>
+            const elFrame = document.getElementById("elFrame");
+
+            const processPostedMessage = (data) => {
+                if (data.type == "clientresize") {
+                    elFrame.style.width = `${data.bounds[0] / window.devicePixelRatio}px`;
+                    elFrame.style.height = `${data.bounds[1] / window.devicePixelRatio}px`;
+                }
+            };
+
+            if (window.chrome?.webview) {
+                window.chrome.webview.addEventListener('message', (e) => {
+                    const data = e.data;
+                    processPostedMessage(data);
+                });
+            }
+            else if (window.external?.receiveMessage) {
+                window.external.receiveMessage(message => {
+                    const data = JSON.parse(message);
+                    processPostedMessage(data);
+                });
+            }
+
+            window.addEventListener("load", () => {
+                const src = document.location.search;
+                const frameUrl = "index.html" + src;
+                elFrame.src = frameUrl;
+            });
+        </script>
+    </body>
+</html>

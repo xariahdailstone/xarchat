@@ -1,0 +1,113 @@
+
+#elMain {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.logsearchui {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+
+    display: grid;
+    grid-template-rows: auto auto auto auto 1fr;
+    grid-template-columns: 1fr;
+    grid-template-areas:
+        "devalert"
+        "searchfor"
+        "searchkind"
+        "searchsubmitbar"
+        "channelstream";
+}
+
+.devalert { grid-area: devalert; }
+.searchforbar { grid-area: searchfor; }
+.searchkindbar { grid-area: searchkind; }
+.searchsubmitbar { grid-area: searchsubmitbar; }
+.logsearchresultmessagecontainer { grid-area: channelstream; }
+
+.devalert {
+    background-color: goldenrod;
+    color: black;
+    font-weight: bold;
+    text-align: center;
+    padding: 4px 4px;
+}
+
+.searchforbar {
+    display: grid;
+    grid-template-rows: auto;
+    grid-template-columns: auto auto 1fr auto auto;
+    grid-template-areas: 
+        "logsforlabel logsforfield . timeanchorfield timeanchordate";
+
+    padding: 8px 8px;
+    align-items: center;
+}
+.searchforbar-logsforlabel { grid-area: logsforlabel; margin-right: 6px; }
+.searchforbar-logsforfield { grid-area: logsforfield; }
+.searchforbar-timeanchorfield { grid-area: timeanchorfield; margin-right: 6px; }
+.searchforbar-timeanchordate { grid-area: timeanchordate; }
+
+.searchkindbar {
+    display: grid;
+    grid-template-rows: auto;
+    grid-template-columns: auto auto auto 1fr;
+    grid-template-areas:
+        "kindlabel kindfield typedkindfields .";
+
+    padding: 0 8px 8px 8px;
+    align-items: center;
+}
+.searchkindbar-kindlabel { grid-area: kindlabel; margin-right: 6px; }
+.searchkindbar-kindfield { grid-area: kindfield; margin-right: 6px; }
+.searchkindbar-kindargs-pmconvo { display: none; }
+.searchkindbar-kindargs-channel { display: none; }
+
+.searchsubmitbar {
+    display: grid;
+    grid-template-rows: auto;
+    grid-template-columns: 1fr auto;
+    grid-template-areas: ". submit";
+
+    padding: 0 8px 8px 8px;
+
+    border-bottom: 2px solid var(--dark-border-level-4);
+}
+.searchsubmitbar-submit { grid-area: submit; }
+
+
+.searchkindbar.pmconvo .searchkindbar-kindargs-pmconvo { 
+    grid-area: typedkindfields; 
+    display: flex;
+    flex-direction: row;
+    gap: 6px;
+}
+
+.searchkindbar.channel .searchkindbar-kindargs-channel { 
+    grid-area: typedkindfields; 
+    display: flex;
+    flex-direction: row;
+    gap: 6px;
+}
+
+.logsearchresultmessagecontainer {
+    overflow-y: scroll;
+}
+
+.resultitem-extendsearchresult {
+    background: var(--bg-level-2);
+    color: var(--fg-level-2);
+    text-align: center;
+    padding: 8px 8px;
+    border-radius: 8px;
+}
+.resultitem-extendsearchresult.clickable {
+    color: var(--fg-level-2-highlight);
+    cursor: pointer;
+}

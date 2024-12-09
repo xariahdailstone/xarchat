@@ -1,0 +1,105 @@
+
+* { box-sizing: border-box; }
+
+#elMain {
+    display: grid;
+    grid-template-rows: auto auto 1fr;
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas: 
+        "title title"
+        "find find"
+        "public private";
+
+    width: 100%;
+    height: 100%;
+
+    gap: 8px;
+}
+
+.title-section { grid-area: title; }
+.search-section { grid-area: find; }
+.public-section { grid-area: public; }
+.private-section { grid-area: private; }
+
+.title-section {
+    padding: 10px;
+    border-bottom: 2px solid var(--bg-level-2);
+
+    font-weight: bold;
+    font-size: 120%;
+}
+
+.search-section {
+    padding: 1px 10px;
+    display: grid;
+    grid-template-rows: auto;
+    grid-template-columns: auto 1fr;
+    grid-template-areas: "title field";
+    align-items: center;
+}
+.search-title { grid-area: title; }
+.search-field { grid-area: field; margin-left: 8px; }
+
+.chantype-section {
+    display: grid;
+    grid-template-rows: auto 1fr;
+    grid-template-columns: auto;
+    grid-template-areas:
+        "title"
+        "list";
+
+    height: 100%;
+    max-height: 100%;
+    overflow: hidden;
+
+    gap: 8px;
+    padding: 8px 8px;
+}
+.chantype-section-title { grid-area: title; }
+.chantype-section-list { grid-area: list; }
+
+.chantype-section-title {
+    padding-left: 6px;
+}
+
+.chantype-section-list {
+    overflow-y: auto;
+    overflow-x: hidden;
+
+    background: var(--bg-level-2);
+    color: var(--fg-level-2);
+}
+
+.chantype-section-list-table {
+    display: table;
+    width: 100%;
+}
+.chantype-section-list-thead {
+    display: contents;
+}
+
+.chantype-section-list-tbody {
+    display: contents;
+}
+
+.chantype-section-list-tr {
+    display: table-row !important;
+}
+.chantype-section-list-th {
+    display: table-cell;
+}
+.chantype-section-list-td {
+    display: table-cell;
+}
+
+.channelllistitem {
+    background-color: inherit;
+    color: inherit;
+}
+.channelllistitem.joined {
+    background-color: var(--bg-level-3-highlight);
+    color: var(--fg-level-3-highlight);
+}
+
+.channellistitem-title { padding: 6px 6px; }
+.channellistitem-count { padding: 6px 6px; }

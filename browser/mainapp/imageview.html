@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Image Viewer</title>
+        <style type="text/css">
+            html {
+                width: 100%;
+                height: 100%;
+                margin: 0;
+                padding: 0;
+
+                background: transparent;
+                color: white;
+            }
+            body {
+                background: transparent;
+                margin: 0;
+                padding: 0;
+
+                display: grid;
+                grid-template-rows: 1fr auto 1fr;
+                grid-template-columns: 1fr auto 1fr;
+                grid-template-areas:
+                    ". . ."
+                    ". content ."
+                    ". . .";
+
+                min-height: 100%;
+            }
+            .container { grid-area: content; }
+
+            body:not(.zoomed) .image {
+                max-width: 95vw;
+                max-height: 95vh;
+            }
+            body:not(.zoomed) .image.canzoom {
+                cursor: zoom-in;
+            }
+            body.zoomed .image.canzoom {
+                cursor: zoom-out;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container" id="elContainer">
+
+        </div>
+
+        <script>
+            let imgNaturalWidth = 0;
+            let imgNaturalHeight = 0;
+            function recalculateCanZoom() {
+                const imgEl = document.getElementById("imgEl");
+                if (imgEl) {
+                    const mw = (window.innerWidth * 0.95);
+                    const mh = (window.innerHeight * 0.95);
+                    
+                    imgEl.classList.toggle("canzoom", (mw < imgNaturalWidth || mh < imgNaturalHeight));
+                }
+            }
+
+            const params = new URLSearchParams(document.location.search);
+            if (params.has("url")) {
+                const imgEl = document.createElement("img");
+                imgEl.id = "imgEl";
+                imgEl.addEventListener("load", () => {
+                    try {
+                        imgNaturalWidth = imgEl.naturalWidth;
+                        imgNaturalHeight = imgEl.naturalHeight;
+                    }
+                    catch (e) { }
+                    recalculateCanZoom();
+                });
+                imgEl.src = params.get("url");
+                imgEl.classList.add("image");
+                document.getElementById("elContainer").appendChild(imgEl);
+                document.body.addEventListener("click", () => {
+                    document.body.classList.toggle("zoomed");
+                });
+
+                window.addEventListener("resize", () => {
+                    recalculateCanZoom();
+                });
+
+            }
+            else {
+                const nothingEl = document.createElement("div");
+                nothingEl.classList.add("nothingtoshow");
+                nothingEl.appendChild(document.createTextNode("Nothing to show."));
+                document.getElementById("elContainer").appendChild(nothingEl);
+            }
+        </script>
+    </body>
+</html>

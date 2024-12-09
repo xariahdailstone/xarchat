@@ -1,0 +1,44 @@
+
+:host {
+    padding: 0px 0px !important;
+}
+
+#elMain {
+    max-width: 550px;
+
+    background-color: var(--bg-level-2);
+    color: var(--fg-level-2);
+}
+
+#elContent {
+    display: flex;
+    flex-direction: column;
+
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
+.menu-item {
+    padding: 5px 5px;
+}
+
+.menu-separator {
+    margin-top: 5px;
+    margin-bottom: 5px;
+
+    height: 1px;
+
+    border-bottom: 1px solid currentColor;
+}
+
+.menu-item:hover:not(.disabled) {
+    background-color: var(--bg-level-3-highlight);
+    color: var(--fg-level-3-highlight);
+}
+
+.disabled {
+    opacity: 0.5;
+}
+
+.menu-item-text {
+}

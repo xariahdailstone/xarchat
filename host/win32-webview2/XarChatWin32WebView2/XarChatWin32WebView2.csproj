@@ -1,0 +1,134 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <Import Project="$(MSBuildExtensionsPath)\Microsoft\VisualStudio\v$(VisualStudioVersion)\TextTemplating\Microsoft.TextTemplating.targets" />
+    
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows10.0.17763.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>xarchat.ico</ApplicationIcon>
+    <AssemblyName>XarChat</AssemblyName>
+    <JsonSerializerIsReflectionEnabledByDefault>false</JsonSerializerIsReflectionEnabledByDefault>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <TransformOnBuild>true</TransformOnBuild>
+    <PlatformTarget>x64</PlatformTarget>
+    <ServerGarbageCollection>true</ServerGarbageCollection>
+  </PropertyGroup>
+  <PropertyGroup Condition="$(AzureBuildNumber)==''">
+    <AzureBuildNumber>none</AzureBuildNumber>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <DebugType>full</DebugType>
+    <Optimize>False</Optimize>
+    <NoWarn>1701;1702;1998</NoWarn>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <DebugType>full</DebugType>
+    <Optimize>True</Optimize>
+    <NoWarn>1701;1702;1998</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="Updater\**" />
+    <EmbeddedResource Remove="Updater\**" />
+    <None Remove="Updater\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="content.zip" />
+    <None Remove="content.dat" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="xarchat.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="content.dat" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <TrimmerRootAssembly Include="Microsoft.Web.WebView2.Core" />
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2849.39">
+      <IsTrimmable>false</IsTrimmable>
+    </PackageReference>
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.10" />
+    <PackageReference Include="System.Drawing.Common" Version="8.0.11" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\shared\XarChat.AutoUpdate\XarChat.AutoUpdate.csproj" />
+    <ProjectReference Include="..\..\shared\XarChat.Backend\XarChat.Backend.csproj" />
+    <ProjectReference Include="..\..\win32\XarChat.Backend.Win32\XarChat.Backend.Win32.csproj" />
+    <ProjectReference Include="..\..\win32\XarChat.Native.Win32\XarChat.Native.Win32.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Service Include="{508349b6-6b84-4df5-91f0-309beebad82d}" />
+  </ItemGroup>
+
+  <Target Name="ConfigureTrimming" BeforeTargets="PrepareForILLink">
+    <ItemGroup>
+      <ManagedAssemblyToLink Condition="'%(Filename)' == 'Microsoft.Web.WebView2.Core.dll'">
+        <IsTrimmable>false</IsTrimmable>
+      </ManagedAssemblyToLink>
+      <ManagedAssemblyToLink Condition="'%(Filename)' == 'Microsoft.Web.WebView2.WinForms.dll'">
+        <IsTrimmable>false</IsTrimmable>
+      </ManagedAssemblyToLink>
+      <ManagedAssemblyToLink Condition="'%(Filename)' == 'Microsoft.Web.WebView2.Wpf.dll'">
+        <IsTrimmable>false</IsTrimmable>
+      </ManagedAssemblyToLink>
+      <!--
+      <ManagedAssemblyToLink Condition="'%(Filename)' == 'XarChat.Backend.Win32.dll'">
+        <IsTrimmable>false</IsTrimmable>
+      </ManagedAssemblyToLink>
+      -->
+    </ItemGroup>
+  </Target>
+
+  <!--<Target Name="CreateContentZip" BeforeTargets="Compile">
+    <PropertyGroup>
+      <PowerShellExe>"C:\Program Files\PowerShell\7\pwsh.exe"</PowerShellExe>
+    </PropertyGroup>
+    <Message Text="building content.zip" />
+    <Exec Command="$(PowerShellExe) -NonInteractive -ExecutionPolicy unrestricted -command ./CreateContentZip.ps1" />
+  </Target>-->
+
+  <!--<Target Name="BeforeCompile">
+    <PropertyGroup>
+      <PowerShellExe>"C:\Program Files\PowerShell\7\pwsh.exe"</PowerShellExe>
+    </PropertyGroup>
+    <Message Text="building content.zip" />
+    <Exec Command="$(PowerShellExe) -NonInteractive -ExecutionPolicy unrestricted -command ./CreateContentZip.ps1" />
+  </Target>-->
+
+  <Target Name="PreBuild" BeforeTargets="PreBuildEvent">
+    <Exec Command="pwsh.exe -NonInteractive -ExecutionPolicy unrestricted -command ./UpdateAssemblyVersionInfo.ps1 -AzureBuildNumber $(AzureBuildNumber)&#xD;&#xA;pwsh.exe -NonInteractive -ExecutionPolicy unrestricted -command ./CreateContentZip.ps1 -AzureBuildNumber $(AzureBuildNumber)" />
+  </Target>
+
+  <Target Name="AddGeneratedClasses" AfterTargets="PreBuildEvent" BeforeTargets="BeforeCompile;CoreCompile">
+    <ItemGroup>
+      <Compile Include="Properties\AssemblyVersionInfo.gcs" />
+    </ItemGroup>
+  </Target>
+
+  <PropertyGroup Condition="$(IsPublishing)=='true'">
+    <Configuration>Release</Configuration>
+    <Platform>Any CPU</Platform>
+    <PublishDir>bin\Release\net8.0-windows10.0.17763.0\publish\win-x64\</PublishDir>
+    <PublishProtocol>FileSystem</PublishProtocol>
+    <_TargetId>Folder</_TargetId>
+    <TargetFramework>net8.0-windows10.0.17763.0</TargetFramework>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <PublishReadyToRun>false</PublishReadyToRun>
+    <PublishTrimmed>true</PublishTrimmed>
+    <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+  </PropertyGroup>
+</Project>

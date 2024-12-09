@@ -1,0 +1,50 @@
+
+#elMain {
+    width: calc(var(--main-interface-width) * 0.9);
+    height: 100%;
+
+    display: grid;
+    grid-template-rows: auto 1fr;
+    grid-template-columns: 1fr;
+    grid-template-areas:
+        "toolbar"
+        "mainclient";
+    gap: 7px;
+}
+.toolbar { grid-area: toolbar; }
+.mainclient { grid-area: mainclient; }
+
+.toolbar {
+    display: grid;
+    grid-template-rows: auto;
+    grid-template-columns: 1fr auto;
+    grid-template-areas: "urlbar popout";
+}
+.urlbar { grid-area: urlbar; }
+#btnPopout { grid-area: popout; }
+
+.urlbar {
+    background-color: var(--bg-level-2);
+    color: var(--fg-level-2);
+    border: 0;
+    outline: none;
+    padding: 6px 6px;
+    font-size: 80%;
+}
+
+.mainclient {
+    display: grid;
+    grid-template-rows: 1fr;
+    grid-template-columns: 1fr;
+    grid-template-areas: "mainclientframe";
+    position: relative;
+}
+.mainclientframe { grid-area: mainclientframe; }
+
+.mainclientframe {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    display: block;
+    border: 0;
+}

@@ -1,0 +1,17 @@
+
+#elMain.saving > * {
+    opacity: 0.5;
+}
+
+.memo-text-area {
+    resize: none;
+    width: 400px;
+    height: 150px;
+
+    background-color: var(--bg-level-2);
+    color: var(--fg-level-2);
+
+    border: none;
+    outline: none;
+    border-radius: 8px;
+}

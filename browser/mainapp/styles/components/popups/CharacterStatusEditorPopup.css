@@ -1,0 +1,92 @@
+:host {
+    border: 1px solid black !important;
+
+    --popup-bg: var(--bg-level-2);
+    background-color: var(--popup-bg) !important;
+    color: var(--fg-level-2)  !important;
+    padding: 0px 0px !important;
+}
+
+#elMain {
+    width: 300px;
+    height: 200px;
+
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-rows: auto auto 1fr auto;
+    grid-template-areas: 
+        "avatar name"
+        "onlinestatus onlinestatus"
+        "statusmessage statusmessage"
+        "charsused charsused";
+
+    padding: 15px 15px;
+}
+.avatar-image { grid-area: avatar; }
+.status-dot-container { grid-area: avatar; }
+.character-name { grid-area: name; }
+.online-status-container { grid-area: onlinestatus; }
+.status-message { grid-area: statusmessage; }
+.status-message-size { grid-area: charsused; }
+
+.avatar-image {
+    width: 48px;
+    height: 48px;
+    margin-bottom: 8px;
+}
+.status-dot-container {
+    justify-self: end;
+    align-self: end;
+    font-size: 110%;
+    margin-bottom: 8px;
+    -webkit-text-stroke: 4px var(--popup-bg);
+}
+
+.character-name {
+    margin-left: 8px;
+    margin-bottom: 8px;
+    font-size: 110%;
+    font-weight: bold;
+    align-self: center;
+}
+
+.online-status-container {
+    margin-bottom: 8px;
+    display: grid;
+    grid-template-rows: auto;
+    grid-template-columns: auto auto 1fr;
+    grid-template-areas: "label dropdown .";
+}
+.online-status-label { grid-area: label; }
+.online-status-select { grid-area: dropdown; }
+
+.online-status-label {
+    align-self: center;
+}
+.online-status-select {
+    margin-left: 8px;
+    align-self: center;
+
+    border: none;
+    outline: none;
+    background: var(--bg-main-textbox-btn);
+    color: var(--fg-main-textbox-btn);
+    padding: 6px;
+    border-radius: 8px;
+}
+
+.status-message {
+    resize: none;
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--fg-level-4);
+    font: var(--chat-font);
+    border-radius: 8px;
+    border: none;
+    outline: none;
+    padding: 6px 6px;
+}
+.status-message-size {
+    justify-self: end;
+    font-size: 80%;
+    margin-top: 3px;
+}

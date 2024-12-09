@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<svg width="24.458082mm" height="13.791084mm" viewBox="0 0 24.458082 13.791084" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <defs id="defs1" />
+  <g id="layer1" transform="translate(-67.243837,-115.53073)">
+    <g id="g7-7" transform="translate(0.68024385,15.737999)">
+      <g id="g6-1" transform="translate(-4.6064189,0.41047297)">
+        <circle 
+          style="fill: var(--fgcolor);stroke-width:0.264583"
+          id="path1-9"
+          cx="79.23777"
+          cy="104.96147"
+          r="5.5792155" />
+        <circle
+          style="fill: var(--fgcolor);stroke-width:0.264583"
+          id="path1-1-1"
+          cx="90.048882"
+          cy="104.96147"
+          r="5.5792155" />
+        <rect
+          style="fill: var(--fgcolor);stroke-width:0.268491"
+          id="rect1-0"
+          width="10.900433"
+          height="11.158431"
+          x="79.193108"
+          y="99.382256" />
+      </g>
+      <circle
+        style="fill: var(--fgcolor);stroke-width:0.264583"
+        id="path2-5"
+        cx="70.594818"
+        cy="109.29458"
+        r="2.3542356" />
+      <circle
+        style="fill: var(--fgcolor);stroke-width:0.264583"
+        id="path3-4"
+        cx="67.821335"
+        cy="112.32607"
+        r="1.2577423" />
+    </g>
+    <circle
+      style="fill: var(--dot1color);fill-opacity:1;stroke-width:0.202847"
+      id="path4-0"
+      cx="80.753899"
+      cy="121.10994"
+      r="1.4834909" />
+    <circle
+      style="fill: var(--dot1color);fill-opacity:1;stroke-width:0.202847"
+      id="path4-8-6"
+      cx="76.49437"
+      cy="121.10994"
+      r="1.4834909" />
+    <g id="g8" transform="translate(-0.77399526,-0.12899922)">
+      <rect
+        style="fill: var(--dot1color);fill-opacity:1;stroke-width:0.264583"
+        id="rect7"
+        width="1.1609929"
+        height="3.0959809"
+        x="145.79305"
+        y="23.47331"
+        transform="rotate(45)" />
+      <rect
+        style="fill: var(--dot1color);fill-opacity:1;stroke-width:0.264583"
+        id="rect7-0"
+        width="1.1609929"
+        height="3.0959809"
+        x="-25.601791"
+        y="144.82556"
+        transform="rotate(-45)" />
+    </g>
+  </g>
+</svg>

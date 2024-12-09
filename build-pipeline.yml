@@ -1,0 +1,148 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+name: $(Date:yyyy).$(Month)$(Date:dd).$(Hours)$(Date:mm).$(Seconds)-$(SourceBranchName)
+
+trigger:
+- master
+- develop
+
+stages:
+- stage: osx_arm64_photino
+  pool:
+    vmImage: macOS-14
+  variables:
+    solution: '**/XarChat-macphotino.sln'
+    buildPlatform: 'Any CPU'
+    buildConfiguration: 'Release'
+  jobs:
+    - job: Build_mac_arm64_photino
+      steps:
+        - task: UseDotNet@2
+          inputs:
+            version: 8.x
+        - task: NuGetToolInstaller@1
+        - task: Bash@3
+          displayName: 'Restore NPM packages for client-side project'
+          inputs:
+            targetType: inline
+            workingDirectory: browser/mainapp
+            script: |
+              echo "npm install"
+              npm install
+              echo "Check Typescript Version"
+              node_modules/typescript/bin/tsc --version
+        - task: Bash@3
+          displayName: 'Typescript Build'
+          inputs:
+            targetType: inline
+            workingDirectory: browser/mainapp
+            script: |
+              echo "node_modules/typescript/bin/tsc --project tsconfig.json"
+              node_modules/typescript/bin/tsc --project tsconfig.json
+        - task: Bash@3
+          displayName: 'Make photino.Native'
+          inputs:
+            targetType: inline
+            workingDirectory: host/shared/photino.Native
+            script: |
+              make mac-universal
+        - task: DotNetCoreCLI@2
+          inputs:
+            command: 'custom'
+            custom: 'publish'
+            publishWebProjects: false
+            arguments: '-r osx-arm64 -f net8.0 -target:XarChatMacPhotino XarChat-macphotino.sln'
+            zipAfterPublish: false
+        - publish: ./host/linux-photino/XarChatLinuxPhotino/bin/Release/net8.0/osx-arm64/publish/
+          artifact: MacPhotinoApp
+
+- stage: windows_x64_minimalapi
+  pool:
+    vmImage: 'windows-latest'
+
+  variables:
+    solution: 'XarChat.sln'
+    buildPlatform: 'Any CPU'
+    buildConfiguration: 'Release'
+
+  jobs:
+    - job: Build_windows_x64_minimalapi
+      steps:
+        - task: NuGetToolInstaller@1
+        - task: Bash@3
+          displayName: 'Restore NPM packages for client-side project'
+          inputs:
+            targetType: inline
+            workingDirectory: browser/mainapp
+            script: |
+              echo "npm install"
+              npm install
+              echo "Check Typescript Version"
+              node_modules/typescript/bin/tsc --version
+        - task: Bash@3
+          displayName: 'Typescript Build'
+          inputs:
+            targetType: inline
+            workingDirectory: browser/mainapp
+            script: |
+              echo "node_modules/typescript/bin/tsc --project tsconfig.json"
+              node_modules/typescript/bin/tsc --project tsconfig.json
+        - task: VSBuild@1
+          inputs:
+            solution: '$(solution)'
+            msbuildArgs: '/T:"Restore;win32\win32-webview2\XarChatWin32WebView2:Publish" /p:IsPublishing=true /p:AzureBuildNumber="$(Build.BuildNumber)"'
+            platform: '$(buildPlatform)'
+            configuration: '$(buildConfiguration)'
+        - publish: .\host\win32-webview2\XarChatWin32WebView2\bin\Release\net8.0-windows10.0.17763.0\publish\
+          artifact: WebView2App
+- stage: linux_x64_photino
+  pool:
+    vmImage: ubuntu-latest
+  variables:
+    solution: '**/XarChat-linuxphotino.sln'
+    buildPlatform: 'Any CPU'
+    buildConfiguration: 'Release'
+  jobs:
+    - job: Build_linux_x64_photino
+      steps:
+        - task: UseDotNet@2
+          inputs:
+            version: 8.x
+        - task: NuGetToolInstaller@1
+        - task: Bash@3
+          displayName: 'Restore NPM packages for client-side project'
+          inputs:
+            targetType: inline
+            workingDirectory: browser/mainapp
+            script: |
+              echo "npm install"
+              npm install
+              echo "Check Typescript Version"
+              node_modules/typescript/bin/tsc --version
+        - task: Bash@3
+          displayName: 'Typescript Build'
+          inputs:
+            targetType: inline
+            workingDirectory: browser/mainapp
+            script: |
+              echo "node_modules/typescript/bin/tsc --project tsconfig.json"
+              node_modules/typescript/bin/tsc --project tsconfig.json
+        - task: Bash@3
+          displayName: 'Make photino.Native'
+          inputs:
+            targetType: inline
+            workingDirectory: host/shared/photino.Native
+            script: |
+              make linux-x64
+        - task: DotNetCoreCLI@2
+          inputs:
+            command: 'custom'
+            custom: 'publish'
+            publishWebProjects: false
+            arguments: '-r linux-x64 -f net8.0 -target:XarChatLinuxPhotino XarChat-linuxphotino.sln'
+            zipAfterPublish: false
+        - publish: ./host/linux-photino/XarChatLinuxPhotino/bin/Release/net8.0/linux-x64/publish/
+          artifact: LinuxPhotinoApp

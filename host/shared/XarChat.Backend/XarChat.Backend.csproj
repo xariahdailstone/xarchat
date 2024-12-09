@@ -1,0 +1,43 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>12</LangVersion>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <NoWarn>1701;1702;1998</NoWarn>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <NoWarn>1701;1702;1998</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="Features\ChatLogging\Sqlite\File\DbLogFileSwarm.cs" />
+    <Compile Remove="Features\ChatLogging\Sqlite\File\SingleDbLogFile.cs" />
+    <Compile Remove="Features\ChatLogging\Sqlite\File\SwarmingChatLogWriter.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="Features\ChatLogging\Sqlite\File\DbLogFileSwarm.cs" />
+    <None Include="Features\ChatLogging\Sqlite\File\SingleDbLogFile.cs" />
+    <None Include="Features\ChatLogging\Sqlite\File\SwarmingChatLogWriter.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite.Core" Version="8.0.10" />
+    <PackageReference Include="System.Text.Json" Version="8.0.5" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Features\HttpClientProvider\" />
+  </ItemGroup>
+
+</Project>

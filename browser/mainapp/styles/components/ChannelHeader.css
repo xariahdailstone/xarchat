@@ -1,0 +1,187 @@
+
+:root {
+    display: block;
+    position: relative;
+}
+
+* { box-sizing: border-box; }
+
+#elMain {
+    width: 100%;
+    height: 48px;
+
+    background: var(--bg-level-4);
+    color: var(--fg-level-4);
+
+    border-bottom: 2px solid var(--dark-border-level-4);
+
+    display: grid;
+    grid-template-rows: auto;
+    grid-template-columns: auto auto auto 1fr auto;
+    grid-template-areas:
+        "icon title onlinestatus descriptionarea filter";
+
+    align-items: center;
+
+    padding: 6px 10px 6px 10px;
+    overflow: hidden;
+}
+
+.icon {
+    grid-area: icon;
+
+    width: 32px;
+    height: 32px;
+    max-width: 32px;
+    max-height: 32px;
+    --iconimage-max-width: 32px;
+    --iconimage-max-height: 32px;
+
+    margin-right: 10px;
+}
+
+.title {
+    grid-area: title;
+
+    font-weight: bold;
+}
+
+.online-status-container { grid-area: onlinestatus; display: none; }
+
+.pmconvo .online-status-container { 
+    display: flex; 
+    flex-direction: row;
+    align-items: baseline;
+    gap: 3px;
+    font-size: 75%;
+    margin-left: 10px;
+}
+.pmconvo .online-status-container .online-status-text {
+    opacity: 0.5;
+}
+
+.descriptionarea { grid-area: descriptionarea; }
+
+.descriptionarea {
+    display: grid;
+    grid-template-rows: auto;
+    grid-template-columns: auto auto 1fr;
+    grid-template-areas:
+        "description descshowmore .";
+
+    margin-left: 20px;
+}
+.descriptioncontainer { grid-area: description; }
+.descriptionshowmore { grid-area: descshowmore; display: none; }
+
+.descriptionshowmore.shown {
+    display: block;
+
+    background: var(--bg-main-textbox-btn);
+    color: var(--fg-main-textbox-btn);
+    padding: 2px 8px;
+    font-size: 75%;
+    margin-left: 5px;
+    border: none;
+    outline: none;
+    border-radius: 5px;
+}
+
+#elFilter {
+    grid-area: filter;
+    flex-shrink: 1;
+
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+
+    margin-left: 20px;
+}
+
+#elFilter[data-messagemode='ads'],
+#elFilter[data-messagemode='chat'],
+#elFilter[data-messagemode='none'] { display: none; }
+
+#elFilter[data-messagemode='both'] { display: flex; }
+
+#elFilterIcon {
+    width: 20px;
+    height: 20px;
+    max-width: 20px;
+    max-height: 20px;
+    margin-right: 8px;
+    --iconimage-max-width: 20px;
+    --iconimage-max-height: 20px;
+}
+
+select {
+    border: none;
+    outline: none;
+
+    background: var(--bg-main-textbox-btn);
+    color: var(--fg-main-textbox-btn);
+    padding: 6px 6px;
+
+    border-radius: 8px;
+}
+
+
+#elDescriptionContainer {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+
+    /*background: var(--bg-level-3);
+    color: var(--fg-level-3);
+    padding: 4px 4px;
+    border-radius: 8px;
+
+    margin-left: 13px;
+    margin-right: 13px;*/
+}
+
+#elDescriptionContainer { overflow: hidden; }
+
+.descriptioncontainer {
+    position: relative;
+}
+.descriptiontext { 
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden; 
+}
+.descriptiontextsizer {
+    visibility: hidden;
+    position: absolute;
+    top: 0;
+    left: 0;
+    max-width: 100%;
+}
+
+/* #elMain.chatchannel #elDescriptionContainer {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+}
+
+#elDescriptionUpdated {
+    background: var(--bg-level-3-highlight);
+    color: var(--fg-level-3-highlight);
+    padding: 2px 9px;
+    border-radius: 8px;
+    margin-right: 4px;
+} */
+
+#elDescriptionText {
+    opacity: 0.5;
+}
+
+button { font: inherit; }
+
+.descriptioncontainer .bbcode-eicon,
+.descriptioncontainer .bbcode-icon > img {
+    height: 24px;
+    width: 24px;
+    max-height: 24px;
+    max-width: 24px;
+}

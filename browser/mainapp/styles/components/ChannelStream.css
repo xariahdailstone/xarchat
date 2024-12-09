@@ -1,0 +1,45 @@
+
+:host {
+    display: contents;
+}
+
+#elMain {
+    display: contents;
+}
+
+.messagecontainerouter {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+
+    height: 100%;
+    user-select: text;
+    overflow: hidden;
+
+    position: relative;
+
+    /* background: inherit; */
+
+    contain: strict;
+}
+
+.messagecontainer {
+    max-height: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: none;
+}
+
+
+
+
+.typingstatusindicator { user-select: none; }
+.messageitem.typingstatusindicator {
+    padding: 3px 0px; 
+    border-bottom: 1px solid transparent;
+    min-height: 1lh;
+}
+
+.messageitem.typingstatusindicator .messagetext {
+    font-size: 75%;
+}

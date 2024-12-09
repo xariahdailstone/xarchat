@@ -1,0 +1,32 @@
+
+:host {
+    display: contents;
+    user-select: none;
+}
+
+#elMain {
+    display: inline;
+    user-select: none;
+}
+
+.status-offline {
+    color: #444;    
+}
+.status-online {
+    color: #55f;    
+}
+.status-idle {
+    color: #33a;    
+}
+.status-away {
+    color: #aa4;    
+}
+.status-dnd {
+    color: #c44;
+}
+.status-looking {
+    color: #8f8;
+}
+.status-crown {
+    color: #ff0;
+}

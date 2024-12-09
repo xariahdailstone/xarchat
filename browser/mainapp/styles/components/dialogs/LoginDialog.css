@@ -1,0 +1,133 @@
+
+#elMain {
+    display: contents;
+}
+
+#elMain > * { 
+    display: none; 
+    overflow: hidden;
+    max-height: 100%;
+    width: 300px;
+}
+
+#elMain.state-getaccount > .state-getaccount { display: grid; }
+#elMain.state-gettingchars > .state-gettingchars { display: grid; }
+#elMain.state-getchar > .state-getchar { display: grid; }
+#elMain.state-loggingin > .state-loggingin { display: block; }
+
+
+.state-getaccount { 
+    grid-template-rows: auto auto auto auto auto auto;
+    grid-template-columns: 1fr 55% auto 1fr;
+    grid-template-areas:
+        "msg msg msg msg"
+        "instructions instructions instructions instructions"
+        ". acctname acctbtn ."
+        ". password password ."
+        "rememberaccount rememberaccount rememberaccount rememberaccount"
+        "rememberpassword rememberpassword rememberpassword rememberpassword";
+    gap: 10px;
+    width: 100%;
+}
+.state-getaccount .message-display { grid-area: msg; }
+.state-getaccount .instructions { grid-area: instructions; }
+.state-getaccount .username { grid-area: acctname; }
+.state-getaccount .username-dropdown-btn { grid-area: acctbtn; }
+.state-getaccount .password { grid-area: password; }
+.state-getaccount .rememberusername { grid-area: rememberaccount; }
+.state-getaccount .rememberpassword { grid-area: rememberpassword; }
+
+.state-getaccount .theme-textbox {
+}
+.state-getaccount .password {
+    justify-self: stretch;
+    align-self: stretch;
+    margin-left: 0;
+    margin-right: auto;
+}
+
+.state-getaccount label {
+    display: flex;
+    flex-direction: row;
+}
+
+.state-gettingchars,
+.state-loggingin {
+    grid-template-columns: 1fr auto 1fr;
+    grid-template-rows: 1fr auto auto 1fr;
+    grid-template-areas:
+        ". . ."
+        " instructions ."
+        ". cancel ."
+        ". . .";
+}
+
+.state-getchar { 
+    grid-template-columns: auto;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+        "instructions"
+        "charselect"
+        "buttons";
+
+    max-height: 100%;
+}
+.state-getchar .instructions { grid-area: instructions; }
+.state-getchar .charslist { grid-area: charselect; overflow-y: auto; overflow-x: hidden; }
+.state-getchar .buttons { grid-area: buttons; }
+
+.character-entry {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-rows: auto;
+    grid-template-areas:
+        "icon name";
+
+    align-items: center;
+    padding: 9px;
+}
+.character-entry.selected {
+    background: var(--bg-level-3-highlight);
+    color: var(--fg-level-3-highlight);
+}
+.character-entry:hover {
+    background: var(--bg-level-4);
+    color: var(--fg-level-4);
+}
+
+.character-image {
+    grid-area: icon;
+
+    max-width: 24px;
+    max-height: 24px;
+    width: 24px;
+    height: 24px;
+
+    margin-right: 9px;
+}
+
+.character-name {
+    grid-area: name;
+}
+
+.message-display {
+    background: var(--bg-warning-message);
+    color: var(--fg-warning-message);
+    padding: 4px 4px;
+}
+
+.username-dropdown-btn {
+    background-color: var(--bg-main-textbox);
+    color: var(--fg-main-textbox);
+    border: 0;
+    outline: none;
+}
+.username-dropdown-btn > * {
+    pointer-events: none;
+}
+.username-dropdown-btn-icon {
+    max-width: 1lh;
+    max-height: 1lh;
+    --svgicon-max-width: 1em;
+    --svgicon-max-height: 1em;
+}

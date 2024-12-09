@@ -1,0 +1,139 @@
+import { SnapshottableSet } from "../../util/collections/SnapshottableSet";
+import { asDisposable, IDisposable } from "../../util/Disposable";
+import { KeyCodes } from "../../util/KeyCodes";
+import { ObservableBase, observableProperty } from "../../util/ObservableBase";
+import { Collection } from "../../util/ObservableCollection";
+import { AppViewModel } from "../AppViewModel";
+
+export abstract class DialogViewModel<TResult> extends ObservableBase {
+    constructor(parent: AppViewModel) {
+        super();
+        this.parent = parent;
+    }
+
+    readonly parent: AppViewModel;
+
+    @observableProperty
+    title: string = "Untitled";
+
+    @observableProperty
+    closeBoxResult: (TResult | undefined) = undefined;
+
+    @observableProperty
+    buttons: Collection<DialogButtonViewModel> = new Collection();
+
+    @observableProperty
+    captionButtons: Collection<DialogCaptionButtonViewModel> = new Collection();
+
+    dialogResult!: TResult;
+
+    private _closed: boolean = false;
+    @observableProperty
+    get closed() { return this._closed; }
+    private set closed(value: boolean) { this._closed = value;}
+
+    close(result: TResult) {
+        this.dialogResult = result;
+        this.closed = true;
+
+        this._closeHandlers.forEachValueSnapshotted(h => {
+            try { h(result); }
+            catch { }
+        });
+    }
+
+    private readonly _closeHandlers: SnapshottableSet<CloseHandler<TResult>> = new SnapshottableSet();
+    addCloseListener(callback: CloseHandler<TResult>): IDisposable {
+        this._closeHandlers.add(callback);
+        let disposed = false;
+        return asDisposable(() => {
+            if (!disposed) {
+                disposed = true;
+                this._closeHandlers.delete(callback);
+            }
+        });
+    }
+}
+
+export type CloseHandler<TResult> = (result: TResult) => void;
+export type ButtonClickHandler = () => void;
+
+export class DialogCaptionButtonViewModel extends ObservableBase {
+    constructor(imageUrl: string, onClick: ButtonClickHandler) {
+        super();
+        this.imageUrl = imageUrl;
+        this.onClick = onClick;
+    }
+
+    @observableProperty
+    imageUrl: string;
+
+    onClick: ButtonClickHandler;
+}
+
+export class DialogButtonViewModel extends ObservableBase {
+    constructor(options: DialogButtonViewModelOptions);
+    constructor(title: string, onClick: ButtonClickHandler);
+    constructor(titleOrOptions: string | DialogButtonViewModelOptions, onClick?: ButtonClickHandler) {
+        super();
+        if (typeof titleOrOptions == "object") {
+            this.title = titleOrOptions.title;
+            this.onClick = titleOrOptions.onClick;
+            this.style = titleOrOptions.style ?? DialogButtonStyle.NORMAL;
+            this.shortcutKeyCode = titleOrOptions.shortcutKeyCode ?? null;
+        }
+        else {
+            this.title = titleOrOptions;
+            this.onClick = onClick!;
+            this.style = DialogButtonStyle.NORMAL;
+            this.shortcutKeyCode = null;
+        }
+    }
+
+    @observableProperty
+    title: string;
+
+    onClick: ButtonClickHandler;
+
+    @observableProperty
+    style: DialogButtonStyle;
+
+    @observableProperty
+    enabled: boolean = true;
+
+    private _shortcutKeyCode: number | null = null;
+    @observableProperty
+    get shortcutKeyCode(): number | null { 
+        if (this._shortcutKeyCode == null) {
+            if (this.style == DialogButtonStyle.DEFAULT) {
+                return KeyCodes.RETURN;
+            }
+            else if (this.style == DialogButtonStyle.CANCEL) {
+                return KeyCodes.ESCAPE;
+            }
+            else {
+                return null;
+            }
+        }
+        else {
+            return this._shortcutKeyCode; 
+        }
+    }
+    set shortcutKeyCode(value: number | null) {
+        this._shortcutKeyCode = value;
+    }
+}
+
+export interface DialogButtonViewModelOptions {
+    title: string;
+    onClick: ButtonClickHandler;
+    style?: DialogButtonStyle;
+    shortcutKeyCode?: number;
+}
+
+export enum DialogButtonStyle {
+    NORMAL = "normal",
+    DEFAULT = "default",
+    BACKOFF = "backoff",
+    CANCEL = "cancel"
+}

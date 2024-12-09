@@ -1,0 +1,29 @@
+
+:host {
+    display: block;
+    position: relative;
+    overflow: hidden;
+}
+
+#elMain {
+    display: contents;
+
+    width: inherit;
+    height: inherit;
+    max-width: inherit;
+    max-height: inherit;
+}
+
+#elMain > * {
+    /*
+    max-width: var(--maxWidth);
+    max-height: var(--maxHeight);
+    */
+    width: inherit;
+    height: inherit;
+    max-width: inherit;
+    max-height: inherit;
+
+    fill: currentColor;
+    --fgcolor: currentColor;
+}

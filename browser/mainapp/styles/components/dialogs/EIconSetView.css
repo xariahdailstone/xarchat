@@ -1,0 +1,41 @@
+:host {
+}
+#elMain {
+    position: relative;
+}
+#elBeforeSentinel, #elAfterSentinel {
+    position: absolute;
+    left: 0px;
+    width: 100%;
+}
+#elBeforeSentinel { background-color: transparent; }
+#elAfterSentinel { background-color: transparent; }
+#elVisibleIconsContainer {
+    position: absolute;
+    top: 0px;
+    left: 0px;
+    width: 100%;
+}
+#elTopIndicator, #elBottomIndicator { position: absolute; left: 0px; width: 200px; height: 20px; pointer-events: none; }
+#elTopIndicator {
+    display: none;
+    background-color: green;
+    border-top: 3px solid white;
+}
+#elBottomIndicator {
+    display: none;
+    background-color: blue;
+    border-bottom: 3px solid white;
+}
+.eicon { position: absolute; }
+.eicon-placeholder { display: none; }
+
+.keyboard-selection-indicator {
+    position: absolute;
+    width: 100px;
+    height: 100px;
+    border: 3px solid yellow;
+    background: transparent;
+    pointer-events: none;
+    border-radius: 1px;
+}

@@ -1,0 +1,22 @@
+
+:host {
+    display: contents;
+}
+
+#elMain {
+    display: grid;
+    grid-template-rows: auto;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas:
+        "statusdot name";
+
+    align-items: baseline;
+    padding: 0 10px;
+    gap: 4px;
+
+    font: var(--chat-font);
+    font-weight: bold;
+}
+
+.statusdot { grid-area: statusdot; }
+.name { grid-area: name; }

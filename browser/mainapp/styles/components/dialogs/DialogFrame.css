@@ -1,0 +1,265 @@
+
+/* TODO: mode to dialogs subfolder */
+
+:host {
+    position: relative;
+}
+
+#elMain { 
+    display: none; 
+    background: rgba(0, 0, 0, 0.01);
+    pointer-events: all;
+}
+
+* { box-sizing: border-box; }
+
+.titlebar {
+    display: grid;
+    grid-template-rows: auto;
+    grid-template-columns: auto 1fr auto auto;
+    grid-template-areas:
+        "title . captionbuttons close";
+
+    align-items: center;
+    margin-bottom: 15px;
+
+    --caption-button-size: 24px;
+}
+.titlebar-title { grid-area: title; }
+.titlebar-captionbuttons { grid-area: captionbuttons; }
+.titlebar-close { grid-area: close; }
+
+.titlebar-captionbuttons {
+    display: inline-flex;
+    flex-direction: row;
+    gap: 8px;
+    padding-right: 8px;
+}
+
+.titlebar-close {
+    outline: none;
+    border: none;
+    color: inherit;
+    background: inherit;
+    cursor: pointer;
+}
+.titlebar-close-icon {
+    max-width: var(--caption-button-size);
+    max-height: var(--caption-button-size);
+    width: var(--caption-button-size);
+    height: var(--caption-button-size);
+
+    --iconimage-max-width: var(--caption-button-size);
+    --iconimage-max-height: var(--caption-button-size);
+}
+.titlebar-close-icon:hover {
+    color: var(--fg-level-3-highlight);
+}
+
+.contentarea {
+    display: block;
+    overflow: auto;
+    margin-left: 15px;
+    margin-right: 15px;
+}
+#elMain.frame-fullpage .contentarea {
+    margin-left: 0px;
+    margin-right: 0px;
+}
+#elMain.frame-rightpane .contentarea {
+    margin-left: 0px;
+    margin-right: 0px;
+}
+
+.buttonbar {
+    display: flex;
+    flex-direction: row;
+    padding-top: 10px;
+    padding-bottom: 10px;
+    margin-top: 5px;
+    align-items: flex-end;
+    justify-content: flex-end;
+    gap: 15px;
+    padding-left: 15px;
+    padding-right: 15px;
+}
+
+
+
+#elMain.frame-normal {
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: grid;
+    grid-template-rows: minmax(5%, 1fr) minmax(200px, auto) minmax(5%, 1fr);
+    grid-template-columns: minmax(5%, 1fr) minmax(200px, auto) minmax(5%, 1fr);
+    grid-template-areas: 
+        ". . ."
+        ". dialogcontents ."
+        ". . .";
+
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+#elMain.frame-normal .dialogcontents {
+    grid-area: dialogcontents;
+
+    background-color: var(--bg-level-3);
+    color: var(--fg-level-3);
+
+    border-radius: 8px;
+
+    display: grid;
+    grid-template-columns: 8px minmax(0, auto) 8px;
+    grid-template-rows: 8px minmax(0px, max-content) minmax(0, max-content) minmax(0px, max-content) 8px;
+    grid-template-areas:
+        ". . ."
+        ". titlebar ."
+        ". contentarea ."
+        ". buttonbar ."
+        ". . .";
+}
+#elMain.frame-normal .titlebar { grid-area: titlebar; }
+#elMain.frame-normal .contentarea { grid-area: contentarea; }
+#elMain.frame-normal .buttonbar { grid-area: buttonbar; }
+
+
+
+#elMain.frame-fullpage {
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: grid;
+    grid-template-rows: 100%;
+    grid-template-columns: 100%;
+    grid-template-areas: 
+        "contentarea";
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+#elMain.frame-fullpagewithtitlebar {
+    grid-template-rows: auto 1fr;
+    grid-template-columns: 100%;
+    grid-template-areas: 
+        "titlebar"
+        "contentarea";
+}
+
+#elMain.frame-fullpage .dialogcontents { display: contents; }
+#elMain.frame-fullpage .titlebar { grid-area: titlebar; }
+#elMain.frame-fullpage .buttonbar { display: none; }
+
+#elMain.frame-fullpagewithtitlebar {
+    background-color: var(--bg-level-3);
+    color: var(--fg-level-3);
+}
+#elMain.frame-fullpagewithtitlebar .titlebar { 
+    padding: 10px 10px 0px 10px;
+}
+
+
+#elMain.frame-fullpage .contentarea {
+    grid-area: contentarea;
+
+    background-color: var(--bg-level-3);
+    color: var(--fg-level-3);
+
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+}
+
+
+
+#elMain.frame-rightpane {
+    display: block;
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    display: grid;
+    padding: 8px;
+    gap: 8px;
+    grid-template-rows: auto 1fr;
+    grid-template-columns: 100%;
+    grid-template-areas: 
+        "titlebar"
+        "contentarea";
+    width: auto;
+    max-width: 95%;
+    height: 100%;
+    overflow: hidden;
+
+    will-change: transform;
+}
+
+#elMain.frame-rightpane .dialogcontents { display: contents; }
+#elMain.frame-rightpane .titlebar { grid-area: titlebar; }
+#elMain.frame-rightpane .contentarea { grid-area: contentarea; }
+#elMain.frame-rightpane .buttonbar { display: none; }
+
+#elMain.frame-rightpane {
+    background-color: var(--bg-level-3);
+    color: var(--fg-level-3);
+}
+#elMain.frame-rightpane .titlebar {
+    margin-bottom: 0px;
+}
+#elMain.frame-rightpane .contentarea {
+    width: auto;
+    height: 100%;
+    overflow: auto;
+}
+
+
+
+.hidden {
+    display: none !important;
+}
+
+#elMain.frame-normal {
+    transform: scale(1);
+    opacity: 1;
+    transition: transform 0.2s, opacity 0.2s;
+}
+#elMain.frame-normal.new {
+    transform: scale(1.25);
+    opacity: 0;
+}
+#elMain.frame-normal.closed {
+    transform: scale(0.75);
+    opacity: 0;
+}
+
+#elMain.frame-fullpage {
+    transform: scale(1);
+    opacity: 1;
+    transition: transform 0.2s, opacity 0.2s;
+}
+#elMain.frame-fullpage.new {
+    transform: scale(1.25);
+    opacity: 0;
+}
+#elMain.frame-fullpage.closed {
+    transform: scale(1.25);
+    opacity: 0;
+}
+
+#elMain.frame-rightpane {
+    transition: transform 0.2s ease-out;
+    transform: translateX(0%);
+}
+#elMain.frame-rightpane.new,
+#elMain.frame-rightpane.closed {
+    transition: transform 0.2s ease-in;
+    transform: translateX(100%);
+}

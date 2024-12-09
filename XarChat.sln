@@ -1,0 +1,68 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.7.34031.279
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "XarChat.Backend", "host\shared\XarChat.Backend\XarChat.Backend.csproj", "{344B1953-0472-4B25-AC87-E14C80679FE1}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "win32", "win32", "{CA1D338D-F7E2-446C-BEF6-AE2C3B09F217}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "shared", "shared", "{7E64E588-8B95-45B8-BB84-209F8E0FDB45}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "XarChat.Native.Win32", "host\win32\XarChat.Native.Win32\XarChat.Native.Win32.csproj", "{D67E72D8-58CD-4D2D-B67B-D54770985DA6}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "XarChat.Backend.Win32", "host\win32\XarChat.Backend.Win32\XarChat.Backend.Win32.csproj", "{BD4E83B0-C606-4E20-8DCB-ACE51CEB4A45}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "win32-webview2", "win32-webview2", "{078FB68E-338C-4B39-91DF-593D57830604}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "XarChatWin32WebView2", "host\win32-webview2\XarChatWin32WebView2\XarChatWin32WebView2.csproj", "{C797C835-3487-41E1-B26E-EAF018486EC3}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".git", ".git", "{653FA4C1-6FC2-461A-A4BA-4BEDA94D9B42}"
+	ProjectSection(SolutionItems) = preProject
+		.gitignore = .gitignore
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "XarChat.AutoUpdate", "host\shared\XarChat.AutoUpdate\XarChat.AutoUpdate.csproj", "{03F75260-4093-45F9-9D64-1E2364CFB94A}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{344B1953-0472-4B25-AC87-E14C80679FE1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{344B1953-0472-4B25-AC87-E14C80679FE1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{344B1953-0472-4B25-AC87-E14C80679FE1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{344B1953-0472-4B25-AC87-E14C80679FE1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D67E72D8-58CD-4D2D-B67B-D54770985DA6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D67E72D8-58CD-4D2D-B67B-D54770985DA6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D67E72D8-58CD-4D2D-B67B-D54770985DA6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D67E72D8-58CD-4D2D-B67B-D54770985DA6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BD4E83B0-C606-4E20-8DCB-ACE51CEB4A45}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BD4E83B0-C606-4E20-8DCB-ACE51CEB4A45}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BD4E83B0-C606-4E20-8DCB-ACE51CEB4A45}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BD4E83B0-C606-4E20-8DCB-ACE51CEB4A45}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C797C835-3487-41E1-B26E-EAF018486EC3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C797C835-3487-41E1-B26E-EAF018486EC3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C797C835-3487-41E1-B26E-EAF018486EC3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C797C835-3487-41E1-B26E-EAF018486EC3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{03F75260-4093-45F9-9D64-1E2364CFB94A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{03F75260-4093-45F9-9D64-1E2364CFB94A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{03F75260-4093-45F9-9D64-1E2364CFB94A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{03F75260-4093-45F9-9D64-1E2364CFB94A}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{344B1953-0472-4B25-AC87-E14C80679FE1} = {7E64E588-8B95-45B8-BB84-209F8E0FDB45}
+		{D67E72D8-58CD-4D2D-B67B-D54770985DA6} = {CA1D338D-F7E2-446C-BEF6-AE2C3B09F217}
+		{BD4E83B0-C606-4E20-8DCB-ACE51CEB4A45} = {CA1D338D-F7E2-446C-BEF6-AE2C3B09F217}
+		{078FB68E-338C-4B39-91DF-593D57830604} = {CA1D338D-F7E2-446C-BEF6-AE2C3B09F217}
+		{C797C835-3487-41E1-B26E-EAF018486EC3} = {078FB68E-338C-4B39-91DF-593D57830604}
+		{03F75260-4093-45F9-9D64-1E2364CFB94A} = {7E64E588-8B95-45B8-BB84-209F8E0FDB45}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {F5224F39-1BBF-4BB2-91EE-CFCC7008E89B}
+	EndGlobalSection
+EndGlobal

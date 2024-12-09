@@ -1,0 +1,354 @@
+:host {
+    display: block;
+    position: relative;
+}
+
+#elMain {
+    width: 100%;
+    height: 100%;
+
+    background: var(--bg-level-3);
+    color: var(--fg-level-3);
+}
+
+#scroller {
+    width: 100%;
+    height: 100%;
+
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.section {
+    padding-bottom: 10px;
+}
+
+.sectiontitle {
+    font-size: 80%;
+    font-variant: small-caps;
+    text-transform: uppercase;
+    padding-top: 10px;
+    padding-left: 4px;
+    padding-right: 10px;
+    padding-bottom: 10px;
+
+    display: grid;
+    grid-template-rows: auto;
+    grid-template-columns: auto 1fr auto;
+    grid-template-areas: "collapse text addbtn";
+    gap: 4px;
+
+    align-items: center;
+}
+
+.sectiontitle-collapse { grid-area: collapse; }
+.sectiontitle-text { grid-area: text; }
+.sectiontitle-addbtn { grid-area: addbtn; }
+
+.sectiontitle-addbtn {
+    border: 1px solid var(--fg-level-3);
+    outline: none;
+    border-radius: 6px;
+    background-color: inherit;
+    color: inherit;
+    font-size: 80%;
+    padding: 2px 8px;
+}
+.sectiontitle-addbtn:hover {
+    background-color: var(--bg-level-4);
+    color: var(--fg-level-4);
+}
+.sectiontitle-addbtn.selected {
+    background: var(--bg-level-3-highlight);
+    color: var(--fg-level-3-highlight);
+}
+
+.sectionitems {
+    display: flex;
+    flex-direction: column;
+    max-height: 99999px;
+    transition: max-height 0.3s cubic-bezier(1,0,1,0);
+    overflow: hidden;
+}
+
+.sectionitems.collapsed {
+    max-height: 0px;
+    transition: max-height 0.3s cubic-bezier(0,1,0,1);
+}
+
+#elMain.viewmodelchange .sectionitems {
+    transition: none !important;
+}
+
+/* .sectionitems-item {
+    display: block;
+    margin-top: 4px;
+    margin-bottom: 4px;
+    margin-left: 3px;
+    margin-right: 3px;
+    border-radius: 18px;
+    padding: 7px 7px;
+}
+
+.sectionitems-item.selected {
+    background: var(--bg-level-3-highlight);
+    color: var(--fg-level-3-highlight);
+} */
+
+.sectionitems-item-icon { 
+    grid-area: icon; 
+
+    max-width: 22px;
+    max-height: 22px;
+    margin-right: 7px;
+    --iconimage-max-width: 22px;
+    --iconimage-max-height: 22px;
+}
+.sectionitems-item-name { 
+    grid-area: name; 
+}
+
+.header-dot-container {
+    color: white;
+}
+.header-ping-icon {
+    max-height: 0.7lh;
+    max-width: 0.7lh;
+    height: 0.7lh;
+    width: 0.7lh;
+    color: red;
+    display: inline-block;
+}
+
+
+.new-alerts {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: red;
+    color: white;
+    font-size: 75%;
+    padding: 3px 10px;
+    border-radius: 5px;
+
+    /* pointer-events: none; */
+    cursor: pointer;
+
+    display: grid;
+    grid-template-rows: auto;
+    grid-template-columns: auto auto;
+    grid-template-areas: "icon text";
+    gap: 6px;
+    white-space: nowrap;
+    align-items: center;
+    justify-items: center;
+}
+.new-alerts-below {
+    bottom: 5px;
+}
+.new-alerts-above {
+    top: 5px;
+}
+.new-alerts-ping-icon {
+    grid-area: icon;
+    height: 1lh;
+    width: 1lh;
+    display: inline-block;
+    vertical-align: bottom;
+}
+.new-alerts-text {
+    grid-area: text;
+}
+
+
+
+
+
+
+
+/* .sectionitems-item { display: contents; } */
+
+.sectionitems-item-inner {
+    display: grid;
+    grid-template-columns: 0 auto auto minmax(0, 1fr) auto auto;
+    grid-template-rows: auto;
+    grid-template-areas:
+        "unseen icon titleicon name pin close";
+
+    align-items: center;
+    padding: 9px 10px 9px 10px;
+    border-radius: 8px;
+
+    --itembgcolor: var(--bg-level-3);
+    background: var(--itembgcolor);
+}
+
+.sectionitems-item-inner.selected {
+    --itembgcolor: var(--bg-level-3);
+    background: var(--bg-level-3-highlight);
+    color: var(--fg-level-3-highlight);
+}
+
+.sectionitems-item-inner:hover {
+    --itembgcolor: var(--bg-level-4);
+    color: var(--fg-level-4);
+    padding-right: 4px;
+}
+
+.sectionitems-item-unseen-container {
+    grid-area: unseen;
+    display: none;
+}
+.sectionitems-item-unseen-container.shown {
+    display: block;
+    width: 0px;
+    color: white;
+    transform: translateX(-18px);
+}
+
+.sectionitems-item-icon-container {
+    grid-area: icon;
+    position: relative;
+}
+.sectionitems-item-icon { 
+    z-index: 1;
+    position: relative;
+    width: 22px;
+    height: 22px;
+    max-width: 22px;
+    max-height: 22px;
+    margin-right: 7px;
+    --iconimage-max-width: 22px;
+    --iconimage-max-height: 22px;
+}
+.sectionitems-item-icon > * {
+    width: var(--iconimage-max-width);
+    height: var(--iconimage-max-height);
+    max-width: var(--iconimage-max-width);
+    max-height: var(--iconimage-max-height);
+}
+.sectionitems-item-icondot {
+    display: none;
+    z-index: 2;
+    position: absolute;
+    right: 6px;
+    bottom: -2px;
+}
+.sectionitems-item-inner.pmconvo .sectionitems-item-icondot {
+    display: block;
+    font-size: 10px;
+    -webkit-text-stroke: 2px var(--itembgcolor);
+}
+
+.sectionitems-item-typingindicator-container {
+    display: block;
+    z-index: 2;
+    position: absolute;
+    right: -5px;
+    top: -9px;
+}
+.sectionitems-item-typingindicator-container .typingstatusindicator-icon {
+    max-width: 20px;
+    max-height: 20px;
+    color: var(--fg-level-3);
+    --dot1color: white;
+    filter: drop-shadow(0px 0px 6px black);
+}
+
+.sectionitems-item-typingindicator-container .typingstatusindicator-icon.typingstatus-idle {
+    --dot1color: rgba(255, 255, 255, 0.4);
+}
+.sectionitems-item-typingindicator-container .typingstatusindicator-icon.typingstatus-active {
+    animation: typingdots 1s linear 0s infinite forwards;
+    --dot1color: white;
+}
+@keyframes typingdots {
+    0% {
+        --dot1color: rgba(255, 255, 255, 1);
+        --dot2color: rgba(255, 255, 255, 0.4);
+        --dot3color: rgba(255, 255, 255, 0.8);
+    }
+    33% {
+        --dot1color: rgba(255, 255, 255, 0.8);
+        --dot2color: rgba(255, 255, 255, 1);
+        --dot3color: rgba(255, 255, 255, 0.4);
+    }
+    66% {
+        --dot1color: rgba(255, 255, 255, 0.4);
+        --dot2color: rgba(255, 255, 255, 0.8);
+        --dot3color: rgba(255, 255, 255, 1);
+    }
+    100% {
+        --dot1color: rgba(255, 255, 255, 1);
+        --dot2color: rgba(255, 255, 255, 0.4);
+        --dot3color: rgba(255, 255, 255, 0.8);
+    }
+}
+
+.sectionitems-item-titleicon {
+    grid-area: titleicon;
+    display: none;
+}
+.sectionitems-item-titleicon.visible {
+    display: block;
+}
+.sectionitems-item-titleicon-image {
+    max-width: 0.6lh;
+    max-height: 0.6lh;
+    width: 0.6lh;
+    height: 0.6lh;
+    color: var(--ping-icon-fill);
+    vertical-align: baseline;
+    display: inline-block;
+    margin-right: 0.2lh;
+}
+
+.sectionitems-item-name { 
+    grid-area: name; 
+
+    text-overflow: ellipsis;
+    text-wrap: nowrap;
+    overflow: hidden;
+}
+
+.pin-icon-container {
+    display: contents;
+}
+.close-icon-container {
+    display: contents;
+}
+
+.pin-icon {
+    grid-area: pin;
+    display: none;
+}
+.close-icon {
+    grid-area: close;
+    display: none;
+}
+
+.pin-icon > * {
+    max-width: 16px;
+    max-height: 16px;
+}
+.close-icon > * {
+    max-width: 16px;
+    max-height: 16px;
+}
+
+.sectionitems-item-inner:hover button {
+    border: none;
+    outline: none;
+    background: transparent;
+    color: var(--fg-level-3);
+    cursor: pointer;
+}
+.sectionitems-item-inner:hover button:hover {
+    color: var(--fg-color-3-highlight);
+}
+.sectionitems-item-inner:hover .pin-icon {
+    display: block;
+}
+.sectionitems-item-inner:hover .close-icon {
+    display: block;
+}

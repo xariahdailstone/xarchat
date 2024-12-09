@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en-US">
+    <head>
+        <title>asdf</title>
+        <link rel="stylesheet" type="text/css" href="styles/dark-theme.css" />
+        <style>
+            body {
+                background: var(--bg-level-4);
+                color: var(--fg-level-4);
+            }
+            .ss {
+            }
+
+            /*
+            .titlebar {
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                height: var(--titlebar-height);
+            }
+            .main {
+                position: absolute;
+                top: var(--titlebar-height);
+                left: 0;
+                width: 100%;
+                height: calc(100vh - var(--titlebar-height));
+                overflow: hidden;
+            }
+            .leftbar {
+                height: 100%;
+                max-height: 100vh;
+                overflow: hidden;
+            }
+            .stage {
+                height: 100%;
+                max-height: 100vh;
+                overflow: hidden;
+            }
+            */
+
+            #elMain {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                height: 100%;
+                overflow: hidden;
+            }
+
+            * { 
+                box-sizing: border-box; 
+                user-select: none;
+            }
+        </style>
+    </head>
+    <body>
+
+        <!--
+        <x-titlebar class="titlebar" id="elTitleBar"></x-titlebar>
+        <x-splitter orientation="horizontal" class="main" sizes="250 *" id="elMain">
+
+            <x-leftbar slot="a" class="leftbar"></x-leftbar>
+
+            <x-stage slot="b" class="stage" modelpath="currentlySelectedSession"></x-stage>
+        </x-splitter>
+        -->
+
+        <x-maininterface id="elMain"></x-maininterface>
+
+        <script type="module" src="build/components/SvgIcon.js"></script>
+        <script type="module" src="build/components/SpanText.js"></script>
+        <script type="module" src="build/components/IconImage.js"></script>
+        <script type="module" src="build/components/SplitterHandle.js"></script>
+        <script type="module" src="build/components/MainInterface.js"></script>
+        <script type="module" src="build/components/TitleBar.js"></script>
+        <script type="module" src="build/components/LeftListSelectPanel.js"></script>
+        <script type="module" src="build/components/MyCharacterPanel.js"></script>
+        <script type="module" src="build/components/InstanceSelectPanel.js"></script>
+        <script type="module" src="build/components/Splitter.js"></script>
+        <script type="module" src="build/components/ChatsList.js"></script>
+        <script type="module" src="build/components/LeftBar.js"></script>
+        <script type="module" src="build/components/CollectionView.js"></script>
+        <script type="module" src="build/components/CollectionView2.js"></script>
+        <script type="module" src="build/components/ChatsList.js"></script>
+        <script type="module" src="build/components/Stage.js"></script>
+        <script type="module" src="build/components/ChannelView.js"></script>
+        <script type="module" src="build/components/ChannelHeader.js"></script>
+        <script type="module" src="build/components/ChannelTextBox.js"></script>
+        <script type="module" src="build/components/ChannelStream.js"></script>
+        <script type="module" src="build/components/StatusDot.js"></script>
+        <script type="module" src="build/main.js"></script>
+
+        <!--
+        <script type="module">
+            
+            import { Collection } from "./build/viewmodel/Collection.js";
+
+            var x = new Collection();
+            x.push({ name: "test1" });
+            x.push({ name: "test2" });
+
+            const elCollTest = document.getElementById("elCollTest");
+            elCollTest.onelementcreate = (el, vm) => {
+                el.querySelector(".foo").innerText = vm.name;
+                el.querySelector(".remove").addEventListener("click", () => {
+                    x.remove(vm);
+                });
+            };
+            elCollTest.dataSource = x;
+            elCollTest.template = document.getElementById("elCollTestTemplate");
+
+            let n = 3;
+            document.getElementById("elAdd").addEventListener("click", () => {
+                const v = `test${n++}`;
+                x.push({name: v});
+            });
+
+        </script>
+        -->
+    </body>
+</html>

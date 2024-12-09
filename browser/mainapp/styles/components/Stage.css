@@ -1,0 +1,16 @@
+
+:host {
+    display: contents;
+}
+
+#elMain {
+    display: contents;
+    contain: strict;
+}
+
+.actor {
+    width: 100%;
+    height: 100%;
+    /* max-height: calc(100vh - var(--titlebar-height)); */
+    position: relative;
+}

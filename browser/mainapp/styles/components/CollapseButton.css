@@ -1,0 +1,39 @@
+
+:host {
+    display: contents;
+}
+
+#elMain {
+    display: contents;
+}
+
+.collapsebutton {
+    display: inline-block;
+    width: 1lh;
+    height: 1lh;
+    outline: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+    background-color: inherit;
+    color: inherit;
+}
+
+.collapsearrow {
+    width: 1lh;
+    height: 1lh;
+    max-width: 1lh;
+    max-height: 1lh;
+    transform: rotate(0deg);
+    transition: transform 0.25s;
+    --iconimage-max-width: 1lh;
+    --iconimage-max-height: 1lh;
+}
+
+.collapsearrow.collapsed {
+    transform: rotate(-90deg);
+}
+
+#elMain.noanimation .collapsearrow {
+    transition: none !important;
+}

@@ -1,0 +1,149 @@
+import { ChatViewModelSink } from "../ChatViewModelSink";
+import { ChatConnectionFactory } from "../fchat/ChatConnectionFactory";
+import { AppSettings } from "../settings/AppSettings";
+import { ChannelName } from "../shared/ChannelName";
+import { CharacterName } from "../shared/CharacterName";
+import { ActiveLoginViewModel, ChatConnectionState } from "../viewmodel/ActiveLoginViewModel";
+import { AppNotifyEventType, AppViewModel } from "../viewmodel/AppViewModel";
+import { ChatChannelPresenceState } from "../viewmodel/ChatChannelViewModel";
+import { CancellationToken } from "./CancellationTokenSource";
+import { CatchUtils } from "./CatchUtils";
+import { HostInterop } from "./HostInterop";
+import { Logging } from "./Logger";
+import { TaskUtils } from "./TaskUtils";
+
+const logger = Logging.createLogger("LoginUtils");
+
+export class LoginUtils {
+    static async performLoginAsync(appViewModel: AppViewModel, account: string, password: string, character: CharacterName, cancellationToken: CancellationToken) {
+        const authApi = await appViewModel.flistApi.getAuthenticatedApiAsync(account, password, cancellationToken);
+        const apiTicket = await authApi.getApiTicketAsync(cancellationToken);
+
+        const appSettings = appViewModel.appSettings;
+        const savedChatState = appSettings.savedChatStates.getOrCreate(character);
+
+        const ns: ActiveLoginViewModel = new ActiveLoginViewModel(appViewModel, authApi, appSettings.savedChatStates.getOrCreate(character));
+        const sink = new ChatViewModelSink(ns, false);
+        const cc = await ChatConnectionFactory.create(sink);
+        ns.chatConnection = cc;
+        await cc.identifyAsync(authApi.account, character, apiTicket.ticket);
+        await cc.quiesceAsync();
+        
+        if (savedChatState) {
+            const charStatus = ns.characterSet.getCharacterStatus(character);
+            if (charStatus.statusMessage == "" && savedChatState.statusMessage != "") {
+                // TODO: set character status
+            }
+
+            for (let chp of savedChatState.joinedChannels) {
+                if (cc.disposed) {
+                    throw new Error("Disconnected during connect");
+                }
+
+                const channelName = chp.name;
+                const channelTitle = chp.title;
+
+                const existingCh = ns.getChannel(channelName);
+                if (!existingCh || existingCh.presenceState != ChatChannelPresenceState.IN_CHANNEL) {
+                    logger.logInfo("auto joining channel", channelName, channelTitle);
+                    try {
+                        await cc.joinChannelAsync(channelName);
+                    }
+                    catch (e) {
+                        if (!cc.disposed) {
+                            const ch = ns.getOrCreateChannel(channelName, channelTitle);
+                            if (ch) {
+                                ch.presenceState = ChatChannelPresenceState.NOT_IN_CHANNEL;
+                                ch.addSystemMessage(new Date(), `Could not connect to this channel: ${CatchUtils.getMessage(e)}`);
+                            }
+                        }
+                    }
+                }
+                else {
+                    //console.log("not auto joining channel", channelName, channelTitle);
+                }
+            }
+            for (let pc of savedChatState.pinnedChannels) {
+                const channelName = pc;
+                const ch = ns.getChannel(channelName);
+                if (ch) {
+                    //console.log("auto pinning channel", channelName, ch.title);
+                    ch.isPinned = true;
+                }
+            }
+            for (let pmc of savedChatState.pmConvos) {
+                const charName = pmc.character;
+                const convo = ns.getOrCreatePmConvo(charName, false);
+                if (convo) {
+                    convo.lastInteractionAt = Math.max(convo.lastInteractionAt, pmc.lastInteraction);
+                }
+            }
+
+            ns.pinnedChannelsCollapsed = savedChatState.pinnedChannelSectionCollapsed;
+            ns.channelsCollapsed = savedChatState.unpinnedChannelSectionCollapsed;
+            ns.pmConvosCollapsed = savedChatState.pmConvosSectionCollapsed;
+
+            const savedSelectedChannel = savedChatState.selectedChannel ?? "console";
+            if (savedSelectedChannel.startsWith("ch:")) {
+                const chanName = ChannelName.create(savedSelectedChannel.substring(3));
+                ns.selectedChannel = ns.getChannel(chanName);
+            }
+            else if (savedSelectedChannel.startsWith("pm:")) {
+                const charName = CharacterName.create(savedSelectedChannel.substring(3));
+                ns.selectedChannel = ns.getPmConvo(charName);
+            }
+            else if (savedSelectedChannel == "console") {
+                ns.selectedChannel = ns.console;
+            }
+        }
+
+        appViewModel.currentlySelectedSession = ns;
+        ns.connectionState = ChatConnectionState.CONNECTED;
+        HostInterop.signalLoginSuccessAsync();
+    }
+
+    static async reconnectAsync(activeLoginViewModel: ActiveLoginViewModel, cancellationToken: CancellationToken): Promise<void> {
+        const authApi = activeLoginViewModel.authenticatedApi;
+        logger.logDebug("reconnectAsync: getting API ticket...");
+        const apiTicket = await authApi.getApiTicketAsync(cancellationToken);
+
+        logger.logDebug("reconnectAsync: creating ChatViewModelSink...");
+        const sink = new ChatViewModelSink(activeLoginViewModel, true);
+        logger.logDebug("reconnectAsync: creating ChatConnection...");
+        const cc = await ChatConnectionFactory.create(sink);
+        activeLoginViewModel.chatConnection = cc;
+        logger.logDebug("reconnectAsync: identifying...");
+        await cc.identifyAsync(authApi.account, activeLoginViewModel.characterName, apiTicket.ticket);
+        logger.logDebug("reconnectAsync: quiescing...");
+        await cc.quiesceAsync();
+
+        // Reconnect pending channels
+        logger.logDebug("reconnectAsync: reconnecting pending channels...");
+        for (let ch of [...activeLoginViewModel.pinnedChannels.values(), ...activeLoginViewModel.unpinnedChannels.values()]) {
+            if (cc.disposed) {
+                throw new Error("Disconnected during reconnect");
+            }
+
+            if (ch.presenceState == ChatChannelPresenceState.PENDING_RECONNECT) {
+                try {
+                    logger.logDebug("reconnectAsync: joining channel...", ch.name, ch.title);
+                    await cc.joinChannelAsync(ch.name);
+                }
+                catch (e) {
+                    if (!cc.disposed) {
+                        logger.logDebug("reconnectAsync: failed to join channel...", ch.name, ch.title);
+                        ch.presenceState = ChatChannelPresenceState.NOT_IN_CHANNEL;
+                        ch.addSystemMessage(new Date(), `Could not reconnect to this channel: ${CatchUtils.getMessage(e)}`);
+                    }
+                    else {
+                        logger.logDebug("reconnectAsync: failed to join channel because cc disposed...", ch.name, ch.title);
+                        throw new Error("Disconnected during reconnect");
+                    }
+                }
+            }
+        }
+
+        logger.logDebug("reconnectAsync: done reconnecting, setting state CONNECTED...");
+        activeLoginViewModel.connectionState = ChatConnectionState.CONNECTED;
+    }
+}

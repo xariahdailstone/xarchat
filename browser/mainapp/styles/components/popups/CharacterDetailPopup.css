@@ -1,0 +1,144 @@
+
+#elMain {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-rows: 1fr 1fr auto auto auto auto auto auto;
+    grid-template-areas:
+        "icon name"
+        "icon onlinestatus"
+        "statusmessage statusmessage"
+        "alsoin alsoin"
+        "buttonbar buttonbar"
+        "chanopbuttonbar chanopbuttonbar"
+        "chanownerbuttonbar chanownerbuttonbar"
+        "serveropbuttonbar serveropbuttonbar";
+
+    max-width: 300px;
+    font-size: 90%;
+}
+
+.character-icon { grid-area: icon; }
+.character-name { grid-area: name; align-self: end; }
+.character-onlinestatus { grid-area: onlinestatus; align-self: start; }
+.character-statusmessage { grid-area: statusmessage; }
+.character-alsoinchannels { grid-area: alsoin; }
+.character-buttonbar { grid-area: buttonbar; }
+
+.character-icon {
+    width: 36px;
+    height: 36px;
+    margin-right: 8px;
+}
+.character-name {
+    font-weight: bold;
+}
+
+.character-onlinestatus {
+    display: flex;
+    flex-direction: row;
+    font-size: 80%;
+    align-items: center;
+}
+.statusdotcontainer {
+    margin-right: 4px;
+}
+
+.character-buttonbar {
+    margin-top: 8px;
+
+    display: grid;
+    grid-template-rows: auto;
+    grid-template-columns: auto auto auto auto;
+    grid-template-areas:
+        "button-pm button-flist button-ignore button-report";
+
+    gap: 4px;
+}
+.character-button-pm { grid-area: button-pm; }
+.character-button-flist { grid-area: button-flist; }
+.character-button-ignore { grid-area: button-ignore; }
+.character-button-report { grid-area: button-report; }
+
+
+.char-detail-button {
+    font-size: 80%;
+    padding: 6px 6px;
+    cursor: pointer;
+}
+
+.character-alsoinchannels {
+    display: none;
+}
+.character-alsoinchannels.shown {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-top: 8px;
+    font-size: 80%;
+}
+
+.character-alsoinchannels-title {
+    font-weight: bold;
+}
+
+.character-alsoinchannels-list {
+    max-height: 150px;
+    overflow-y: auto;
+    overflow-x: hidden;
+
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 3px;
+}
+
+.character-alsoinchannels-list-item {
+    display: inline-block;
+    background-color: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.6);
+    padding-top: 1px;
+    padding-left: 6px;
+    padding-right: 6px;
+    padding-bottom: 1px;
+    margin-right: 3px;
+    border-radius: 4px;
+    white-space: nowrap;
+}
+
+.channelop-buttonbar { grid-area: chanopbuttonbar; display: none; }
+.channelowner-buttonbar { grid-area: chanownerbuttonbar; display: none; }
+.serverop-buttonbar { grid-area: serveropbuttonbar; display: none; }
+
+.is-chanop .channelop-buttonbar { 
+    margin-top: 5px;
+    display: grid;
+    grid-template-rows: auto auto;
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-areas: 
+        "chanoptitle chanoptitle chanoptitle"
+        "chankick chantimeout chanban";
+
+    gap: 4px;
+}
+.is-chanowner .channelowner-buttonbar {
+    margin-top: 5px;
+    display: grid;
+    grid-template-rows: auto auto;
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-areas: 
+        "chanownertitle chanownertitle chanownertitle"
+        "chanmod chandemod chanmakeowner";
+
+    gap: 4px;
+}
+.is-serverop .serverop-buttonbar { display: block; }
+
+.channelop-buttonbar-title { grid-area: chanoptitle; text-align: center; font-size: 80%; border-top: 1px solid var(--fg-level-3); margin-top: 5px; padding-top: 2px; }
+.character-button-chankick { grid-area: chankick; }
+.character-button-chantimeout { grid-area: chantimeout; }
+.character-button-chanban { grid-area: chanban; }
+
+.channelowner-buttonbar-title { grid-area: chanownertitle; text-align: center; font-size: 80%; border-top: 1px solid var(--fg-level-3); margin-top: 5px; padding-top: 2px; }
+.character-button-chanmod { grid-area: chanmod; }
+.character-button-chandemod { grid-area: chandemod; }
+.character-button-chanmakeowner { grid-area: chanmakeowner; }

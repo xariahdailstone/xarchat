@@ -1,0 +1,30 @@
+
+:host {
+    position: absolute;
+    pointer-events: none !important;
+
+    border-top: 1px solid var(--fg-level-3);
+    border-right: 1px solid var(--fg-level-3);
+    padding: 3px 8px;
+    padding-left: 8px;
+    padding-bottom: 5px;
+    border-top-right-radius: 5px;
+    background-color: var(--bg-level-3);
+    color: var(--fg-level-4);
+    font-size: 80%;
+
+    left: 0px;
+    bottom: 0px;
+    max-width: calc(100vw);
+
+    overflow: hidden;
+
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+#elMain {
+    display: contents;
+}
+.hinttext {
+    display: contents;
+}

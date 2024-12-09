@@ -1,0 +1,49 @@
+@font-face {
+    font-family: verdana;
+    font-style: italic;
+    font-weight: 400;
+    src: local('Verdana Italic'), url(../assets/ui/fonts/Verdana-Italic.woff) format('woff')
+}
+@font-face {
+    font-family: verdana;
+    font-style: normal;
+    font-weight: 400;
+    src: local('Verdana'), url(../assets/ui/fonts/Verdana.woff) format('woff')
+}
+@font-face {
+    font-family: verdana;
+    font-style: normal;
+    font-weight: bold;
+    src: local('Verdana Bold'), url(../assets/ui/fonts/Verdana-Bold.woff) format('woff')
+}
+@font-face {
+    font-family: verdana;
+    font-style: italic;
+    font-weight: bold;
+    src: local('Verdana Bold Italic'), url(../assets/ui/fonts/Verdana-Bold-Italic.woff) format('woff')
+}
+
+@font-face {
+    font-family: 'Gill Sans MT';
+    font-style: normal;
+    font-weight: 400;
+    src: local('Gill Sans MT'), url(../assets/ui/fonts/GillSansMT.woff) format('woff')
+}
+@font-face {
+    font-family: 'Gill Sans MT';
+    font-style: normal;
+    font-weight: bold;
+    src: local('Gill Sans MT Bold'), url(../assets/ui/fonts/GillSansMT-Bold.woff) format('woff')
+}
+@font-face {
+    font-family: 'Gill Sans MT';
+    font-style: italic;
+    font-weight: 400;
+    src: local('Gill Sans MT Italic'), url(../assets/ui/fonts/GillSansMT-Italic.woff) format('woff')
+}
+@font-face {
+    font-family: 'Gill Sans MT';
+    font-style: italic;
+    font-weight: bold;
+    src: local('Gill Sans MT Bold Italic'), url(../assets/ui/fonts/GillSansMT-BoldItalic.woff) format('woff')
+}

@@ -1,0 +1,68 @@
+
+:host {
+    display: block;
+    position: relative;
+}
+
+#elMain {
+}
+
+.tab {
+    background: var(--bg-level-1);
+    color: var(--fg-level-1);
+
+    /* border: 1px solid var(--bg-level-2); */
+    padding: 6px 16px;
+
+    display: grid;
+    grid-template-rows: 1fr auto 1fr;
+    grid-template-columns: 1fr auto 1fr;
+    grid-template-areas: 
+        ". . . ."
+        ". avatar addtl ."
+        ". . . .";
+
+    align-items: center;
+}
+.tab-avatar { grid-area: avatar; }
+.tab-addtl { grid-area: addtl; }
+
+.tab-active {
+    background: var(--bg-level-2);
+}
+
+
+.tab-avatar {
+    width: 15px;
+    height: 15px;
+    max-width: 15px;
+    max-height: 15px;
+
+    opacity: 0.5;
+}
+
+.tab-active .tab-avatar {
+    opacity: 1;
+}
+
+
+.tab-addtl {
+    margin-left: 4px;
+    font-size: 65%;
+}
+
+.ping-icon {
+    width: 10px;
+    height: 10px;
+}
+
+
+.has-ping-icon {
+    color: var(--ping-icon-fill);
+}
+.has-unseen-dot {
+    color: var(--fg-unseen-dot);
+    font-size: 40%;
+    margin-bottom: 2px;
+    margin-left: 4px;
+}

@@ -1,0 +1,48 @@
+
+:host {
+    display: block;
+    position: relative;
+}
+
+#elMain {
+    width: 100%;
+    height: 100%;
+
+    display: flex;
+    flex-direction: row;
+
+    background-color: var(--bg-level-1);
+    color: var(--fg-level-1);
+    align-items: center;
+}
+
+#elInnerMain {
+    width: 100%;
+    height: 100%;
+
+    background: var(--bg-level-1);
+    color: var(--fg-level-1);
+}
+
+.tab-container {
+    display: contents;
+}
+
+.tab {
+    width: 30%;
+}
+
+.tab-active {
+    background: var(--bg-level-2);
+}
+
+.add-session {
+    border: none;
+    outline: none;
+    background-color: var(--bg-level-2);
+    color: var(--fg-level-2);
+    height: 70%;
+    aspect-ratio: 1;
+    margin-left: 6px;
+    border-radius: 8px;
+}

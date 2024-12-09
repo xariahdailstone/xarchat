@@ -1,0 +1,95 @@
+:host {
+    display: block;
+    position: relative;
+}
+
+* { box-sizing: border-box; }
+
+#elMain, .elMain {
+    width: 100%;
+    height: 100%;
+    max-width: 100%;
+
+    background-color: var(--bg-level-2);
+    color: var(--fg-level-2);
+
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-rows: 1fr 1fr;
+    grid-template-areas:
+        "status status configbutton"
+        "status status configbutton";
+
+    padding: 4px 4px;
+}
+
+#elStatusArea {
+    grid-area: status;
+    display: grid;
+    grid-template-rows: 1fr 1fr;
+    grid-template-columns: auto 1fr;
+    grid-template-areas:
+        "avatar name"
+        "avatar statusmessage";
+
+    cursor: pointer;
+    padding: 4px 4px;
+}
+#elStatusArea:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px 8px;
+}
+
+#elAvatar, .elAvatar {
+    grid-area: avatar;
+
+    width: 36px;
+    height: 36px;
+    max-width: 36px;
+    max-height: 36px;
+    margin-right: 6px;
+
+    align-self: center;
+}
+
+#elName, .elName {
+    grid-area: name;
+
+    font-size: calc(var(--normal-font-size) * 0.8);
+    font-weight: bold;
+
+    align-self: end;
+
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+#elStatusMessage, .elStatusMessage {
+    grid-area: statusmessage;
+
+    font-size: calc(var(--normal-font-size) * 0.75);
+    opacity: 0.4;
+    
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    align-self: start;
+    overflow: hidden;
+}
+
+#elConfigButton, .elConfigButton {
+    grid-area: configbutton;
+
+    border: none;
+    background: inherit;
+    color: inherit;
+
+    padding: 8px 8px;
+}
+
+#elConfigIcon, .elConfigIcon {
+    max-width: 20px;
+    max-height: 20px;
+    --iconimage-max-width: 20px;
+    --iconimage-max-height: 20px;
+}

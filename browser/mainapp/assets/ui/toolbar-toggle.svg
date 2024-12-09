@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg
+  width="15.351001mm"
+  height="10.384379mm"
+  viewBox="0 0 15.351001 10.384379"
+  version="1.1"
+  id="svg1"
+  xmlns="http://www.w3.org/2000/svg">
+
+  <defs id="defs1" />
+  <g id="layer1" transform="translate(-70.627199,-83.075399)">
+    <path
+      d="M 70.627196,83.075394 V 93.459773 H 85.978197 V 83.075394 Z m 0.824756,4.257105 h 13.700973 v 5.224487 H 71.451952 Z"
+      style="fill: var(--fgcolor);stroke-width:0.197301"
+      id="path9" />
+  </g>
+</svg>

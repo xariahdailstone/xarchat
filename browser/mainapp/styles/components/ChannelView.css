@@ -1,0 +1,56 @@
+
+:host {
+    display: block;
+    position: relative;
+    contain: strict;
+}
+
+#elMain {
+    width: 100%;
+    height: 100%;
+    max-width: 100%;
+    max-height: 100%;
+    overflow: hidden;
+
+    background-color: var(--bg-level-4);
+    color: var(--fg-level-4);
+
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(0, 1fr) 6px auto;
+    grid-template-areas:
+        "header"
+        "main"
+        "splitter"
+        "textbox";
+}
+#elMain > * {
+    contain: layout paint;
+}
+
+.header { grid-area: header; contain: strict; }
+.contentarea { grid-area: main; contain: strict;  }
+.tbsplitterhandle { grid-area: splitter; contain: strict;  }
+.textbox { grid-area: textbox; contain: strict;  }
+
+.contentarea {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1fr 6px auto;
+    grid-template-rows: 1fr;
+    grid-template-areas:
+        "stream splitter userlist";
+        
+    overflow: hidden;
+    contain: paint;
+    /* background: inherit; */
+}
+
+.stream { grid-area: stream; }
+.casplitterhandle { grid-area: splitter; }
+.userlist { grid-area: userlist; }
+
+
+.userlist {
+    overflow: hidden;
+}

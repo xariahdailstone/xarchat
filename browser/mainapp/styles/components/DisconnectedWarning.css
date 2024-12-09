@@ -1,0 +1,14 @@
+
+:host {
+    display: block;
+}
+
+#elMain {
+    display: contents;
+}
+
+.disconnected-message {
+    background-color: var(--bg-warning-message);
+    color: var(--fg-warning-message);
+    padding: 8px 8px;
+}

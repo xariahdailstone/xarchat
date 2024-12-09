@@ -1,0 +1,39 @@
+
+#elMain {
+    width: 100%;
+    height: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
+.tabitem {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-rows: auto;
+    grid-template-areas:
+        "name .";
+
+    align-items: center;
+    padding: 9px 10px 9px 10px;
+    border-radius: 8px;
+
+    --itembgcolor: var(--bg-level-3);
+    background: var(--itembgcolor);
+}
+.tabitem.selected {
+    --itembgcolor: var(--bg-level-3);
+    background: var(--bg-level-3-highlight);
+    color: var(--fg-level-3-highlight);
+}
+.tabitem:hover {
+    --itembgcolor: var(--bg-level-4);
+    color: var(--fg-level-4);
+}
+
+.tabitem-name { 
+    grid-area: name; 
+
+    text-overflow: ellipsis;
+    text-wrap: nowrap;
+    overflow: hidden;
+}
