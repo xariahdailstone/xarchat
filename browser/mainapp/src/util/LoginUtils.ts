@@ -1,4 +1,6 @@
 import { ChatViewModelSink } from "../ChatViewModelSink";
+import { ApiTicket, FListAuthenticatedApi } from "../fchat/api/FListApi";
+import { ChatConnection, IdentificationFailedError } from "../fchat/ChatConnection";
 import { ChatConnectionFactory } from "../fchat/ChatConnectionFactory";
 import { AppSettings } from "../settings/AppSettings";
 import { ChannelName } from "../shared/ChannelName";
@@ -15,20 +17,70 @@ import { TaskUtils } from "./TaskUtils";
 const logger = Logging.createLogger("LoginUtils");
 
 export class LoginUtils {
+    private static async getLoggedInChatConnectionAsync(
+        appViewModel: AppViewModel, 
+        activeLoginViewModel: ActiveLoginViewModel | null,
+        account: string, password: string, character: CharacterName,
+        isReconnect: boolean,
+        cancellationToken: CancellationToken
+    ) {
+        let maybeUsingStaleTicket: boolean = true;
+
+        let authApi: FListAuthenticatedApi | null = null;
+        let apiTicket: ApiTicket | null = null;
+        let cc: ChatConnection | null = null;
+
+        let disposeALVMOnError = false;
+
+        while (true) {
+            try {
+                if (activeLoginViewModel == null) {
+                    authApi = await appViewModel.flistApi.getAuthenticatedApiAsync(account, password, cancellationToken);
+                    apiTicket = await authApi.getApiTicketAsync(cancellationToken);
+
+                    const appSettings = appViewModel.appSettings;
+
+                    activeLoginViewModel = new ActiveLoginViewModel(appViewModel, authApi, appSettings.savedChatStates.getOrCreate(character));
+                    disposeALVMOnError = true;
+                }
+                else {
+                    authApi = activeLoginViewModel.authenticatedApi;
+                    apiTicket = await authApi.getApiTicketAsync(cancellationToken);
+                }
+
+                const sink = new ChatViewModelSink(activeLoginViewModel, isReconnect);
+                cc = await ChatConnectionFactory.create(sink);
+                activeLoginViewModel.chatConnection = cc;
+                await cc.identifyAsync(authApi.account, character, apiTicket.ticket);
+                maybeUsingStaleTicket = false;
+                await cc.quiesceAsync();
+
+                return { activeLoginViewModel: activeLoginViewModel, chatConnection: cc };
+            }
+            catch (e) {
+                try { cc?.dispose(); }
+                catch { }
+
+                if (e instanceof IdentificationFailedError && maybeUsingStaleTicket && authApi && apiTicket) {
+                    maybeUsingStaleTicket = false;
+                    await authApi.invalidateApiTicketAsync(apiTicket.ticket, cancellationToken);
+                }
+                else {
+                    throw e;
+                }
+            }
+        }
+    }
+
     static async performLoginAsync(appViewModel: AppViewModel, account: string, password: string, character: CharacterName, cancellationToken: CancellationToken) {
-        const authApi = await appViewModel.flistApi.getAuthenticatedApiAsync(account, password, cancellationToken);
-        const apiTicket = await authApi.getApiTicketAsync(cancellationToken);
+
+        const nscc = await this.getLoggedInChatConnectionAsync(appViewModel, null, account, password, character, false, cancellationToken);
+        const ns = nscc.activeLoginViewModel;
+        const cc = nscc.chatConnection;
 
         const appSettings = appViewModel.appSettings;
         const savedChatState = appSettings.savedChatStates.getOrCreate(character);
 
-        const ns: ActiveLoginViewModel = new ActiveLoginViewModel(appViewModel, authApi, appSettings.savedChatStates.getOrCreate(character));
-        const sink = new ChatViewModelSink(ns, false);
-        const cc = await ChatConnectionFactory.create(sink);
-        ns.chatConnection = cc;
-        await cc.identifyAsync(authApi.account, character, apiTicket.ticket);
-        await cc.quiesceAsync();
-        
         if (savedChatState) {
             const charStatus = ns.characterSet.getCharacterStatus(character);
             if (charStatus.statusMessage == "" && savedChatState.statusMessage != "") {
@@ -103,19 +155,9 @@ export class LoginUtils {
     }
 
     static async reconnectAsync(activeLoginViewModel: ActiveLoginViewModel, cancellationToken: CancellationToken): Promise<void> {
-        const authApi = activeLoginViewModel.authenticatedApi;
-        logger.logDebug("reconnectAsync: getting API ticket...");
-        const apiTicket = await authApi.getApiTicketAsync(cancellationToken);
-
-        logger.logDebug("reconnectAsync: creating ChatViewModelSink...");
-        const sink = new ChatViewModelSink(activeLoginViewModel, true);
-        logger.logDebug("reconnectAsync: creating ChatConnection...");
-        const cc = await ChatConnectionFactory.create(sink);
-        activeLoginViewModel.chatConnection = cc;
-        logger.logDebug("reconnectAsync: identifying...");
-        await cc.identifyAsync(authApi.account, activeLoginViewModel.characterName, apiTicket.ticket);
-        logger.logDebug("reconnectAsync: quiescing...");
-        await cc.quiesceAsync();
+        const nscc = await this.getLoggedInChatConnectionAsync(activeLoginViewModel.appViewModel, activeLoginViewModel,
+            "", "", activeLoginViewModel.characterName, true, cancellationToken);
+        const cc = nscc.chatConnection;
 
         // Reconnect pending channels
         logger.logDebug("reconnectAsync: reconnecting pending channels...");

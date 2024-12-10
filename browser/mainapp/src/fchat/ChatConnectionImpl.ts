@@ -9,7 +9,7 @@ import { ChatChannelMessageMode, ChatChannelMessageModeConvert } from "../viewmo
 import { BottleSpinData, ChatConnectionSink, ChatDisconnectReason, RollData, completeSink } from "./ChatConnectionSink";
 import { ServerADLMessage, ServerAOPMessage, ServerBROMessage, ServerCBUMessage, ServerCDSMessage, ServerCHAMessage, ServerCIUMessage, ServerCKUMessage, ServerCOAMessage, ServerCOLMessage, ServerCONMessage, ServerCORMessage, ServerCSOMessage, ServerCTUMessage, ServerERRMessage, ServerFLNMessage, ServerFRLMessage, ServerHLOMessage, ServerICHMessage, ServerIDNMessage, ServerIGNMessage, ServerJCHMessage, ServerLCHMessage, ServerLISMessage, ServerLRPMessage, ServerMSGMessage, ServerNLNMessage, ServerORSMessage, ServerPRIMessage, ServerRLLMessage, ServerRTBMessage, ServerSTAMessage, ServerSYSMessage, ServerTPNMessage, ServerVARMessage, ServerXHMMessage } from "./ServerMessages";
 import { ChatMessage, Handleable, TypedChatMessage, HandleableTypedChatMessage, HandleableChatMessage } from "./ChatConnectionFactory";
-import { ChannelMetadata, ChatConnection } from "./ChatConnection";
+import { ChannelMetadata, ChatConnection, IdentificationFailedError } from "./ChatConnection";
 import { IncomingMessageSink } from "./IncomingMessageSink";
 import { PromiseSource } from "../util/PromiseSource";
 import { Mutex } from "../util/Mutex";
@@ -1138,7 +1138,7 @@ export class ChatConnectionImpl implements ChatConnection {
                     readMore = false;
                 }
                 else if (msg.code == "ERR") {
-                    throw new Error("Identification failed");
+                    throw new IdentificationFailedError(`Identification failed.`);
                 }
             }, cancellationToken);
         }
