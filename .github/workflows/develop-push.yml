@@ -26,7 +26,7 @@ jobs:
         echo "outputting branch=$FILTEREDBRANCHNAME"
         echo "rawbranch=$BRANCHNAME" >> $GITHUB_OUTPUT
         echo "branch=$FILTEREDBRANCHNAME" >> $GITHUB_OUTPUT
-        if [ ( $BRANCHNAME -eq 'master' ) -o ( $BRANCHNAME -eq 'develop' ) ]; then
+        if [[ ( $BRANCHNAME != 'master' ) || ( $BRANCHNAME != 'develop' ) ]]; then
           echo "publishartifact=true"
           echo "publishartifact=true" >> $GITHUB_OUTPUT
         else
