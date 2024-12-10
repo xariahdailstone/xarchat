@@ -34,123 +34,143 @@ namespace MinimalWin32Test
             using var startupLogWriter = CreateStartupLogFile(startupLogFile);
 
             var writeStartupLog = (string message) => { try { startupLogWriter.WriteLine(message); } catch { } };
-            
-            writeStartupLog($"XarChat {AssemblyVersionInfo.XarChatVersion}-{AssemblyVersionInfo.XarChatBranch} starting up...");
 
-            writeStartupLog($"Finding profile path...");
-            var profilePath = FindProfilePath(args);
-            writeStartupLog($"profilePath = {profilePath}");
-
-            writeStartupLog($"Starting AutoUpdateManagerFactory...");
-            var autoUpdater = AutoUpdateManagerFactory.Create(
-                new FileInfo(Kernel32.GetMainModuleName()),
-                args,
-                new DirectoryInfo(profilePath),
-                new Version(AssemblyVersionInfo.XarChatVersion),
-                "win-x64",
-                AssemblyVersionInfo.XarChatBranch);
-
-            writeStartupLog($"Looking for most recent EXE in profile dir...");
-            if (autoUpdater.TryRunMostRecentAsync(CancellationToken.None).Result)
+            try
             {
-                writeStartupLog($"Most recent EXE run, exiting.");
-                return 0;
-            }
+                writeStartupLog($"XarChat {AssemblyVersionInfo.XarChatVersion}-{AssemblyVersionInfo.XarChatBranch} starting up...");
 
-            writeStartupLog($"Creating app mutex...");
-            var sim = new ProfileLockFileSingleInstanceManager(profilePath);
-            if (!sim.TryBecomeSingleInstance(out var acquiredInstanceDisposable))
-            {
-                writeStartupLog("Instance already exists and was signalled, exiting.");
-                return 0;
-            }
+                writeStartupLog($"Finding profile path...");
+                var profilePath = FindProfilePath(args);
+                writeStartupLog($"profilePath = {profilePath}");
 
-            using var acquiredInstanceDisposableUsing = acquiredInstanceDisposable;
+                writeStartupLog($"Starting AutoUpdateManagerFactory...");
+                var autoUpdater = AutoUpdateManagerFactory.Create(
+                    new FileInfo(Kernel32.GetMainModuleName()),
+                    args,
+                    new DirectoryInfo(profilePath),
+                    new Version(AssemblyVersionInfo.XarChatVersion),
+                    "win-x64",
+                    AssemblyVersionInfo.XarChatBranch);
 
-			//var sim = SingleInstanceManager.TryCreate($"Local\\XarChatInstanceMutex-{MakeStringSafeForMutexName(profilePath)}", "XarChat");
-			//if (sim == null)
-			//{
-			//    writeStartupLog($"Mutex already exists, exiting.");
-			//    return 0;
-			//}
+                writeStartupLog($"Looking for most recent EXE in profile dir...");
+                if (autoUpdater.TryRunMostRecentAsync(CancellationToken.None).Result)
+                {
+                    writeStartupLog($"Most recent EXE run, exiting.");
+                    return 0;
+                }
 
-			writeStartupLog("creating MessageLoop");
-			var app = new MessageLoop();
+                writeStartupLog($"Creating app mutex...");
+                var sim = new ProfileLockFileSingleInstanceManager(profilePath);
+                if (!sim.TryBecomeSingleInstance(out var acquiredInstanceDisposable))
+                {
+                    writeStartupLog("Instance already exists and was signalled, exiting.");
+                    return 0;
+                }
 
-			writeStartupLog($"CheckForWebView2Runtime...");
-            if (!CheckForWebView2Runtime(args, app))
-            {
-				Environment.Exit(1);
-			}
+                using var acquiredInstanceDisposableUsing = acquiredInstanceDisposable;
 
-            //SQLitePCL.raw.SetProvider(new SQLitePCL.SQLite3Provider_winsqlite3());
+                //var sim = SingleInstanceManager.TryCreate($"Local\\XarChatInstanceMutex-{MakeStringSafeForMutexName(profilePath)}", "XarChat");
+                //if (sim == null)
+                //{
+                //    writeStartupLog($"Mutex already exists, exiting.");
+                //    return 0;
+                //}
 
-            var stopCTS = new CancellationTokenSource();
+                writeStartupLog("creating MessageLoop");
+                var app = new MessageLoop();
 
-            writeStartupLog("creating BrowserWindowWindowControl");
-            var wc = new BrowserWindowWindowControl(app);
-            var clArgs = new ArrayCommandLineOptions(args);
+                writeStartupLog($"CheckForWebView2Runtime...");
+                if (!CheckForWebView2Runtime(args, app))
+                {
+                    Environment.Exit(1);
+                }
 
-            writeStartupLog("creating XarChatBackEnd");
-            ThreadPool.QueueUserWorkItem(delegate
-            {
-                autoUpdater.StartUpdateChecks();
-            });
-            var backend = new XarChatBackend(new Win32BackendServiceSetup(wc), clArgs, autoUpdater);
-            var backendRunTask = Task.Run(async () =>
-            {
-                await backend.RunAsync(writeStartupLog, stopCTS.Token);
-            });
+                //SQLitePCL.raw.SetProvider(new SQLitePCL.SQLite3Provider_winsqlite3());
 
-            writeStartupLog("creating BrowserWindow");
-            var win = new BrowserWindow(app, backend, wc, clArgs);
-            win.StartupLogWriter = startupLogWriter;
-            wc.BrowserWindow = win;
-            wc.ServiceProvider = backend.GetServiceProviderAsync().Result;
+                var stopCTS = new CancellationTokenSource();
 
-            writeStartupLog("showing BrowserWindow");
-            win.Show();
+                writeStartupLog("creating BrowserWindowWindowControl");
+                var wc = new BrowserWindowWindowControl(app);
+                var clArgs = new ArrayCommandLineOptions(args);
 
-			Task.Run(async () =>
-			{
-				while (!stopCTS.IsCancellationRequested)
-				{
-					await acquiredInstanceDisposable.GetActivationRequestAsync(stopCTS.Token);
-                    win.SetForegroundWindow();
-				}
-			});
+                writeStartupLog("creating XarChatBackEnd");
+                ThreadPool.QueueUserWorkItem(delegate
+                {
+                    autoUpdater.StartUpdateChecks();
+                });
+                var backend = new XarChatBackend(new Win32BackendServiceSetup(wc), clArgs, autoUpdater);
+                var backendRunTask = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await backend.RunAsync(writeStartupLog, stopCTS.Token);
+                    }
+                    catch (Exception ex)
+                    {
+                        var err = $"Failed to initialize backend. Please see this file for more details:\r\n\r\n" + startupLogFile;
+                        User32.MessageBox(0, err, "XarChat initialization failed");
+                        writeStartupLog($"Failed to initialize backend: " + ex.ToString());
+                        Environment.Exit(1);
+                    }
+                });
 
-			writeStartupLog("running app, ending startup log");
-            win.StartupLogWriter = null;
-            startupLogWriter.Dispose();
+                writeStartupLog("creating BrowserWindow");
+                var win = new BrowserWindow(app, backend, wc, clArgs);
+                win.StartupLogWriter = startupLogWriter;
+                wc.BrowserWindow = win;
+                wc.ServiceProvider = backend.GetServiceProviderAsync().Result;
 
-            if (File.Exists(startupLogFile))
-            {
-                try { File.Delete(startupLogFile); } catch { }
-            }
+                writeStartupLog("showing BrowserWindow");
+                win.Show();
 
-            var exitCode = app.Run();
+                Task.Run(async () =>
+                {
+                    while (!stopCTS.IsCancellationRequested)
+                    {
+                        await acquiredInstanceDisposable.GetActivationRequestAsync(stopCTS.Token);
+                        win.SetForegroundWindow();
+                    }
+                });
 
-            stopCTS.Cancel();
+                writeStartupLog("running app, ending startup log");
+                win.StartupLogWriter = null;
+                startupLogWriter.Dispose();
 
-            backendRunTask.Wait();
+                if (File.Exists(startupLogFile))
+                {
+                    try { File.Delete(startupLogFile); } catch { }
+                }
 
-            if (autoUpdater.RelaunchOnExitRequested)
-            {
-                //sim.Dispose();
+                var exitCode = app.Run();
+
+                stopCTS.Cancel();
+
+                backendRunTask.Wait();
+
+                if (autoUpdater.RelaunchOnExitRequested)
+                {
+                    //sim.Dispose();
+                    acquiredInstanceDisposable.Dispose();
+                    autoUpdater.TryRunMostRecentAsync(CancellationToken.None).Wait();
+                }
+
                 acquiredInstanceDisposable.Dispose();
-				autoUpdater.TryRunMostRecentAsync(CancellationToken.None).Wait();
+                Environment.Exit(exitCode);
+
+                GC.KeepAlive(sim);
+                return 0;
             }
-
-			acquiredInstanceDisposable.Dispose();
-			Environment.Exit(exitCode);
-
-            GC.KeepAlive(sim);
-            return 0;
+            catch (Exception ex)
+            {
+                writeStartupLog("Initialization failed: " + ex.ToString());
+                var err = $"Failed to initialize backend. Please see this file for more details:\r\n\r\n" + startupLogFile;
+                User32.MessageBox(0, err, "XarChat initialization failed");
+                return 1;
+            }
         }
 
-		private static void MaybeShowInitWindowOnly(string[] args, MessageLoop messageLoop)
-		{
+        private static void MaybeShowInitWindowOnly(string[] args, MessageLoop messageLoop)
+        {
             foreach (var arg in args)
             {
                 if (arg == "--showinitwindow")
@@ -161,9 +181,9 @@ namespace MinimalWin32Test
                     messageLoop.Run();
                 }
             }
-		}
+        }
 
-		private static TextWriter CreateStartupLogFile(string startupLogFile)
+        private static TextWriter CreateStartupLogFile(string startupLogFile)
         {
             try
             {
@@ -171,7 +191,7 @@ namespace MinimalWin32Test
                 f.AutoFlush = true;
                 return f;
             }
-            catch 
+            catch
             {
                 var ms = new MemoryStream();
                 return new StreamWriter(ms);
@@ -186,9 +206,9 @@ namespace MinimalWin32Test
             }
 
             var shouldFakeInstall = args.Select(x => x.ToLower()).Contains("--showinitwindow");
-			var shouldFailFakeInstall = args.Select(x => x.ToLower()).Contains("--failinitwindow");
+            var shouldFailFakeInstall = args.Select(x => x.ToLower()).Contains("--failinitwindow");
 
-			var ver = GetWebView2RuntimeVersion();
+            var ver = GetWebView2RuntimeVersion();
             if (String.IsNullOrWhiteSpace(ver) || shouldFakeInstall)
             {
                 var result = InstallWebView2Runtime(messageLoop, shouldFakeInstall, shouldFailFakeInstall);
@@ -247,8 +267,8 @@ namespace MinimalWin32Test
                     }
                     else
                     {
-						installingUi.SetStatus("Installing Microsoft WebView2 runtime...");
-						await Task.Delay(2000);
+                        installingUi.SetStatus("Installing Microsoft WebView2 runtime...");
+                        await Task.Delay(2000);
                         if (failFakeInstall)
                         {
                             throw new ApplicationException("install fail fake");
@@ -270,17 +290,17 @@ namespace MinimalWin32Test
                 }
                 catch (Exception ex)
                 {
-					installingUi.SetStatus("Microsoft WebView2 runtime install failed.");
+                    installingUi.SetStatus("Microsoft WebView2 runtime install failed.");
 
                     var deleteRetriesRemaining = 10;
-					while (deleteRetriesRemaining > 0)
+                    while (deleteRetriesRemaining > 0)
                     {
                         try
                         {
                             File.Delete(tmpFn);
                             break;
                         }
-                        catch 
+                        catch
                         {
                             deleteRetriesRemaining--;
                             if (deleteRetriesRemaining > 0)
@@ -290,11 +310,11 @@ namespace MinimalWin32Test
                         }
                     }
 
-					installingUi.ShowError($"Microsoft WebView2 runtime installation failed: {ex.Message}");
+                    installingUi.ShowError($"Microsoft WebView2 runtime installation failed: {ex.Message}");
                     installingUi.Dispose();
                     result = false;
-				}
-			});
+                }
+            });
 
             messageLoop.Run();
             installTask.Wait();
@@ -302,7 +322,7 @@ namespace MinimalWin32Test
         }
 
         private static string GetWebView2RuntimeVersion()
-        { 
+        {
             try
             {
                 var result = Microsoft.Web.WebView2.Core.CoreWebView2Environment.GetAvailableBrowserVersionString();
@@ -505,7 +525,7 @@ namespace MinimalWin32Test
     //        if (func != null)
     //        {
     //            System.Diagnostics.Debug.WriteLine("handling WM_RUNTASK");
-                
+
     //            var restoreSyncContext = SynchronizationContext.Current;
     //            SynchronizationContext.SetSynchronizationContext(this);
     //            try { func(); }
@@ -555,32 +575,32 @@ namespace MinimalWin32Test
         private readonly MessageLoop _messageLoop;
         private readonly InitializationWindow _initializationWindow;
 
-		public InstallingUI(MessageLoop messageLoop)
+        public InstallingUI(MessageLoop messageLoop)
         {
             _messageLoop = messageLoop;
-			_initializationWindow = new InitializationWindow(messageLoop);
+            _initializationWindow = new InitializationWindow(messageLoop);
             _initializationWindow.Show();
-		}
+        }
 
         public void Dispose()
         {
             _initializationWindow.Close();
         }
 
-		public void SetStatus(string str)
-		{
+        public void SetStatus(string str)
+        {
             _initializationWindow.SetStatus(str);
-		}
+        }
 
         public void ShowError(string message)
         {
             _initializationWindow.Invoke(() =>
             {
-				User32.MessageBox(_initializationWindow.WindowHandle.Handle,
-    				message, "XarChat Setup Failed");
-			});
+                User32.MessageBox(_initializationWindow.WindowHandle.Handle,
+                    message, "XarChat Setup Failed");
+            });
         }
-	}
+    }
 
     //internal class xInstallingUI : IDisposable
     //{

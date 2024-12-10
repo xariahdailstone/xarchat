@@ -57,3 +57,9 @@ export interface ChannelMetadata {
     count: number;
     mode?: ChatChannelMessageMode;
 }
+
+export class IdentificationFailedError extends Error {
+    constructor(message?: string, options?: ErrorOptions) {
+        super(message ?? "Identification Failed", options);
+    }
+}
