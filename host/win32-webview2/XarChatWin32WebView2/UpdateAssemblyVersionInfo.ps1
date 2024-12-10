@@ -27,7 +27,7 @@ else {
     $rawver = $AzureBuildNumber.Substring(0, $dashpos)
     $rawbranch = $AzureBuildNumber.Substring($dashpos + 1)
 
-    $vsplit = $splitbn[0] -Split '.'
+    $vsplit = $rawver -Split '.'
     $major = [System.Convert]::ToInt32($vsplit[0]).ToString()
     $minor = [System.Convert]::ToInt32($vsplit[1]).ToString()
     $build = [System.Convert]::ToInt32($vsplit[2]).ToString()
