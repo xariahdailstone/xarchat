@@ -31,7 +31,7 @@ else {
     Write-Host "rawver = $rawver"
     Write-Host "rawbranch = $rawbranch"
 
-    $vsplit = $rawver -Split '.'
+    $vsplit = $rawver.split(".")
     Write-Host "vsplit = $vsplit"
 
     $major = [System.Convert]::ToInt32($vsplit[0]).ToString()
