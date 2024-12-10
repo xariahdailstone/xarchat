@@ -58,7 +58,7 @@ namespace XarChat.Backend
         private readonly IUpdateChecker _updateChecker;
 
         public XarChatBackend(
-            IBackendServiceSetup backendServiceSetup, 
+            IBackendServiceSetup backendServiceSetup,
             ICommandLineOptions commandLineOptions,
             IUpdateChecker updateChecker)
         {
@@ -73,7 +73,7 @@ namespace XarChat.Backend
         private TaskCompletionSource<(int AssetPort, int WSPort)> _portNumber;
         private TaskCompletionSource<IServiceProvider> _serviceProviderTCS;
 
-        public async Task<int> GetAssetPortNumber() => _portNumber != null 
+        public async Task<int> GetAssetPortNumber() => _portNumber != null
             ? (await _portNumber.Task).AssetPort
             : throw new InvalidOperationException();
 
@@ -81,36 +81,36 @@ namespace XarChat.Backend
             ? (await _portNumber.Task).WSPort
             : throw new InvalidOperationException();
 
-        public async Task<IServiceProvider> GetServiceProviderAsync() 
+        public async Task<IServiceProvider> GetServiceProviderAsync()
             => _serviceProviderTCS != null ? (await _serviceProviderTCS.Task) : throw new InvalidOperationException();
 
         private int GetFreePort()
         {
-    //        var checkPort = 600;
-    //        while (checkPort < 1024)
-    //        {
-    //            using var l = new TcpListener(IPAddress.Loopback, checkPort);
-    //            try
-    //            {
-				//	l.Start();
-    //                l.Stop();
-    //                return checkPort;
-				//}
-    //            catch { }
-    //            checkPort++;
-    //        }
+            //        var checkPort = 600;
+            //        while (checkPort < 1024)
+            //        {
+            //            using var l = new TcpListener(IPAddress.Loopback, checkPort);
+            //            try
+            //            {
+            //	l.Start();
+            //                l.Stop();
+            //                return checkPort;
+            //}
+            //            catch { }
+            //            checkPort++;
+            //        }
             return 0;
-		}
+        }
 
         public async Task RunAsync(Action<string> startupLogWriter, CancellationToken cancellationToken)
         {
             startupLogWriter("XarChatBackend.RunAsync - setting MinThreads");
-			ThreadPool.SetMinThreads(
+            ThreadPool.SetMinThreads(
                 Math.Min(20, System.Environment.ProcessorCount),
-				Math.Min(20, System.Environment.ProcessorCount));
-			//ThreadPool.SetMinThreads(100, 100);
+                Math.Min(20, System.Environment.ProcessorCount));
+            //ThreadPool.SetMinThreads(100, 100);
 
-			startupLogWriter("XarChatBackend.RunAsync - creating webapp builder");
+            startupLogWriter("XarChatBackend.RunAsync - creating webapp builder");
             var builder = WebApplication.CreateBuilder();
 
             startupLogWriter("XarChatBackend.RunAsync - configuring Kestrel");
@@ -128,8 +128,8 @@ namespace XarChat.Backend
                 {
                     configure.UseHttps(sscert);
                     configure.Protocols =
-						Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http1AndHttp2AndHttp3;
-				});
+                        Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http1AndHttp2AndHttp3;
+                });
             });
 
             startupLogWriter("XarChatBackend.RunAsync - configuring app services");
@@ -232,8 +232,8 @@ namespace XarChat.Backend
 
             //services.AddSingleton<IProxiedImageCache, ProxiedImageCache>();
             services.AddMemoryCache();
-			services.AddSingleton<IProxiedImageCache2, SimplerProxiedImageCache>();
-			services.AddSingleton<IHttpClientProvider, HttpClientProvider>();
+            services.AddSingleton<IProxiedImageCache2, SimplerProxiedImageCache>();
+            services.AddSingleton<IHttpClientProvider, HttpClientProvider>();
 
             services.AddSingleton<INewAppSettings, SqliteNewAppSettings>();
 
@@ -279,9 +279,9 @@ namespace XarChat.Backend
 
         private object _concurrentCountLock = new object();
         private int _concurrentRequestCount = 0;
-		private int _concurrentHighwater = 0;
+        private int _concurrentHighwater = 0;
 
-		private void Configure(Action<string> startupLogWriter, WebApplication app)
+        private void Configure(Action<string> startupLogWriter, WebApplication app)
         {
             try
             {
@@ -303,13 +303,13 @@ namespace XarChat.Backend
                     //Stopwatch stopwatch = Stopwatch.StartNew();
                     //try
                     //{
-                        var requestSW = Stopwatch.StartNew();
-                        httpContext.Response.OnStarting(async () =>
-                        {
-							requestSW.Stop();
-							httpContext.Response.Headers.Append("X-Backend-Time-To-ResponseStart-MS", requestSW.ElapsedMilliseconds.ToString());
-						});
-                        await next(httpContext);
+                    var requestSW = Stopwatch.StartNew();
+                    httpContext.Response.OnStarting(async () =>
+                    {
+                        requestSW.Stop();
+                        httpContext.Response.Headers.Append("X-Backend-Time-To-ResponseStart-MS", requestSW.ElapsedMilliseconds.ToString());
+                    });
+                    await next(httpContext);
                     //}
                     //finally
                     //{
@@ -354,9 +354,9 @@ namespace XarChat.Backend
                     }
                 });
 
-				startupLogWriter("XarChatBackend.Configure mapping eicon");
-				app.UseEIconLoader("/api/eicon");
-				startupLogWriter("XarChatBackend.Configure mapping image proxy handler");
+                startupLogWriter("XarChatBackend.Configure mapping eicon");
+                app.UseEIconLoader("/api/eicon");
+                startupLogWriter("XarChatBackend.Configure mapping image proxy handler");
                 app.UseImageProxyHandler("/api/proxyImageUrl");
                 startupLogWriter("XarChatBackend.Configure mapping url launcher");
                 app.UseLaunchUrlHandler("/api/launchUrl");
@@ -370,9 +370,9 @@ namespace XarChat.Backend
                 app.UseLogsHandler("/api/logs");
                 startupLogWriter("XarChatBackend.Configure mapping appsettings");
                 app.UseAppSettings();
-				startupLogWriter("XarChatBackend.Configure windowcommand");
-				app.UseWindowCommands();
-			}
+                startupLogWriter("XarChatBackend.Configure windowcommand");
+                app.UseWindowCommands();
+            }
             catch (Exception ex)
             {
                 startupLogWriter("XarChatBackend.Configure unhandled exception: " + ex.ToString());
@@ -404,7 +404,11 @@ namespace XarChat.Backend
                 //certificate.FriendlyName = commonName;
 
                 // Return the PFX exported version that contains the key
-                return new X509Certificate2(certificate.Export(X509ContentType.Pfx, password), password, X509KeyStorageFlags.MachineKeySet);
+                return new X509Certificate2(
+                    certificate.Export(X509ContentType.Pfx, password),
+                    password,
+                    X509KeyStorageFlags.UserKeySet);
+                //X509KeyStorageFlags.MachineKeySet);
             }
         }
     }
