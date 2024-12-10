@@ -67,8 +67,9 @@ jobs:
       name: "C# Build"
       shell: cmd
       run: |
+        cd $GITHUB_WORKSPACE
         msbuild.exe \
-          "XarChat.sln" /nologo /nr:false
+          "$GITHUB_WORKSPACE\XarChat.sln" /nologo /nr:false
           /T:"Restore;win32\win32-webview2\XarChatWin32WebView2:Publish" \
           /p:IsPublishing=true \
           /p:AzureBuildNumber="0.0.0.0-test" \
