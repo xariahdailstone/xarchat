@@ -65,7 +65,6 @@ jobs:
         
     - id: restore_deps
       name: "C# Build"
-      shell: bash
       run: |
         msbuild \
           "XarChat.sln" /nologo /nr:false
