@@ -28,12 +28,12 @@ jobs:
     - id: extract_timestamp
       name: "Generate Build Timestamp"
       shell: bash
-      run: echo "timestamp=$(date +'%Y%m%d%H%M%S')" >> $GITHUB_OUTPUT
+      run: echo "timestamp=$(date +'%Y.%m%d.%H%M.%S')" >> $GITHUB_OUTPUT
 
     - id: generate_buildid
       name: "Generate Build Identifier"
       shell: bash
-      run: echo "buildid=${{ steps.extract_branch.output.branch }}-${{ steps.extract_timestamp.outputs.timestamp }}" >> $GITHUB_OUTPUT
+      run: echo "buildid=${{ steps.extract_timestamp.outputs.timestamp }}-=${{ steps.extract_branch.output.branch }}" >> $GITHUB_OUTPUT
 
     - id: setup_dotnet
       name: "Setup .NET SDK"
@@ -67,7 +67,7 @@ jobs:
       name: "C# Build"
       run: |
         msbuild \
-          "XarChat.sln" -nologo -nr:false
+          "XarChat.sln" -nr:false
           -T:"Restore;win32\win32-webview2\XarChatWin32WebView2:Publish" \
           -p:IsPublishing=true \
           -p:AzureBuildNumber="0.0.0.0-test" \
