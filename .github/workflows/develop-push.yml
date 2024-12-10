@@ -28,7 +28,7 @@ jobs:
     - id: extract_timestamp
       name: "Generate Build Timestamp"
       shell: bash
-      run: echo "timestamp=${date +'%Y%m%d%H%M%S')" >> $GITHUB_OUTPUT
+      run: echo "timestamp=$(date +'%Y%m%d%H%M%S')" >> $GITHUB_OUTPUT
 
     - id: generate_buildid
       name: "Generate Build Identifier"
