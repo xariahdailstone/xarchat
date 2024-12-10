@@ -68,12 +68,12 @@ jobs:
       shell: cmd
       working-directory: ${{ github.workspace }}
       run: |
-        msbuild.exe "${{ github.workspace }}\XarChat.sln" /nologo /nr:false /T:"Restore;win32\win32-webview2\XarChatWin32WebView2:Publish" /p:IsPublishing=true /p:AzureBuildNumber="0.0.0.0-test" /p:Platform="Any CPU" /p:Configuration="Release" /p:VisualStudioVersion="17.0" 
+        msbuild.exe "${{ github.workspace }}\XarChat.sln" /nologo /nr:false /T:"Restore;win32\win32-webview2\XarChatWin32WebView2:Publish" /p:IsPublishing=true /p:AzureBuildNumber="${{ steps.generate_buildid.outputs.buildid }}" /p:Platform="Any CPU" /p:Configuration="Release" /p:VisualStudioVersion="17.0" 
           
     - id: publish_artifact
       name: "Publish Artifact"
       uses: actions/upload-artifact@v4
       with:
         name: win32-exe
-        path: .\host\win32-webview2\XarChatWin32WebView2\bin\Release\net8.0-windows10.0.17763.0\publish\XarChat.exe
+        path: ${{ github.workspace }}\host\win32-webview2\XarChatWin32WebView2\bin\Release\net8.0-windows10.0.17763.0\publish\
         retention-days: 5
