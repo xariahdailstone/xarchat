@@ -66,10 +66,11 @@ jobs:
     - id: restore_deps
       name: "C# Build"
       shell: cmd
+      working-directory: ${{ github.workspace }}
       run: |
-        cd $GITHUB_WORKSPACE
+        cd ${{ github.workspace }}
         msbuild.exe \
-          "$GITHUB_WORKSPACE\XarChat.sln" /nologo /nr:false
+          "${{ github.workspace }}\XarChat.sln" /nologo /nr:false
           /T:"Restore;win32\win32-webview2\XarChatWin32WebView2:Publish" \
           /p:IsPublishing=true \
           /p:AzureBuildNumber="0.0.0.0-test" \
