@@ -114,7 +114,8 @@ class EventMessagesConfig {
         const result = [];
         if (args.targetCharacter != null) {
             const isMe = (args.targetCharacter == this.activeLoginViewModel.characterName);
-            const isWatched = (this.activeLoginViewModel.friends.has(args.targetCharacter));
+            const isWatched = (this.activeLoginViewModel.friends.has(args.targetCharacter))
+                || (this.activeLoginViewModel.bookmarks.has(args.targetCharacter));
             if (isMe) {
                 result.push(".me");
             }
