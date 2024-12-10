@@ -41,6 +41,10 @@ jobs:
       with:
         dotnet-version: 8.0.x
 
+    - id: setup_msbuild
+      name: "Setup MSBuild"
+      uses: microsoft/setup-msbuild@v2
+
     - id: restore_npm_deps
       name: "Restore NPM Packages"
       shell: bash
@@ -63,7 +67,7 @@ jobs:
       name: "C# Build"
       shell: bash
       run: |
-        msbuild.exe \
+        msbuild \
           "XarChat.sln" /nologo /nr:false
           /T:"Restore;win32\win32-webview2\XarChatWin32WebView2:Publish" \
           /p:IsPublishing=true \
