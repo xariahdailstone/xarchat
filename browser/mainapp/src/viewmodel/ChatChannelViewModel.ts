@@ -15,6 +15,9 @@ import { AppNotifyEventType } from "./AppViewModel.js";
 import { DateAnchor, LogSearchKind } from "../util/HostInteropLogSearch.js";
 import { SnapshottableMap } from "../util/collections/SnapshottableMap.js";
 import { SnapshottableSet } from "../util/collections/SnapshottableSet.js";
+import { DialogButtonStyle } from "./dialogs/DialogViewModel.js";
+import { KeyCodes } from "../util/KeyCodes.js";
+import { SlashCommandViewModel } from "./SlashCommandViewModel.js";
 
 export class ChatChannelUserViewModel extends ObservableBase implements IDisposable {
     constructor(
@@ -101,8 +104,20 @@ export class ChatChannelViewModel extends ChannelViewModel {
     @observableProperty
     get actuallyInChannel() { return (this.presenceState == ChatChannelPresenceState.IN_CHANNEL); }
 
+    private _descriptionAssigned: boolean = false;
+    private _description: string = "";
+
     @observableProperty
-    description: string = "";
+    get description(): string { return this._description; }
+    set description(value: string) {
+        if (value !== this._description) {
+            this._description = value;
+        }
+        if (this._descriptionAssigned) {
+            this.addSystemMessage(new Date(), "The channel description has been updated.", false, true);
+        }
+        this._descriptionAssigned = true;
+    }
 
     @observableProperty
     descriptionIsNew: boolean = false;
@@ -220,6 +235,23 @@ export class ChatChannelViewModel extends ChannelViewModel {
             this.updateUserInLists(this._channelOwner);
         }
     }
+    assignChannelOps(characters: CharacterName[]) {
+        const charsToAdd = new Set(characters);
+        const charsToRemove = new Set(this._channelOps.values());
+
+        for (let character of [...charsToAdd.values()]) {
+            charsToRemove.delete(character);
+            if (this._channelOps.has(character)) {
+                charsToAdd.delete(character);
+            }
+        }
+        for (let c of charsToAdd.values()) {
+            this.addChannelOps([c]);
+        }
+        for (let c of charsToRemove.values()) {
+            this.removeChannelOp(c);
+        }
+    }
     addChannelOps(characters: CharacterName[]) {
         for (let n of characters) {
             this._channelOps.add(n);
@@ -263,9 +295,8 @@ export class ChatChannelViewModel extends ChannelViewModel {
 
         let uvm = this._allUsers.get(character);
         let isInChannel = uvm != null;
-        let isModerator = isInChannel && (CharacterName.equals(this._channelOwner, character) ||
-            this._channelOps.has(character) ||
-            this.parent.serverOps.has(character));
+        let isModerator = isInChannel 
+            && (CharacterName.equals(this._channelOwner, character) || this._channelOps.has(character) || this.parent.serverOps.has(character));
         let isWatched = isInChannel && !isModerator && (this.parent.watchedChars.has(character));
         let isLooking = isInChannel && !isModerator && !isWatched && (this.parent.characterSet.getCharacterStatus(character).status == OnlineStatus.LOOKING);
         let isOther = isInChannel && !isModerator && !isWatched && !isLooking;
@@ -366,6 +397,203 @@ export class ChatChannelViewModel extends ChannelViewModel {
                 this.filterMode = ChatChannelMessageMode.BOTH;
                 break;
         }
+    }
+
+    override getSlashCommands(): SlashCommandViewModel[] {
+        return [
+            ...super.getSlashCommands(),
+            new SlashCommandViewModel(
+                ["code"],
+                "Get Channel Link Code",
+                "Gets the BBCode used to link to this channel."
+            ),
+            new SlashCommandViewModel(
+                ["invite"],
+                "Invite User to Channel",
+                "Invites a user to this channel (requires channel op status)."
+            ),
+            new SlashCommandViewModel(
+                ["desc", "description"],
+                "Update Channel Description",
+                "Updates the description of this channel to the specified text (requires channel op status)."
+            ),
+            new SlashCommandViewModel(
+                ["kick"],
+                "Kick Character From Channel",
+                "Kicks the specified character from the channel (requires channel op status)."
+            ),
+            new SlashCommandViewModel(
+                ["timeout"],
+                "Timeout Character From Channel",
+                "Kicks the specified character from the channel and temporarily bans them for the specified number of minutes (requires channel op status).\n\nExample:  /timeout 30 Character Name"
+            ),
+            new SlashCommandViewModel(
+                ["oplist"],
+                "Get Operator List For Channel",
+                "Gets the list of channel ops for this channel."
+            ),
+            new SlashCommandViewModel(
+                ["banlist"],
+                "Get Ban List For Channel",
+                "Gets the list of channel ops for this channel (requires channel op status)."
+            ),
+            new SlashCommandViewModel(
+                ["op"],
+                "Give a Character Channel Op Status",
+                "Gives the specified character channel operator status for this channel (requires channel owner status)."
+            ),
+            new SlashCommandViewModel(
+                ["deop", "dop"],
+                "Remove a Character's Channel Op Status",
+                "Removes channel operator status for this channel from the specified character (requires channel owner status)."
+            ),
+            new SlashCommandViewModel(
+                ["ban"],
+                "Ban a Character From Channel",
+                "Bans the specified character from this channel indefinitely (requires channel op status)."
+            ),
+            new SlashCommandViewModel(
+                ["unban"],
+                "Unban a Character From Channel",
+                "Unbans the specified character from this channel (requires channel op status)."
+            ),
+            new SlashCommandViewModel(
+                ["makeowner"],
+                "Transfer Channel Ownership",
+                "Transfers ownership of this channel to the specified character (requires channel owner status)."
+            ),
+            new SlashCommandViewModel(
+                ["setmode"],
+                "Change Channel Message Mode",
+                "Changes the message mode of this channel to the specified value (one of 'chat', 'ads', or 'both'; requires channel op status)."
+            ),
+            new SlashCommandViewModel(
+                ["openroom"],
+                "Open Channel to the Public",
+                "Changes the status of the channel to public, allowing anyone to join (requires channel op status)."
+            ),
+            new SlashCommandViewModel(
+                ["closeroom"],
+                "Close Channel to the Public",
+                "Changes the status of the channel to private, allowing only invited characters to join (requires channel op status)."
+            ),
+        ]
+    }
+
+    override async processCommandInternalAsync(command: string): Promise<string> {
+        const spacePos = command.indexOf(' ');
+        const commandStr = spacePos != -1 ? command.substring(0, spacePos) : command;
+        const commandArgs = spacePos != -1 ? command.substring(spacePos + 1) : "";
+        switch (commandStr.toLowerCase()) {
+            case "code":
+                return `Channel link code: [noparse][session=${this.title}]${this.name.value}[/session][/noparse]`
+            case "invite":
+                {
+                    const inviteCharName = CharacterName.create(commandArgs.trim());
+                    await this.inviteAsync(inviteCharName);
+                    return "";
+                }
+            case "desc":
+            case "description":
+                {
+                    await this.changeDescriptionAsync(commandArgs.trim());
+                    return "";
+                }
+            case "kick":
+                {
+                    const kickCharName = CharacterName.create(commandArgs.trim());
+                    await this.kickAsync(kickCharName);
+                    return "";
+                }
+            case "timeout":
+                {
+                    const m = commandArgs.match(/^\s*(\d+)\s+(.+)$/);
+                    if (m) {
+                        const minutes = +m[1];
+                        const timeoutCharName = CharacterName.create(m[2]);
+                        await this.timeoutAsync(timeoutCharName, minutes);
+                        return "";
+                    }
+                    else {
+                        return "Invalid arguments.  Supply arguments as '<minutes> <character>'";
+                    }
+                }
+            case "oplist":
+                {
+                    await this.getChannelOpListAsync();
+                    return "";
+                }
+            case "banlist":
+                {
+                    await this.getBanListAsync();
+                    return "";
+                }
+            case "op":
+                {
+                    const opCharName = CharacterName.create(commandArgs.trim());
+                    await this.opAsync(opCharName);
+                    return "";
+                }
+            case "deop":
+            case "dop":
+                {
+                    const deopCharName = CharacterName.create(commandArgs.trim());
+                    await this.deopAsync(deopCharName);
+                    return "";
+                }
+            case "ban":
+                {
+                    const banCharName = CharacterName.create(commandArgs.trim());
+                    await this.banAsync(banCharName);
+                    return "";
+                }
+            case "unban":
+                {
+                    const unbanCharName = CharacterName.create(commandArgs.trim());
+                    await this.unbanAsync(unbanCharName);
+                    return "";
+                }
+            case "makeowner":
+                {
+                    const newOwnerCharName = CharacterName.create(commandArgs.trim());
+                    await this.changeOwnerAsync(newOwnerCharName);
+                    return `Made [user]${newOwnerCharName}[/user] the new channel owner.`;
+                }
+            case "setmode":
+                {
+                    await this.changeChannelModeAsync(commandArgs.trim());
+                    return "";
+                }
+            case "openroom":
+                {
+                    await this.changeChannelPrivacyStatusAsync("public");
+                    return "";
+                }
+            case "closeroom":
+                {
+                    await this.changeChannelPrivacyStatusAsync("private");
+                    return "";
+                }
+            default:
+                const sres = await super.processCommandInternalAsync(command);
+                return sres;
+        }
+    }
+
+    async inviteAsync(char: CharacterName) {
+        this.verifyCurrentlyEffectiveOp();
+        const cstat = this.activeLoginViewModel.characterSet.getCharacterStatus(char);
+        if (cstat.status != OnlineStatus.OFFLINE) {
+            await this.activeLoginViewModel.chatConnection.inviteToChannelAsync(this.name, char);
+        }
+        else {
+            throw "That character is not online.";
+        }
+    }
+
+    async changeDescriptionAsync(newDescription: string) {
+        this.verifyCurrentlyEffectiveOp();
+        await this.activeLoginViewModel.chatConnection.changeChannelDescriptionAsync(this.name, newDescription);
     }
 
     override addMessage(message: ChannelMessageViewModel, options?: AddMessageOptions): void {
@@ -529,6 +757,7 @@ export class ChatChannelViewModel extends ChannelViewModel {
             this.activeLoginViewModel.appViewModel.soundNotification({
                 eventType: AppNotifyEventType.HIGHLIGHT_MESSAGE_RECEIVED,
                 myCharacter: this.activeLoginViewModel.characterName,
+                activeLoginViewModel: this.activeLoginViewModel,
                 happenedInChannel: this.name
             });
         }
@@ -602,16 +831,105 @@ export class ChatChannelViewModel extends ChannelViewModel {
         return (CharacterName.equals(this.channelOwner, name) || this.activeLoginViewModel.isServerOp(name));
     }
 
-    async kickAsync(name: CharacterName) {
-        if (this.isEffectiveOp(this.activeLoginViewModel.characterName)) {
-            await this.activeLoginViewModel.chatConnection.kickFromChannelAsync(this.name, name);
+    verifyCurrentlyEffectiveOp() {
+        if (!this.isEffectiveOp(this.activeLoginViewModel.characterName)) {
+            throw "You are not a channel operator."
         }
     }
 
-    async banAsync(name: CharacterName) {
-        if (this.isEffectiveOp(this.activeLoginViewModel.characterName)) {
-            await this.activeLoginViewModel.chatConnection.banFromChannelAsync(this.name, name);
+    verifyCurrentlyEffectiveOwner() {
+        if (!this.isEffectiveOwner(this.activeLoginViewModel.characterName)) {
+            throw "You are not the channel owner."
         }
+    }
+
+    async kickAsync(name: CharacterName) {
+        this.verifyCurrentlyEffectiveOp();
+        await this.activeLoginViewModel.chatConnection.kickFromChannelAsync(this.name, name);
+    }
+
+    async timeoutAsync(name: CharacterName, minutes: number) {
+        this.verifyCurrentlyEffectiveOp();
+        if (minutes != Math.floor(minutes) || minutes < 1 || minutes > 90) {
+            throw "You must timeout for a whole number of minutes between 1 and 90, inclusive."
+        }
+        await this.activeLoginViewModel.chatConnection.timeoutFromChannelAsync(this.name, name, minutes);
+    }
+
+    async getChannelOpListAsync() {
+        await this.activeLoginViewModel.chatConnection.getChannelOpListAsync(this.name);
+    }
+
+    async getBanListAsync() {
+        this.verifyCurrentlyEffectiveOp();
+        await this.activeLoginViewModel.chatConnection.getChannelBanListAsync(this.name);
+    }
+
+    async opAsync(name: CharacterName) {
+        this.verifyCurrentlyEffectiveOp();
+        await this.activeLoginViewModel.chatConnection.channelAddOpAsync(this.name, name);
+    }
+
+    async deopAsync(name: CharacterName) {
+        this.verifyCurrentlyEffectiveOp();
+        await this.activeLoginViewModel.chatConnection.channelRemoveOpAsync(this.name, name);
+    }
+
+    async banAsync(name: CharacterName) {
+        this.verifyCurrentlyEffectiveOp();
+        await this.activeLoginViewModel.chatConnection.banFromChannelAsync(this.name, name);
+    }
+
+    async unbanAsync(name: CharacterName) {
+        this.verifyCurrentlyEffectiveOp();
+        await this.activeLoginViewModel.chatConnection.unbanFromChannelAsync(this.name, name);
+    }
+
+    async changeOwnerAsync(name: CharacterName) {
+        this.verifyCurrentlyEffectiveOwner();
+
+        if (!this.isCharacterInChannel(name)) {
+            const cs = this.activeLoginViewModel.characterSet.getCharacterStatus(name);
+            if (cs.status == OnlineStatus.OFFLINE) {
+                const confirmResponse = await this.activeLoginViewModel.appViewModel.promptAsync({
+                    title: "Change Channel Owner",
+                    message: `Are you sure you want to make ${name} the new owner of ${this.title}?  That character is not currently online, double check that you spelled the name correctly!`,
+                    buttons: [
+                        { title: "Yes", shortcutKeyCode: KeyCodes.KEY_Y, resultValue: true, style: DialogButtonStyle.NORMAL },
+                        { title: "No", shortcutKeyCode: KeyCodes.KEY_N, resultValue: false, style: DialogButtonStyle.BACKOFF },
+                    ]
+                });
+                if (!confirmResponse) { return false; };
+            }
+            else {
+                const confirmResponse = await this.activeLoginViewModel.appViewModel.promptAsync({
+                    title: "Change Channel Owner",
+                    message: `Are you sure you want to make ${name} the new owner of ${this.title}?  That character is not currently in the channel.`,
+                    buttons: [
+                        { title: "Yes", shortcutKeyCode: KeyCodes.KEY_Y, resultValue: true, style: DialogButtonStyle.NORMAL },
+                        { title: "No", shortcutKeyCode: KeyCodes.KEY_N, resultValue: false, style: DialogButtonStyle.BACKOFF },
+                    ]
+                });
+                if (!confirmResponse) { return false; };
+            }
+        }
+
+        await this.activeLoginViewModel.chatConnection.channelSetOwnerAsync(this.name, name);
+    }
+
+    async changeChannelModeAsync(newMode: string) {
+        newMode = newMode.toLowerCase();
+        if (newMode == "chat" || newMode == "ads" || newMode == "both") {
+            await this.activeLoginViewModel.chatConnection.channelSetModeAsync(this.name, newMode);
+        }
+        else {
+            throw "Invalid channel mode.  Valid values are 'chat', 'ads', or 'both'.";
+        }
+    }
+
+    async changeChannelPrivacyStatusAsync(status: "public" | "private") {
+        this.verifyCurrentlyEffectiveOp();
+        await this.activeLoginViewModel.chatConnection.changeChannelPrivacyStatusAsync(this.name, status);
     }
 }
 

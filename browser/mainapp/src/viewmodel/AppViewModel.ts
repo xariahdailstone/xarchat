@@ -289,46 +289,76 @@ export class AppViewModel extends ObservableBase {
         ctxVm.addSeparator();
     }
 
+    getFirstConfigEntryHierarchical(keys: string[], characterName?: CharacterName): (unknown | null) {
+        const k: string[] = [];
+        if (characterName != null) {
+            for (let key of keys) {
+                k.push(`${characterName.canonicalValue}.${key}`);
+            }    
+        }
+        for (let key of keys) {
+            k.push(`global.${key}`);
+        }
+        return this.configBlock.getFirst(k);
+    }
+
     private readonly _audioCache: Map<string, HTMLAudioElement> = new Map();
 
     soundNotification(event: AppNotifyEvent) {
-        let fn: string;
-        switch (event.eventType) {
-            case AppNotifyEventType.CONNECTED:
-                fn = "default_connect.mp3";
-                break;
-            case AppNotifyEventType.DISCONNECTED:
-                fn = "default_disconnect.mp3";
-                break;
-            case AppNotifyEventType.HIGHLIGHT_MESSAGE_RECEIVED:
-                fn = "default_highlightrecv.mp3";
-                break;
-            case AppNotifyEventType.PRIVATE_MESSAGE_RECEIVED:
-            default:
-                fn = "default_pmrecv.mp3";
-                break;
-        }
-        fn = `assets/sfx/${fn}`;
+        let fn: string | null = null;
 
-        let n = this._audioCache.get(fn);
-        if (!n) {
-            n = new Audio(fn);
-            this._audioCache.set(fn, n);
+        const evtParts: string[] = [];
+        if (event.eventType == AppNotifyEventType.PRIVATE_MESSAGE_RECEIVED && event.happenedWithInterlocutor) {
+            evtParts.push(`sounds.event.pm.${event.happenedWithInterlocutor.canonicalValue}`);
         }
-        n.play();
+        else if (event.eventType == AppNotifyEventType.HIGHLIGHT_MESSAGE_RECEIVED && event.happenedInChannel) {
+            evtParts.push(`sounds.event.ping.${event.happenedInChannel.canonicalValue}`);
+        }
+        evtParts.push(`sounds.event.${event.eventType.toString()}`);
+        fn = this.getFirstConfigEntryHierarchical(evtParts, event.myCharacter) as (string | null);
+
+        if (fn == null)
+        {
+            switch (event.eventType) {
+                case AppNotifyEventType.CONNECTED:
+                    fn = "default_connect.mp3";
+                    break;
+                case AppNotifyEventType.DISCONNECTED:
+                    fn = "default_disconnect.mp3";
+                    break;
+                case AppNotifyEventType.HIGHLIGHT_MESSAGE_RECEIVED:
+                    fn = "default_highlightrecv.mp3";
+                    break;
+                case AppNotifyEventType.PRIVATE_MESSAGE_RECEIVED:
+                default:
+                    fn = "default_pmrecv.mp3";
+                    break;
+            }
+            fn = `assets/sfx/${fn}`;
+        }
+
+        if (fn && fn != "") {
+            let n = this._audioCache.get(fn);
+            if (!n) {
+                n = new Audio(fn);
+                this._audioCache.set(fn, n);
+            }
+            n.play();
+        }
     }
 }
 
 export enum AppNotifyEventType {
-    CONNECTED,
-    DISCONNECTED,
-    PRIVATE_MESSAGE_RECEIVED,
-    HIGHLIGHT_MESSAGE_RECEIVED
+    CONNECTED = "connect",
+    DISCONNECTED = "disconnect",
+    PRIVATE_MESSAGE_RECEIVED = "pm",
+    HIGHLIGHT_MESSAGE_RECEIVED = "ping"
 }
 
 export interface AppNotifyEvent {
     eventType: AppNotifyEventType,
     myCharacter: CharacterName,
+    activeLoginViewModel: ActiveLoginViewModel,
 
     happenedInChannel?: ChannelName,
     happenedWithInterlocutor?: CharacterName

@@ -80,13 +80,32 @@ export class AddChannelsViewModel extends ObservableBase implements SelectableTa
         }
     }
 
+    private makeSortFunc<T>(sortProps: ((item: T) => any)[]) {
+        let sortFunc: ((a: T, b: T) => number) = () => 0;
+        for (let i = sortProps.length - 1; i >= 0; i--) {
+            let sortPropGetter = sortProps[i];
+            let prevSortFunc = sortFunc;
+            sortFunc = (a, b) => sortPropGetter(a) < sortPropGetter(b) ? -1 : sortPropGetter(a) > sortPropGetter(b) ? 1 : prevSortFunc(a, b);
+        }
+        return sortFunc;
+    }
+
     private updatePublicChannelSort() {
         let sortFunc: (a: AddChannelsItemViewModel, b: AddChannelsItemViewModel) => number;
         if (this._publicChannelSortField == "title") {
-            sortFunc = (a, b) => a.title < b.title ? -1 : a.title > b.title ? 1 : 0;
+            // sortFunc = (a, b) => a.sortableTitle < b.sortableTitle ? -1 : a.sortableTitle > b.sortableTitle ? 1 : 0;
+            sortFunc = this.makeSortFunc<AddChannelsItemViewModel>([
+                (x) => x.sortableTitle,
+                (x) => x.title
+            ]);
         }
         else {
-            sortFunc = (a, b) => a.count - b.count;
+            //sortFunc = (a, b) => a.count - b.count;
+            sortFunc = this.makeSortFunc<AddChannelsItemViewModel>([
+                (x) => x.count,
+                (x) => x.sortableTitle,
+                (x) => x.title
+            ]);
         }
 
         if (this._publicChannelSortDescending) {
@@ -109,12 +128,12 @@ export class AddChannelsViewModel extends ObservableBase implements SelectableTa
     }
 
     private refilterPublicChannels() {
-        const newView = new StdObservableFilteredView<AddChannelsItemViewModel>(this.publicChannels, this.createFilterFunc());
+        const newView = new StdObservableFilteredView<AddChannelsItemViewModel>(this.publicChannelsSorted, this.createFilterFunc());
         this.publicChannelsSortedView = newView;
     }
 
     private refilterPrivateChannels() {
-        const newView = new StdObservableFilteredView<AddChannelsItemViewModel>(this.privateChannels, this.createFilterFunc());
+        const newView = new StdObservableFilteredView<AddChannelsItemViewModel>(this.privateChannelsSorted, this.createFilterFunc());
         this.privateChannelsSortedView = newView;
     }
 
@@ -147,13 +166,38 @@ export class AddChannelsViewModel extends ObservableBase implements SelectableTa
         }
     }
 
+    publicChannelSortSet(field: ("title" | "count"), descending: boolean) {
+        if (field != this._publicChannelSortField || descending != this._publicChannelSortDescending) {
+            this._publicChannelSortField = field;
+            this._publicChannelSortDescending = descending;
+            this.updatePublicChannelSort();
+        }
+    }
+
+    privateChannelSortSet(field: ("title" | "count"), descending: boolean) {
+        if (field != this._privateChannelSortField || descending != this._privateChannelSortDescending) {
+            this._privateChannelSortField = field;
+            this._privateChannelSortDescending = descending;
+            this.updatePrivateChannelSort();
+        }
+    }
+
     private updatePrivateChannelSort() {
         let sortFunc: (a: AddChannelsItemViewModel, b: AddChannelsItemViewModel) => number;
         if (this._privateChannelSortField == "title") {
-            sortFunc = (a, b) => a.title < b.title ? -1 : a.title > b.title ? 1 : 0;
+            // sortFunc = (a, b) => a.sortableTitle < b.sortableTitle ? -1 : a.sortableTitle > b.sortableTitle ? 1 : 0;
+            sortFunc = this.makeSortFunc<AddChannelsItemViewModel>([
+                (x) => x.sortableTitle,
+                (x) => x.title
+            ]);
         }
         else {
-            sortFunc = (a, b) => a.count - b.count;
+            //sortFunc = (a, b) => a.count - b.count;
+            sortFunc = this.makeSortFunc<AddChannelsItemViewModel>([
+                (x) => x.count,
+                (x) => x.sortableTitle,
+                (x) => x.title
+            ]);
         }
 
         if (this._privateChannelSortDescending) {
@@ -234,6 +278,7 @@ export class AddChannelsViewModel extends ObservableBase implements SelectableTa
                 this.failureMessage = CatchUtils.getMessage(e);
             }
         }
+
     }
 
     private extractSortableChannelTitle(rawTitle: string): string {

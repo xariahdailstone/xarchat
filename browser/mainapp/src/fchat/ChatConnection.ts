@@ -43,8 +43,20 @@ export interface ChatConnection extends IDisposable {
     getPrivateChannelsAsync(): Promise<ChannelMetadata[]>; // TODO:
 
     kickFromChannelAsync(channel: ChannelName, character: CharacterName): Promise<void>;
+    timeoutFromChannelAsync(channel: ChannelName, character: CharacterName, minutes: number): Promise<void>;
     banFromChannelAsync(channel: ChannelName, character: CharacterName): Promise<void>;
     inviteToChannelAsync(channel: ChannelName, character: CharacterName): Promise<void>;
+    channelSetOwnerAsync(channel: ChannelName, character: CharacterName): Promise<void>;
+    unbanFromChannelAsync(channel: ChannelName, character: CharacterName): Promise<void>;
+    getChannelBanListAsync(channel: ChannelName): Promise<void>;
+    getChannelOpListAsync(channel: ChannelName): Promise<void>;
+    channelAddOpAsync(channel: ChannelName, character: CharacterName): Promise<void>;
+    channelRemoveOpAsync(channel: ChannelName, character: CharacterName): Promise<void>;
+    channelSetModeAsync(channel: ChannelName, mode: "chat" | "ads" | "both"): Promise<void>;
+    changeChannelPrivacyStatusAsync(channel: ChannelName, status: "public" | "private"): Promise<void>;
+
+    createChannelAsync(title: string): Promise<void>;
+    changeChannelDescriptionAsync(channel: ChannelName, description: string): Promise<void>;
 
     ignoreCharacterAsync(character: CharacterName): Promise<void>;
     unignoreCharacterAsync(character: CharacterName): Promise<void>;

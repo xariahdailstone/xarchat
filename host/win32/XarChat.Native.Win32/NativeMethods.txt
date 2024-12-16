@@ -39,3 +39,5 @@ EndPaint
 GetCursorPos
 InvalidateRect
 MessageBox
+// PSAPI
+EmptyWorkingSet

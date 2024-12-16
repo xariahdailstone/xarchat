@@ -18,6 +18,8 @@ using XarChat.Backend.Features.CommandLine;
 using MinimalWin32Test.Properties;
 using System.Web;
 using XarChatWin32WebView2.UI;
+using XarChat.Backend.Features.MemoryHinter;
+using WinRT;
 
 namespace MinimalWin32Test.UI
 {
@@ -364,7 +366,7 @@ namespace MinimalWin32Test.UI
 				_webView.NewWindowRequested += _webView_NewWindowRequested;
 
                 WriteToStartupLog("BrowserWindow.OnHandleCreated - Creating WebViewMemoryUsageManager");
-                _webViewMemManager = new WebViewMemoryUsageManager(_app, _webView);
+                _webViewMemManager = new WebViewMemoryUsageManager(_backend, _app, _webView);
 
                 var bounds = this.WindowHandle.ClientRect;
                 _webViewController.Bounds = new System.Drawing.Rectangle(
@@ -747,13 +749,18 @@ namespace MinimalWin32Test.UI
 
     public class WebViewMemoryUsageManager : IDisposable
     {
+        private readonly XarChatBackend _backend;
         private readonly MessageLoop _app;
         private readonly CoreWebView2 _coreWebView2;
         private readonly System.Threading.Timer _timer;
         private CoreWebView2MemoryUsageTargetLevel _targetLevel;
 
-        public WebViewMemoryUsageManager(MessageLoop app, CoreWebView2 coreWebView2)
+        public WebViewMemoryUsageManager(
+            XarChatBackend backend,
+            MessageLoop app, 
+            CoreWebView2 coreWebView2)
         {
+            _backend = backend;
             _app = app;
             _coreWebView2 = coreWebView2;
 
@@ -783,6 +790,19 @@ namespace MinimalWin32Test.UI
             _app.Post(() =>
             {
                 _coreWebView2.MemoryUsageTargetLevel = _targetLevel;
+                if (_targetLevel == CoreWebView2MemoryUsageTargetLevel.Low)
+                {
+                    try
+                    {
+                        var sp = _backend.GetServiceProviderAsync().GetAwaiter().GetResult();
+                        var mh = sp.GetService<IMemoryHinter>();
+                        if (mh is not null)
+                        {
+                            mh.ReduceWorkingSet();
+                        }
+                    }
+                    catch { }
+                }
             });
         }
     }

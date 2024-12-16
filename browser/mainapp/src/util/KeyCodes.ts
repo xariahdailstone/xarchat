@@ -22,5 +22,10 @@ export enum KeyCodes {
     KEY_R = 82,
     KEY_S = 83,
     KEY_T = 84,
-    KEY_U = 85
+    KEY_U = 85,
+    KEY_V = 86,
+    KEY_W = 87,
+    KEY_X = 88,
+    KEY_Y = 89,
+    KEY_Z = 90,
 }

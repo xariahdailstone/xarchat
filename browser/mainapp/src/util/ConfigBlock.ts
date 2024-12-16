@@ -6,7 +6,11 @@ import { ObservableExpression } from './ObservableExpression';
 
 export interface ConfigBlock {
     get(key: string): (unknown | null);
+    getWithDefault(key: string, defaultValue: any): (unknown | null);
     set(key: string, value: (unknown | null)): void;
+
+    getFirst(keys: string[]): (unknown | null);
+    getFirstWithDefault(keys: string[], defaultValue: any): (unknown | null);
 
     observe(key: string, onValueUpdated: (value: (unknown | null)) => void): IDisposable;
 }
@@ -38,6 +42,24 @@ export class HostInteropConfigBlock implements ConfigBlock {
         const v = this._values.get(key) ?? null;
         Observable.publishNamedRead(`hicb:${key}`, v);
         return v;
+    }
+
+    getWithDefault(key: string, defaultValue: any): (unknown | null) {
+        return this.get(key) ?? defaultValue;
+    }
+
+    getFirst(keys: string[]): (unknown | null) {
+        for (let tkey of keys) {
+            const v = this.get(tkey);
+            if (v != null) {
+                return v;
+            }
+        }
+        return null;
+    }
+
+    getFirstWithDefault(keys: string[], defaultValue: any): (unknown | null) {
+        return this.getFirst(keys) ?? defaultValue;
     }
 
     set(key: string, value: string | null): void {

@@ -248,6 +248,7 @@ export class PMConvoChannelViewModel extends ChannelViewModel {
                 this.activeLoginViewModel.appViewModel.soundNotification({ 
                     eventType: AppNotifyEventType.PRIVATE_MESSAGE_RECEIVED,
                     myCharacter: this.activeLoginViewModel.characterName,
+                    activeLoginViewModel: this.activeLoginViewModel,
                     happenedWithInterlocutor: this.character
                 });
             }
