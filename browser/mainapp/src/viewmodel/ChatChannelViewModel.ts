@@ -17,6 +17,7 @@ import { SnapshottableMap } from "../util/collections/SnapshottableMap.js";
 import { SnapshottableSet } from "../util/collections/SnapshottableSet.js";
 import { DialogButtonStyle } from "./dialogs/DialogViewModel.js";
 import { KeyCodes } from "../util/KeyCodes.js";
+import { SlashCommandViewModel } from "./SlashCommandViewModel.js";
 
 export class ChatChannelUserViewModel extends ObservableBase implements IDisposable {
     constructor(
@@ -396,6 +397,87 @@ export class ChatChannelViewModel extends ChannelViewModel {
                 this.filterMode = ChatChannelMessageMode.BOTH;
                 break;
         }
+    }
+
+    override getSlashCommands(): SlashCommandViewModel[] {
+        return [
+            ...super.getSlashCommands(),
+            new SlashCommandViewModel(
+                ["code"],
+                "Get Channel Link Code",
+                "Gets the BBCode used to link to this channel."
+            ),
+            new SlashCommandViewModel(
+                ["invite"],
+                "Invite User to Channel",
+                "Invites a user to this channel (requires channel op status)."
+            ),
+            new SlashCommandViewModel(
+                ["desc", "description"],
+                "Update Channel Description",
+                "Updates the description of this channel to the specified text (requires channel op status)."
+            ),
+            new SlashCommandViewModel(
+                ["kick"],
+                "Kick Character From Channel",
+                "Kicks the specified character from the channel (requires channel op status)."
+            ),
+            new SlashCommandViewModel(
+                ["timeout"],
+                "Timeout Character From Channel",
+                "Kicks the specified character from the channel and temporarily bans them for the specified number of minutes (requires channel op status).\n\nExample:  /timeout 30 Character Name"
+            ),
+            new SlashCommandViewModel(
+                ["oplist"],
+                "Get Operator List For Channel",
+                "Gets the list of channel ops for this channel."
+            ),
+            new SlashCommandViewModel(
+                ["banlist"],
+                "Get Ban List For Channel",
+                "Gets the list of channel ops for this channel (requires channel op status)."
+            ),
+            new SlashCommandViewModel(
+                ["op"],
+                "Give a Character Channel Op Status",
+                "Gives the specified character channel operator status for this channel (requires channel owner status)."
+            ),
+            new SlashCommandViewModel(
+                ["deop", "dop"],
+                "Remove a Character's Channel Op Status",
+                "Removes channel operator status for this channel from the specified character (requires channel owner status)."
+            ),
+            new SlashCommandViewModel(
+                ["ban"],
+                "Ban a Character From Channel",
+                "Bans the specified character from this channel indefinitely (requires channel op status)."
+            ),
+            new SlashCommandViewModel(
+                ["unban"],
+                "Unban a Character From Channel",
+                "Unbans the specified character from this channel (requires channel op status)."
+            ),
+            new SlashCommandViewModel(
+                ["makeowner"],
+                "Transfer Channel Ownership",
+                "Transfers ownership of this channel to the specified character (requires channel owner status)."
+            ),
+            new SlashCommandViewModel(
+                ["setmode"],
+                "Change Channel Message Mode",
+                "Changes the message mode of this channel to the specified value (one of 'chat', 'ads', or 'both'; requires channel op status)."
+            ),
+            new SlashCommandViewModel(
+                ["openroom"],
+                "Open Channel to the Public",
+                "Changes the status of the channel to public, allowing anyone to join (requires channel op status)."
+            ),
+            new SlashCommandViewModel(
+                ["closeroom"],
+                "Close Channel to the Public",
+                "Changes the status of the channel to private, allowing only invited characters to join (requires channel op status)."
+            ),
+        ]
     }
 
     override async processCommandInternalAsync(command: string): Promise<string> {

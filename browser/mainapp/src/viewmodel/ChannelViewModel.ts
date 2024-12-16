@@ -20,6 +20,7 @@ import { ObservableKeyExtractedOrderedDictionary, ObservableOrderedDictionary, O
 import { StringUtils } from "../util/StringUtils.js";
 import { ActiveLoginViewModel } from "./ActiveLoginViewModel.js";
 import { AppNotifyEventType, AppViewModel } from "./AppViewModel.js";
+import { SlashCommandViewModel } from "./SlashCommandViewModel.js";
 
 
 
@@ -114,6 +115,32 @@ export abstract class ChannelViewModel extends ObservableBase {
             const errMsg = CatchUtils.getMessage(e);
             this.addSystemMessage(new Date(), errMsg, true);
         }
+    }
+
+    getSlashCommands(): SlashCommandViewModel[] {
+        return [
+            ...this.activeLoginViewModel.getSlashCommands(),
+            new SlashCommandViewModel(
+                ["roll"],
+                "Roll Dice",
+                "Roll the specified dice."
+            ),
+            new SlashCommandViewModel(
+                ["bottle"],
+                "Spin the Bottle",
+                "Spin the bottle to select a random character in the channel."
+            ),
+            new SlashCommandViewModel(
+                ["clear"],
+                "Clear Tab",
+                "Clears existing messages out of the current tab."
+            ),
+            new SlashCommandViewModel(
+                ["create"],
+                "Create New Channel",
+                "Creates and joins a new private channel with the specified name."
+            )
+        ]
     }
 
     async processCommandInternalAsync(command: string): Promise<string> {
