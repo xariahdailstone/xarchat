@@ -1157,6 +1157,16 @@ export class ChatConnectionImpl implements ChatConnection {
         });
     }
 
+    async timeoutFromChannelAsync(channel: ChannelName, character: CharacterName, minutes: number): Promise<void> {
+        await this.bracketedSendAsync({
+            code: "CTU", body: {
+                channel: channel.value,
+                character: character.value,
+                length: minutes.toString()
+            }
+        });
+    }
+
     async banFromChannelAsync(channel: ChannelName, character: CharacterName): Promise<void> {
         await this.bracketedSendAsync({
             code: "CBU", body: {
@@ -1171,6 +1181,93 @@ export class ChatConnectionImpl implements ChatConnection {
             code: "CIU", body: {
                 channel: channel.value,
                 character: character.value
+            }
+        });
+    }
+
+    async channelSetOwnerAsync(channel: ChannelName, character: CharacterName): Promise<void> { 
+        await this.bracketedSendAsync({
+            code: "CSO", body: {
+                channel: channel.value,
+                character: character.value
+            }
+        });
+    }
+
+    async unbanFromChannelAsync(channel: ChannelName, character: CharacterName): Promise<void> { 
+        await this.bracketedSendAsync({
+            code: "CUB", body: {
+                channel: channel.value,
+                character: character.value
+            }
+        });
+    }
+
+    async getChannelBanListAsync(channel: ChannelName): Promise<void> { 
+        await this.bracketedSendAsync({
+            code: "CBL", body: {
+                channel: channel.value
+            }
+        });
+    }
+
+    async getChannelOpListAsync(channel: ChannelName): Promise<void> { 
+        await this.bracketedSendAsync({
+            code: "COL", body: {
+                channel: channel.value
+            }
+        });
+    }
+
+    async channelAddOpAsync(channel: ChannelName, character: CharacterName): Promise<void> { 
+        await this.bracketedSendAsync({
+            code: "COA", body: {
+                channel: channel.value,
+                character: character.value
+            }
+        });
+    }
+
+    async channelRemoveOpAsync(channel: ChannelName, character: CharacterName): Promise<void> { 
+        await this.bracketedSendAsync({
+            code: "COR", body: {
+                channel: channel.value,
+                character: character.value
+            }
+        });
+    }
+
+    async channelSetModeAsync(channel: ChannelName, mode: "chat" | "ads" | "both"): Promise<void> {
+        await this.bracketedSendAsync({
+            code: "RMO", body: {
+                channel: channel.value,
+                mode: mode
+            }
+        });
+    }
+
+    async changeChannelPrivacyStatusAsync(channel: ChannelName, status: "public" | "private"): Promise<void> { 
+        await this.bracketedSendAsync({
+            code: "RST", body: {
+                channel: channel.value,
+                status: status
+            }
+        });
+    }
+
+    async createChannelAsync(title: string): Promise<void> {
+        await this.bracketedSendAsync({
+            code: "CCR", body: {
+                channel: title
+            }
+        });
+    }
+
+    async changeChannelDescriptionAsync(channel: ChannelName, description: string): Promise<void> {
+        await this.bracketedSendAsync({
+            code: "CDS", body: {
+                channel: channel.value,
+                description: description
             }
         });
     }

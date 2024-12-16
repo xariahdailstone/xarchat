@@ -210,14 +210,10 @@ namespace XarChat.Backend.Features.AppConfiguration.Impl
             NullIfWhiteSpace(GetArbitraryValueString("WebSocketPath")) ??
             "wss://chat.f-list.net/chat2";
 
-        //public string WebSocketPath { get; set; } = "wss://flprox.evercrest.com/connect";
-
         public string UrlLaunchExecutable =>
             NullIfWhiteSpace(_commandLineOptions.UrlLaunchExecutable) ??
             NullIfWhiteSpace(GetArbitraryValueString("UrlLaunchExecutable")) ??
             "shell:";
-
-        //public string UrlLaunchExecutable { get; set; } = @"""C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"" ""--profile-directory=Profile 1"" %s";
 
         public bool LaunchImagesInternally =>
             _commandLineOptions.LaunchImagesInternally ??
@@ -228,8 +224,6 @@ namespace XarChat.Backend.Features.AppConfiguration.Impl
             NullIfWhiteSpace(_commandLineOptions.UnpackedContentPath) ??
             NullIfWhiteSpace(GetArbitraryValueString("ContentDirectory")) ??
             "res:content.dat";
-
-        //public string ContentDirectory { get; set; } = "E:\\Megarepo\\src\\apps\\fchat\\XarChat\\Interface";
 
         public bool EnableDevTools =>
             (_commandLineOptions.EnableDevTools ?? false) ||

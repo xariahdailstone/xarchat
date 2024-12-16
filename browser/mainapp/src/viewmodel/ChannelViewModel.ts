@@ -117,10 +117,12 @@ export abstract class ChannelViewModel extends ObservableBase {
     }
 
     async processCommandInternalAsync(command: string): Promise<string> {
-        const commandStr = command.split(' ')[0];
+        const spacePos = command.indexOf(' ');
+        const commandStr = spacePos != -1 ? command.substring(0, spacePos) : command;
+        const commandArgs = spacePos != -1 ? command.substring(spacePos + 1) : "";
         switch (commandStr.toLowerCase()) {
             case "roll":
-                this.performRollAsync(command.substring(5));
+                this.performRollAsync(commandArgs);
                 return "";
             case "bottle":
                 this.performBottleSpinAsync();
@@ -128,10 +130,17 @@ export abstract class ChannelViewModel extends ObservableBase {
             case "clear":
                 this.clearMessages();
                 return "";
+            case "create":
+                this.createChannelAsync(commandArgs);
+                return "";
             default:
                 const sres = await this.activeLoginViewModel.processCommandAsync(this.textBoxContent.substring(1), this);
                 return sres;
         }
+    }
+
+    async createChannelAsync(newChannelTitle: string): Promise<void> {
+        await this.activeLoginViewModel.chatConnection.createChannelAsync(newChannelTitle);
     }
 
     performRollAsync(rollSpecification: string): Promise<void> {

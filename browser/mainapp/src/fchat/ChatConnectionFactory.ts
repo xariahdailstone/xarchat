@@ -211,8 +211,20 @@ export class NullChatConnection implements ChatConnection {
     }
 
     async kickFromChannelAsync(channel: ChannelName, character: CharacterName): Promise<void> { }
+    async timeoutFromChannelAsync(channel: ChannelName, character: CharacterName, minutes: number): Promise<void> { }
     async banFromChannelAsync(channel: ChannelName, character: CharacterName): Promise<void> { }
     async inviteToChannelAsync(channel: ChannelName, character: CharacterName): Promise<void> { }
+    async channelSetOwnerAsync(channel: ChannelName, character: CharacterName): Promise<void> { }
+    async unbanFromChannelAsync(channel: ChannelName, character: CharacterName): Promise<void> { }
+    async getChannelBanListAsync(channel: ChannelName): Promise<void> { }
+    async getChannelOpListAsync(channel: ChannelName): Promise<void> { }
+    async channelAddOpAsync(channel: ChannelName, character: CharacterName): Promise<void> { }
+    async channelRemoveOpAsync(channel: ChannelName, character: CharacterName): Promise<void> { }
+    async channelSetModeAsync(channel: ChannelName, mode: "chat" | "ads" | "both"): Promise<void> { }
+    async changeChannelPrivacyStatusAsync(channel: ChannelName, status: "public" | "private"): Promise<void> { }
+
+    async createChannelAsync(title: string): Promise<void> { }
+    async changeChannelDescriptionAsync(channel: ChannelName, description: string): Promise<void> { }
 
     async ignoreCharacterAsync(character: CharacterName): Promise<void> { }
     async unignoreCharacterAsync(character: CharacterName): Promise<void> { }
