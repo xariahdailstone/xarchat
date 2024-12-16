@@ -387,7 +387,7 @@ function getRebuildEntries<T>(obs: ReadOnlyStdObservableCollection<T>) {
 
     const entries: StdObservableCollectionChange<T>[] = [];
     for (let item of obs.iterateValues()) {
-        if (prevItem) {
+        //if (prevItem) {
             const pentry = new StdObservableCollectionChange<T>(
                 StdObservableCollectionChangeType.ITEM_ADDED,
                 item,
@@ -395,7 +395,7 @@ function getRebuildEntries<T>(obs: ReadOnlyStdObservableCollection<T>) {
                 prevItem
             );
             entries.push(pentry);
-        }
+        //}
         prevItem = item;
     }
     return entries;

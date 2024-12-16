@@ -11,6 +11,9 @@ import { CollectionViewLightweight } from "./CollectionViewLightweight";
 import { ComponentBase, componentElement } from "./ComponentBase";
 import { stageViewFor } from "./Stage";
 
+const UP_ARROW = "&#x25B4;";
+const DOWN_ARROW = "&#x25BE;";
+
 @componentElement("x-addchannelsview")
 @stageViewFor(AddChannelsViewModel)
 export class AddChannelsView extends ComponentBase<AddChannelsViewModel> {
@@ -33,8 +36,8 @@ export class AddChannelsView extends ComponentBase<AddChannelsViewModel> {
                     <div class="chantype-section-list-table">
                         <div class="chantype-section-list-thead">
                             <div class="chantype-section-list-tr">
-                                <div class="chantype-section-list-th">Title</div>
-                                <div class="chantype-section-list-th">Count</div>
+                                <div class="chantype-section-list-th channellistitem-title sort-header" id="elHeaderPublicTitle">Title</div>
+                                <div class="chantype-section-list-th channellistitem-count sort-header" id="elHeaderPublicCount">Count</div>
                             </div>
                         </div>
                         <x-addchannellist modelpath="publicChannelsSortedView" id="elPublicChannelsList">
@@ -50,8 +53,8 @@ export class AddChannelsView extends ComponentBase<AddChannelsViewModel> {
                     <div class="chantype-section-list-table">
                         <div class="chantype-section-list-thead">
                             <div class="chantype-section-list-tr">
-                                <div class="chantype-section-list-th">Title</div>
-                                <div class="chantype-section-list-th">Count</div>
+                                <div class="chantype-section-list-th channellistitem-title sort-header" id="elHeaderPrivateTitle">Title</div>
+                                <div class="chantype-section-list-th channellistitem-count sort-header" id="elHeaderPrivateCount">Count</div>
                             </div>
                         </div>
                         <x-addchannellist modelpath="privateChannelsSortedView" id="elPrivateChannelsList">
@@ -65,6 +68,48 @@ export class AddChannelsView extends ComponentBase<AddChannelsViewModel> {
         const elSearchText = this.$("elSearchText") as HTMLInputElement;
         const elPublicChannelsList = this.$("elPublicChannelsList") as AddChannelList;
         const elPrivateChannelsList = this.$("elPrivateChannelsList") as AddChannelList;
+
+        const elHeaderPublicTitle = this.$("elHeaderPublicTitle") as HTMLDivElement;
+        const elHeaderPublicCount = this.$("elHeaderPublicCount") as HTMLDivElement;
+        const elHeaderPrivateTitle = this.$("elHeaderPrivateTitle") as HTMLDivElement;
+        const elHeaderPrivateCount = this.$("elHeaderPrivateCount") as HTMLDivElement;
+
+        elHeaderPublicTitle.addEventListener("click", () => {
+            if (this.viewModel) {
+                let newDescending = false;
+                if (this.viewModel.publicChannelSortField == "title") {
+                    newDescending = !this.viewModel.publicChannelSortDescending;
+                }
+                this.viewModel.publicChannelSortSet("title", newDescending);
+            }
+        });
+        elHeaderPublicCount.addEventListener("click", () => {
+            if (this.viewModel) {
+                let newDescending = false;
+                if (this.viewModel.publicChannelSortField == "count") {
+                    newDescending = !this.viewModel.publicChannelSortDescending;
+                }
+                this.viewModel.publicChannelSortSet("count", newDescending);
+            }
+        });
+        elHeaderPrivateTitle.addEventListener("click", () => {
+            if (this.viewModel) {
+                let newDescending = false;
+                if (this.viewModel.privateChannelSortField == "title") {
+                    newDescending = !this.viewModel.privateChannelSortDescending;
+                }
+                this.viewModel.privateChannelSortSet("title", newDescending);
+            }
+        });
+        elHeaderPrivateCount.addEventListener("click", () => {
+            if (this.viewModel) {
+                let newDescending = false;
+                if (this.viewModel.privateChannelSortField == "count") {
+                    newDescending = !this.viewModel.privateChannelSortDescending;
+                }
+                this.viewModel.privateChannelSortSet("count", newDescending);
+            }
+        });
 
         const searchTextChanged = () => {
             if (this.viewModel && elSearchText.value != this.viewModel.channelFilter) {
@@ -97,6 +142,33 @@ export class AddChannelsView extends ComponentBase<AddChannelsViewModel> {
             updateHighlightedChannels();
         });
         this.watch("parent.openChannels.length", () => updateHighlightedChannels());
+
+        this.watchExpr(vm => [ vm.publicChannelSortField, vm.publicChannelSortDescending ], sx => {
+            if (sx && sx[0]) {
+                const titleArrow = sx[0] == "title" ?
+                    (sx[1] ? ` ${UP_ARROW}` : ` ${DOWN_ARROW}`) :
+                    "";
+                const countArrow = sx[0] == "count" ?
+                    (sx[1] ? ` ${UP_ARROW}` : ` ${DOWN_ARROW}`) :
+                    "";
+
+                elHeaderPublicTitle.innerHTML = `Title${titleArrow}`;
+                elHeaderPublicCount.innerHTML = `Count${countArrow}`;
+            }
+        });
+        this.watchExpr(vm => [ vm.privateChannelSortField, vm.privateChannelSortDescending ], sx => {
+            if (sx && sx[0]) {
+                const titleArrow = sx[0] == "title" ?
+                    (sx[1] ? ` ${UP_ARROW}` : ` ${DOWN_ARROW}`) :
+                    "";
+                const countArrow = sx[0] == "count" ?
+                    (sx[1] ? ` ${UP_ARROW}` : ` ${DOWN_ARROW}`) :
+                    "";
+
+                elHeaderPrivateTitle.innerHTML = `Title${titleArrow}`;
+                elHeaderPrivateCount.innerHTML = `Count${countArrow}`;
+            }
+        });
 
         this.elMain.addEventListener("click", (ev: MouseEvent) => {
             const vm = this.viewModel;

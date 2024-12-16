@@ -7,12 +7,14 @@ using System.Threading.Tasks;
 using XarChat.Backend.Features.AppDataFolder;
 using XarChat.Backend.Features.AppSettings;
 using XarChat.Backend.Features.IdleDetection;
+using XarChat.Backend.Features.MemoryHinter;
 using XarChat.Backend.Features.NotificationBadge;
 using XarChat.Backend.Features.UpdateChecker;
 using XarChat.Backend.Features.WindowControl;
 using XarChat.Backend.Win32.AppDataFolder;
 using XarChat.Backend.Win32.DataProtection;
 using XarChat.Backend.Win32.IdleDetection;
+using XarChat.Backend.Win32.MemoryHinter;
 using XarChat.Backend.Win32.NotificationBadge;
 using XarChat.Backend.Win32.StyleUpdateWatch;
 
@@ -35,6 +37,7 @@ namespace XarChat.Backend.Win32
             services.AddSingleton<IIdleDetectionManager, Win32IdleDetectionManagerImpl>();
             services.AddSingleton<INotificationBadgeManager, Win32NotificationBadgeManager>();
             services.AddSingleton<IAppSettingsDataProtectionManager, Win32AppSettingsDataProtectionManager>();
+            services.AddSingleton<IMemoryHinter, Win32MemoryHinter>();
 
             services.AddHostedService<StyleUpdateWatcher>();
         }

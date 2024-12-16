@@ -14,15 +14,36 @@ const ICON_FRIEND = "\u{1F496}" // red sparkling heart emoji
 const ICON_BOOKMARK = "\u{1F9E1}";  // orange heart emoji
 const ICON_WATCHED = "\u{1F49B}";  // yellow heart emoji
 
+const CLASS_NAMEWRAPPER = "char-wrapper";
+const CLASS_ISSERVEROP = "char-is-serverop";
+const CLASS_ISCHANOWNER = "char-is-chanowner";
+const CLASS_ISCHANOP = "char-is-chanop";
+const CLASS_ISFRIEND = "char-is-friend";
+const CLASS_ISBOOKMARK = "char-is-bookmark";
+const CLASS_ISWATCH = "char-is-watch";
+
 interface EffectiveCharacterNameInfo {
     modType: "none" | "chanop" | "chanowner" | "serverop";
     watchType: "none" | "watch" | "bookmark" | "friend";
+
+    isServerOp: boolean;
+    isChanOwner: boolean;
+    isChanOp: boolean;
+    isFriend: boolean;
+    isBookmark: boolean;
+    isWatch: boolean;
 }
 
 function getEffectiveCharacterNameInfo(character: CharacterName, vm: ChannelViewModel | ActiveLoginViewModel): EffectiveCharacterNameInfo {
     const res: EffectiveCharacterNameInfo = {
         modType: "none",
-        watchType: "none"
+        watchType: "none",
+        isServerOp: false,
+        isChanOwner: false,
+        isChanOp: false,
+        isFriend: false,
+        isBookmark: false,
+        isWatch: false
     };
 
     const chatChannelVM = (vm instanceof ChatChannelViewModel) ? vm : null;
@@ -30,24 +51,30 @@ function getEffectiveCharacterNameInfo(character: CharacterName, vm: ChannelView
         : (vm instanceof ActiveLoginViewModel) ? vm
         : null;
 
+    if (chatChannelVM && chatChannelVM.channelOps.has(character)) {
+        res.modType = "chanop";
+        res.isChanOp = true;
+    }
+    if (chatChannelVM && CharacterName.equals(chatChannelVM.channelOwner, character)) {
+        res.modType = "chanowner";
+        res.isChanOwner = true;
+    }
     if (sessionVM && sessionVM.serverOps.has(character)) {
         res.modType = "serverop";
-    }
-    else if (chatChannelVM && CharacterName.equals(chatChannelVM.channelOwner, character)) {
-        res.modType = "chanowner";
-    }
-    else if (chatChannelVM && chatChannelVM.channelOps.has(character)) {
-        res.modType = "chanop";
+        res.isServerOp = true;
     }
 
+    if (sessionVM && sessionVM.watchedChars.has(character)) {
+        res.watchType = "watch";
+        res.isWatch = true;
+    }
+    if (sessionVM && sessionVM.bookmarks.has(character)) {
+        res.watchType = "bookmark";
+        res.isBookmark = true;
+    }
     if (sessionVM && sessionVM.friends.has(character)) {
         res.watchType = "friend";
-    }
-    else if (sessionVM && sessionVM.bookmarks.has(character)) {
-        res.watchType = "bookmark";
-    }
-    else if (sessionVM && sessionVM.watchedChars.has(character)) {
-        res.watchType = "watch";
+        res.isFriend = true;
     }
 
     return res;
@@ -57,6 +84,14 @@ export function getEffectiveCharacterNameVNodes(character: CharacterName, vm: Ch
     const nodes: JsxVNodeChild[] = [];
 
     var ecni = getEffectiveCharacterNameInfo(character, vm);
+    var wrapperClasses: { [any: string]: boolean } = {};
+    wrapperClasses[CLASS_NAMEWRAPPER] = true;
+    wrapperClasses[CLASS_ISSERVEROP] = ecni.isServerOp;
+    wrapperClasses[CLASS_ISCHANOWNER] = ecni.isChanOwner;
+    wrapperClasses[CLASS_ISCHANOP] = ecni.isChanOp;
+    wrapperClasses[CLASS_ISFRIEND] = ecni.isFriend;
+    wrapperClasses[CLASS_ISBOOKMARK] = ecni.isBookmark;
+    wrapperClasses[CLASS_ISWATCH] = ecni.isWatch;
 
     switch (ecni.modType) {
         case "serverop":
@@ -91,25 +126,36 @@ export function getEffectiveCharacterNameVNodes(character: CharacterName, vm: Ch
         nodes.push(character.value);
     }
 
-    return nodes;
+    return <span class={wrapperClasses}>{nodes}</span>;
 }
 
 export function getEffectiveCharacterNameDocFragment(character: CharacterName, vm: ChannelViewModel | ActiveLoginViewModel): DocumentFragment {
     const result = new DocumentFragment();
     let hasIcon = false;
 
+    const wrapperEl = EL("span");
+    result.appendChild(wrapperEl);
+
     var ecni = getEffectiveCharacterNameInfo(character, vm);
+    wrapperEl.classList.toggle(CLASS_NAMEWRAPPER, true);
+    wrapperEl.classList.toggle(CLASS_ISSERVEROP, ecni.isServerOp);
+    wrapperEl.classList.toggle(CLASS_ISCHANOWNER, ecni.isChanOwner);
+    wrapperEl.classList.toggle(CLASS_ISCHANOP, ecni.isChanOp);
+    wrapperEl.classList.toggle(CLASS_ISFRIEND, ecni.isFriend);
+    wrapperEl.classList.toggle(CLASS_ISBOOKMARK, ecni.isBookmark);
+    wrapperEl.classList.toggle(CLASS_ISWATCH, ecni.isWatch);
+
     switch (ecni.modType) {
         case "serverop":
-            result.appendChild(EL("span", { title: "Server Op" }, [ICON_SERVEROP]));
+            wrapperEl.appendChild(EL("span", { title: "Server Op" }, [ICON_SERVEROP]));
             hasIcon = true;
             break;
         case "chanowner":
-            result.appendChild(EL("span", { title: "Channel Owner" }, [ICON_CHANOWNER]));
+            wrapperEl.appendChild(EL("span", { title: "Channel Owner" }, [ICON_CHANOWNER]));
             hasIcon = true;
             break;
         case "chanop":
-            result.appendChild(EL("span", { title: "Channel Moderator" }, [ICON_CHANOP]));
+            wrapperEl.appendChild(EL("span", { title: "Channel Moderator" }, [ICON_CHANOP]));
             hasIcon = true;
             break;
         default:
@@ -117,15 +163,15 @@ export function getEffectiveCharacterNameDocFragment(character: CharacterName, v
     }
     switch (ecni.watchType) {
         case "friend":
-            result.appendChild(EL("span", { title: "Friend" }, [ICON_FRIEND]));
+            wrapperEl.appendChild(EL("span", { title: "Friend" }, [ICON_FRIEND]));
             hasIcon = true;
             break;
         case "bookmark":
-            result.appendChild(EL("span", { title: "Bookmark" }, [ICON_BOOKMARK]));
+            wrapperEl.appendChild(EL("span", { title: "Bookmark" }, [ICON_BOOKMARK]));
             hasIcon = true;
             break;
         case "watch":
-            result.appendChild(EL("span", { title: "Watche" }, [ICON_WATCHED]));
+            wrapperEl.appendChild(EL("span", { title: "Watched" }, [ICON_WATCHED]));
             hasIcon = true;
             break;
         default:
@@ -133,10 +179,10 @@ export function getEffectiveCharacterNameDocFragment(character: CharacterName, v
     }
 
     if (hasIcon) {
-        result.appendChild(document.createTextNode(` ${character.value}`));
+        wrapperEl.appendChild(document.createTextNode(` ${character.value}`));
     }
     else {
-        result.appendChild(document.createTextNode(character.value));
+        wrapperEl.appendChild(document.createTextNode(character.value));
     }
 
     return result;
@@ -145,16 +191,29 @@ export function getEffectiveCharacterNameDocFragment(character: CharacterName, v
 export function getEffectiveCharacterName(character: CharacterName, vm: ChannelViewModel | ActiveLoginViewModel): string {
     const icons: string[] = [];
 
+    const wrapperClasses: string[] = [];
+
     var ecni = getEffectiveCharacterNameInfo(character, vm);
+    wrapperClasses.push(CLASS_NAMEWRAPPER);
+    if (ecni.isServerOp) { wrapperClasses.push(CLASS_ISSERVEROP); }
+    if (ecni.isChanOwner) { wrapperClasses.push(CLASS_ISCHANOWNER); }
+    if (ecni.isChanOp) { wrapperClasses.push(CLASS_ISCHANOP); }
+    if (ecni.isFriend) { wrapperClasses.push(CLASS_ISFRIEND); }
+    if (ecni.isBookmark) { wrapperClasses.push(CLASS_ISBOOKMARK); }
+    if (ecni.isWatch) { wrapperClasses.push(CLASS_ISWATCH); }
+
     switch (ecni.modType) {
         case "serverop":
             icons.push(`<span title='Server Op'>${ICON_SERVEROP}</span>`);
+            wrapperClasses.push("is-serverop");
             break;
         case "chanowner":
             icons.push(`<span title='Channel Owner'>${ICON_CHANOWNER}</span>`);
+            wrapperClasses.push("is-chanowner");
             break;
         case "chanop":
             icons.push(`<span title='Channel Moderator'>${ICON_CHANOP}</span>`);
+            wrapperClasses.push("is-chanop");
             break;
         default:
             break;
@@ -162,22 +221,25 @@ export function getEffectiveCharacterName(character: CharacterName, vm: ChannelV
     switch (ecni.watchType) {
         case "friend":
             icons.push(`<span title='Friend'>${ICON_FRIEND}</span>`);
+            wrapperClasses.push("is-friend");
             break;
         case "bookmark":
             icons.push(`<span title='Bookmark'>${ICON_BOOKMARK}</span>`);
+            wrapperClasses.push("is-bookmark");
             break;
         case "watch":
             icons.push(`<span title='Watched'>${ICON_WATCHED}</span>`);
+            wrapperClasses.push("is-watch");
             break;
         default:
             break;
     }
 
     if (icons.length > 0) {
-        return `${icons.join('')} ${character.value}`;
+        return `<span class="${wrapperClasses.join(' ')}">${icons.join('')} ${character.value}</span>`;
     }
     else {
-        return character.value;
+        return `<span class="${wrapperClasses.join(' ')}">${character.value}</span>`;
     }
 }
 

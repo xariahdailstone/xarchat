@@ -48,6 +48,8 @@ using System.Net.Sockets;
 using System.Net;
 using XarChat.Backend.Features.CommandableWindows;
 using XarChat.Backend.UrlHandlers.WIndowCommands;
+using XarChat.Backend.Features.MemoryHinter;
+using XarChat.Backend.Features.MemoryHinter.Impl;
 
 namespace XarChat.Backend
 {
@@ -275,6 +277,11 @@ namespace XarChat.Backend
             services.AddSingleton<ICommandableWindowRegistry, CommandableWindowRegistry>();
 
             _backendServiceSetup.ConfigureServices(services);
+
+            if (!services.Any(sd => sd.ServiceType == typeof(IMemoryHinter)))
+            {
+                services.AddSingleton<IMemoryHinter, NullMemoryHinter>();
+            }
         }
 
         private object _concurrentCountLock = new object();

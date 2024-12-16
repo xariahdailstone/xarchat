@@ -825,9 +825,11 @@ export class ChatViewModelSink implements ChatConnectionSink {
         const ccvm = ns.getOrCreateChannel(channel);
         if (ccvm) {
             if (isInitial) {
-                ccvm.channelOps.clear();
+                ccvm.assignChannelOps(characters);
             }
-            ccvm.addChannelOps(characters);
+            else {
+                ccvm.addChannelOps(characters);
+            }
             if (!isInitial) {
                 for (let char of characters) {
                     this.sendSystemMessageMultiRouted({

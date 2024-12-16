@@ -1,4 +1,5 @@
 import { IDisposable, asDisposable } from "../Disposable";
+import { ObjectUniqueId } from "../ObjectUniqueId";
 import { Observable } from "../Observable";
 import { ObservableExpression } from "../ObservableExpression";
 import BTree from "../btree/btree";
@@ -20,7 +21,7 @@ export class StdObservableSortedView<TItem extends object, TSortKey> implements 
             let ir: number;
 
             if (a.currentSortKey == undefined && b.currentSortKey == undefined) {
-                ir = 0;
+                ir = a.uniqueId - b.uniqueId;
             }
             else if (a.currentSortKey == undefined) {
                 return 1;
@@ -69,9 +70,8 @@ export class StdObservableSortedView<TItem extends object, TSortKey> implements 
 
     private readonly _btree: BTree<SortedViewItem<TItem, TSortKey>, SortedViewItem<TItem, TSortKey>>;
 
-    private _nextUniqueItemId: number = 0;
     private insertItemInternal(item: TItem) {
-        const myUniqueId = this._nextUniqueItemId++;
+        const myUniqueId = ObjectUniqueId.get(item);
         const sk: SortedViewItem<TItem, TSortKey> = {
             uniqueId: myUniqueId,
             inserted: false,
