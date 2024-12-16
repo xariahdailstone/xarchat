@@ -164,10 +164,18 @@ export class ActiveLoginViewModel extends ObservableBase {
             }
 
             if (value == ChatConnectionState.CONNECTED && previousConnectionState != ChatConnectionState.CONNECTED) {
-                this.appViewModel.soundNotification({ eventType: AppNotifyEventType.CONNECTED, myCharacter: this.characterName });
+                this.appViewModel.soundNotification({ 
+                    eventType: AppNotifyEventType.CONNECTED, 
+                    myCharacter: this.characterName,
+                    activeLoginViewModel: this
+                });
             }
             else if (value != ChatConnectionState.CONNECTED && previousConnectionState == ChatConnectionState.CONNECTED) {
-                this.appViewModel.soundNotification({ eventType: AppNotifyEventType.DISCONNECTED, myCharacter: this.characterName });
+                this.appViewModel.soundNotification({ 
+                    eventType: AppNotifyEventType.DISCONNECTED, 
+                    myCharacter: this.characterName ,
+                    activeLoginViewModel: this
+                });
             }
         }
     }
@@ -708,6 +716,10 @@ export class ActiveLoginViewModel extends ObservableBase {
     openLogViewer(logsFor: CharacterName, dateAnchor: DateAnchor, date: Date, target: ChannelName | CharacterName) {
         this._logSearchViewModel.setSearch(logsFor, dateAnchor, date, target);
         this.selectedTab = this._logSearchViewModel;
+    }
+
+    getFirstConfigEntryHierarchical(keys: string[]): (unknown | null) {
+        return this.appViewModel.getFirstConfigEntryHierarchical(keys, this.characterName);
     }
 }
 

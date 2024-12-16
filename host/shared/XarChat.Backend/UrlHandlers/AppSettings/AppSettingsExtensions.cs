@@ -106,6 +106,9 @@ namespace XarChat.Backend.UrlHandlers.AppSettings
             [JsonPropertyName("characterName")]
             public string CharacterName { get; set; }
 
+            [JsonPropertyName("lastLogin")]
+            public long? LastLogin { get; set; }
+
             [JsonPropertyName("pingWords")]
             public List<string> PingWords { get; set; }
 

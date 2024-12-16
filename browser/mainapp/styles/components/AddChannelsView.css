@@ -103,3 +103,9 @@
 
 .channellistitem-title { padding: 6px 6px; }
 .channellistitem-count { padding: 6px 6px; }
+
+.sort-header {
+    cursor: pointer; 
+    background-color: var(--bg-level-3);
+    color: var(--fg-level-3);
+}

@@ -23,6 +23,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\shared\XarChat.Backend\XarChat.Backend.csproj" />
+    <ProjectReference Include="..\XarChat.Native.Win32\XarChat.Native.Win32.csproj" />
   </ItemGroup>
 
 </Project>

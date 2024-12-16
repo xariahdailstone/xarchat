@@ -37,6 +37,7 @@ interface RawSavedAccountCredentials {
 
 interface RawSavedChatState {
     characterName: string;
+    lastLogin: number | null | undefined;
     joinedChannels: RawSavedChatStateJoinedChannel[];
     pinnedChannels: string[];
     pmConvos: RawSavedChatStatePMConvo[];
@@ -539,6 +540,7 @@ export class SavedChatState {
         item?: RawSavedChatState) {
         
         this._characterName = item ? CharacterName.create(item.characterName) : CharacterName.create("");
+        this._lastLogin = (item && item.lastLogin != null) ? item!.lastLogin : null;
         this.joinedChannels = new SavedChatStateJoinedChannelMap(this, item?.joinedChannels ?? []);
         this.pinnedChannels = new PinnedChannelsSet(this, item?.pinnedChannels ?? []);
         this.pmConvos = new PMConvosSet(this, item?.pmConvos ?? []);
@@ -556,6 +558,16 @@ export class SavedChatState {
     readonly pinnedChannels: PinnedChannelsSet;
     readonly pmConvos: PMConvosSet;
     readonly pingWords: PingWordsSet;
+
+    private _lastLogin: number | null;
+
+    get lastLogin(): number | null { return this._lastLogin; }
+    set lastLogin(value: number | null) {
+        if (value != this._lastLogin) {
+            this._lastLogin = value;
+            this.updated();
+        }
+    }
 
     private _characterName: CharacterName;
 
@@ -625,6 +637,7 @@ export class SavedChatState {
     toJSON() {
         const result: RawSavedChatState = {
             characterName: this._characterName.value,
+            lastLogin: this._lastLogin,
             joinedChannels: this.joinedChannels.toJSON(),
             pingWords: this.pingWords.toJSON(),
             pinnedChannels: this.pinnedChannels.toJSON(),

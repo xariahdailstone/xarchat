@@ -14,6 +14,7 @@ using System.Transactions;
 using XarChat.Backend.Common.DbSchema;
 using XarChat.Backend.Features.AppDataFolder;
 using XarChat.Backend.Features.EIconIndexing.XariahNet.Migrations;
+using XarChat.Backend.Features.MemoryHinter;
 
 namespace XarChat.Backend.Features.EIconIndexing.XariahNet
 {
@@ -21,27 +22,47 @@ namespace XarChat.Backend.Features.EIconIndexing.XariahNet
     {
         private readonly IAppDataFolder _appDataFolder;
         private readonly IHostApplicationLifetime _hostApplicationLifetime;
+        private readonly IMemoryHinter _memoryHinter;
+
+        private readonly System.Threading.Timer _timer;
 
         private SqliteConnection? _sqliteConnection = null;
         private long? _lastUpdateAt = null;
 
         public XariahNetEIconIndex(
             IAppDataFolder appDataFolder,
-            IHostApplicationLifetime hostApplicationLifetime)
+            IHostApplicationLifetime hostApplicationLifetime,
+            IMemoryHinter memoryHinter)
         {
             _appDataFolder = appDataFolder;
             _hostApplicationLifetime = hostApplicationLifetime;
+            _memoryHinter = memoryHinter;
+
+            _timer = new Timer(TimerTick);
+        }
+
+        private void TimerTick(object? state)
+        {
+            _memoryHinter.ReduceWorkingSet();
+        }
+
+        private void UpdateTimer()
+        {
+            _timer.Change(TimeSpan.FromSeconds(10), Timeout.InfiniteTimeSpan);
         }
 
         public async Task InitializeAsync(CancellationToken cancellationToken)
         {
             await GetIconSetAsync(cancellationToken);
+            UpdateTimer();
         }
 
         private readonly SemaphoreSlim _getEIconInfoExtendedSem = new SemaphoreSlim(2);
 
         public async Task<IEIconInfoExtended?> GetEIconInfoExtendedAsync(string eiconName, CancellationToken cancellationToken)
         {
+            UpdateTimer();
+
             await _getEIconInfoExtendedSem.WaitAsync(cancellationToken);
             try
             {
@@ -77,6 +98,8 @@ namespace XarChat.Backend.Features.EIconIndexing.XariahNet
 
         public async Task<IEIconSearchResults> SearchEIconsAsync(string searchTerm, CancellationToken cancellationToken)
         {
+            UpdateTimer();
+
             var timings = new Dictionary<string, long>();
 
             Stopwatch sw = Stopwatch.StartNew();

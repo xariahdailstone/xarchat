@@ -529,6 +529,7 @@ export class ChatChannelViewModel extends ChannelViewModel {
             this.activeLoginViewModel.appViewModel.soundNotification({
                 eventType: AppNotifyEventType.HIGHLIGHT_MESSAGE_RECEIVED,
                 myCharacter: this.activeLoginViewModel.characterName,
+                activeLoginViewModel: this.activeLoginViewModel,
                 happenedInChannel: this.name
             });
         }
