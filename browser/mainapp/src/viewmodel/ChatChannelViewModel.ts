@@ -103,8 +103,20 @@ export class ChatChannelViewModel extends ChannelViewModel {
     @observableProperty
     get actuallyInChannel() { return (this.presenceState == ChatChannelPresenceState.IN_CHANNEL); }
 
+    private _descriptionAssigned: boolean = false;
+    private _description: string = "";
+
     @observableProperty
-    description: string = "";
+    get description(): string { return this._description; }
+    set description(value: string) {
+        if (value !== this._description) {
+            this._description = value;
+        }
+        if (this._descriptionAssigned) {
+            this.addSystemMessage(new Date(), "The channel description has been updated.", false, true);
+        }
+        this._descriptionAssigned = true;
+    }
 
     @observableProperty
     descriptionIsNew: boolean = false;
@@ -222,6 +234,23 @@ export class ChatChannelViewModel extends ChannelViewModel {
             this.updateUserInLists(this._channelOwner);
         }
     }
+    assignChannelOps(characters: CharacterName[]) {
+        const charsToAdd = new Set(characters);
+        const charsToRemove = new Set(this._channelOps.values());
+
+        for (let character of [...charsToAdd.values()]) {
+            charsToRemove.delete(character);
+            if (this._channelOps.has(character)) {
+                charsToAdd.delete(character);
+            }
+        }
+        for (let c of charsToAdd.values()) {
+            this.addChannelOps([c]);
+        }
+        for (let c of charsToRemove.values()) {
+            this.removeChannelOp(c);
+        }
+    }
     addChannelOps(characters: CharacterName[]) {
         for (let n of characters) {
             this._channelOps.add(n);
@@ -265,9 +294,8 @@ export class ChatChannelViewModel extends ChannelViewModel {
 
         let uvm = this._allUsers.get(character);
         let isInChannel = uvm != null;
-        let isModerator = isInChannel && (CharacterName.equals(this._channelOwner, character) ||
-            this._channelOps.has(character) ||
-            this.parent.serverOps.has(character));
+        let isModerator = isInChannel 
+            && (CharacterName.equals(this._channelOwner, character) || this._channelOps.has(character) || this.parent.serverOps.has(character));
         let isWatched = isInChannel && !isModerator && (this.parent.watchedChars.has(character));
         let isLooking = isInChannel && !isModerator && !isWatched && (this.parent.characterSet.getCharacterStatus(character).status == OnlineStatus.LOOKING);
         let isOther = isInChannel && !isModerator && !isWatched && !isLooking;
@@ -376,7 +404,7 @@ export class ChatChannelViewModel extends ChannelViewModel {
         const commandArgs = spacePos != -1 ? command.substring(spacePos + 1) : "";
         switch (commandStr.toLowerCase()) {
             case "code":
-                return `Channel link code: [noparse][code=${this.name.value}]${this.title}[/code][/noparse]`
+                return `Channel link code: [noparse][session=${this.title}]${this.name.value}[/session][/noparse]`
             case "invite":
                 {
                     const inviteCharName = CharacterName.create(commandArgs.trim());
@@ -387,7 +415,7 @@ export class ChatChannelViewModel extends ChannelViewModel {
             case "description":
                 {
                     await this.changeDescriptionAsync(commandArgs.trim());
-                    return "Channel description changed.";
+                    return "";
                 }
             case "kick":
                 {
@@ -402,7 +430,7 @@ export class ChatChannelViewModel extends ChannelViewModel {
                         const minutes = +m[1];
                         const timeoutCharName = CharacterName.create(m[2]);
                         await this.timeoutAsync(timeoutCharName, minutes);
-                        return `Timed out [user]${timeoutCharName.value}[/user] from the channel for ${minutes} minutes.`;
+                        return "";
                     }
                     else {
                         return "Invalid arguments.  Supply arguments as '<minutes> <character>'";
@@ -435,13 +463,13 @@ export class ChatChannelViewModel extends ChannelViewModel {
                 {
                     const banCharName = CharacterName.create(commandArgs.trim());
                     await this.banAsync(banCharName);
-                    return `Banned [user]${banCharName.value}[/user] from the channel.`;
+                    return "";
                 }
             case "unban":
                 {
                     const unbanCharName = CharacterName.create(commandArgs.trim());
                     await this.unbanAsync(unbanCharName);
-                    return `Unbanned [user]${unbanCharName.value}[/user] from the channel.`;
+                    return "";
                 }
             case "makeowner":
                 {
@@ -452,17 +480,17 @@ export class ChatChannelViewModel extends ChannelViewModel {
             case "setmode":
                 {
                     await this.changeChannelModeAsync(commandArgs.trim());
-                    return `Changed channel mode to ${commandArgs.trim()}.`;
+                    return "";
                 }
             case "openroom":
                 {
                     await this.changeChannelPrivacyStatusAsync("public");
-                    return "Set room status to open. Anyone may now join this room.";
+                    return "";
                 }
             case "closeroom":
                 {
                     await this.changeChannelPrivacyStatusAsync("private");
-                    return "Set room status to closed. Only invited users may now join this room.";
+                    return "";
                 }
             default:
                 const sres = await super.processCommandInternalAsync(command);
