@@ -58,16 +58,16 @@ export class LoginUtils {
                 return { activeLoginViewModel: activeLoginViewModel, chatConnection: cc };
             }
             catch (e) {
-                try { cc?.dispose(); }
-                catch { }
+                // try { cc?.dispose(); }
+                // catch { }
 
-                if (e instanceof IdentificationFailedError && maybeUsingStaleTicket && authApi && apiTicket) {
-                    maybeUsingStaleTicket = false;
-                    await authApi.invalidateApiTicketAsync(apiTicket.ticket, cancellationToken);
-                }
-                else {
+                // if (e instanceof IdentificationFailedError && maybeUsingStaleTicket && authApi && apiTicket) {
+                //     maybeUsingStaleTicket = false;
+                //     await authApi.invalidateApiTicketAsync(apiTicket.ticket, cancellationToken);
+                // }
+                // else {
                     throw e;
-                }
+                //}
             }
         }
     }

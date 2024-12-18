@@ -1,7 +1,6 @@
 import { CharacterName } from "../../shared/CharacterName";
 import { CancellationToken } from "../../util/CancellationTokenSource";
-import { HasFromCache } from "./CredentialCache";
-import { ApiTicket, FListApi, FListApiImpl, FListAuthenticatedApi, FListAuthenticatedApiImpl, FriendsList, KinkList, MappingList, ProfileFieldsInfoList, ProfileInfo } from "./FListApi";
+import { ApiTicket, FListApi, FListAuthenticatedApi, FriendsList, KinkList, MappingList, ProfileFieldsInfoList, ProfileInfo } from "./FListApi";
 
 const API_URL_BASE = "/api/flist/";
 
@@ -80,11 +79,11 @@ export class HostInteropAuthenticatedApi implements FListAuthenticatedApi {
         password: string) {
     }
 
-    async invalidateApiTicketAsync(ticket: string, cancellationToken: CancellationToken): Promise<void> {
-        const result = await this.owner.postFromHostInteropAsync<ApiTicket>(`${this.account}/invalidateTicket`, {
-            ticket: ticket
-        }, cancellationToken);
-    }
+    // async invalidateApiTicketAsync(ticket: string, cancellationToken: CancellationToken): Promise<void> {
+    //     const result = await this.owner.postFromHostInteropAsync<ApiTicket>(`${this.account}/invalidateTicket`, {
+    //         ticket: ticket
+    //     }, cancellationToken);
+    // }
 
     async getFriendsListAsync(cancellationToken: CancellationToken): Promise<FriendsList> {
         const result = await this.owner.getFromHostInteropAsync<FriendsList>(`${this.account}/friendsList`, cancellationToken);

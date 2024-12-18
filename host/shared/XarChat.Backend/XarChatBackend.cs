@@ -253,6 +253,7 @@ namespace XarChat.Backend
                 var result = new CachingFListApiImpl(innerApi, localDataCache);
                 return result;
             });
+            services.AddSingleton<IFalsifiedClientTicketManager, FalsifiedClientTicketManager>();
 
             services.AddSingleton<ICommandLineOptions>(_commandLineOptions);
 

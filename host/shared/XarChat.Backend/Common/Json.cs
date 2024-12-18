@@ -87,6 +87,12 @@ namespace XarChat.Backend.Common
     {
     }
 
+    [JsonSourceGenerationOptions(WriteIndented = false)]
+    [JsonSerializable(typeof(JsonObject))]
+    internal partial class SourceGenerationContextUnindented : JsonSerializerContext
+    {
+    }
+
     [JsonSourceGenerationOptions(WriteIndented = true)]
     [JsonSerializable(typeof(AppSettingsData))]
     internal partial class SourceGenerationContextProtected : JsonSerializerContext

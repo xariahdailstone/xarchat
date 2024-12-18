@@ -5,20 +5,22 @@ body {
 
     --chat-font: 12px Verdana, Tahoma, Geneva, sans-serif;
 
-    --bg-level-1: black;
-    --bg-level-2: #232428;
-    --bg-level-3: #2b2d31;
-    --bg-level-4: #313338;
+    --bg-base-hue: 225;
+    --bg-base-sat: 7%;
+    --bg-level-1: hsl(var(--bg-base-hue), var(--bg-base-sat), 0%);  /* black; */
+    --bg-level-2: hsl(var(--bg-base-hue), var(--bg-base-sat), 15%); /* #232428; */
+    --bg-level-3: hsl(var(--bg-base-hue), var(--bg-base-sat), 18%); /* #2b2d31; */
+    --bg-level-4: hsl(var(--bg-base-hue), var(--bg-base-sat), 21%); /* #313338; */
 
     --fg-level-1: #b5bac1;
     --fg-level-2: #b5bac1;
     --fg-level-3: #757e8a;
     --fg-level-4: #dbdee1;
 
-    --bg-level-3-highlight: #404249;
+    --bg-level-3-highlight: hsl(var(--bg-base-hue), var(--bg-base-sat), 27%); /* #404249; */
     --fg-level-3-highlight: white;
 
-    --dark-border-level-4: #232428;
+    --dark-border-level-4:  hsl(var(--bg-base-hue), var(--bg-base-sat), 15%); /* #232428; */
 
     --fg-gender-male: #6699FF;
     --fg-gender-male-herm: #007FFF;
@@ -29,13 +31,13 @@ body {
     --fg-gender-shemale: #CC66FF;
     --fg-gender-none: #FFFFBB;
 
-    --bg-main-textbox: #383a40;
+    --bg-main-textbox: hsl(var(--bg-base-hue), var(--bg-base-sat), 24%); /* #383a40; */
     --fg-main-textbox: #dbdee1;
     --highlight-main-textbox: #CC66FF;
 
-    --bg-main-textbox-btn: #4e5058;
+    --bg-main-textbox-btn: hsl(var(--bg-base-hue), var(--bg-base-sat), 33%); /* #4e5058; */
     --fg-main-textbox-btn: white;
-    --bg-main-textbox-btn-hover: #60626c;
+    --bg-main-textbox-btn-hover: hsl(var(--bg-base-hue), var(--bg-base-sat), 40%); /* #60626c; */
     --fg-main-textbox-btn-hover: white;
 
     --bg-main-textbox-default-btn: #9B30FF;
@@ -53,7 +55,7 @@ body {
     --bg-main-textbox-warning-btn-hover: rgb(183, 24, 24);
     --fg-main-textbox-warning-btn-hover: white;
 
-    --bg-scrolldown-message: #4e5058;
+    --bg-scrolldown-message: hsl(var(--bg-base-hue), var(--bg-base-sat), 33%); /* #4e5058; */
     --fg-scrolldown-message: white;
     --bg-scrolldown-alert: #9e007f;
     --fg-scrolldown-alert: #ffffff;

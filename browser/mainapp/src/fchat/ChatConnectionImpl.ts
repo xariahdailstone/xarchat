@@ -1138,7 +1138,7 @@ export class ChatConnectionImpl implements ChatConnection {
                     readMore = false;
                 }
                 else if (msg.code == "ERR") {
-                    throw new IdentificationFailedError(`Identification failed.`);
+                    throw new IdentificationFailedError(`Identification failed: ${msg.body?.message ?? 'generic error'}`);
                 }
             }, cancellationToken);
         }

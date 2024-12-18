@@ -2,7 +2,7 @@
   "profiles": {
     "MinimalWin32Test": {
       "commandName": "Project",
-      "commandLineArgs": "-d -p C:\\Users\\drysa\\AppData\\Local\\XarChatz-debug -zzc E:\\src-XarChat\\browser\\mainapp --zzautoupdate:url=https://localhost:44314/xarchat/api/AutoUpdate/GetUpdateInfo --devtoolsonlaunch --zzshowinitwindow"
+      "commandLineArgs": "-d -p C:\\Users\\drysa\\AppData\\Local\\XarChatz-debug -zzc E:\\src-XarChat\\browser\\mainapp --zzautoupdate:url=https://localhost:44314/xarchat/api/AutoUpdate/GetUpdateInfo --devtoolsonlaunch --zzshowinitwindow -w wss://flprox.evercrest.com/connect"
     }
   }
 }

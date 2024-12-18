@@ -661,39 +661,91 @@ export class ActiveLoginViewModel extends ObservableBase {
             new SlashCommandViewModel(
                 ["help", "?"],
                 "Show Command Help",
-                "Shows a help message describing all the commands available."
-            ),
-            new SlashCommandViewModel(
-                ["priv"],
-                "Open Private Message Tab",
-                "Opens a private message tab for the specified character."
-            )
-        ];
-    }
-
-    async processCommandAsync(command: string, commandContext: ChannelViewModel): Promise<string> {
-        const commandStr = command.split(' ')[0];
-        switch (commandStr.toLowerCase()) {
-            case "help":
-            case "?":
-                {
-                    const vms = commandContext.getSlashCommands();
+                "Shows a help message describing all the commands available.",
+                [],
+                async (context, args) => {
+                    const vms = context.getSlashCommands();
                     const textBuilder = ["The following commands are available here:"];
                     for (let tvm of vms) {
                         textBuilder.push(`[b]/${tvm.command[0]}[/b] - [i]${tvm.title}[/i]: ${tvm.description}`);
                     }
                     return textBuilder.join("\n");
                 }
-            case "priv":
-                const targetCharName = CharacterName.create(command.substring(5));
-                const convoVm = this.getOrCreatePmConvo(targetCharName);
-                if (convoVm) {
-                    this.activatePMConvo(targetCharName);
+            ),
+            new SlashCommandViewModel(
+                ["priv"],
+                "Open Private Message Tab",
+                "Opens a private message tab for the specified character.",
+                ["character"],
+                async (context, args) => {
+                    const targetCharName = args[0] as CharacterName;
+                    const convoVm = this.getOrCreatePmConvo(targetCharName);
+                    if (convoVm) {
+                        this.activatePMConvo(targetCharName);
+                    }
+                    return "";
                 }
-                return "";
-            default:
-                throw new Error(`Unknown command: ${command}`);
+            )
+        ];
+    }
+
+    private async processSlashCommandAsync(scvm: SlashCommandViewModel, commandArgs: string, commandContext: ChannelViewModel): Promise<string> {
+        const callArgs: unknown[] = [];
+        try {
+            for (let targ of scvm.argTypes) {
+                let targvalue: unknown;
+                [commandArgs, targvalue] = scvm.grabArgumentValue(targ, commandArgs);
+                callArgs.push(targvalue);
+            }
+            if (commandArgs.trim() != "") {
+                throw new Error("Unexpected argument supplied");
+            }
         }
+        catch (e) {
+            const errMsg = (e instanceof Error) ? e.message : (e?.toString() ?? "");
+            throw new Error(`Unable to process command: ${errMsg}`);
+        }
+        const result = await scvm.onInvoke(commandContext, callArgs);
+        return result ?? "";
+    }
+
+    async processCommandAsync(command: string, commandContext: ChannelViewModel): Promise<string> {
+        const spacePos = command.indexOf(' ');
+        const commandStr = (spacePos != -1 ? command.substring(0, spacePos) : command).toLowerCase().trim();
+        const commandArgs = spacePos != -1 ? command.substring(spacePos + 1) : "";
+
+        for (let scvm of commandContext.getSlashCommands()) {
+            for (let cmdTrigger of scvm.command) {
+                if (cmdTrigger == commandStr) {
+                    return await this.processSlashCommandAsync(scvm, commandArgs, commandContext);
+                }
+            }
+        }
+
+        throw new Error(`Unknown command: ${commandStr}`);
+
+        // const commandStr = command.split(' ')[0];
+        // switch (commandStr.toLowerCase()) {
+        //     case "help":
+        //     case "?":
+        //         {
+        //             const vms = commandContext.getSlashCommands();
+        //             const textBuilder = ["The following commands are available here:"];
+        //             for (let tvm of vms) {
+        //                 textBuilder.push(`[b]/${tvm.command[0]}[/b] - [i]${tvm.title}[/i]: ${tvm.description}`);
+        //             }
+        //             return textBuilder.join("\n");
+        //         }
+        //     case "priv":
+        //         const targetCharName = CharacterName.create(command.substring(5));
+        //         const convoVm = this.getOrCreatePmConvo(targetCharName);
+        //         if (convoVm) {
+        //             this.activatePMConvo(targetCharName);
+        //         }
+        //         return "";
+        //     default:
+        //         throw new Error(`Unknown command: ${command}`);
+        // }
     }
 
     idleStateChanged() {
