@@ -1,4 +1,4 @@
-import { FListApi, FListApiImpl } from "../fchat/api/FListApi.js";
+import { FListApi } from "../fchat/api/FListApi.js";
 import { HostInteropApi } from "../fchat/api/HostInteropApi.js";
 import { AppSettings, RawSavedWindowLocation } from "../settings/AppSettings.js";
 import { ChannelName } from "../shared/ChannelName.js";
@@ -13,6 +13,7 @@ import { PromiseSource } from "../util/PromiseSource.js";
 import { UpdateCheckerClient, UpdateCheckerState } from "../util/UpdateCheckerClient.js";
 import { StdObservableCollectionChangeType } from "../util/collections/ReadOnlyStdObservableCollection.js";
 import { ActiveLoginViewModel } from "./ActiveLoginViewModel.js";
+import { ColorThemeViewModel } from "./ColorThemeViewModel.js";
 import { AlertOptions, AlertViewModel } from "./dialogs/AlertViewModel.js";
 import { AppInitializeViewModel } from "./dialogs/AppInitializeViewModel.js";
 import { DialogViewModel } from "./dialogs/DialogViewModel.js";
@@ -26,6 +27,7 @@ export class AppViewModel extends ObservableBase {
         super();
 
         this.configBlock = configBlock;
+        this.colorTheme = new ColorThemeViewModel(this);
 
         //this.flistApi = new FListApiImpl();
         this.flistApi = new HostInteropApi();
@@ -81,8 +83,9 @@ export class AppViewModel extends ObservableBase {
                 this.updateCheckerState = state;
             });
         })();
-        
     }
+
+    readonly colorTheme: ColorThemeViewModel;
 
     private _updateCheckerClient: UpdateCheckerClient | null = null;
 
