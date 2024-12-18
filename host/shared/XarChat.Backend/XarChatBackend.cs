@@ -138,7 +138,7 @@ namespace XarChat.Backend
             ConfigureServices(builder.Services);
 
             startupLogWriter("XarChatBackend.RunAsync - building app");
-            var app = builder.Build();
+            await using var app = builder.Build();
 
             _serviceProviderTCS.SetResult(app.Services);
 
@@ -253,6 +253,7 @@ namespace XarChat.Backend
                 var result = new CachingFListApiImpl(innerApi, localDataCache);
                 return result;
             });
+            services.AddSingleton<IFalsifiedClientTicketManager, FalsifiedClientTicketManager>();
 
             services.AddSingleton<ICommandLineOptions>(_commandLineOptions);
 

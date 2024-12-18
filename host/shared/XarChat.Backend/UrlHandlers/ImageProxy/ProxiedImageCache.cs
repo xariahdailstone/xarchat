@@ -72,7 +72,10 @@ namespace XarChat.Backend.UrlHandlers.ImageProxy
             _memoryCache = memoryCache;
 
             _cacheDirectory = Path.Combine(appDataFolder.GetAppDataFolder(), "imageproxycache");
-            CleanCacheDirectory();
+            Task.Run(() =>
+            {
+                CleanCacheDirectory(true);
+            });
         }
 
         public void Dispose()
@@ -80,7 +83,7 @@ namespace XarChat.Backend.UrlHandlers.ImageProxy
             if (!_disposeCTS.IsCancellationRequested)
             {
                 _disposeCTS.Cancel();
-				CleanCacheDirectory();
+				CleanCacheDirectory(false);
 			}
 		}
 
@@ -123,7 +126,7 @@ namespace XarChat.Backend.UrlHandlers.ImageProxy
                         {
 							var cfr = await createFuncAsync();
 
-                            var fn = Path.Combine(_cacheDirectory, $"{Interlocked.Increment(ref _nextPutId)}.dat");
+                            var fn = Path.Combine(_cacheDirectory, $"{_myRunGuid.ToString()}-{Interlocked.Increment(ref _nextPutId)}.dat");
                             using (var fs = File.Create(fn))
                             {
                                 await cfr.Data.CopyToAsync(fs);
@@ -205,22 +208,32 @@ namespace XarChat.Backend.UrlHandlers.ImageProxy
             }
 		}
 
+        private readonly Guid _myRunGuid = Guid.NewGuid();
         private int _nextPutId = 0;
 
-		private void CleanCacheDirectory()
+		private void CleanCacheDirectory(bool onlyMismatches)
 		{
 			if (!Directory.Exists(_cacheDirectory))
 			{
 				Directory.CreateDirectory(_cacheDirectory);
 			}
 
-            var deleteTasks = new List<Task>();
 			foreach (var fn in Directory.GetFiles(_cacheDirectory))
 			{
-                var tfn = fn;
-                deleteTasks.Add(Task.Run(async () =>
+                if (onlyMismatches && Path.GetFileName(fn).StartsWith(_myRunGuid.ToString()))
                 {
-                    try
+                    continue;
+                }
+
+                var tfn = fn;
+
+                try
+                {
+                    File.Delete(fn);
+                }
+                catch
+                {
+                    Task.Run(async () =>
                     {
                         int retriesRemaining = 10;
                         while (retriesRemaining > 0)
@@ -230,20 +243,15 @@ namespace XarChat.Backend.UrlHandlers.ImageProxy
                                 File.Delete(tfn);
                                 break;
                             }
-                            catch 
+                            catch
                             {
                                 retriesRemaining--;
-                                if (retriesRemaining > 0)
-                                {
-                                    await Task.Delay(100);
-                                }
+                                await Task.Delay(50);
                             }
-						}
-					}
-					catch { }
-                }));
+                        }
+                    });
+                }
 			}
-            Task.WhenAll(deleteTasks).GetAwaiter().GetResult();
 		}
 
         private record CacheEntryInfo(string Filename, Dictionary<string, string> Headers);

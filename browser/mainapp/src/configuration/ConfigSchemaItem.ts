@@ -2,7 +2,7 @@ export interface ConfigSchemaDefinition {
     settings: ConfigSchemaItemDefinition[];
 }
 
-export interface ConfigSchemaItemDefinitionNew {
+export interface ConfigSchemaItemDefinitionItem {
     id?: string;
     scope?: ConfigSchemaScopeType[];
     title: string;
@@ -11,6 +11,8 @@ export interface ConfigSchemaItemDefinitionNew {
     options?: ConfigSchemaOptionDefinition[];
     defaultValue: unknown;
     configBlockKey: string;
+    items?: ConfigSchemaItemDefinition[];
+    notYetImplemented?: boolean;
 }
 
 export interface ConfigSchemaItemDefinitionSection {
@@ -28,7 +30,7 @@ export interface ConfigSchemaOptionDefinition {
     value?: unknown;
 }
 
-export type ConfigSchemaItemDefinition = (ConfigSchemaItemDefinitionNew | ConfigSchemaItemDefinitionSection);
+export type ConfigSchemaItemDefinition = (ConfigSchemaItemDefinitionItem | ConfigSchemaItemDefinitionSection);
 
 export type ConfigSchemaItemType = "text" | "boolean" | "text[]" | "radio" | "timespan" | "color" | "color-hs";
 export type ConfigSchemaOptionItemType = "string" | "file";
@@ -39,6 +41,7 @@ export const ConfigSchema: ConfigSchemaDefinition = {
         {
             scope: [ "global", "char", "char.chan", "char.convo" ],
             sectionTitle: "General Settings",
+            description: "These settings are still under development!  Check back in future versions of XarChat!",
             items: [
                 {
                     id: "autoIdle",
@@ -47,7 +50,8 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     description: "Automatically change your status to Idle when your computer input is idle.",
                     type: "boolean",
                     defaultValue: true,
-                    configBlockKey: "autoIdle.enabled"
+                    configBlockKey: "autoIdle.enabled",
+                    notYetImplemented: true
                 },
                 {
                     id: "autoreconnect",
@@ -56,7 +60,8 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     description: "Automatically attempt to reconnect to chat when the connection is lost unexpectedly.",
                     type: "boolean",
                     defaultValue: true,
-                    configBlockKey: "autoReconnect"
+                    configBlockKey: "autoReconnect",
+                    notYetImplemented: true
                 },
                 {
                     id: "pingWords",
@@ -65,16 +70,18 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     description: "Words that will cause a message to get highlighted and generate a ping sound effect when seen in chat.",
                     type: "text[]",
                     defaultValue: [],
-                    configBlockKey: "pingWords"
+                    configBlockKey: "pingWords",
+                    notYetImplemented: true
                 },
                 {
                     id: "unseenIndicator",
                     scope: [ "global", "char", "char.chan" ],
                     title: "Show Unseen Messages Indicator",
                     description: "Show a white dot on channels where new unseen messages that do not include ping words have arrived.",
-                    type: "text[]",
+                    type: "boolean",
                     defaultValue: [],
-                    configBlockKey: "pingWords"
+                    configBlockKey: "pingWords",
+                    notYetImplemented: true
                 },
                 {
                     id: "checkForUpdates",
@@ -83,17 +90,19 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     description: "Check for new versions of XarChat when they are released.",
                     type: "boolean",
                     defaultValue: true,
-                    configBlockKey: "checkForUpdates"
+                    configBlockKey: "checkForUpdates",
+                    notYetImplemented: true
                 },
-                {
-                    id: "submitNewEIcons",
-                    scope: [ "global" ],
-                    title: "Submit New EIcons to xariah.net",
-                    description: "Send newly seen eicons to xariah.net's eicon search index.",
-                    type: "boolean",
-                    defaultValue: true,
-                    configBlockKey: "submitNewEIcons"
-                },
+                // {
+                //     id: "submitNewEIcons",
+                //     scope: [ "global" ],
+                //     title: "Submit New EIcons to xariah.net",
+                //     description: "Send newly seen eicons to xariah.net's eicon search index.",
+                //     type: "boolean",
+                //     defaultValue: true,
+                //     configBlockKey: "submitNewEIcons",
+                //     notYetImplemented: true
+                // },
             ]
         },
         {
@@ -107,7 +116,8 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     description: "Log chat to a local file.",
                     type: "boolean",
                     defaultValue: true,
-                    configBlockKey: "loggingEnabled"
+                    configBlockKey: "loggingEnabled",
+                    notYetImplemented: true
                 },
                 {
                     id: "retentionPeriod.chan",
@@ -116,7 +126,8 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     description: "How long to keep channel messages in the log file.",
                     type: "timespan",
                     defaultValue: 2160,  // 90 days * 24 hours
-                    configBlockKey: "loggingEnabled"
+                    configBlockKey: "loggingEnabled",
+                    notYetImplemented: true
                 },
                 {
                     id: "retentionPeriod.convo",
@@ -125,7 +136,8 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     description: "How long to keep private messages in the log file.",
                     type: "timespan",
                     defaultValue: 120000,  // 5000 days * 24 hours
-                    configBlockKey: "loggingEnabled"
+                    configBlockKey: "loggingEnabled",
+                    notYetImplemented: true
                 }
             ]
         },
@@ -157,12 +169,13 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                         },
                     ],
                     defaultValue: null,
-                    configBlockKey: "sound.event.connect"
+                    configBlockKey: "sound.event.connect",
+                    notYetImplemented: true
                 },
                 {
                     id: "sound.event.disconnect",
                     scope: [ "global", "char" ],
-                    title: "Connected",
+                    title: "Disconnected",
                     description: "Sound to play when a connection to chat is lost.",
                     type: "radio",
                     options: [
@@ -182,12 +195,13 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                         },
                     ],
                     defaultValue: null,
-                    configBlockKey: "sound.event.disconnect"
+                    configBlockKey: "sound.event.disconnect",
+                    notYetImplemented: true
                 },
                 {
                     id: "sound.event.pm",
                     scope: [ "global", "char", "char.convo" ],
-                    title: "Connected",
+                    title: "New Private Message",
                     description: "Sound to play when a new unseen private message is received.",
                     type: "radio",
                     options: [
@@ -207,12 +221,13 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                         },
                     ],
                     defaultValue: null,
-                    configBlockKey: "sound.event.pm"
+                    configBlockKey: "sound.event.pm",
+                    notYetImplemented: true
                 },
                 {
                     id: "sound.event.ping",
                     scope: [ "global", "char", "char.chan" ],
-                    title: "Connected",
+                    title: "Ping",
                     description: "Sound to play when a message containing a ping word is received.",
                     type: "radio",
                     options: [
@@ -232,7 +247,8 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                         },
                     ],
                     defaultValue: null,
-                    configBlockKey: "sound.event.ping"
+                    configBlockKey: "sound.event.ping",
+                    notYetImplemented: true
                 },
             ]
         },
@@ -242,70 +258,97 @@ export const ConfigSchema: ConfigSchemaDefinition = {
             description: "Choose colors for various parts of the XarChat interface.",
             items: [
                 {
+                    scope: [ "global" ],
                     id: "backgroundcolor",
                     title: "Background",
+                    description: "Background color throughout XarChat.",
                     type: "color-hs",
-                    defaultValue: [0, 0],
+                    defaultValue: "225;7",
                     configBlockKey: "bgColor"
                 },
                 {
+                    scope: [ "global" ],
                     sectionTitle: "Genders",
                     items: [
                         {
+                            scope: [ "global" ],
                             id: "gender.male",
                             title: "Male",
+                            description: "[Coming Soon]",
                             type: "color",
                             defaultValue: "#6699FF",
-                            configBlockKey: "color.gender.male"
+                            configBlockKey: "color.gender.male",
+                            notYetImplemented: true
                         },
                         {
+                            scope: [ "global" ],
                             id: "gender.female",
                             title: "Female",
+                            description: "[Coming Soon]",
                             type: "color",
                             defaultValue: "#FF6699",
-                            configBlockKey: "color.gender.female"
+                            configBlockKey: "color.gender.female",
+                            notYetImplemented: true
                         },
                         {
+                            scope: [ "global" ],
                             id: "gender.herm",
                             title: "Hermaphrodite",
+                            description: "[Coming Soon]",
                             type: "color",
                             defaultValue: "#9B30FF",
-                            configBlockKey: "color.gender.herm"
+                            configBlockKey: "color.gender.herm",
+                            notYetImplemented: true
                         },
                         {
+                            scope: [ "global" ],
                             id: "gender.male-herm",
                             title: "Male Hermaphrodite",
+                            description: "[Coming Soon]",
                             type: "color",
                             defaultValue: "#007FFF",
-                            configBlockKey: "color.gender.male-herm"
+                            configBlockKey: "color.gender.male-herm",
+                            notYetImplemented: true
                         },
                         {
+                            scope: [ "global" ],
                             id: "gender.shemale",
                             title: "Shemale",
+                            description: "[Coming Soon]",
                             type: "color",
                             defaultValue: "#CC66FF",
-                            configBlockKey: "color.gender.shemale"
+                            configBlockKey: "color.gender.shemale",
+                            notYetImplemented: true
                         },
                         {
+                            scope: [ "global" ],
                             id: "gender.cunt-boy",
                             title: "Cuntboy",
+                            description: "[Coming Soon]",
                             type: "color",
                             defaultValue: "#00CC66",
-                            configBlockKey: "color.gender.cunt-boy"
+                            configBlockKey: "color.gender.cunt-boy",
+                            notYetImplemented: true
                         },
                         {
+                            scope: [ "global" ],
                             id: "gender.transgender",
                             title: "Transgender",
+                            description: "[Coming Soon]",
                             type: "color",
                             defaultValue: "#EE8822",
-                            configBlockKey: "color.gender.transgender"
+                            configBlockKey: "color.gender.transgender",
+                            notYetImplemented: true
                         },
                         {
+                            scope: [ "global" ],
                             id: "gender.none",
                             title: "None",
+                            description: "[Coming Soon]",
                             type: "color",
                             defaultValue: "#FFFFBB",
-                            configBlockKey: "color.gender.none"
+                            configBlockKey: "color.gender.none",
+                            notYetImplemented: true
                         },
                     ]
                 }

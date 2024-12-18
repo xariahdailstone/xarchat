@@ -61,8 +61,6 @@ namespace XarChat.Backend.Features.EIconIndexing.XariahNet
 
         public async Task<IEIconInfoExtended?> GetEIconInfoExtendedAsync(string eiconName, CancellationToken cancellationToken)
         {
-            UpdateTimer();
-
             await _getEIconInfoExtendedSem.WaitAsync(cancellationToken);
             try
             {

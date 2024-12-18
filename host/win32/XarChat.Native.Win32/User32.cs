@@ -311,15 +311,16 @@ namespace XarChat.Native.Win32
 
         public static class StandardWindowMessages
         {
-            public const uint WM_CREATE = 0x1;
-            public const uint WM_DESTROY = 0x2;
-            public const uint WM_MOVE = 0x3;
-            public const uint WM_SIZE = 0x5;
-            public const uint WM_ACTIVATE = 0x6;
-            public const uint WM_CLOSE = 0x10;
+            public const uint WM_CREATE = 0x0001;
+            public const uint WM_DESTROY = 0x0002;
+            public const uint WM_MOVE = 0x0003;
+            public const uint WM_SIZE = 0x0005;
+            public const uint WM_ACTIVATE = 0x0006;
             public const uint WM_PAINT = 0x000F;
-			public const uint WM_SHOWWINDOW = 0x0018;
-            public const uint WM_NCLBUTTONDOWN = 0xA1;
+            public const uint WM_CLOSE = 0x0010;
+            public const uint WM_ERASEBKGND = 0x0014;
+            public const uint WM_SHOWWINDOW = 0x0018;
+            public const uint WM_NCLBUTTONDOWN = 0x00A1;
             public const uint WM_SIZING = 0x0214;
             public const uint WM_NCCALCSIZE = 0x0083;
             public const uint WM_SYSCOMMAND = 0x0112;

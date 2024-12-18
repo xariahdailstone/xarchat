@@ -123,47 +123,65 @@ export abstract class ChannelViewModel extends ObservableBase {
             new SlashCommandViewModel(
                 ["roll"],
                 "Roll Dice",
-                "Roll the specified dice."
+                "Roll the specified dice.",
+                ["!text"],
+                async (context, args) => {
+                    const diceSpec = args[0] as string;
+                    await this.performRollAsync(diceSpec);
+                }
             ),
             new SlashCommandViewModel(
                 ["bottle"],
                 "Spin the Bottle",
-                "Spin the bottle to select a random character in the channel."
+                "Spin the bottle to select a random character in the channel.",
+                [],
+                async (context, args) => {
+                    await this.performBottleSpinAsync();
+                }
             ),
             new SlashCommandViewModel(
                 ["clear"],
                 "Clear Tab",
-                "Clears existing messages out of the current tab."
+                "Clears existing messages out of the current tab.",
+                [],
+                async (context, args) => {
+                    this.clearMessages();
+                }
             ),
             new SlashCommandViewModel(
                 ["create"],
                 "Create New Channel",
-                "Creates and joins a new private channel with the specified name."
+                "Creates and joins a new private channel with the specified name.",
+                ["!text"],
+                async (context, args) => {
+                    const newChanName = args[0] as string;
+                    await this.createChannelAsync(newChanName);
+                }
             )
         ]
     }
 
     async processCommandInternalAsync(command: string): Promise<string> {
-        const spacePos = command.indexOf(' ');
-        const commandStr = spacePos != -1 ? command.substring(0, spacePos) : command;
-        const commandArgs = spacePos != -1 ? command.substring(spacePos + 1) : "";
-        switch (commandStr.toLowerCase()) {
-            case "roll":
-                this.performRollAsync(commandArgs);
-                return "";
-            case "bottle":
-                this.performBottleSpinAsync();
-                return "";
-            case "clear":
-                this.clearMessages();
-                return "";
-            case "create":
-                this.createChannelAsync(commandArgs);
-                return "";
-            default:
+        // const spacePos = command.indexOf(' ');
+        // const commandStr = spacePos != -1 ? command.substring(0, spacePos) : command;
+        // const commandArgs = spacePos != -1 ? command.substring(spacePos + 1) : "";
+        // switch (commandStr.toLowerCase()) {
+        //     case "roll":
+        //         this.performRollAsync(commandArgs);
+        //         return "";
+        //     case "bottle":
+        //         this.performBottleSpinAsync();
+        //         return "";
+        //     case "clear":
+        //         this.clearMessages();
+        //         return "";
+        //     case "create":
+        //         this.createChannelAsync(commandArgs);
+        //         return "";
+        //     default:
                 const sres = await this.activeLoginViewModel.processCommandAsync(this.textBoxContent.substring(1), this);
                 return sres;
-        }
+        //}
     }
 
     async createChannelAsync(newChannelTitle: string): Promise<void> {

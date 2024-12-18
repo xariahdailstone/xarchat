@@ -120,35 +120,45 @@ namespace XarChat.Backend.UrlHandlers.FListApiProxy
             });
             app.MapGet(urlBase + "{account}/ticket", async (
                 [FromRoute] string account,
+                [FromServices] IFalsifiedClientTicketManager fctm,
                 CancellationToken cancellationToken) =>
             {
                 var authApi = await flistApi.GetAlreadyAuthenticatedFListApiAsync(account, cancellationToken);
                 var resultWFC = await authApi.GetApiTicketAsync(cancellationToken);
-                return CustomResults.NewtonsoftJsonResult(resultWFC.Value, SourceGenerationContext.Default.ApiTicket);
-            });
-            app.MapPost(urlBase + "{account}/invalidateTicket", async (
-                HttpRequest request,
-                [FromRoute] string account,
-                CancellationToken cancellationToken) =>
-            {
-                var ticket = request.Form["ticket"].First()!.ToString();
 
-                var authApi = await flistApi.GetAlreadyAuthenticatedFListApiAsync(account, cancellationToken);
-                await authApi.InvalidateApiTicketAsync(ticket, cancellationToken);
-                var resultWFC = await authApi.GetApiTicketAsync(cancellationToken);
-                return CustomResults.NewtonsoftJsonResult(resultWFC.Value, SourceGenerationContext.Default.ApiTicket);
+                var resTicket = new ApiTicket()
+                {
+                    Bookmarks = resultWFC.Value.Bookmarks,
+                    Friends = resultWFC.Value.Friends,
+                    Characters = resultWFC.Value.Characters,
+                    DefaultCharacter = resultWFC.Value.DefaultCharacter,
+                    Ticket = fctm.GetFalsifiedClientTicket(account)
+                };
+                return CustomResults.NewtonsoftJsonResult(resTicket, SourceGenerationContext.Default.ApiTicket);
             });
-#if DEBUG
-            app.MapGet(urlBase + "{account}/breakTicket", async (
-                [FromRoute] string account,
-                CancellationToken cancellationToken) =>
-            {
-                var authApi = await flistApi.GetAlreadyAuthenticatedFListApiAsync(account, cancellationToken);
+//            app.MapPost(urlBase + "{account}/invalidateTicket", async (
+//                HttpRequest request,
+//                [FromRoute] string account,
+//                CancellationToken cancellationToken) =>
+//            {
+//                var ticket = request.Form["ticket"].First()!.ToString();
 
-                await authApi.DebugBreakTicketAsync(cancellationToken);
-                return CustomResults.NewtonsoftJsonResult(new JsonObject(), SourceGenerationContext.Default.JsonObject);
-            });
-#endif
+//                var authApi = await flistApi.GetAlreadyAuthenticatedFListApiAsync(account, cancellationToken);
+//                await authApi.InvalidateApiTicketAsync(ticket, cancellationToken);
+//                var resultWFC = await authApi.GetApiTicketAsync(cancellationToken);
+//                return CustomResults.NewtonsoftJsonResult(resultWFC.Value, SourceGenerationContext.Default.ApiTicket);
+//            });
+//#if DEBUG
+//            app.MapGet(urlBase + "{account}/breakTicket", async (
+//                [FromRoute] string account,
+//                CancellationToken cancellationToken) =>
+//            {
+//                var authApi = await flistApi.GetAlreadyAuthenticatedFListApiAsync(account, cancellationToken);
+
+//                await authApi.DebugBreakTicketAsync(cancellationToken);
+//                return CustomResults.NewtonsoftJsonResult(new JsonObject(), SourceGenerationContext.Default.JsonObject);
+//            });
+//#endif
         }
     }
 

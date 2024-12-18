@@ -20,13 +20,41 @@ using System.Web;
 using XarChatWin32WebView2.UI;
 using XarChat.Backend.Features.MemoryHinter;
 using WinRT;
+using XarChat.Backend.Features.AppConfiguration;
 
 namespace MinimalWin32Test.UI
 {
+    public struct ColorUtil
+    {
+        public ColorUtil(System.Drawing.Color color)
+        {
+            this.GdiColor = ((uint)color.B << 16) | ((uint)color.G << 8) | ((uint)color.R << 0);
+        }
+
+        public ColorUtil(uint gdiColor)
+        {
+            this.GdiColor = gdiColor;
+        }
+
+        public uint GdiColor { get; private set; }
+
+        public byte R => (byte)(GdiColor & 0xFF);
+
+        public byte G => (byte)((GdiColor & 0xFF00) >> 8);
+
+        public byte B => (byte)((GdiColor & 0xFF0000) >> 16);
+
+        public System.Drawing.Color SystemDrawingColor
+            => System.Drawing.Color.FromArgb(unchecked((int)(
+                ((uint)0xFF000000) |
+                (((uint)GdiColor & 0xFF0000) >> 16) |
+                (((uint)GdiColor & 0x00FF00) >> 0) |
+                (((uint)GdiColor & 0x0000FF) << 16)
+            )));
+    }
+
     public class BrowserWindow : WindowBase
     {
-        private const int TITLEBAR_COLOR = 0x282423;
-
         private static int _nextClassNum = 0;
         private WindowClass? _windowClass;
 
@@ -36,6 +64,8 @@ namespace MinimalWin32Test.UI
 
         private readonly ICommandLineOptions _commandLineOptions;
 
+        private readonly CancellationTokenSource _disposedCTS = new CancellationTokenSource();
+
         public BrowserWindow(MessageLoop app, XarChatBackend backend, IWindowControl wc, ICommandLineOptions clo)
         {
             _app = app;
@@ -43,6 +73,69 @@ namespace MinimalWin32Test.UI
             _wc = wc;
             _commandLineOptions = clo;
             //this.Bounds = new System.Drawing.Rectangle(100, 100, 640 * 2, 480 * 2);
+
+            Task.Run(async () =>
+            {
+                var cancellationToken = _disposedCTS.Token;
+
+                var ac = (await _backend.GetServiceProviderAsync()).GetRequiredService<IAppConfiguration>();
+                using var subscr = ac.OnValueChanged("global.bgColor", (value) =>
+                {
+                    try
+                    {
+                        string valStr;
+                        if (value == null)
+                        {
+                            valStr = "225;7";
+                        }
+                        else
+                        {
+                            valStr = value.ToString();
+                        }
+                        var parts = valStr.Split(';');
+                        var hue = Convert.ToDouble(parts[0]);
+                        var sat = Convert.ToDouble(parts[1]);
+                        var hsvColor = new HslColor(hue, sat, 15d, 255);
+                        _app.Post(() =>
+                        {
+                            this.TitlebarColor = hsvColor.ToColor();
+                        });
+                    }
+                    catch { }
+                }, true);
+                try
+                {
+                    await Task.Delay(-1, cancellationToken);
+                }
+                catch when (cancellationToken.IsCancellationRequested) { }
+            });
+        }
+
+        private ColorUtil _titlebarColor = new ColorUtil(0x282423);
+
+        public Color TitlebarColor
+        {
+            get => _titlebarColor.SystemDrawingColor;
+            set
+            {
+                if (value != _titlebarColor.SystemDrawingColor)
+                {
+                    _titlebarColor = new ColorUtil(value);
+                    OnTitlebarColorChanged();
+                }
+            }
+        }
+
+        private void OnTitlebarColorChanged()
+        {
+            if (this._webViewController is not null)
+            {
+                this._webViewController.DefaultBackgroundColor = _titlebarColor.SystemDrawingColor;
+            }
+            if (this.IsHandleCreated)
+            {
+                InvalidateRect(this.WindowHandle!.Handle, this.Bounds, true);
+            }
         }
 
         public void SetForegroundWindow()
@@ -58,7 +151,7 @@ namespace MinimalWin32Test.UI
         {
             if (_windowClass == null )
             {
-                var brush = Gdi32.CreateSolidBrush(TITLEBAR_COLOR);
+                var brush = Gdi32.CreateSolidBrush(_titlebarColor.GdiColor);
                 var mmName = Kernel32.GetMainModuleName();
                 var icon = Shell32.ExtractIcon(mmName, 0);
 
@@ -87,13 +180,17 @@ namespace MinimalWin32Test.UI
         internal const int BORDER_THICKNESS = 7;
         internal const int TOP_BORDER_THICKNESS = 6;
 
+        private bool _destroyed = false;
+
         protected override nint WndProc(WindowHandle windowHandle, uint msg, nuint wParam, nint lParam)
         {
             switch (msg)
             {
                 case User32.StandardWindowMessages.WM_DESTROY:
                 case User32.StandardWindowMessages.WM_CLOSE:
-                    User32.PostQuitMessage(0);
+                    _destroyed = true;
+                    _app.Breakout();
+                    //User32.PostQuitMessage(0);
                     break;
                 //case User32.StandardWindowMessages.WM_SIZING:
                 //    var targetRect = Marshal.PtrToStructure<RECT>(lParam);
@@ -129,11 +226,14 @@ namespace MinimalWin32Test.UI
                 //    }
                 //    break;
                 case User32.StandardWindowMessages.WM_SIZE:
-                    MaybeUpdateWindowState();
-                    MaybeUpdateWindowSize();
+                    if (_destroyed)
+                    {
+                        MaybeUpdateWindowState();
+                        MaybeUpdateWindowSize();
+                    }
                     break;
                 case User32.StandardWindowMessages.WM_MOVE:
-                    if (_webViewController != null)
+                    if (_webViewController != null && !_destroyed)
                     {
                         _webViewController.NotifyParentWindowPositionChanged();
                     }
@@ -184,8 +284,31 @@ namespace MinimalWin32Test.UI
                         }
                     }
                     break;
+                case User32.StandardWindowMessages.WM_ERASEBKGND:
+                    {
+                        if (OnEraseBackground(windowHandle, msg, wParam, lParam) > 0)
+                        {
+                            return 1;
+                        }
+                    }
+                    break;
             }
             return User32.DefWindowProc(windowHandle.Handle, msg, wParam, lParam);
+        }
+
+        private int OnEraseBackground(WindowHandle hwnd, uint msg, nuint wParam, nint lParam)
+        {
+            if (this.Bounds is not null)
+            {
+                using var hdcg = Graphics.FromHwnd(hwnd.Handle);
+                using var bgBrush = new SolidBrush(_titlebarColor.SystemDrawingColor);
+                hdcg.FillRectangle(bgBrush, new RectangleF(0, 0, this.Bounds!.Value.Width, this.Bounds.Value.Height));
+                return 1;
+            }
+            else
+            {
+                return 0;
+            }
         }
 
         private Size _lastNotifiedClientSize = new Size(0, 0);
@@ -193,7 +316,7 @@ namespace MinimalWin32Test.UI
 
         protected virtual void OnWindowDeactivated()
         {
-            _webViewMemManager?.SetLow(TimeSpan.FromSeconds(5));
+            //_webViewMemManager?.SetLow(TimeSpan.FromSeconds(5));
         }
 
         protected virtual void OnWindowActivated()
@@ -203,7 +326,7 @@ namespace MinimalWin32Test.UI
 
         private void MaybeUpdateWindowSize()
         {
-            if (_webView != null && _appReady)
+            if (_webView != null && _appReady && !_destroyed)
             {
                 var clientRect = this.WindowHandle.ClientRect;
                 if (clientRect.Width != _lastNotifiedClientSize.Width || clientRect.Height != _lastNotifiedClientSize.Height)
@@ -356,8 +479,7 @@ namespace MinimalWin32Test.UI
 
                 WriteToStartupLog("BrowserWindow.OnHandleCreated - Creating CoreWebView2Controller");
                 _webViewController = await cenv.CreateCoreWebView2ControllerAsync(this.WindowHandle.Handle);
-                _webViewController.DefaultBackgroundColor = System.Drawing.Color.FromArgb(
-                    (TITLEBAR_COLOR & 0x0000ff), (TITLEBAR_COLOR & 0x00ff00) >> 8, (TITLEBAR_COLOR & 0xff0000) >> 16);
+                _webViewController.DefaultBackgroundColor = _titlebarColor.SystemDrawingColor;
                 _webView = _webViewController.CoreWebView2;
                 _webView.ServerCertificateErrorDetected += _webView_ServerCertificateErrorDetected;
                 _webView.ContextMenuRequested += _webView_ContextMenuRequested;
