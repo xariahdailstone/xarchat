@@ -5,10 +5,11 @@ using XarChat.Backend.Common;
 using System.Text.Json.Serialization;
 using System.Collections.Immutable;
 using System.Text.Json.Nodes;
+using System.Threading;
 
 namespace XarChat.Backend.Features.AppConfiguration.Impl
 {
-    public class AppConfigurationImpl : IAppConfiguration
+    public class AppConfigurationImpl : IAppConfiguration, IDisposable
     {
         private readonly IAppDataFolder _appDataFolder;
         private readonly ICommandLineOptions _commandLineOptions;
@@ -42,6 +43,31 @@ namespace XarChat.Backend.Features.AppConfiguration.Impl
 
             _watcher = InitializeFileWatcher(_filename);
             LoadAppConfigJson();
+        }
+
+        public void Dispose()
+        {
+            Func<Task>? timerAction = null;
+            _dataSem.Wait();
+            try
+            {
+                if (_timer != null && _timerAction != null)
+                {
+                    timerAction = _timerAction;
+                    _timer.Dispose();
+                    _timer = null;
+                    _timerAction = null;
+                }
+            }
+            finally
+            {
+                _dataSem.Release();
+            }
+
+            if (timerAction != null)
+            {
+                timerAction().GetAwaiter().GetResult();
+            }
         }
 
         private FileSystemWatcher InitializeFileWatcher(string filename)
@@ -153,7 +179,7 @@ namespace XarChat.Backend.Features.AppConfiguration.Impl
         private readonly Dictionary<object, Action<string, JsonValue>> _valueChangedCallbacks
             = new Dictionary<object, Action<string, JsonValue>>();
 
-        public IDisposable OnValueChanged(Action<string, JsonValue> callback)
+        public IDisposable OnValueChanged(Action<string, JsonValue?> callback)
         {
             var myKey = new object();
             lock (_valueChangedCallbacks)
@@ -170,36 +196,91 @@ namespace XarChat.Backend.Features.AppConfiguration.Impl
             });
         }
 
+        public IDisposable OnValueChanged(string watchKey, Action<JsonValue?> callback, bool fireImmediately)
+        {
+            var res = this.OnValueChanged((key, value) =>
+            {
+                if (String.Equals(key, watchKey, StringComparison.OrdinalIgnoreCase))
+                {
+                    callback(value);
+                }
+            });
+            if (fireImmediately)
+            {
+                if (_appConfigData.TryGetValue(watchKey, out var value))
+                {
+                    callback(value);
+                }
+                else
+                {
+                    callback(null);
+                }
+            }
+            return res;
+        }
+
+        private System.Threading.Timer? _timer = null;
+        private Func<Task>? _timerAction = null;
+
         private async Task WriteAppConfigJsonAsync(CancellationToken cancellationToken)
         {
-            try
+            if (_timer == null)
             {
-                var tmpFn = _filename + ".tmp";
-                var oldFn = _filename + ".old";
-
-                if (File.Exists(tmpFn))
+                _timerAction = async () =>
                 {
-                    File.Delete(tmpFn);
-                }
-                if (File.Exists(oldFn))
-                {
-                    File.Delete(oldFn);
-                }
+                    await _dataSem.WaitAsync(cancellationToken);
+                    try
+                    {
+                        _timer?.Dispose();
+                        _timer = null;
 
-                using (var f = File.Create(tmpFn))
-                {
-                    using var jw = new Utf8JsonWriter(f);
-                    JsonUtilities.Serialize(jw, _appConfigData!, SourceGenerationContext.Default.IImmutableDictionaryStringJsonValue);
-                }
+                        System.Diagnostics.Debug.WriteLine($"writing config.json {DateTime.UtcNow}");
 
-                File.Move(_filename, oldFn);
-                File.Move(tmpFn, _filename);
-                File.Delete(oldFn);
+                        _watcher.EnableRaisingEvents = false;
+                        try
+                        {
+                            var tmpFn = _filename + ".tmp";
+                            var oldFn = _filename + ".old";
+
+                            if (File.Exists(tmpFn))
+                            {
+                                File.Delete(tmpFn);
+                            }
+                            if (File.Exists(oldFn))
+                            {
+                                File.Delete(oldFn);
+                            }
+
+                            using (var f = File.Create(tmpFn))
+                            {
+                                using var jw = new Utf8JsonWriter(f, new JsonWriterOptions() { Indented = true });
+                                JsonUtilities.Serialize(jw, _appConfigData!, SourceGenerationContext.Default.IImmutableDictionaryStringJsonValue);
+                            }
+
+                            File.Move(_filename, oldFn);
+                            File.Move(tmpFn, _filename);
+                            File.Delete(oldFn);
+                        }
+                        catch
+                        {
+
+                        }
+                        finally
+                        {
+                            _watcher.EnableRaisingEvents = true;
+                        }
+                    }
+                    finally
+                    {
+                        _dataSem.Release();
+                    }
+                };
+                _timer = new Timer((_) =>
+                {
+                    _timerAction?.Invoke();
+                });
             }
-            catch
-            {
-
-            }
+            _timer.Change(TimeSpan.FromSeconds(1), Timeout.InfiniteTimeSpan);
         }
 
 
@@ -274,24 +355,23 @@ namespace XarChat.Backend.Features.AppConfiguration.Impl
             }
         }
 
-        public async Task SetArbitraryValueAsync(string key, JsonValue value, CancellationToken cancellationToken)
+        public async Task SetArbitraryValueAsync(string key, JsonValue? value, CancellationToken cancellationToken)
         {
             await _dataSem.WaitAsync(cancellationToken);
             try
             {
-                _watcher.EnableRaisingEvents = false;
-                try
+                if (!_appConfigData.TryGetValue(key, out var existingValue) || existingValue != value)
                 {
-                    if (!_appConfigData.TryGetValue(key, out var existingValue) || existingValue != value)
+                    if (value is null || value.GetValueKind() == JsonValueKind.Null)
+                    {
+                        _appConfigData = _appConfigData.Remove(key);
+                    }
+                    else
                     {
                         _appConfigData = _appConfigData.SetItem(key, value);
-                        TriggerChange(key, value);
-                        await WriteAppConfigJsonAsync(CancellationToken.None);
                     }
-                }
-                finally
-                {
-                    _watcher.EnableRaisingEvents = true;
+                    TriggerChange(key, value);
+                    await WriteAppConfigJsonAsync(CancellationToken.None);
                 }
             }
             finally

@@ -5,6 +5,9 @@ export class ColorThemeViewModel {
         public readonly appViewModel: AppViewModel) {
 
         appViewModel.configBlock.observe("global.bgColor", (v: string) => {
+            if (!v) {
+                v = "225;7";
+            }
             const parts = v.split(';');
             const hue = +parts[0];
             const sat = +parts[1];

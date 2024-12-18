@@ -83,7 +83,7 @@ async function preparePreviewTooltipAsync(context: BBCodeParseContext, el: HTMLE
 
 export const BBCodeTagUrl = new BBCodeTag("url", true, true, (context, arg, content) => {
     const contentText = getContentText(content);
-    const linkUrl = arg ? arg : contentText;
+    const linkUrl = (arg ? arg : contentText)?.trim();
 
     let u: URL | null = null;
     try {
@@ -105,7 +105,7 @@ export const BBCodeTagUrl = new BBCodeTag("url", true, true, (context, arg, cont
             ];
         }
 
-        el = EL("a", { class: "bbcode-url", href: arg, "data-copyprefix": content.rawOpenTag, "data-copysuffix": content.rawCloseTag, "tabindex": "-1" }, [
+        el = EL("a", { class: "bbcode-url", href: arg.trim(), "data-copyprefix": content.rawOpenTag, "data-copysuffix": content.rawCloseTag, "tabindex": "-1" }, [
             EL("div", {
                 class: "bbcode-url-icon",
                 "data-copycontent": ""
@@ -114,7 +114,7 @@ export const BBCodeTagUrl = new BBCodeTag("url", true, true, (context, arg, cont
         ]);
     }
     else {
-        el = EL("a", { class: "bbcode-url", href: contentText, "data-copycontent": `[url]${contentText}[/url]`, "tabindex": "-1" }, [
+        el = EL("a", { class: "bbcode-url", href: contentText.trim(), "data-copycontent": `[url]${contentText}[/url]`, "tabindex": "-1" }, [
             EL("div", {
                 class: "bbcode-url-icon",
                 "data-copycontent": ""

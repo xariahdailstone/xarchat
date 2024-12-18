@@ -79,24 +79,30 @@ namespace MinimalWin32Test.UI
                 var cancellationToken = _disposedCTS.Token;
 
                 var ac = (await _backend.GetServiceProviderAsync()).GetRequiredService<IAppConfiguration>();
-                using var subscr = ac.OnValueChanged((key, value) =>
+                using var subscr = ac.OnValueChanged("global.bgColor", (value) =>
                 {
                     try
                     {
-                        if (String.Equals(key, "global.bgColor"))
+                        string valStr;
+                        if (value == null)
                         {
-                            var parts = value.ToString().Split(';');
-                            var hue = Convert.ToDouble(parts[0]);
-                            var sat = Convert.ToDouble(parts[1]);
-                            var hsvColor = new HslColor(hue, sat, 15d, 255);
-                            _app.Post(() =>
-                            {
-                                this.TitlebarColor = hsvColor.ToColor();
-                            });
+                            valStr = "225;7";
                         }
+                        else
+                        {
+                            valStr = value.ToString();
+                        }
+                        var parts = valStr.Split(';');
+                        var hue = Convert.ToDouble(parts[0]);
+                        var sat = Convert.ToDouble(parts[1]);
+                        var hsvColor = new HslColor(hue, sat, 15d, 255);
+                        _app.Post(() =>
+                        {
+                            this.TitlebarColor = hsvColor.ToColor();
+                        });
                     }
                     catch { }
-                });
+                }, true);
                 try
                 {
                     await Task.Delay(-1, cancellationToken);
@@ -174,13 +180,17 @@ namespace MinimalWin32Test.UI
         internal const int BORDER_THICKNESS = 7;
         internal const int TOP_BORDER_THICKNESS = 6;
 
+        private bool _destroyed = false;
+
         protected override nint WndProc(WindowHandle windowHandle, uint msg, nuint wParam, nint lParam)
         {
             switch (msg)
             {
                 case User32.StandardWindowMessages.WM_DESTROY:
                 case User32.StandardWindowMessages.WM_CLOSE:
-                    User32.PostQuitMessage(0);
+                    _destroyed = true;
+                    _app.Breakout();
+                    //User32.PostQuitMessage(0);
                     break;
                 //case User32.StandardWindowMessages.WM_SIZING:
                 //    var targetRect = Marshal.PtrToStructure<RECT>(lParam);
@@ -216,11 +226,14 @@ namespace MinimalWin32Test.UI
                 //    }
                 //    break;
                 case User32.StandardWindowMessages.WM_SIZE:
-                    MaybeUpdateWindowState();
-                    MaybeUpdateWindowSize();
+                    if (_destroyed)
+                    {
+                        MaybeUpdateWindowState();
+                        MaybeUpdateWindowSize();
+                    }
                     break;
                 case User32.StandardWindowMessages.WM_MOVE:
-                    if (_webViewController != null)
+                    if (_webViewController != null && !_destroyed)
                     {
                         _webViewController.NotifyParentWindowPositionChanged();
                     }
@@ -313,7 +326,7 @@ namespace MinimalWin32Test.UI
 
         private void MaybeUpdateWindowSize()
         {
-            if (_webView != null && _appReady)
+            if (_webView != null && _appReady && !_destroyed)
             {
                 var clientRect = this.WindowHandle.ClientRect;
                 if (clientRect.Width != _lastNotifiedClientSize.Width || clientRect.Height != _lastNotifiedClientSize.Height)

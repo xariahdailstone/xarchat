@@ -1,11 +1,15 @@
+import { ConfigSchema, ConfigSchemaDefinition, ConfigSchemaItemDefinition, ConfigSchemaItemDefinitionItem, ConfigSchemaItemDefinitionSection, ConfigSchemaItemType, ConfigSchemaScopeType } from "../../configuration/ConfigSchemaItem";
 import { ChannelName } from "../../shared/ChannelName";
+import { CharacterName } from "../../shared/CharacterName";
 import { IterableUtils } from "../../util/IterableUtils";
 import { ObservableValue } from "../../util/Observable";
 import { ObservableBase, observableProperty, observablePropertyExt } from "../../util/ObservableBase";
 import { Collection } from "../../util/ObservableCollection";
 import { ActiveLoginViewModel } from "../ActiveLoginViewModel";
 import { AppViewModel } from "../AppViewModel";
+import { ChannelViewModel } from "../ChannelViewModel";
 import { ChatChannelViewModel } from "../ChatChannelViewModel";
+import { PMConvoChannelViewModel } from "../PMConvoChannelViewModel";
 import { DialogViewModel } from "./DialogViewModel";
 
 interface InitializationOptions {
@@ -31,110 +35,35 @@ interface InitializationGroupOptions {
 }
 
 export class SettingsDialogViewModel extends DialogViewModel<number> {
-    constructor(parent: AppViewModel, session?: ActiveLoginViewModel, channel?: ChatChannelViewModel) {
+    constructor(parent: AppViewModel, 
+        private readonly session?: ActiveLoginViewModel, 
+        private readonly channel?: ChannelViewModel) {
+
         super(parent);
+        this.schemaDefinition = ConfigSchema;
 
         this.closeBoxResult = 0;
         this.title = "";
-        this.initialize([
-            {
-                title: "Global",
-                type: "standard",
-                settings: [
-                    {
-                        title: "Sound",
-                        type: "group",
-                        description: "Control sound settings for XarChat",
-                        settings: [
-                            {
-                                title: "Sound Enabled",
-                                type: "boolean",
-                                description: "Controls whether XarChat plays sounds or not.",
-                                getValue() { return true; },
-                                setValue(value: boolean) { }
-                            }
-                        ]
-                    }
-                ]
-            },
-            !session ? null : {
-                title: session.characterName.value,
-                type: "standard",
-                settings: [
-                    {
-                        title: "Auto Idle",
-                        type: "group",
-                        description: `XarChat can automatically change your online status to Idle and Away when you are away or when you lock
-                                        your computer.`,
-                        settings: [
-                            {
-                                title: "Automatically Set Idle",
-                                type: "timespan",
-                                allowNull: true,
-                                description: "Set your online status to Idle when your mouse and keyboard are idle for a length of time.",
-                                getValue() { return true; },
-                                setValue(value: boolean) {}
-                            },
-                            {
-                                title: "Automatically Set Away",
-                                type: "boolean",
-                                description: "Set your online status to Away when you lock your computer.",
-                                getValue() { return true; },
-                                setValue(value: boolean) {}
-                            }
-                        ]
-                    },
-                    {
-                        title: "Highlight Words",
-                        type: "text-list",
-                        description: "If any of these appear in a message, the message will be highlighted and an alert will light up on the channel.",
-                        getValue() { return [] },
-                        setValue(value: string[]) {}
-                    }
-                ]
-            },
-            !channel ? null : {
-                title: channel.title,
-                type: "standard",
-                settings: []
-            }
-        ]);
+        this.initializeTabs();
     }
 
-    private initialize(options: (InitializationOptions | null)[]) {
-        for (let tabOptions of IterableUtils.asQueryable(options).where(x => x != null).select(x => x!)) {
-            const vm = new SettingsDialogStandardTabViewModel(this, tabOptions.title);
-            this.initializeSettings(vm, tabOptions.settings);
-            this.tabs.push(vm);
+    readonly schemaDefinition: ConfigSchemaDefinition;
+
+    private initializeTabs() {
+        this.tabs.push(new GlobalSettingsDialogTabViewModel(this));
+        if (this.session) {
+            this.tabs.push(new SessionSettingsDialogTabViewModel(this, this.session));
         }
+        if (this.channel) {
+            if (this.channel instanceof ChatChannelViewModel) {
+                this.tabs.push(new ChannelSettingsDialogTabViewModel(this, this.channel));
+            }
+            else if (this.channel instanceof PMConvoChannelViewModel) {
+                this.tabs.push(new PMConvoSettingsDialogTabViewModel(this, this.channel));
+            }
+        }
+
         this.selectedTab = IterableUtils.asQueryable(this.tabs).first();
-    }
-
-    private initializeSettings(vm: HasSettings, settings?: (InitializationSettingOptions | InitializationGroupOptions | null)[]) {
-        if (!settings) { return; }
-        for (let setting of settings) {
-            if (!setting) {
-                continue;
-            }
-
-            let settingvm: SettingsDialogSettingViewModel | null = null;
-            switch (setting.type) {
-                case "text":
-                    settingvm = new SettingsDialogStringSettingViewModel(setting.title, setting.description, "test");
-                    break;
-                case "group":
-                    const gsettingvm = new SettingsDialogGroupSettingViewModel(setting.title, setting.description);
-                    this.initializeSettings(gsettingvm, (setting as InitializationGroupOptions).settings);
-                    settingvm = gsettingvm;
-                    break;
-                default:
-                    settingvm = new SettingsDialogStringSettingViewModel(setting.title, setting.description, "TODO");
-                    break;
-            }
-            if (settingvm) {
-                vm.settings.push(settingvm);
-            }
-        }
     }
 
     @observableProperty
@@ -144,18 +73,72 @@ export class SettingsDialogViewModel extends DialogViewModel<number> {
     selectedTab: (SettingsDialogTabViewModel | null) = null;
 }
 
-export abstract class SettingsDialogTabViewModel extends ObservableBase {
-    constructor(parent: SettingsDialogViewModel, tabTitle: string) {
+export abstract class SettingsDialogSettingViewModel extends ObservableBase {
+    constructor(
+        private readonly itemDefinition: ConfigSchemaItemDefinition, 
+        public readonly scope: ScopeData) {
+
         super();
-        this.parent = parent;
-        this.tabTitle = tabTitle;
+        this.prepareSettings(itemDefinition.items, this.settings);
     }
 
-    @observableProperty
-    readonly parent: SettingsDialogViewModel;
+    get isDisabled(): boolean {
+        return ((this.itemDefinition as any).notYetImplemented != null);
+    }
+
+    get title(): string { return (this.itemDefinition as any).sectionTitle ?? (this.itemDefinition as any).title }
+
+    get description(): string | undefined { return this.itemDefinition.description; }
 
     @observableProperty
-    tabTitle: string;
+    readonly settings: Collection<SettingsDialogSettingViewModel> = new Collection<SettingsDialogSettingViewModel>();
+
+    protected prepareSettings(source: ConfigSchemaItemDefinition[] | null | undefined, target: Collection<SettingsDialogSettingViewModel>) {
+        if (source) {
+            for (let x of source) {
+                if (x.scope && x.scope.includes(this.scope.scopeString)) {
+                    this.settings.add(this.includeSetting(x, target));
+                }
+            }
+        }
+    }
+
+    private includeSetting(sourceItem: ConfigSchemaItemDefinition, target: Collection<SettingsDialogSettingViewModel>): SettingsDialogSettingViewModel {
+        // const subList = new Collection<SettingsDialogSettingViewModel>();
+        // if (sourceItem.items) {
+        //     this.prepareSettings(sourceItem.items, subList);
+        // }
+
+        let vm: SettingsDialogSettingViewModel;
+        if ((sourceItem as any).sectionTitle) {
+            vm = this.createSection(sourceItem as ConfigSchemaItemDefinitionSection);
+        }
+        else {
+            vm = this.createItem(sourceItem as ConfigSchemaItemDefinitionItem);
+        }
+        return vm;
+    }
+
+    private createSection(item: ConfigSchemaItemDefinitionSection): SettingsDialogSectionViewModel {
+        const res = new SettingsDialogSectionViewModel(item, this.scope);
+        return res;
+    }
+
+    private createItem(item: ConfigSchemaItemDefinitionItem): SettingsDialogItemViewModel {
+        const res = new SettingsDialogItemViewModel(item, this.scope);
+        return res;
+    }
+}
+
+export abstract class SettingsDialogTabViewModel extends SettingsDialogSettingViewModel {
+    constructor(
+        public readonly parent: SettingsDialogViewModel, tabTitle: string, scope: ScopeData) {
+
+        super({ sectionTitle: tabTitle, items: parent.schemaDefinition.settings }, scope);
+        this.parent = parent;
+    }
+
+    get tabTitle(): string { return this.title; }
 
     select() {
         console.log("selecting tab", this.tabTitle);
@@ -163,50 +146,135 @@ export abstract class SettingsDialogTabViewModel extends ObservableBase {
     }
 }
 
-interface HasSettings {
-    readonly settings: Collection<SettingsDialogSettingViewModel>;
+class GlobalSettingsDialogTabViewModel extends SettingsDialogTabViewModel {
+    constructor(parent: SettingsDialogViewModel) {
+        super(parent, "Global", new ScopeData(parent.parent));
+    }
 }
 
-export class SettingsDialogStandardTabViewModel extends SettingsDialogTabViewModel implements HasSettings {
-    constructor(parent: SettingsDialogViewModel, tabTitle: string) {
-        super(parent, tabTitle);
+class SessionSettingsDialogTabViewModel extends SettingsDialogTabViewModel {
+    constructor(parent: SettingsDialogViewModel, session: ActiveLoginViewModel) {
+        super(parent, session.characterName.value, new ScopeData(parent.parent, session.characterName));
     }
+}
 
-    @observableProperty
-    readonly settings: Collection<SettingsDialogSettingViewModel> = new Collection<SettingsDialogSettingViewModel>();
+class ChannelSettingsDialogTabViewModel extends SettingsDialogTabViewModel {
+    constructor(parent: SettingsDialogViewModel, channel: ChatChannelViewModel) {
+        super(parent, channel.title, new ScopeData(parent.parent, channel.activeLoginViewModel.characterName, channel.name));
+    }
+}
+
+class PMConvoSettingsDialogTabViewModel extends SettingsDialogTabViewModel {
+    constructor(parent: SettingsDialogViewModel, convo: PMConvoChannelViewModel) {
+        super(parent, convo.character.value, new ScopeData(parent.parent, convo.activeLoginViewModel.characterName, undefined, convo.character));
+    }
 }
 
 
 
-export abstract class SettingsDialogSettingViewModel extends ObservableBase {
-    constructor(title: string, description: string) {
-        super();
-        this.title = title;
-        this.description = description;
+export class SettingsDialogSectionViewModel extends SettingsDialogSettingViewModel  {
+    constructor(
+        item: ConfigSchemaItemDefinitionSection,
+        scope: ScopeData) {
+        
+        super(item, scope);
+        this.schema = item;
     }
 
-    @observableProperty
-    title: string;
-
-    @observableProperty
-    description: string;
+    readonly schema: ConfigSchemaItemDefinitionSection;
 }
 
-export class SettingsDialogGroupSettingViewModel extends SettingsDialogSettingViewModel implements HasSettings {
-    constructor(title: string, description: string) {
-        super(title, description);
+export class SettingsDialogItemViewModel extends SettingsDialogSettingViewModel {
+    constructor(
+        item: ConfigSchemaItemDefinitionItem,
+        scope: ScopeData) {
+            
+        super(item, scope);
+        this.schema = item;
     }
 
-    @observableProperty
-    readonly settings: Collection<SettingsDialogSettingViewModel> = new Collection<SettingsDialogSettingViewModel>();
+    readonly schema: ConfigSchemaItemDefinitionItem;
+
+    private getAppConfigKey(): string {
+        let prefix: string;
+        switch (this.scope.scopeString) {
+            case "global":
+                prefix = "global";
+                break;
+            case "char":
+                prefix = `character.${this.scope.myCharacter!.canonicalValue}.any`;
+                break;
+            case "char.chan":
+                prefix = `character.${this.scope.myCharacter!.canonicalValue}.channel.${this.scope.targetChannel!.canonicalValue}`;
+                break;
+            case "char.convo":
+                prefix = `character.${this.scope.myCharacter!.canonicalValue}.pm.${this.scope.pmConvoCharacter!.canonicalValue}`;
+                break;
+            default:
+                throw new Error(`unknown scope string: ${this.scope.scopeString}`);
+        }
+
+        return `${prefix}.${this.schema.configBlockKey}`;
+    }
+
+    get value(): any { 
+        const k = this.getAppConfigKey();
+        const result = this.scope.appViewModel.configBlock.getWithDefault(k, this.schema.defaultValue);
+        return result;
+    }
+
+    set value(value: any) {
+        const k = this.getAppConfigKey();
+        if (value === undefined || value === null) {
+            this.scope.appViewModel.configBlock.set(k, null);
+        }
+        else {
+            switch (this.schema.type) {
+                case "color":
+                case "color-hs":
+                    this.assignStringValue(value);
+                    break;
+                case "boolean":
+                    this.assignBooleanValue(!!value);
+                    break;
+                default:
+                    console.log(`don't know how to assign ${this.schema.type}`);
+            }
+        }
+    }
+
+    private assignStringValue(value: string) {
+        const k = this.getAppConfigKey();
+        this.scope.appViewModel.configBlock.set(k, value);
+    }
+
+    private assignBooleanValue(value: boolean) {
+        const k = this.getAppConfigKey();
+        this.scope.appViewModel.configBlock.set(k, !!value);
+    }
 }
 
-export class SettingsDialogStringSettingViewModel extends SettingsDialogSettingViewModel {
-    constructor(title: string, description: string, value: string) {
-        super(title, description);
-        this.value = value;
+class ScopeData {
+    constructor(
+        public readonly appViewModel: AppViewModel,
+        public readonly myCharacter?: CharacterName,
+        public readonly targetChannel?: ChannelName,
+        public readonly pmConvoCharacter?: CharacterName
+    ) {
     }
 
-    @observableProperty
-    value: string;
+    get scopeString(): ConfigSchemaScopeType {
+        if (this.myCharacter == null) {
+            return "global";
+        }
+        else if (this.targetChannel != null) {
+            return "char.chan";
+        }
+        else if (this.pmConvoCharacter != null) {
+            return "char.convo";
+        }
+        else {
+            return "char";
+        }
+    }
 }
