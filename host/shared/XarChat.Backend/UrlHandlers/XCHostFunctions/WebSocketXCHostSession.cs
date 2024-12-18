@@ -566,7 +566,7 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions
             await appConfig.SetArbitraryValueAsync(key, value, cancellationToken);
         }
 
-        private void ConfigDataChanged(string key, JsonValue value)
+        private void ConfigDataChanged(string key, JsonValue? value)
         {
             _ = this.WriteAsync("configchange " + JsonUtilities.Serialize(new ConfigKeyValue()
             {
@@ -891,7 +891,7 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions
             public string Key { get; set; }
 
             [JsonPropertyName("value")]
-            public JsonValue Value { get; set; }
+            public JsonValue? Value { get; set; }
         }
 
         public class GetAllCssArgs

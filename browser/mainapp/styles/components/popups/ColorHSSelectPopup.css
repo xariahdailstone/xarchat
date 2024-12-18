@@ -1,0 +1,17 @@
+.imgcontainer {
+    position: relative;
+    padding: 0;
+    margin: 0;
+}
+
+.circle-img {
+    z-index: 1;
+}
+
+.selection-dot {
+    background: black;
+    border: 1px solid white;
+    position: absolute;
+    z-index: 2;
+    pointer-events: none;
+}

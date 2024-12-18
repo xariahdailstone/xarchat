@@ -27,8 +27,10 @@ namespace XarChat.Backend.Features.AppConfiguration
 
         JsonValue GetArbitraryValue(string key);
 
-        Task SetArbitraryValueAsync(string key, JsonValue value, CancellationToken cancellationToken);
+        Task SetArbitraryValueAsync(string key, JsonValue? value, CancellationToken cancellationToken);
 
-        IDisposable OnValueChanged(Action<string, JsonValue> callback);
+        IDisposable OnValueChanged(Action<string, JsonValue?> callback);
+
+        IDisposable OnValueChanged(string watchKey, Action<JsonValue?> callback, bool fireImmediately);
     }
 }

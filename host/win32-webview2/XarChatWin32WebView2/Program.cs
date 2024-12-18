@@ -35,6 +35,7 @@ namespace MinimalWin32Test
 
             var writeStartupLog = (string message) => { try { startupLogWriter.WriteLine(message); } catch { } };
 
+            var appRan = false;
             try
             {
                 writeStartupLog($"XarChat {AssemblyVersionInfo.XarChatVersion}-{AssemblyVersionInfo.XarChatBranch} starting up...");
@@ -142,6 +143,13 @@ namespace MinimalWin32Test
                 }
 
                 var exitCode = app.Run();
+                appRan = true;
+
+                System.Threading.Timer t = new System.Threading.Timer((_) =>
+                {
+                    Environment.Exit(exitCode);
+                });
+                t.Change(TimeSpan.FromSeconds(5), Timeout.InfiniteTimeSpan);
 
                 stopCTS.Cancel();
 
@@ -162,9 +170,12 @@ namespace MinimalWin32Test
             }
             catch (Exception ex)
             {
-                writeStartupLog("Initialization failed: " + ex.ToString());
-                var err = $"Failed to initialize backend. Please see this file for more details:\r\n\r\n" + startupLogFile;
-                User32.MessageBox(0, err, "XarChat initialization failed");
+                if (!appRan)
+                {
+                    writeStartupLog("Initialization failed: " + ex.ToString());
+                    var err = $"Failed to initialize backend. Please see this file for more details:\r\n\r\n" + startupLogFile;
+                    User32.MessageBox(0, err, "XarChat initialization failed");
+                }
                 return 1;
             }
         }

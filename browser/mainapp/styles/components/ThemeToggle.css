@@ -1,0 +1,63 @@
+
+:host {
+    display: block;
+    user-select: none;
+}
+
+* { box-sizing: border-box; }
+
+#elMain {
+    display: contents;
+    user-select: none;
+}
+
+.cb-container {
+    --cb-height: 20px;
+    --cb-padding: 4px;
+
+    display: grid;
+    grid-template-rows: auto;
+    grid-template-columns: 0fr auto 1fr;
+    grid-template-areas: ". dot .";
+
+    background-color: rgba(0, 0, 0, 0.3);
+    padding: var(--cb-padding) var(--cb-padding);
+    border-radius: calc(var(--cb-height) / 2);
+
+    width: 40px;
+    height: var(--cb-height);
+    line-height: 0;
+
+    cursor: pointer;
+
+    transition: grid-template-columns 0.05s linear,
+        background-color 0.05s linear;
+}
+
+.cb {
+    position: absolute;
+    opacity: 0;
+    max-width: 1px;
+    max-height: 1px;
+    pointer-events: none;
+}
+
+.cb-dot {
+    grid-area: dot;
+
+    display: block;
+    background-color: rgba(255, 255, 255, 0.75);
+    border-radius: 50%;
+
+    height: calc(var(--cb-height) - (var(--cb-padding) * 2));
+    width: calc(var(--cb-height) - (var(--cb-padding) * 2));
+    border-radius: calc((var(--cb-height) - (var(--cb-padding) * 2)) / 2);
+}
+
+
+.cb-container.is-checked {
+    background-color: rgba(255, 255, 255, 0.3);   
+    grid-template-columns: 1fr auto 0fr;
+}
+.cb-container.is-checked .cb-dot {
+}
