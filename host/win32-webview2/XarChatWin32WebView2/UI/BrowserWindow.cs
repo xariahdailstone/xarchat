@@ -24,35 +24,6 @@ using XarChat.Backend.Features.AppConfiguration;
 
 namespace MinimalWin32Test.UI
 {
-    public struct ColorUtil
-    {
-        public ColorUtil(System.Drawing.Color color)
-        {
-            this.GdiColor = ((uint)color.B << 16) | ((uint)color.G << 8) | ((uint)color.R << 0);
-        }
-
-        public ColorUtil(uint gdiColor)
-        {
-            this.GdiColor = gdiColor;
-        }
-
-        public uint GdiColor { get; private set; }
-
-        public byte R => (byte)(GdiColor & 0xFF);
-
-        public byte G => (byte)((GdiColor & 0xFF00) >> 8);
-
-        public byte B => (byte)((GdiColor & 0xFF0000) >> 16);
-
-        public System.Drawing.Color SystemDrawingColor
-            => System.Drawing.Color.FromArgb(unchecked((int)(
-                ((uint)0xFF000000) |
-                (((uint)GdiColor & 0xFF0000) >> 16) |
-                (((uint)GdiColor & 0x00FF00) >> 0) |
-                (((uint)GdiColor & 0x0000FF) << 16)
-            )));
-    }
-
     public class BrowserWindow : WindowBase
     {
         private static int _nextClassNum = 0;
@@ -226,7 +197,7 @@ namespace MinimalWin32Test.UI
                 //    }
                 //    break;
                 case User32.StandardWindowMessages.WM_SIZE:
-                    if (_destroyed)
+                    if (!_destroyed)
                     {
                         MaybeUpdateWindowState();
                         MaybeUpdateWindowSize();
@@ -934,4 +905,34 @@ namespace MinimalWin32Test.UI
     internal partial class SourceGenerationOptions : JsonSerializerContext
     {
     }
+
+    public struct ColorUtil
+    {
+        public ColorUtil(System.Drawing.Color color)
+        {
+            this.GdiColor = ((uint)color.B << 16) | ((uint)color.G << 8) | ((uint)color.R << 0);
+        }
+
+        public ColorUtil(uint gdiColor)
+        {
+            this.GdiColor = gdiColor;
+        }
+
+        public uint GdiColor { get; private set; }
+
+        public byte R => (byte)(GdiColor & 0xFF);
+
+        public byte G => (byte)((GdiColor & 0xFF00) >> 8);
+
+        public byte B => (byte)((GdiColor & 0xFF0000) >> 16);
+
+        public System.Drawing.Color SystemDrawingColor
+            => System.Drawing.Color.FromArgb(unchecked((int)(
+                ((uint)0xFF000000) |
+                (((uint)GdiColor & 0xFF0000) >> 16) |
+                (((uint)GdiColor & 0x00FF00) >> 0) |
+                (((uint)GdiColor & 0x0000FF) << 16)
+            )));
+    }
+
 }
