@@ -1,3 +1,4 @@
+import { ConfigSchema, getConfigSchemaItemById } from "../configuration/ConfigSchemaItem.js";
 import { FListApi } from "../fchat/api/FListApi.js";
 import { HostInteropApi } from "../fchat/api/HostInteropApi.js";
 import { AppSettings, RawSavedWindowLocation } from "../settings/AppSettings.js";
@@ -6,14 +7,17 @@ import { CharacterName } from "../shared/CharacterName.js";
 import { ConfigBlock } from "../util/ConfigBlock.js";
 import { HostInterop, HostWindowState } from "../util/HostInterop.js";
 import { IdleDetection, IdleDetectionScreenState, IdleDetectionUserState } from "../util/IdleDetection.js";
-import { Observable, PropertyChangeEvent } from "../util/Observable.js";
+import { Observable, ObservableValue, PropertyChangeEvent } from "../util/Observable.js";
 import { ObservableBase, observableProperty } from "../util/ObservableBase.js";
 import { Collection, CollectionChangeEvent, CollectionChangeType } from "../util/ObservableCollection.js";
 import { PromiseSource } from "../util/PromiseSource.js";
 import { UpdateCheckerClient, UpdateCheckerState } from "../util/UpdateCheckerClient.js";
 import { StdObservableCollectionChangeType } from "../util/collections/ReadOnlyStdObservableCollection.js";
 import { ActiveLoginViewModel } from "./ActiveLoginViewModel.js";
+import { ChannelViewModel } from "./ChannelViewModel.js";
+import { ChatChannelUserViewModel, ChatChannelViewModel } from "./ChatChannelViewModel.js";
 import { ColorThemeViewModel } from "./ColorThemeViewModel.js";
+import { PMConvoChannelViewModel } from "./PMConvoChannelViewModel.js";
 import { AlertOptions, AlertViewModel } from "./dialogs/AlertViewModel.js";
 import { AppInitializeViewModel } from "./dialogs/AppInitializeViewModel.js";
 import { DialogViewModel } from "./dialogs/DialogViewModel.js";
@@ -144,22 +148,24 @@ export class AppViewModel extends ObservableBase {
         if (value !== this._currentlySelectedSession) {
             if (this._currentlySelectedSession) {
                 this._currentlySelectedSession.isSelectedSession = false;
+                this._currentlySelectedSession.isActiveSession = false;
             }
             this._currentlySelectedSession = value;
             if (this._currentlySelectedSession) {
                 this._currentlySelectedSession.isSelectedSession = true;
+                this._currentlySelectedSession.isActiveSession = this.isWindowActive;
             }
         }
     }
 
-    private _isWindowActive: boolean = true;
-    @observableProperty
-    get isWindowActive() { return this._isWindowActive; }
+    private _isWindowActive: ObservableValue<boolean> = new ObservableValue<boolean>(true);
+    get isWindowActive() { return this._isWindowActive.value; }
     set isWindowActive(value) {
-        if (value !== this._isWindowActive) {
-            this._isWindowActive = value;
+        if (value !== this._isWindowActive.value) {
+            //console.log("isWindowActive", value);
+            this._isWindowActive.value = value;
             if (this.currentlySelectedSession) {
-                this.currentlySelectedSession.appWindowActiveChanged();
+                this.currentlySelectedSession.isActiveSession = this.isWindowActive;
             }
         }
     }
@@ -292,11 +298,38 @@ export class AppViewModel extends ObservableBase {
         ctxVm.addSeparator();
     }
 
-    getFirstConfigEntryHierarchical(keys: string[], characterName?: CharacterName): (unknown | null) {
+    getConfigSettingById(configSettingId: string, alvm?: { characterName: CharacterName } | null, channel?: ChannelViewModel | null) {
+        const settingSchema = getConfigSchemaItemById(configSettingId);
+        if (settingSchema) {
+            const result = this.getConfigEntryHierarchical(settingSchema.configBlockKey, alvm, channel);
+            return result ?? settingSchema.defaultValue;
+        }
+        else {
+            return null;
+        }
+    }
+
+    getConfigEntryHierarchical(key: string, alvm?: { characterName: CharacterName } | null, channel?: ChannelViewModel | null) {
+        return this.getFirstConfigEntryHierarchical([key], alvm, channel);
+    }
+
+    getFirstConfigEntryHierarchical(keys: string[], alvm?: { characterName: CharacterName } | null, channel?: ChannelViewModel | null): (unknown | null) {
         const k: string[] = [];
-        if (characterName != null) {
+        if (alvm != null) {
+            if (channel != null) {
+                if (channel instanceof ChatChannelViewModel) {
+                    for (let key of keys) {
+                        k.push(`character.${alvm.characterName.canonicalValue}.channel.${channel.name.canonicalValue}.${key}`);
+                    }
+                }
+                else if (channel instanceof PMConvoChannelViewModel) {
+                    for (let key of keys) {
+                        k.push(`character.${alvm.characterName.canonicalValue}.channel.${channel.character.canonicalValue}.${key}`);
+                    }
+                }
+            }
             for (let key of keys) {
-                k.push(`${characterName.canonicalValue}.${key}`);
+                k.push(`character.${alvm.characterName.canonicalValue}.any.${key}`);
             }    
         }
         for (let key of keys) {
@@ -310,15 +343,7 @@ export class AppViewModel extends ObservableBase {
     soundNotification(event: AppNotifyEvent) {
         let fn: string | null = null;
 
-        const evtParts: string[] = [];
-        if (event.eventType == AppNotifyEventType.PRIVATE_MESSAGE_RECEIVED && event.happenedWithInterlocutor) {
-            evtParts.push(`sounds.event.pm.${event.happenedWithInterlocutor.canonicalValue}`);
-        }
-        else if (event.eventType == AppNotifyEventType.HIGHLIGHT_MESSAGE_RECEIVED && event.happenedInChannel) {
-            evtParts.push(`sounds.event.ping.${event.happenedInChannel.canonicalValue}`);
-        }
-        evtParts.push(`sounds.event.${event.eventType.toString()}`);
-        fn = this.getFirstConfigEntryHierarchical(evtParts, event.myCharacter) as (string | null);
+        fn = this.getConfigEntryHierarchical(`sound.event.${event.eventType.toString()}`, event.activeLoginViewModel, event.channel) as (string | null);
 
         if (fn == null)
         {
@@ -360,9 +385,6 @@ export enum AppNotifyEventType {
 
 export interface AppNotifyEvent {
     eventType: AppNotifyEventType,
-    myCharacter: CharacterName,
     activeLoginViewModel: ActiveLoginViewModel,
-
-    happenedInChannel?: ChannelName,
-    happenedWithInterlocutor?: CharacterName
+    channel?: ChannelViewModel
 }

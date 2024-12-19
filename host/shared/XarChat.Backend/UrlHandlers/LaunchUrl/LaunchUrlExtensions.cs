@@ -40,7 +40,10 @@ namespace XarChat.Backend.UrlHandlers.LaunchUrl
 
             if (!(forceExternal ?? false) && appConfiguration.LaunchImagesInternally && await IsImageUrlAsync(url, httpClientProvider, TimeSpan.FromSeconds(1), cancellationToken))
             {
-                var targetUrl = $"/api/proxyImageUrl?url={HttpUtility.UrlEncode(url)}&loadAs=ssimage";
+                var iurl = new Uri(url);
+                var iurlpath = iurl.LocalPath;
+                var lastPathPart = iurlpath.Replace("\\", "/").Split("/").Last();
+                var targetUrl = $"/api/proxyImageUrl/{HttpUtility.UrlEncode(lastPathPart)}?url={HttpUtility.UrlEncode(url)}&loadAs=ssimage";
                 return CustomResults.NewtonsoftJsonResult(new JsonObject() 
                 {
                     { "loadInternally", true },

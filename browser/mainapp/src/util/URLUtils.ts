@@ -75,7 +75,10 @@ export class URLUtils {
 
     private static getImageProxyUrl(imageUrl: string, loadAs: ("ssimage" | "document")) {
         if (HostInterop.isInXarChatHost) {
-            return `/api/proxyImageUrl?url=${encodeURIComponent(imageUrl)}&loadAs=${loadAs}`;
+            const u = new URL(imageUrl);
+            const pathParts = u.pathname.split('/');
+            const lastPathPart = pathParts[pathParts.length - 1];
+            return `/api/proxyImageUrl/${encodeURIComponent(lastPathPart)}?url=${encodeURIComponent(imageUrl)}&loadAs=${loadAs}`;
         }
         else {
             return null;

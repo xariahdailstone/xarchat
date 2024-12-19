@@ -93,18 +93,27 @@
 .setting-item {
     display: grid;
     grid-template-columns: 1fr auto;
-    grid-template-rows: 1fr 1fr;
+    grid-template-rows: 50% auto auto;
     grid-template-areas:
         "title input"
-        "description input";
+        "description input"
+        "inheritprompt input";
 }
-.setting-title { grid-area: title; }
+.setting-title { grid-area: title; align-self: flex-end; }
 .setting-description { grid-area: description; }
+.setting-inheritprompt { grid-area: inheritprompt; font-size: 80%; }
 .setting-entry { 
     grid-area: input; 
     align-self: center;
     justify-self: center;
     margin-right: 10px;
+}
+
+.setting-using-inherited { opacity: 0.7;}
+.setting-revert-to-inherited { color: yellow; }
+.revert-link {
+    cursor: pointer;
+    text-decoration: dotted underline;
 }
 
 .setting-entry-color {
@@ -119,4 +128,24 @@
     height: 25px;
     border: 1px solid black;
     cursor: pointer;
+}
+
+
+/* textlist */
+.setting-item:has(.setting-entry-textlist) {
+    display: grid;
+    grid-template-columns: 100%;
+    grid-template-rows: auto auto auto auto;
+    grid-template-areas:
+        "title"
+        "description"
+        "inheritprompt"
+        "input";
+}
+.setting-entry-textlist-item-container,
+.setting-entry-textlist-item-container-add {
+    margin-top: 4px;
+}
+.setting-entry-textlist-item-input {
+    margin-right: 4px;
 }

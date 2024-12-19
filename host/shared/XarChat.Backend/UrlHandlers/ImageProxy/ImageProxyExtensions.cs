@@ -16,10 +16,11 @@ namespace XarChat.Backend.UrlHandlers.ImageProxy
 
         public static void UseImageProxyHandler(this WebApplication app, string urlBase)
         {
-            app.MapGet(urlBase, ProxyImageUrlAsync);
+            app.MapGet(urlBase + "/{id}", ProxyImageUrlAsync);
         }
 
         private static async Task<IResult> ProxyImageUrlAsync(
+            [FromRoute] string id,
             [FromQuery] string url,
             [FromQuery] string loadAs,
             [FromServices] IProxiedImageCache2 proxiedImageCache2,

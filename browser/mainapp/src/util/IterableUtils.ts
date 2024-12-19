@@ -26,10 +26,12 @@ export interface Queryable<T> extends Iterable<T> {
     firstOrNull(): T | null;
     toArray(): T[];
     orderBy<TValue>(sortKeySelector: (item: T) => TValue, comparer: Comparer<TValue>): Queryable<T>;
+    concat(other: Iterable<T>): Queryable<T>;
 }
 
 class QueryableImpl<T> implements Queryable<T> {
     constructor(private readonly iterable: Iterable<T>) {
+        let g: Generator<T, null, unknown>;
     }
 
     where(filter: (item: T) => boolean): Queryable<T> {
@@ -69,6 +71,20 @@ class QueryableImpl<T> implements Queryable<T> {
             return comparer.compare(ma, mb);
         })
         for (let item of sortedItems) {
+            yield item;
+        }
+    }
+
+    concat(other: Iterable<T>): Queryable<T> {
+        const result = new QueryableImpl<T>(this.concatInternal(other));
+        return result;
+    }
+
+    *concatInternal(other: Iterable<T>) {
+        for (let item of this.iterable) {
+            yield item;
+        }
+        for (let item of other) {
             yield item;
         }
     }

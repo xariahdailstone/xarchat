@@ -16,8 +16,8 @@ namespace XarChat.Backend.Features.AppConfiguration.Impl
         private readonly string _filename;
 
         private readonly SemaphoreSlim _dataSem = new SemaphoreSlim(1);
-        private IImmutableDictionary<string, JsonValue> _appConfigData =
-            ImmutableDictionary<string, JsonValue>.Empty;
+        private IImmutableDictionary<string, JsonNode> _appConfigData =
+            ImmutableDictionary<string, JsonNode>.Empty;
 
         private FileSystemWatcher _watcher;
 
@@ -109,8 +109,8 @@ namespace XarChat.Backend.Features.AppConfiguration.Impl
             {
                 using var f = File.OpenText(_filename);
                 var jsonStr = f.ReadToEnd();
-                var fdata = JsonUtilities.Deserialize<Dictionary<string, JsonValue>>(jsonStr,
-                    SourceGenerationContext.Default.DictionaryStringJsonValue);
+                var fdata = JsonUtilities.Deserialize<Dictionary<string, JsonNode>>(jsonStr,
+                    SourceGenerationContext.Default.DictionaryStringJsonNode);
 
                 var oldAcd = _appConfigData;
                 _appConfigData = fdata.ToImmutableDictionary();
@@ -122,16 +122,16 @@ namespace XarChat.Backend.Features.AppConfiguration.Impl
         }
 
         private void TriggerChanges(
-            IImmutableDictionary<string, JsonValue> oldAcd,
-            IImmutableDictionary<string, JsonValue> acd)
+            IImmutableDictionary<string, JsonNode> oldAcd,
+            IImmutableDictionary<string, JsonNode> acd)
         {
             var handledKeys = new HashSet<String>();
             foreach (var kvp in oldAcd)
             {
-                JsonValue? v;
+                JsonNode? v;
                 if (!acd.TryGetValue(kvp.Key, out v))
                 {
-                    v = (JsonValue)JsonValue.Parse("null")!;
+                    v = (JsonNode)JsonNode.Parse("null")!;
                 }
                 handledKeys.Add(kvp.Key);
                 if (!AreEqual(kvp.Value, v))
@@ -143,10 +143,10 @@ namespace XarChat.Backend.Features.AppConfiguration.Impl
             {
                 if (handledKeys.Contains(kvp.Key)) continue;
 
-                JsonValue v;
+                JsonNode v;
                 if (!oldAcd.TryGetValue(kvp.Key, out v))
                 {
-                    v = (JsonValue)JsonValue.Parse("null")!;
+                    v = (JsonNode)JsonNode.Parse("null")!;
                 }
                 handledKeys.Add(kvp.Key);
                 if (!AreEqual(kvp.Value, v))
@@ -156,14 +156,14 @@ namespace XarChat.Backend.Features.AppConfiguration.Impl
             }
         }
 
-        private bool AreEqual(JsonValue? a, JsonValue? b)
+        private bool AreEqual(JsonNode? a, JsonNode? b)
         {
             return ((a?.ToJsonString() ?? "null") == (b?.ToJsonString() ?? "null"));
         }
 
-        private void TriggerChange(string key, JsonValue value)
+        private void TriggerChange(string key, JsonNode value)
         {
-            var cbs = new List<Action<string, JsonValue>>();
+            var cbs = new List<Action<string, JsonNode>>();
             lock (_valueChangedCallbacks)
             {
                 cbs = _valueChangedCallbacks.Values.ToList();
@@ -176,10 +176,10 @@ namespace XarChat.Backend.Features.AppConfiguration.Impl
             }
         }
 
-        private readonly Dictionary<object, Action<string, JsonValue>> _valueChangedCallbacks
-            = new Dictionary<object, Action<string, JsonValue>>();
+        private readonly Dictionary<object, Action<string, JsonNode>> _valueChangedCallbacks
+            = new Dictionary<object, Action<string, JsonNode>>();
 
-        public IDisposable OnValueChanged(Action<string, JsonValue?> callback)
+        public IDisposable OnValueChanged(Action<string, JsonNode?> callback)
         {
             var myKey = new object();
             lock (_valueChangedCallbacks)
@@ -196,7 +196,7 @@ namespace XarChat.Backend.Features.AppConfiguration.Impl
             });
         }
 
-        public IDisposable OnValueChanged(string watchKey, Action<JsonValue?> callback, bool fireImmediately)
+        public IDisposable OnValueChanged(string watchKey, Action<JsonNode?> callback, bool fireImmediately)
         {
             var res = this.OnValueChanged((key, value) =>
             {
@@ -254,7 +254,7 @@ namespace XarChat.Backend.Features.AppConfiguration.Impl
                             using (var f = File.Create(tmpFn))
                             {
                                 using var jw = new Utf8JsonWriter(f, new JsonWriterOptions() { Indented = true });
-                                JsonUtilities.Serialize(jw, _appConfigData!, SourceGenerationContext.Default.IImmutableDictionaryStringJsonValue);
+                                JsonUtilities.Serialize(jw, _appConfigData!, SourceGenerationContext.Default.IImmutableDictionaryStringJsonNode);
                             }
 
                             File.Move(_filename, oldFn);
@@ -319,27 +319,27 @@ namespace XarChat.Backend.Features.AppConfiguration.Impl
 		public bool EnableIndexDataCollection =>
 			Convert.ToBoolean(GetArbitraryValueString("EnableIndexDataCollection") ?? "true");
 
-		public IEnumerable<KeyValuePair<string, JsonValue>> GetAllArbitraryValues()
+		public IEnumerable<KeyValuePair<string, JsonNode>> GetAllArbitraryValues()
         {
             var acd = _appConfigData;
             return acd;
         }
 
-        public JsonValue GetArbitraryValue(string key)
+        public JsonNode GetArbitraryValue(string key)
         {
             if (!_appConfigData.TryGetValue(key, out var value))
             {
-                return (JsonValue)JsonValue.Parse("null")!;
+                return (JsonNode)JsonNode.Parse("null")!;
             }
             return value;
         }
 
         public string? GetArbitraryValueString(string key)
         {
-            return JsonValueToString(GetArbitraryValue(key));
+            return JsonNodeToString(GetArbitraryValue(key));
         }
 
-        private string? JsonValueToString(JsonValue? jsonValue)
+        private string? JsonNodeToString(JsonNode? jsonValue)
         {
             if (jsonValue == null)
             {
@@ -355,7 +355,7 @@ namespace XarChat.Backend.Features.AppConfiguration.Impl
             }
         }
 
-        public async Task SetArbitraryValueAsync(string key, JsonValue? value, CancellationToken cancellationToken)
+        public async Task SetArbitraryValueAsync(string key, JsonNode? value, CancellationToken cancellationToken)
         {
             await _dataSem.WaitAsync(cancellationToken);
             try

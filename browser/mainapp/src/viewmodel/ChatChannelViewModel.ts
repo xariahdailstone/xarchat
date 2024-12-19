@@ -841,9 +841,8 @@ export class ChatChannelViewModel extends ChannelViewModel {
         if (message.containsPing && !this.isTabActive && message.characterStatus.characterName != this.parent.characterName) {
             this.activeLoginViewModel.appViewModel.soundNotification({
                 eventType: AppNotifyEventType.HIGHLIGHT_MESSAGE_RECEIVED,
-                myCharacter: this.activeLoginViewModel.characterName,
                 activeLoginViewModel: this.activeLoginViewModel,
-                happenedInChannel: this.name
+                channel: this
             });
         }
     }
