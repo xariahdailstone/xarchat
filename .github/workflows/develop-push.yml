@@ -4,6 +4,9 @@ on:
   push:
     branches: [ "develop", "master" ]
   workflow_dispatch: {}
+  pull_request:
+    branches: [ "develop" ]
+
 
 jobs:
   build:
@@ -45,10 +48,10 @@ jobs:
       run: echo "buildid=${{ steps.extract_timestamp.outputs.timestamp }}-${{ steps.extract_branch.outputs.branch }}" >> $GITHUB_OUTPUT
 
     - id: setup_dotnet
-      name: "Setup .NET SDK"
+      name: "Setup .NET 9 SDK"
       uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: 8.0.x
+        dotnet-version: 9.0.x
 
     - id: setup_msbuild
       name: "Setup MSBuild"
@@ -85,5 +88,5 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: win32-exe
-        path: ${{ github.workspace }}\host\win32-webview2\XarChatWin32WebView2\bin\Release\net8.0-windows10.0.17763.0\publish\
+        path: ${{ github.workspace }}\host\win32-webview2\XarChatWin32WebView2\bin\Release\net9.0-windows10.0.17763.0\publish\
         retention-days: 5
