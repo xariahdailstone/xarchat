@@ -6,7 +6,7 @@ import { CharacterSet } from "../shared/CharacterSet.js";
 import { BBCodeClickContext, BBCodeParseSink } from "../util/bbcode/BBCode.js";
 import { IDisposable } from "../util/Disposable.js";
 import { HostInterop } from "../util/HostInterop.js";
-import { Observable, PropertyChangeEvent } from "../util/Observable.js";
+import { Observable, ObservableValue, PropertyChangeEvent } from "../util/Observable.js";
 import { ObservableBase, observableProperty, observablePropertyExt } from "../util/ObservableBase.js";
 import { Collection, CollectionChangeEvent, CollectionChangeType, ObservableCollection } from "../util/ObservableCollection.js";
 import { DictionaryChangeType, ObservableKeyExtractedOrderedDictionary, ObservableOrderedDictionaryImpl, ObservableOrderedSet } from "../util/ObservableKeyedLinkedList.js";
@@ -37,6 +37,7 @@ import { LogSearchViewModel } from "./LogSearchViewModel.js";
 import { DateAnchor } from "../util/HostInteropLogSearch.js";
 import { URLUtils } from "../util/URLUtils.js";
 import { SlashCommandViewModel } from "./SlashCommandViewModel.js";
+import { IdleDetection } from "../util/IdleDetection.js";
 
 declare const XCHost: any;
 
@@ -167,14 +168,12 @@ export class ActiveLoginViewModel extends ObservableBase {
             if (value == ChatConnectionState.CONNECTED && previousConnectionState != ChatConnectionState.CONNECTED) {
                 this.appViewModel.soundNotification({ 
                     eventType: AppNotifyEventType.CONNECTED, 
-                    myCharacter: this.characterName,
                     activeLoginViewModel: this
                 });
             }
             else if (value != ChatConnectionState.CONNECTED && previousConnectionState == ChatConnectionState.CONNECTED) {
                 this.appViewModel.soundNotification({ 
                     eventType: AppNotifyEventType.DISCONNECTED, 
-                    myCharacter: this.characterName ,
                     activeLoginViewModel: this
                 });
             }
@@ -190,18 +189,20 @@ export class ActiveLoginViewModel extends ObservableBase {
 
     private _autoReconnectCTS: (CancellationTokenSource | null) = null;
     beginAutoReconnectCountdown() {
-        if (!this.isInAppViewLogins()) {
-            this._logger.logInfo("not in appviewmodel active logins, not reconnecting");
-            return;
-        }
+        if (this.getConfigSettingById("autoReconnect")) {
+            if (!this.isInAppViewLogins()) {
+                this._logger.logInfo("not in appviewmodel active logins, not reconnecting");
+                return;
+            }
 
-        if (this._autoReconnectCTS == null) {
-            this._autoReconnectCTS = new CancellationTokenSource();
-            this._logger.logInfo("starting autoreconnect countdown...");
-            this.runAutoReconnectCountdown(this._autoReconnectCTS.token);
-        }
-        else {
-            this._logger.logInfo("not starting autoreconnect countdown, already running.");
+            if (this._autoReconnectCTS == null) {
+                this._autoReconnectCTS = new CancellationTokenSource();
+                this._logger.logInfo("starting autoreconnect countdown...");
+                this.runAutoReconnectCountdown(this._autoReconnectCTS.token);
+            }
+            else {
+                this._logger.logInfo("not starting autoreconnect countdown, already running.");
+            }
         }
     }
 
@@ -552,6 +553,15 @@ export class ActiveLoginViewModel extends ObservableBase {
         this.selectedTab = value;
     }
 
+    private _isActiveSession: ObservableValue<boolean> = new ObservableValue<boolean>(false);
+    get isActiveSession() { return this._isActiveSession.value; }
+    set isActiveSession(value: boolean) { 
+        if (value != this._isActiveSession.value) {
+            this._isActiveSession.value = value; 
+            this.appWindowActiveChanged();
+        }
+    }
+
     private _isSelectedSession: boolean = false;
     @observableProperty
     get isSelectedSession() { return this._isSelectedSession; }
@@ -749,9 +759,14 @@ export class ActiveLoginViewModel extends ObservableBase {
     }
 
     idleStateChanged() {
-        const userState = this.parent.userState;
-        const screenState = this.parent.screenState;
-        this.chatConnectionConnected?.setIdleStatusAsync(userState, screenState);
+        const autoIdleSetting = !!this.getFirstConfigEntryHierarchical(["autoIdle"]);
+        const autoAwaySetting = !!this.getFirstConfigEntryHierarchical(["autoAway"]);
+
+        if (autoIdleSetting || autoAwaySetting) {
+            const userState = autoIdleSetting ? this.parent.userState : "active";
+            const screenState = autoAwaySetting ? this.parent.screenState : "unlocked";
+            this.chatConnectionConnected?.setIdleStatusAsync(userState, screenState);
+        }
     }
 
     get chatConnectionConnected(): (ChatConnection | null) {
@@ -796,8 +811,16 @@ export class ActiveLoginViewModel extends ObservableBase {
         this.selectedTab = this._logSearchViewModel;
     }
 
-    getFirstConfigEntryHierarchical(keys: string[]): (unknown | null) {
-        return this.appViewModel.getFirstConfigEntryHierarchical(keys, this.characterName);
+    getConfigSettingById(configSettingId: string, channel?: ChannelViewModel) {
+        return this.appViewModel.getConfigSettingById(configSettingId, this, channel);
+    }
+
+    getConfigEntryHierarchical(key: string, channel?: ChannelViewModel) {
+        return this.appViewModel.getConfigEntryHierarchical(key, this, channel);
+    }
+
+    getFirstConfigEntryHierarchical(keys: string[], channel?: ChannelViewModel): (unknown | null) {
+        return this.appViewModel.getFirstConfigEntryHierarchical(keys, this, channel);
     }
 }
 

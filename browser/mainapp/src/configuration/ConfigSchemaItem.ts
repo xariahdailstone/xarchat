@@ -50,18 +50,34 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     description: "Automatically change your status to Idle when your computer input is idle.",
                     type: "boolean",
                     defaultValue: true,
-                    configBlockKey: "autoIdle.enabled",
-                    notYetImplemented: true
+                    configBlockKey: "autoIdle"
                 },
                 {
-                    id: "autoreconnect",
+                    id: "autoAway",
+                    scope: [ "global", "char" ],
+                    title: "Auto Away",
+                    description: "Automatically change your status to Away when your computer is locked.",
+                    type: "boolean",
+                    defaultValue: true,
+                    configBlockKey: "autoAway"
+                },
+                {
+                    id: "autoReconnect",
                     scope: [ "global", "char" ],
                     title: "Automatically Reconnect",
                     description: "Automatically attempt to reconnect to chat when the connection is lost unexpectedly.",
                     type: "boolean",
                     defaultValue: true,
-                    configBlockKey: "autoReconnect",
-                    notYetImplemented: true
+                    configBlockKey: "autoReconnect"
+                },
+                {
+                    id: "restoreStatusMessageOnLogin",
+                    scope: [ "global", "char" ],
+                    title: "Restore Status Message on Login",
+                    description: "Restore your previous status message when logging in or reconnecting.",
+                    type: "boolean",
+                    defaultValue: true,
+                    configBlockKey: "restoreStatusMessageOnLogin"
                 },
                 {
                     id: "pingWords",
@@ -79,9 +95,8 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     title: "Show Unseen Messages Indicator",
                     description: "Show a white dot on channels where new unseen messages that do not include ping words have arrived.",
                     type: "boolean",
-                    defaultValue: [],
-                    configBlockKey: "pingWords",
-                    notYetImplemented: true
+                    defaultValue: true,
+                    configBlockKey: "showUnseenIndicator"
                 },
                 {
                     id: "checkForUpdates",
@@ -356,3 +371,27 @@ export const ConfigSchema: ConfigSchemaDefinition = {
         }
     ]
 };
+
+const _schemaItemsByIdCache = new Map<string, ConfigSchemaItemDefinitionItem | null>();
+export function getConfigSchemaItemById(id: string): ConfigSchemaItemDefinitionItem | null {
+    const chk = (settings: ConfigSchemaItemDefinition[]) => {
+        for (let s of settings) {
+            if (s.id == id) {
+                return s as ConfigSchemaItemDefinitionItem;
+            }
+            if (s.items) {
+                return chk(s.items);
+            }
+        }
+        return null;
+    }
+
+    if (_schemaItemsByIdCache.has(id)) {
+        return _schemaItemsByIdCache.get(id)!;
+    }
+    else {
+        const result = chk(ConfigSchema.settings);
+        _schemaItemsByIdCache.set(id, result);
+        return result;
+    }
+}

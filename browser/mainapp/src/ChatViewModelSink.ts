@@ -152,6 +152,8 @@ export class ChatViewModelSink implements ChatConnectionSink {
         this._emc = new EventMessagesConfig(viewModel);
     }
 
+    isLoggingIn: boolean = false;
+
     private readonly _sinkId: number;
     private readonly _logger: Logger;
     private readonly _emc: EventMessagesConfig;
@@ -575,6 +577,10 @@ export class ChatViewModelSink implements ChatConnectionSink {
                     previousStatus.status == OnlineStatus.IDLE;
 
                 if (s.characterName! == ns.characterName) {
+                    if (!this.isLoggingIn && newStatus.status != OnlineStatus.OFFLINE) {
+                        ns.savedChatState.statusMessage = newStatus.statusMessage;
+                    }
+                    
                     const dispStatusChanged =
                         previousStatus.status != newStatus.status ||
                         previousStatus.statusMessage != newStatus.statusMessage;

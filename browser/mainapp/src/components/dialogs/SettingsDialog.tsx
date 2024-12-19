@@ -103,6 +103,13 @@ export class SettingsDialogContent extends RenderingComponentBase<SettingsDialog
         return <div classList={settingClasses} props={{ "inert": setting.isDisabled }}>
             <div classList={["setting-title"]}>{setting.title}</div>
             <div classList={["setting-description"]}>{setting.description}</div>
+            { setting.showInheritedInfo ? 
+                setting.useInheritedValue ? <div classList={["setting-inheritprompt", "setting-using-inherited"]}>Currently using the setting value inherited from {setting.inheritedFromText}.</div>
+                    : <div classList={["setting-inheritprompt", "setting-revert-to-inherited"]}><span>Using overridden value. Click </span>
+                        <span classList={["revert-link"]}
+                            on={{ "click": (e) => { setting.revertToInherited() } }}>here</span> 
+                        <span> to use the setting value from {setting.inheritedFromText} instead.</span></div>
+                : <></> }
             { inner }
         </div>;
     }

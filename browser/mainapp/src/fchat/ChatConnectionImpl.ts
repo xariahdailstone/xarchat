@@ -111,6 +111,9 @@ export class ChatConnectionImpl implements ChatConnection {
 
     async disconnect(): Promise<void> {
         this._requestedDisconnect = true;
+        if (this._incomingDataLoopEnded) {
+            this.sink.disconnectedFromServer(ChatDisconnectReason.REQUESTED_DISCONNECT);
+        }
         this.dispose();
     }
 
@@ -336,6 +339,7 @@ export class ChatConnectionImpl implements ChatConnection {
         this._incomingMessageBuffer.enqueue(data);
     }
 
+    private _incomingDataLoopEnded = false;
     private async processIncomingDataLoop() {
         const cancellationToken = this._disposeCTS.token;
 
@@ -379,6 +383,9 @@ export class ChatConnectionImpl implements ChatConnection {
             else {
                 this._logger.logInfo("stopping message loop, disposed");
             }
+        }
+        finally {
+            this._incomingDataLoopEnded = true;
         }
     }
 

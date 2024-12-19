@@ -12,6 +12,14 @@ import { ChatConnectionImpl } from "./ChatConnectionImpl";
 import { ChatConnectionSink } from "./ChatConnectionSink";
 import { ProfileInfo } from "./api/FListApi";
 
+const testDisconnectActions = new Map<object, () => void>();
+(window as any).__getSocketCount = () => { return testDisconnectActions.size; };
+(window as any).__testDisconnect = () => {
+    for (let a of [...testDisconnectActions.values()]) {
+        a();
+    }
+};
+
 export class ChatConnectionFactoryImpl {
     create(sink: Partial<ChatConnectionSink>): Promise<ChatConnection> {
         // if (HostInterop.isInXarChatHost) {
@@ -73,6 +81,8 @@ export class ChatConnectionFactoryImpl {
                 });
                 zcci = cci;
                 this._openWebSockets.add(ws);
+                const testDisconnectKey = {};
+                testDisconnectActions.set(testDisconnectKey, () => ws.close());
                 ws.onopen = (e) => {
                     socketSendFailure = null;
                     if (!completed) {
@@ -86,6 +96,7 @@ export class ChatConnectionFactoryImpl {
                     }
                 };
                 ws.onclose = (e) => {
+                    testDisconnectActions.delete(testDisconnectKey);
                     this._openWebSockets.delete(ws);
                     socketSendFailure = "Socket was closed";
                     if (!completed) {

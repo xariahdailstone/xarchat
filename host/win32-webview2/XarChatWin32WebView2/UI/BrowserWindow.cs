@@ -251,7 +251,7 @@ namespace MinimalWin32Test.UI
                                 break;
                             default:
                                 OnWindowActivated();
-                                break;
+                                return 0;
                         }
                     }
                     break;
@@ -293,6 +293,10 @@ namespace MinimalWin32Test.UI
         protected virtual void OnWindowActivated()
         {
             _webViewMemManager?.SetNormal();
+            if (_webViewController is not null)
+            {
+                _webViewController.MoveFocus(CoreWebView2MoveFocusReason.Programmatic);
+            }
         }
 
         private void MaybeUpdateWindowSize()

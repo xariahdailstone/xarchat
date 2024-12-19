@@ -419,11 +419,29 @@ export abstract class ChannelViewModel extends ObservableBase {
         }
     }
 
-    @observableProperty
-    public hasPing: boolean = false;
+    private _hasPing: boolean = false;
+    private _unseenMessageCount: number = 0;
 
     @observableProperty
-    public unseenMessageCount: number = 0;
+    get hasPing(): boolean {
+        return this._hasPing;
+    }
+    set hasPing(value: boolean) {
+        this._hasPing = value;
+    }
+
+    @observableProperty
+    get unseenMessageCount(): number {
+        if (this.getConfigSettingById("unseenIndicator")) {
+            return this._unseenMessageCount;
+        }
+        else {
+            return 0;
+        }
+    }
+    set unseenMessageCount(value: number) {
+        this._unseenMessageCount = value;
+    }
 
     @observableProperty
     hiddenForClose: boolean = false;
@@ -436,6 +454,18 @@ export abstract class ChannelViewModel extends ObservableBase {
     isEffectiveOp(name: CharacterName) { return false; }
 
     isEffectiveOwner(name: CharacterName) { return false; }
+
+    getConfigSettingById(configSettingId: string) {
+        return this.appViewModel.getConfigSettingById(configSettingId, this.activeLoginViewModel, this);
+    }
+
+    getConfigEntryHierarchical(key: string) {
+        return this.appViewModel.getConfigEntryHierarchical(key, this.activeLoginViewModel, this);
+    }
+
+    getFirstConfigEntryHierarchical(keys: string[]): (unknown | null) {
+        return this.appViewModel.getFirstConfigEntryHierarchical(keys, this.activeLoginViewModel, this);
+    }
 }
 
 export interface AddMessageOptions {
