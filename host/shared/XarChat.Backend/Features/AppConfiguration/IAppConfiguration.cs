@@ -21,16 +21,16 @@ namespace XarChat.Backend.Features.AppConfiguration
 
 		bool EnableIndexDataCollection { get; }
 
-		IEnumerable<KeyValuePair<string, JsonValue>> GetAllArbitraryValues();
+		IEnumerable<KeyValuePair<string, JsonNode>> GetAllArbitraryValues();
 
         string? GetArbitraryValueString(string key);
 
-        JsonValue GetArbitraryValue(string key);
+        JsonNode GetArbitraryValue(string key);
 
-        Task SetArbitraryValueAsync(string key, JsonValue? value, CancellationToken cancellationToken);
+        Task SetArbitraryValueAsync(string key, JsonNode? value, CancellationToken cancellationToken);
 
-        IDisposable OnValueChanged(Action<string, JsonValue?> callback);
+        IDisposable OnValueChanged(Action<string, JsonNode?> callback);
 
-        IDisposable OnValueChanged(string watchKey, Action<JsonValue?> callback, bool fireImmediately);
+        IDisposable OnValueChanged(string watchKey, Action<JsonNode?> callback, bool fireImmediately);
     }
 }

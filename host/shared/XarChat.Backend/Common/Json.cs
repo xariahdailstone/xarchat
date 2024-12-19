@@ -79,8 +79,8 @@ namespace XarChat.Backend.Common
     [JsonSerializable(typeof(SaveMemoResponse))]
     [JsonSerializable(typeof(List<LoggedPMConvoMessageInfo>))]
     [JsonSerializable(typeof(List<LoggedChannelMessageInfo>))]
-    [JsonSerializable(typeof(Dictionary<string, JsonValue>))]
-    [JsonSerializable(typeof(IImmutableDictionary<string, JsonValue>))]
+    [JsonSerializable(typeof(Dictionary<string, JsonNode>))]
+    [JsonSerializable(typeof(IImmutableDictionary<string, JsonNode>))]
     [JsonSerializable(typeof(DataUpdateSubmitBody))]
     [JsonSerializable(typeof(FListApiErrorResponse))]
     internal partial class SourceGenerationContext : JsonSerializerContext

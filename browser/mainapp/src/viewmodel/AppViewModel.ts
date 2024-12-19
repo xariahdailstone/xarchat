@@ -298,7 +298,7 @@ export class AppViewModel extends ObservableBase {
         ctxVm.addSeparator();
     }
 
-    getConfigSettingById(configSettingId: string, alvm?: { characterName: CharacterName }, channel?: ChannelViewModel) {
+    getConfigSettingById(configSettingId: string, alvm?: { characterName: CharacterName } | null, channel?: ChannelViewModel | null) {
         const settingSchema = getConfigSchemaItemById(configSettingId);
         if (settingSchema) {
             const result = this.getConfigEntryHierarchical(settingSchema.configBlockKey, alvm, channel);
@@ -309,11 +309,11 @@ export class AppViewModel extends ObservableBase {
         }
     }
 
-    getConfigEntryHierarchical(key: string, alvm?: { characterName: CharacterName }, channel?: ChannelViewModel) {
+    getConfigEntryHierarchical(key: string, alvm?: { characterName: CharacterName } | null, channel?: ChannelViewModel | null) {
         return this.getFirstConfigEntryHierarchical([key], alvm, channel);
     }
 
-    getFirstConfigEntryHierarchical(keys: string[], alvm?: { characterName: CharacterName }, channel?: ChannelViewModel): (unknown | null) {
+    getFirstConfigEntryHierarchical(keys: string[], alvm?: { characterName: CharacterName } | null, channel?: ChannelViewModel | null): (unknown | null) {
         const k: string[] = [];
         if (alvm != null) {
             if (channel != null) {

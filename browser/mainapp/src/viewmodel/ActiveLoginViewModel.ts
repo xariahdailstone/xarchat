@@ -811,15 +811,15 @@ export class ActiveLoginViewModel extends ObservableBase {
         this.selectedTab = this._logSearchViewModel;
     }
 
-    getConfigSettingById(configSettingId: string, channel?: ChannelViewModel) {
+    getConfigSettingById(configSettingId: string, channel?: ChannelViewModel | null) {
         return this.appViewModel.getConfigSettingById(configSettingId, this, channel);
     }
 
-    getConfigEntryHierarchical(key: string, channel?: ChannelViewModel) {
+    getConfigEntryHierarchical(key: string, channel?: ChannelViewModel | null) {
         return this.appViewModel.getConfigEntryHierarchical(key, this, channel);
     }
 
-    getFirstConfigEntryHierarchical(keys: string[], channel?: ChannelViewModel): (unknown | null) {
+    getFirstConfigEntryHierarchical(keys: string[], channel?: ChannelViewModel | null): (unknown | null) {
         return this.appViewModel.getFirstConfigEntryHierarchical(keys, this, channel);
     }
 }

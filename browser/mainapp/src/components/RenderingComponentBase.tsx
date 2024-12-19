@@ -13,12 +13,13 @@ import { classListNewModule } from "../util/snabbdom/classList-new.js";
 import { idModule } from "../util/snabbdom/id.js";
 import { CharacterGender } from "../shared/CharacterGender.js";
 import { HTMLUtils } from "../util/HTMLUtils.js";
+import { valueSyncModule } from "../util/snabbdom/valueSyncHook.js";
 
 export abstract class RenderingComponentBase<TViewModel> extends ComponentBase<TViewModel> {
     constructor() {
         super();
 
-        this.patch = init([classListNewModule, propsModule, rawAttributesModule, styleModule, eventListenersModule /* , idModule */], undefined, {
+        this.patch = init([classListNewModule, propsModule, rawAttributesModule, styleModule, eventListenersModule, valueSyncModule /* , idModule */], undefined, {
             experimental: {
                 fragments: true
             }

@@ -13,6 +13,7 @@ import { StdObservableConcatCollectionView } from "../util/collections/StdObserv
 import { StdObservableList } from "../util/collections/StdObservableView.js";
 import { asDisposable, IDisposable } from "../util/Disposable.js";
 import { LoggedMessage, LogMessageType } from "../util/HostInterop.js";
+import { IterableUtils } from "../util/IterableUtils.js";
 import { Observable, ObservableValue } from "../util/Observable.js";
 import { ObservableBase, observableProperty } from "../util/ObservableBase.js";
 import { Collection, ObservableCollection } from "../util/ObservableCollection.js";
@@ -696,9 +697,13 @@ export class ChannelMessageViewModel extends ObservableBase {
             return false;
         }
 
+        const cfgPingWords = this.activeLoginViewModel.getConfigSettingById("pingWords", this.parent) as string[];
+        const oldPingWords = this.activeLoginViewModel.pingWords;
+        const allPingWords = IterableUtils.asQueryable(cfgPingWords).concat(oldPingWords).select(x => x.toLowerCase());
+
         let needPing = false;
         const msgText = this.text.toLowerCase();
-        for (let x of this.activeLoginViewModel.pingWords.iterateValues()) {
+        for (let x of allPingWords) {
             if (msgText.indexOf(x) != -1) {
                 needPing = true;
                 break;

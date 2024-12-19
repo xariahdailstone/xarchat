@@ -86,8 +86,7 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     description: "Words that will cause a message to get highlighted and generate a ping sound effect when seen in chat.",
                     type: "text[]",
                     defaultValue: [],
-                    configBlockKey: "pingWords",
-                    notYetImplemented: true
+                    configBlockKey: "pingWords"
                 },
                 {
                     id: "unseenIndicator",

@@ -129,3 +129,23 @@
     border: 1px solid black;
     cursor: pointer;
 }
+
+
+/* textlist */
+.setting-item:has(.setting-entry-textlist) {
+    display: grid;
+    grid-template-columns: 100%;
+    grid-template-rows: auto auto auto auto;
+    grid-template-areas:
+        "title"
+        "description"
+        "inheritprompt"
+        "input";
+}
+.setting-entry-textlist-item-container,
+.setting-entry-textlist-item-container-add {
+    margin-top: 4px;
+}
+.setting-entry-textlist-item-input {
+    margin-right: 4px;
+}

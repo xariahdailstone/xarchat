@@ -86,7 +86,7 @@ export class SettingsDialogContent extends RenderingComponentBase<SettingsDialog
                     inner = this.renderSettingRadio(setting.schema);
                     break;
                 case "text[]":
-                    inner = this.renderSettingTextList(setting.schema);
+                    inner = this.renderSettingTextList(setting);
                     break;
                 case "timespan":
                     inner = this.renderSettingTimespan(setting.schema);
@@ -164,11 +164,30 @@ export class SettingsDialogContent extends RenderingComponentBase<SettingsDialog
         return <></>;
     }
 
-    private renderSettingTextList(setting: ConfigSchemaItemDefinitionItem): VNode {
-        // return <div classList={["setting-entry", "setting-entry-textlist"]}>
-        //     <input attr-type="text"></input>
-        // </div>
-        return <></>;
+    private renderSettingTextList(setting: SettingsDialogItemViewModel): VNode {
+        const v = setting.value as string[];
+        return <div classList={["setting-entry", "setting-entry-textlist"]}>
+            {
+                v.map((str, idx) =>
+                    <div classList={["setting-entry-textlist-item-container"]}>
+                        <input classList={["setting-entry-textlist-item-input", "theme-textbox"]} attr-type="text" attr-value={str} value-sync="true"
+                            on={{ 
+                                    "change": (e) => { const newV = v.slice(); newV[idx] = (e.target as any).value; setting.value = newV; },
+                                    "input": (e) => { const newV = v.slice(); newV[idx] = (e.target as any).value; setting.value = newV; } 
+                                }} />
+                        <button classList={["setting-entry-textlist-item-btnremove", "theme-button", "theme-button-smaller"]}
+                            on={{ "click": (e) => { const newV = v.slice(); newV.splice(idx, 1); setting.value = newV;  } }}>Remove</button>
+                    </div>
+                )
+            }
+            <div classList={["setting-entry-textlist-item-container-add"]}>
+                <input classList={["setting-entry-textlist-item-input", "theme-textbox"]} attr-type="text" prop-value="" value-sync="true"
+                    on={{ 
+                            "change": (e) => { const newV = v.slice(); newV.push((e.target as any).value); setting.value = newV; },
+                            "input": (e) => { const newV = v.slice(); newV.push((e.target as any).value); setting.value = newV; } 
+                        }} />
+            </div>
+        </div>;
     }
 
     private renderSettingTimespan(setting: ConfigSchemaItemDefinitionItem): VNode {

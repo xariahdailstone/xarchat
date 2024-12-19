@@ -560,13 +560,13 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions
             return res;
         }
 
-        private async Task SetConfigDataAsync(string key, JsonValue value, CancellationToken cancellationToken)
+        private async Task SetConfigDataAsync(string key, JsonNode value, CancellationToken cancellationToken)
         {
             var appConfig = _sp.GetRequiredService<IAppConfiguration>();
             await appConfig.SetArbitraryValueAsync(key, value, cancellationToken);
         }
 
-        private void ConfigDataChanged(string key, JsonValue? value)
+        private void ConfigDataChanged(string key, JsonNode? value)
         {
             _ = this.WriteAsync("configchange " + JsonUtilities.Serialize(new ConfigKeyValue()
             {
@@ -891,7 +891,7 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions
             public string Key { get; set; }
 
             [JsonPropertyName("value")]
-            public JsonValue? Value { get; set; }
+            public JsonNode? Value { get; set; }
         }
 
         public class GetAllCssArgs

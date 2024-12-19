@@ -271,6 +271,9 @@ export class SettingsDialogItemViewModel extends SettingsDialogSettingViewModel 
                     case "boolean":
                         this.assignBooleanValue(!!value);
                         break;
+                    case "text[]":
+                        this.assignTextListValue(value);
+                        break;
                     default:
                         console.log(`don't know how to assign ${this.schema.type}`);
                 }
@@ -290,6 +293,11 @@ export class SettingsDialogItemViewModel extends SettingsDialogSettingViewModel 
     private assignBooleanValue(value: boolean) {
         const k = this.getAppConfigKey();
         this.scope.appViewModel.configBlock.set(k, !!value);
+    }
+
+    private assignTextListValue(value: string[]) {
+        const k = this.getAppConfigKey();
+        this.scope.appViewModel.configBlock.set(k, value);
     }
 
     override get showInheritedInfo(): boolean {
