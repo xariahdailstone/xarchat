@@ -86,6 +86,15 @@ export abstract class SettingsDialogSettingViewModel extends ObservableBase {
         return ((this.itemDefinition as any).notYetImplemented != null);
     }
 
+    get showInheritedInfo(): boolean { return false; }
+
+    get inheritedFromText(): string { return ""; }
+
+    revertToInherited() {
+    }
+
+    get useInheritedValue(): boolean { return false; }
+
     get title(): string { return (this.itemDefinition as any).sectionTitle ?? (this.itemDefinition as any).title }
 
     get description(): string | undefined { return this.itemDefinition.description; }
@@ -196,50 +205,83 @@ export class SettingsDialogItemViewModel extends SettingsDialogSettingViewModel 
     readonly schema: ConfigSchemaItemDefinitionItem;
 
     private getAppConfigKey(): string {
-        let prefix: string;
-        switch (this.scope.scopeString) {
-            case "global":
-                prefix = "global";
-                break;
-            case "char":
-                prefix = `character.${this.scope.myCharacter!.canonicalValue}.any`;
-                break;
-            case "char.chan":
-                prefix = `character.${this.scope.myCharacter!.canonicalValue}.channel.${this.scope.targetChannel!.canonicalValue}`;
-                break;
-            case "char.convo":
-                prefix = `character.${this.scope.myCharacter!.canonicalValue}.pm.${this.scope.pmConvoCharacter!.canonicalValue}`;
-                break;
-            default:
-                throw new Error(`unknown scope string: ${this.scope.scopeString}`);
-        }
-
-        return `${prefix}.${this.schema.configBlockKey}`;
+        return this.scope.getAppConfigKey(this.schema.configBlockKey);
     }
 
-    get value(): any { 
-        const k = this.getAppConfigKey();
-        const result = this.scope.appViewModel.configBlock.getWithDefault(k, this.schema.defaultValue);
-        return result;
+    get useInheritedValue(): boolean {
+        if (this.scope.scopeString == "global") {
+            return false;
+        }
+        else {
+            const k = this.getAppConfigKey();
+            const result = this.scope.appViewModel.configBlock.getWithDefault(k, null);
+            return (result == null);
+        }
+    }
+    set useInheritedValue(value: boolean) {
+        if (this.scope.scopeString == "global") {
+            // Ignore, global has no inherited value
+        }
+        else {
+            const k = this.getAppConfigKey();        
+            if (value == true) {
+                this.scope.appViewModel.configBlock.set(k, null);
+            }
+            else {
+                const curSettingValue = this.scope.appViewModel.configBlock.getWithDefault(k, null);
+                if (curSettingValue == null) {
+                    this.scope.appViewModel.configBlock.set(k, this.schema.defaultValue);
+                }
+            }
+        }
+    }
+
+    get value(): any {
+        let cscope: ScopeData | null = this.scope;
+        while (cscope) {
+            const k = cscope.getAppConfigKey(this.schema.configBlockKey);
+            let result = null;
+            if (cscope.scopeString == "global") {
+                result = this.scope.appViewModel.configBlock.getWithDefault(k, this.schema.defaultValue);
+            }
+            else {
+                result = this.scope.appViewModel.configBlock.getWithDefault(k, null);
+            }
+            if (result != null) {
+                return result;
+            }
+            cscope = cscope.parentScope;
+        }
+        return null;
     }
 
     set value(value: any) {
-        const k = this.getAppConfigKey();
-        if (value === undefined || value === null) {
-            this.scope.appViewModel.configBlock.set(k, null);
+        if (!this._reverted) {
+            console.log("set value start");
+            const k = this.getAppConfigKey();
+            if (value === undefined || value === null) {
+                this.scope.appViewModel.configBlock.set(k, null);
+            }
+            else {
+                switch (this.schema.type) {
+                    case "color":
+                    case "color-hs":
+                        this.assignStringValue(value);
+                        break;
+                    case "boolean":
+                        this.assignBooleanValue(!!value);
+                        break;
+                    case "text[]":
+                        this.assignTextListValue(value);
+                        break;
+                    default:
+                        console.log(`don't know how to assign ${this.schema.type}`);
+                }
+            }
+            console.log("set value end");
         }
         else {
-            switch (this.schema.type) {
-                case "color":
-                case "color-hs":
-                    this.assignStringValue(value);
-                    break;
-                case "boolean":
-                    this.assignBooleanValue(!!value);
-                    break;
-                default:
-                    console.log(`don't know how to assign ${this.schema.type}`);
-            }
+            console.log("set value skipped");
         }
     }
 
@@ -251,6 +293,42 @@ export class SettingsDialogItemViewModel extends SettingsDialogSettingViewModel 
     private assignBooleanValue(value: boolean) {
         const k = this.getAppConfigKey();
         this.scope.appViewModel.configBlock.set(k, !!value);
+    }
+
+    private assignTextListValue(value: string[]) {
+        const k = this.getAppConfigKey();
+        this.scope.appViewModel.configBlock.set(k, value);
+    }
+
+    override get showInheritedInfo(): boolean {
+        const ss = this.scope.scopeString;
+        if (ss == "global" || !this.schema.scope) { return false; }
+        if (ss == "char" && this.schema.scope?.filter(x => x == "global").length > 0 ) { return true; }
+        if (ss == "char.chan" && this.schema.scope?.filter(x => x == "char").length > 0 ) { return true; }
+        if (ss == "char.convo" && this.schema.scope?.filter(x => x == "char").length > 0 ) { return true; }
+        return false;
+    }
+
+    override get inheritedFromText(): string { 
+        switch (this.scope.scopeString) {
+            case "char":
+                return "the global settings";
+            case "char.chan":
+            case "char.convo":
+                return `the settings for ${this.scope.myCharacter!.value}`;
+            default:
+            case "global":
+                return "";
+        }
+    }
+
+    private _reverted: boolean = false;
+    override revertToInherited() {
+        console.log("revertToInherited start");
+        this._reverted = true;
+        window.setTimeout(() => this._reverted = false, 50);
+        this.useInheritedValue = true;
+        console.log("revertToInherited end");
     }
 }
 
@@ -276,5 +354,37 @@ class ScopeData {
         else {
             return "char";
         }
+    }
+
+    get parentScope(): ScopeData | null {
+        if (this.scopeString == "char") {
+            return new ScopeData(this.appViewModel);
+        }
+        else if (this.scopeString == "char.chan" || this.scopeString == "char.convo") {
+            return new ScopeData(this.appViewModel, this.myCharacter);
+        }
+        return null;
+    }
+
+    getAppConfigKey(baseKey: string): string {
+        let prefix: string;
+        switch (this.scopeString) {
+            case "global":
+                prefix = "global";
+                break;
+            case "char":
+                prefix = `character.${this.myCharacter!.canonicalValue}.any`;
+                break;
+            case "char.chan":
+                prefix = `character.${this.myCharacter!.canonicalValue}.channel.${this.targetChannel!.canonicalValue}`;
+                break;
+            case "char.convo":
+                prefix = `character.${this.myCharacter!.canonicalValue}.pm.${this.pmConvoCharacter!.canonicalValue}`;
+                break;
+            default:
+                throw new Error(`unknown scope string: ${this.scopeString}`);
+        }
+
+        return `${prefix}.${baseKey}`;
     }
 }

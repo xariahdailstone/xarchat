@@ -13,6 +13,7 @@ import { StdObservableConcatCollectionView } from "../util/collections/StdObserv
 import { StdObservableList } from "../util/collections/StdObservableView.js";
 import { asDisposable, IDisposable } from "../util/Disposable.js";
 import { LoggedMessage, LogMessageType } from "../util/HostInterop.js";
+import { IterableUtils } from "../util/IterableUtils.js";
 import { Observable, ObservableValue } from "../util/Observable.js";
 import { ObservableBase, observableProperty } from "../util/ObservableBase.js";
 import { Collection, ObservableCollection } from "../util/ObservableCollection.js";
@@ -419,11 +420,29 @@ export abstract class ChannelViewModel extends ObservableBase {
         }
     }
 
-    @observableProperty
-    public hasPing: boolean = false;
+    private _hasPing: boolean = false;
+    private _unseenMessageCount: number = 0;
 
     @observableProperty
-    public unseenMessageCount: number = 0;
+    get hasPing(): boolean {
+        return this._hasPing;
+    }
+    set hasPing(value: boolean) {
+        this._hasPing = value;
+    }
+
+    @observableProperty
+    get unseenMessageCount(): number {
+        if (this.getConfigSettingById("unseenIndicator")) {
+            return this._unseenMessageCount;
+        }
+        else {
+            return 0;
+        }
+    }
+    set unseenMessageCount(value: number) {
+        this._unseenMessageCount = value;
+    }
 
     @observableProperty
     hiddenForClose: boolean = false;
@@ -436,6 +455,18 @@ export abstract class ChannelViewModel extends ObservableBase {
     isEffectiveOp(name: CharacterName) { return false; }
 
     isEffectiveOwner(name: CharacterName) { return false; }
+
+    getConfigSettingById(configSettingId: string) {
+        return this.appViewModel.getConfigSettingById(configSettingId, this.activeLoginViewModel, this);
+    }
+
+    getConfigEntryHierarchical(key: string) {
+        return this.appViewModel.getConfigEntryHierarchical(key, this.activeLoginViewModel, this);
+    }
+
+    getFirstConfigEntryHierarchical(keys: string[]): (unknown | null) {
+        return this.appViewModel.getFirstConfigEntryHierarchical(keys, this.activeLoginViewModel, this);
+    }
 }
 
 export interface AddMessageOptions {
@@ -666,9 +697,13 @@ export class ChannelMessageViewModel extends ObservableBase {
             return false;
         }
 
+        const cfgPingWords = this.activeLoginViewModel.getConfigSettingById("pingWords", this.parent) as string[];
+        const oldPingWords = this.activeLoginViewModel.pingWords;
+        const allPingWords = IterableUtils.asQueryable(cfgPingWords).concat(oldPingWords).select(x => x.toLowerCase());
+
         let needPing = false;
         const msgText = this.text.toLowerCase();
-        for (let x of this.activeLoginViewModel.pingWords.iterateValues()) {
+        for (let x of allPingWords) {
             if (msgText.indexOf(x) != -1) {
                 needPing = true;
                 break;

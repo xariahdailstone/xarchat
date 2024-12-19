@@ -5,6 +5,7 @@ import { ChatConnectionFactory } from "../fchat/ChatConnectionFactory";
 import { AppSettings } from "../settings/AppSettings";
 import { ChannelName } from "../shared/ChannelName";
 import { CharacterName } from "../shared/CharacterName";
+import { OnlineStatus } from "../shared/OnlineStatus";
 import { ActiveLoginViewModel, ChatConnectionState } from "../viewmodel/ActiveLoginViewModel";
 import { AppNotifyEventType, AppViewModel } from "../viewmodel/AppViewModel";
 import { ChatChannelPresenceState } from "../viewmodel/ChatChannelViewModel";
@@ -49,11 +50,13 @@ export class LoginUtils {
                 }
 
                 const sink = new ChatViewModelSink(activeLoginViewModel, isReconnect);
+                sink.isLoggingIn = true;
                 cc = await ChatConnectionFactory.create(sink);
                 activeLoginViewModel.chatConnection = cc;
                 await cc.identifyAsync(authApi.account, character, apiTicket.ticket);
                 maybeUsingStaleTicket = false;
                 await cc.quiesceAsync();
+                sink.isLoggingIn = false;
 
                 return { activeLoginViewModel: activeLoginViewModel, chatConnection: cc };
             }
@@ -85,6 +88,9 @@ export class LoginUtils {
             const charStatus = ns.characterSet.getCharacterStatus(character);
             if (charStatus.statusMessage == "" && savedChatState.statusMessage != "") {
                 // TODO: set character status
+                if (ns.getFirstConfigEntryHierarchical([ "restoreStatusMessageOnLogin" ])) {
+                    cc.setStatusAsync(OnlineStatus.ONLINE, savedChatState.statusMessage);
+                }
             }
 
             for (let chp of savedChatState.joinedChannels) {

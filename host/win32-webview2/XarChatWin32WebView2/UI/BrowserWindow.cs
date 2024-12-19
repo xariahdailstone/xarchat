@@ -21,6 +21,7 @@ using XarChatWin32WebView2.UI;
 using XarChat.Backend.Features.MemoryHinter;
 using WinRT;
 using XarChat.Backend.Features.AppConfiguration;
+using Windows.ApplicationModel.DataTransfer;
 
 namespace MinimalWin32Test.UI
 {
@@ -251,7 +252,7 @@ namespace MinimalWin32Test.UI
                                 break;
                             default:
                                 OnWindowActivated();
-                                break;
+                                return 0;
                         }
                     }
                     break;
@@ -293,6 +294,10 @@ namespace MinimalWin32Test.UI
         protected virtual void OnWindowActivated()
         {
             _webViewMemManager?.SetNormal();
+            if (_webViewController is not null)
+            {
+                _webViewController.MoveFocus(CoreWebView2MoveFocusReason.Programmatic);
+            }
         }
 
         private void MaybeUpdateWindowSize()
@@ -507,7 +512,7 @@ namespace MinimalWin32Test.UI
 		private readonly ISet<string> _keepMenuItems = new HashSet<string>()
         {
             "emoji", "undo", "cut", "copy", "paste", "selectAll",
-            "saveImageAs", "copyImage", "copyImageLink", "copyLinkLocation",
+            "saveImageAs", "copyImage", "copyImageLink", "copyImageLocation", "copyLinkLocation",
             "spellcheck"
         };
 
@@ -541,6 +546,15 @@ namespace MinimalWin32Test.UI
                     e.MenuItems.RemoveAt(i);
                     i--;
                 }
+                else
+                {
+                    var fixedMenuItem = FixupMenuItem(currentMenuItem, e.ContextMenuTarget);
+                    if (fixedMenuItem != currentMenuItem)
+                    {
+                        e.MenuItems.RemoveAt(i);
+                        e.MenuItems.Insert(i, fixedMenuItem);
+                    }
+                }
             }
             for (var i = e.MenuItems.Count - 1; i >= 0; i--)
             {
@@ -554,6 +568,57 @@ namespace MinimalWin32Test.UI
                     break;
                 }
             }
+        }
+
+        private CoreWebView2ContextMenuItem FixupMenuItem(
+            CoreWebView2ContextMenuItem currentMenuItem,
+            CoreWebView2ContextMenuTarget contextMenuTarget)
+        {
+            if (currentMenuItem.Name == "copyImageLocation")
+            {
+                var newMenuItem = _webView!.Environment.CreateContextMenuItem(
+                    currentMenuItem.Label, currentMenuItem.Icon, currentMenuItem.Kind);
+                newMenuItem.CustomItemSelected += (o, e) =>
+                {
+                    if (contextMenuTarget.Kind == CoreWebView2ContextMenuTargetKind.Image)
+                    {
+                        var sourceUri = contextMenuTarget.SourceUri;
+                        string? resultingUri;
+                        if (sourceUri.Contains("proxyImageUrl"))
+                        {
+                            var u = new Uri(sourceUri);
+                            var targetUri = u.Query.Substring(1).Split("&").Select(qp =>
+                                {
+                                    var eidx = qp.IndexOf('=');
+                                    if (eidx > -1)
+                                    {
+                                        return new KeyValuePair<string, string>(
+                                            qp.Substring(0, eidx),
+                                            HttpUtility.UrlDecode(qp.Substring(eidx + 1)));
+                                    }
+                                    else
+                                    {
+                                        return new KeyValuePair<string, string>(qp, "");
+                                    }
+                                })
+                                .Where(x => x.Key == "url")
+                                .FirstOrDefault();
+                            resultingUri = targetUri.Value ?? sourceUri;
+                        }
+                        else
+                        {
+                            resultingUri = sourceUri;
+                        }
+
+                        var dp = new DataPackage();
+                        dp.SetText(resultingUri);
+                        Clipboard.SetContent(dp);
+                    }
+                };
+                return newMenuItem;
+            }
+
+            return currentMenuItem;
         }
 
         private void _webView_ServerCertificateErrorDetected(object? sender, CoreWebView2ServerCertificateErrorDetectedEventArgs e)

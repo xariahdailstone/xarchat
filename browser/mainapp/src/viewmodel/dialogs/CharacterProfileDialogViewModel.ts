@@ -11,7 +11,6 @@ import { ObservableBase, observableProperty } from "../../util/ObservableBase";
 import { Collection, ObservableCollection } from "../../util/ObservableCollection";
 import { StringUtils } from "../../util/StringUtils";
 import { URLUtils } from "../../util/URLUtils";
-import { Queryable } from "../../util/collections/linq/Queryable";
 import { Profile } from "../../util/profile/Profile";
 import { RichInfoTagDefListImpl } from "../../util/profile/RichInfoTagDefList";
 import { RichKinkList } from "../../util/profile/RichKinkList";

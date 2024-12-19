@@ -89,6 +89,11 @@
     color: var(--fg-main-textbox-warning-btn-hover);
 }
 
+.theme-button.theme-button-smaller {
+    font-size: 80%;
+    padding: 0.12lh 0.6lh;
+}
+
 .theme-textbox {
     background: var(--bg-main-textbox);
     color: var(--fg-main-textbox);
