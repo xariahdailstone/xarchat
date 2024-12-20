@@ -50,6 +50,7 @@ using XarChat.Backend.Features.CommandableWindows;
 using XarChat.Backend.UrlHandlers.WIndowCommands;
 using XarChat.Backend.Features.MemoryHinter;
 using XarChat.Backend.Features.MemoryHinter.Impl;
+using XarChat.Backend.Features.StartupTasks;
 
 namespace XarChat.Backend
 {
@@ -230,7 +231,10 @@ namespace XarChat.Backend
             services.AddSingleton<IAppSettingsManager, AppDataAppSettingsManager>();
             services.AddSingleton<IMimeTypeMapper, MimeTypeMapperImpl>();
             services.AddSingleton<ILocalDataCache, SqliteLocalDataCacheImpl>();
-            services.AddSingleton<IChatLogWriter, SqliteChatLogWriter>();
+
+            services.AddSingleton<SqliteChatLogWriter>();
+            services.AddSingleton<IChatLogWriter>(sp => sp.GetRequiredService<SqliteChatLogWriter>());
+            services.AddSingleton<IStartupTask>(sp => sp.GetRequiredService<SqliteChatLogWriter>().StartupTask);
 
             //services.AddSingleton<IProxiedImageCache, ProxiedImageCache>();
             services.AddMemoryCache();

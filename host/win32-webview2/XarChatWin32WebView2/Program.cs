@@ -1,4 +1,5 @@
-﻿using Microsoft.Win32.SafeHandles;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Win32.SafeHandles;
 using MinimalWin32Test.Properties;
 using MinimalWin32Test.UI;
 using System.Diagnostics;
@@ -9,6 +10,7 @@ using XarChat.Backend;
 using XarChat.Backend.Features.AppConfiguration.Impl;
 using XarChat.Backend.Features.CommandLine.Impl;
 using XarChat.Backend.Features.SingleInstanceManager.ProfileLockFile;
+using XarChat.Backend.Features.StartupTasks;
 using XarChat.Backend.Features.UpdateChecker.Null;
 using XarChat.Backend.Win32;
 using XarChat.Backend.Win32.AppDataFolder;
@@ -115,6 +117,8 @@ namespace MinimalWin32Test
                     }
                 });
 
+                WaitForStartupTasks(app, backend);
+
                 writeStartupLog("creating BrowserWindow");
                 var win = new BrowserWindow(app, backend, wc, clArgs);
                 win.StartupLogWriter = startupLogWriter;
@@ -177,6 +181,107 @@ namespace MinimalWin32Test
                     User32.MessageBox(0, err, "XarChat initialization failed");
                 }
                 return 1;
+            }
+        }
+
+        private static void WaitForStartupTasks(MessageLoop app, XarChatBackend backend)
+        {
+            var sp = backend.GetServiceProviderAsync().GetAwaiter().GetResult();
+            var stasks = sp.GetServices<IStartupTask>();
+
+            using var showDialogCTS = new CancellationTokenSource();
+            showDialogCTS.CancelAfter(TimeSpan.FromSeconds(1));
+            InitializationWindow? initWindow = null;
+
+            using var autoResetEvent = new AutoResetEvent(false);
+            var disposables = new List<IDisposable>();
+            try
+            {
+                var monitorTask = Task.Run(() =>
+                {
+                    app.Post(() => { });
+
+                    foreach (var task in stasks)
+                    {
+                        task.OnStatusChange(() =>
+                        {
+                            autoResetEvent.Set();
+                        });
+                    }
+                    using var showReg = showDialogCTS.Token.Register(() =>
+                    {
+                        autoResetEvent.Set();
+                    });
+
+                    while (true)
+                    {
+                        autoResetEvent.WaitOne();
+
+                        var tasksRemaining = 0;
+                        var statusStr = "";
+                        foreach (var task in stasks)
+                        {
+                            var taskStatus = task.Status;
+                            if (!taskStatus.IsComplete)
+                            {
+                                statusStr = taskStatus.CurrentStatus;
+                                tasksRemaining++;
+                            }
+                        }
+                        if (tasksRemaining > 1)
+                        {
+                            statusStr = $"Waiting for {tasksRemaining} startup tasks...";
+                        }
+
+                        if (tasksRemaining > 0)
+                        {
+                            if (showDialogCTS.IsCancellationRequested)
+                            {
+                                app.Send(() =>
+                                {
+                                    if (showDialogCTS.IsCancellationRequested && initWindow == null)
+                                    {
+                                        initWindow = new InitializationWindow(app);
+                                        initWindow.Show();
+                                    }
+                                    if (initWindow is not null)
+                                    {
+                                        initWindow.SetStatus(statusStr);
+                                    }
+                                });
+                            }
+                        }
+                        else
+                        {
+                            var needBreakout = true;
+                            if (showDialogCTS.IsCancellationRequested)
+                            {
+                                app.Send(() =>
+                                {
+                                    if (initWindow != null)
+                                    {
+                                        needBreakout = false;
+                                        initWindow.Close();
+                                    }
+                                });
+                            }
+                            if (needBreakout)
+                            {
+                                app.Breakout();
+                            }
+                            break;
+                        }
+                    }
+                });
+                app.Run();
+                monitorTask.Wait();
+            }
+            finally
+            {
+                foreach (var d in disposables)
+                {
+                    d.Dispose();
+                }
             }
         }
 

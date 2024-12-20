@@ -173,7 +173,17 @@ namespace XarChat.Native.Win32.Wrapped
 
         public void Breakout()
         {
-            _breakout = true;
+            if (IsRunningOnUiThread)
+            {
+                _breakout = true;
+            }
+            else
+            {
+                this.Post(() =>
+                {
+                    _breakout = true;
+                });
+            }
         }
 
         private void ExecuteRunTask(nuint wParam)
