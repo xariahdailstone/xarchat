@@ -1,7 +1,7 @@
 import { CancellationToken } from "../../util/CancellationTokenSource";
 import { KeyCodes } from "../../util/KeyCodes";
 import { ObservableBase, observableProperty } from "../../util/ObservableBase";
-import { CharacterProfileDialogViewModel } from "./CharacterProfileDialogViewModel";
+import { CharacterProfileDialogViewModel } from "./character-profile/CharacterProfileDialogViewModel";
 import { DialogButtonStyle, DialogButtonViewModel, DialogViewModel } from "./DialogViewModel";
 
 export class EditMemoViewModel extends DialogViewModel<boolean> {

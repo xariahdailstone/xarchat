@@ -1,17 +1,66 @@
 import { asDisposable } from "../util/Disposable";
-import { BBCodeParseResult } from "../util/bbcode/BBCode";
+import { ObservableValue } from "../util/Observable";
+import { BBCodeParseOptions, BBCodeParseResult, RegisteredBBCodeParsers } from "../util/bbcode/BBCode";
 import { ComponentBase, componentElement } from "./ComponentBase";
 
 @componentElement("x-bbcodedisplay")
-export class BBCodeDisplay extends ComponentBase<BBCodeParseResult> {
+export class BBCodeDisplay extends ComponentBase<BBCodeParseResult | string> {
+    static get observedAttributes() { return [ 'parser' ] };
+
     constructor() {
         super();
 
-        this.whenConnectedWithViewModel((vm) => {
-            this.elMain.appendChild(vm.element);
-            return asDisposable(() => {
-                this.elMain.removeChild(vm.element);
-            })
+        this.watchExpr(vm => { return { viewModel: vm, parser: this._parser.value, parseOptions: this._parseOptions.value }; }, (args) => {
+            if (!args) { return; }
+
+            const vm = args.viewModel;
+            const parser = args.parser ?? "chat";
+            const parseOptions = args.parseOptions;
+
+            if (typeof vm == "string") {
+                const parserObj = RegisteredBBCodeParsers[parser] ?? RegisteredBBCodeParsers["chat"]
+                if (parserObj && parseOptions) {
+                    const parseResult = parserObj?.parse(vm, parseOptions);
+                    this.elMain.appendChild(parseResult.element);
+                    console.log("bbcode assigned");
+                    return asDisposable(() => {
+                        console.log("bbcode cleanedup");
+                        this.elMain.removeChild(parseResult.element);
+                        parseResult.dispose();
+                    });    
+                }
+            }
+            else {
+                this.elMain.appendChild(vm.element);
+                return asDisposable(() => {
+                    this.elMain.removeChild(vm.element);
+                });
+            }
         });
     }
+
+    protected override attributeChangedCallback(name: string, oldValue?: string, newValue?: string): void {
+        if (name == "parser") {
+            this._parser.value = newValue ?? null;
+        }
+        else {
+            super.attributeChangedCallback(name, oldValue, newValue);
+        }
+    }
+
+    private readonly _parser: ObservableValue<string | null> = new ObservableValue<string | null>(null);
+    private readonly _parseOptions: ObservableValue<BBCodeParseOptions | null> = new ObservableValue<BBCodeParseOptions | null>(null);
+
+    get parser(): string { return this.getAttribute("parser") ?? ""; }
+    set parser(value: string) {
+        if (value != null) {
+            this.setAttribute("parser", value);
+        }
+        else {
+            this.removeAttribute("parser");
+        }
+    }
+
+    get parseOptions() { return this._parseOptions.value; }
+    set parseOptions(value: BBCodeParseOptions | null) { this._parseOptions.value = value; }
 }

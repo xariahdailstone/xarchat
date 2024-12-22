@@ -487,3 +487,8 @@
 .profile-main-friends-item-name {
     text-wrap: nowrap;
 }
+
+.profile-main-guestbook {
+    max-height: 100%;
+    overflow-y: auto;
+}

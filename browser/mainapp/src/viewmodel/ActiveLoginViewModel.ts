@@ -16,7 +16,7 @@ import { CharacterNameSet, OnlineWatchedCharsCharacterNameSet } from "./Characte
 import { ChatChannelPresenceState, ChatChannelViewModel, ChatChannelViewModelSortKey } from "./ChatChannelViewModel.js";
 import { ConsoleChannelViewModel } from "./ConsoleChannelViewModel.js";
 import { PMConvoChannelViewModel, PMConvoChannelViewModelSortKey } from "./PMConvoChannelViewModel.js";
-import { CharacterProfileDialogViewModel } from "./dialogs/CharacterProfileDialogViewModel.js";
+import { CharacterProfileDialogViewModel } from "./dialogs/character-profile/CharacterProfileDialogViewModel.js";
 import { CharacterDetailPopupViewModel } from "./popups/CharacterDetailPopupViewModel.js";
 import { KeyValuePair } from "../util/collections/KeyValuePair.js";
 import { CancellationToken, CancellationTokenSource } from "../util/CancellationTokenSource.js";

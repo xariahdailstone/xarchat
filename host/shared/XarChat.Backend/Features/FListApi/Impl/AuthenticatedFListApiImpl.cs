@@ -230,5 +230,20 @@ namespace XarChat.Backend.Features.FListApi.Impl
                 return new ProfileFriendsInfo() { Friends = [] };
             }
         }
+
+        public async Task<GuestbookPageInfo> GetCharacterGuestbookPageAsync(
+            string name, int page, CancellationToken cancellationToken)
+        {
+            var formData = new Dictionary<string, string>
+            {
+                { "name", name },
+                { "page", page.ToString() }
+            };
+
+            var result = await PerformAuthenticatedRequest<GuestbookPageInfo>("api/character-guestbook.php", formData,
+                SourceGenerationContext.Default.GuestbookPageInfo, cancellationToken);
+
+            return result;
+        }
     }
 }

@@ -20,6 +20,7 @@ export interface FListAuthenticatedApi extends FListApi {
 
     getCharacterProfileAsync(name: CharacterName, cancellationToken: CancellationToken): Promise<ProfileInfo>;
     getCharacterFriendsAsync(name: CharacterName, cancellationToken: CancellationToken): Promise<ProfileFriendsInfo | null>;
+    getGuestbookPageAsync(name: CharacterName, page: number, cancellationToken: CancellationToken): Promise<GuestbookPageInfo>;
 
     saveMemoAsync(name: CharacterName, memoText: string, cancellationToken: CancellationToken): Promise<string>;
 }
@@ -48,8 +49,25 @@ export interface ProfileFriendsInfo {
     readonly friends: ProfileFriendsInfoItem[];
 }
 export interface ProfileFriendsInfoItem {
-    id: number,
-    name: string
+    id: number;
+    name: string;
+}
+
+export interface GuestbookPageInfo {
+    page: number;
+    nextPage: boolean;
+    canEdit: boolean;
+    posts: GuestbookPostInfo[];
+}
+export interface GuestbookPostInfo {
+    id: number;
+    character: { id: number, name: string };
+    postedAt: number;
+    message: string;
+    reply: string | null;
+    private: boolean;
+    approved: boolean;
+    canEdit: boolean;
 }
 
 export interface ProfileInfo {
