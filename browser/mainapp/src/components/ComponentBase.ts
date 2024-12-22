@@ -3,7 +3,7 @@ import { CharacterStatus } from "../shared/CharacterSet.js";
 import { CancellationToken, CancellationTokenSource } from "../util/CancellationTokenSource.js";
 import { SnapshottableMap } from "../util/collections/SnapshottableMap.js";
 import { SnapshottableSet } from "../util/collections/SnapshottableSet.js";
-import { IDisposable, asDisposable } from "../util/Disposable.js";
+import { IDisposable, asDisposable, isDisposable } from "../util/Disposable.js";
 import { testEquality } from "../util/Equality.js";
 import { EventListenerUtil } from "../util/EventListenerUtil.js";
 import { FastEventSource } from "../util/FastEventSource.js";
@@ -484,10 +484,31 @@ export abstract class ComponentBase<TViewModel> extends HTMLElement {
 
     watchExpr<T>(expr: (vm: TViewModel) => T, valueChanged: (value: (T | undefined)) => (void | IDisposable)): IDisposable {
         const result = this.whenConnectedWithViewModel((vm) => {
-            const oexpr = new ObservableExpression(() => expr(vm), v => valueChanged(v));
+            let lastReturnedDisposable: Disposable | null = null;
+
+            const oexpr = new ObservableExpression(
+                () => expr(vm), 
+                v => {
+                    const vcResult = valueChanged(v);
+                    if (lastReturnedDisposable && vcResult != lastReturnedDisposable) {
+                        lastReturnedDisposable[Symbol.dispose]();
+                        lastReturnedDisposable = null;
+                    }
+                    if (isDisposable(vcResult)) {
+                        lastReturnedDisposable = vcResult as Disposable;
+                    }
+                });
+            
             return asDisposable(() => {
+                if (lastReturnedDisposable) {
+                    lastReturnedDisposable[Symbol.dispose]();
+                    lastReturnedDisposable = null;
+                }
                 oexpr.dispose();
-                valueChanged(undefined);
+                const vcResult = valueChanged(undefined);
+                if (isDisposable(vcResult)) {
+                    (vcResult as Disposable)[Symbol.dispose]();
+                }
             });
         });
         
@@ -590,6 +611,12 @@ export abstract class ComponentBase<TViewModel> extends HTMLElement {
         });
         const connWatcher = this.whenConnected(() => {
             maybeGo();
+            return asDisposable(() => {
+                if (runningDisposable) {
+                    runningDisposable.dispose();
+                    runningDisposable = null;
+                }
+            });
         });
 
         return asDisposable(vmWatcher, connWatcher, runningDisposable);

@@ -90,6 +90,7 @@ namespace XarChat.Backend.Common
     [JsonSerializable(typeof(IReadOnlyList<LogCharacterInfo>))]
     [JsonSerializable(typeof(ChooseLocalFileArgs))]
     [JsonSerializable(typeof(ProfileFriendsInfo))]
+    [JsonSerializable(typeof(GuestbookPageInfo))]
     internal partial class SourceGenerationContext : JsonSerializerContext
     {
     }
