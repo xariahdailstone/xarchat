@@ -19,5 +19,7 @@ namespace XarChat.Backend.Features.WindowControl
         void Maximize();
         void Restore();
         void Close();
+
+        Task InvokeOnUIThread(Action action);
     }
 }

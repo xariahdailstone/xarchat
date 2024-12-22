@@ -30,6 +30,10 @@ export class CharacterDetailPopup extends ContextPopupBase<CharacterDetailPopupV
                 <div class="onlinestatustext" id="elStatusText"></div>
             </div>
 
+            <div class="character-settings" id="elConfigIconContainer">
+                <x-iconimage id="elConfigIcon" src="assets/ui/config-button.svg"></x-iconimage>
+            </div>
+
             <div class="character-statusmessage" id="elCharacterStatusMessage"></div>
 
             <div class="character-alsoinchannels" id="elCharacterAlsoInChannels">
@@ -63,6 +67,7 @@ export class CharacterDetailPopup extends ContextPopupBase<CharacterDetailPopupV
 
         const elCharacterIcon = this.$("elCharacterIcon") as HTMLImageElement;
         const elCharacterName = this.$("elCharacterName") as HTMLDivElement;
+        const elConfigIconContainer = this.$("elConfigIconContainer") as HTMLDivElement;
         const elCharacterOnlineStatus = this.$("elCharacterOnlineStatus") as HTMLDivElement;
         const elCharacterStatusMessage = this.$("elCharacterStatusMessage") as HTMLDivElement;
         const elCharacterAlsoInChannels = this.$("elCharacterAlsoInChannels") as HTMLDivElement;
@@ -138,6 +143,12 @@ export class CharacterDetailPopup extends ContextPopupBase<CharacterDetailPopupV
             elCharacterAlsoInChannels.classList.toggle("shown", (len > 0));
         });
 
+        elConfigIconContainer.addEventListener("click", () => {
+            if (this.viewModel) {
+                this.viewModel.showSettings();
+                this.viewModel.dismissed();
+            }
+        })
         elPrivateMessage.addEventListener("click", () => {
             const vm = this.viewModel;
             if (!vm) return;

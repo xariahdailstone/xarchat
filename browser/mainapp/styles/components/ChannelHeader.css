@@ -17,9 +17,9 @@
 
     display: grid;
     grid-template-rows: auto;
-    grid-template-columns: auto auto auto 1fr auto;
+    grid-template-columns: auto auto auto 1fr auto auto;
     grid-template-areas:
-        "icon title onlinestatus descriptionarea filter";
+        "icon title onlinestatus descriptionarea filter configiconcontainer";
 
     align-items: center;
 
@@ -125,6 +125,17 @@ select {
     border-radius: 8px;
 }
 
+#elConfigIconContainer {
+    grid-area: configiconcontainer;
+    margin-left: 10px;
+    cursor: pointer;
+}
+#elConfigIconContainer > x-iconimage {
+    max-width: 20px;
+    max-height: 20px;
+    --iconimage-max-width: 20px;
+    --iconimage-max-height: 20px;
+}
 
 #elDescriptionContainer {
     display: flex;

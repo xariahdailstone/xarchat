@@ -44,10 +44,10 @@ namespace XarChat.Backend.Features.ChatLogging
         Task<List<string>> GetPMConvoHintsFromPartialNameAsync(string myCharacterName, string partialInterlocutorName,
             CancellationToken cancellationToken);
 
-        Task<bool> ValidateChannelInLogsAsync(string channelName, CancellationToken cancellationToken);
+        //Task<bool> ValidateChannelInLogsAsync(string channelName, CancellationToken cancellationToken);
 
-        Task<bool> ValidatePMConvoInLogsAsync(
-            string myCharacterName, string interlocutorName, CancellationToken cancellationToken);
+        //Task<bool> ValidatePMConvoInLogsAsync(
+        //    string myCharacterName, string interlocutorName, CancellationToken cancellationToken);
     }
 
     public enum DateAnchor

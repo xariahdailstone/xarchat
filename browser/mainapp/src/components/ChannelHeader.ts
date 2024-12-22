@@ -42,13 +42,10 @@ export class ChannelHeader extends ComponentBase<ChannelViewModel> {
                     <option value="chat">Chat Only</option>
                     <option value="both">Both</option>
                 </x-bindingselect>
-                <!--
-                <select id="elFilterDropdown" tabindex="-1">
-                    <option value="ads">Ads Only</option>
-                    <option value="chat">Chat Only</option>
-                    <option value="both">Both</option>
-                </select>
-                -->
+            </div>
+
+            <div id="elConfigIconContainer">
+                <x-iconimage id="elConfigIcon" src="assets/ui/config-button.svg"></x-iconimage>
             </div>
         `);
 
@@ -57,6 +54,7 @@ export class ChannelHeader extends ComponentBase<ChannelViewModel> {
         const elOnlineStatusContainer = this.$("elOnlineStatusContainer") as HTMLDivElement;
         const elFilter = this.$("elFilter") as HTMLDivElement;
         const elFilterDropdown = this.$("elFilterDropdown") as HTMLSelectElement;
+        const elConfigIconContainer = this.$("elConfigIconContainer") as HTMLDivElement;
         const elDescriptionArea = this.$("elDescriptionArea") as HTMLDivElement;
         const elDescriptionText = this.$("elDescriptionText") as HTMLDivElement;
         const elDescriptionTextSizer = this.$("elDescriptionTextSizer") as HTMLDivElement;
@@ -169,6 +167,9 @@ export class ChannelHeader extends ComponentBase<ChannelViewModel> {
                 });
             }
         });
+        this.watchExpr(vm => vm.showConfigButton, (showConfigButton) => {
+            elConfigIconContainer.classList.toggle("hidden", !showConfigButton);
+        });
 
         // let assigningFilterMode = false;
         // this.watch("filterMode", v => {
@@ -235,6 +236,12 @@ export class ChannelHeader extends ComponentBase<ChannelViewModel> {
                     popup.popFromElement = elDescriptionArea;
                     vm.appViewModel.popups.push(popup);
                 }
+            }
+        });
+
+        elConfigIconContainer.addEventListener("click", () => {
+            if (this.viewModel) {
+                this.viewModel.showSettingsDialogAsync();
             }
         });
     }

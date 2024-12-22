@@ -183,7 +183,7 @@ export class NullChatConnection implements ChatConnection {
     async setStatusAsync(status: OnlineStatus, statusMessage: string): Promise<void> {
     }
 
-    async joinChannelAsync(channel: ChannelName): Promise<void> {
+    async joinChannelAsync(channel: ChannelName, titleHint?: string): Promise<void> {
     }
 
     async leaveChannelAsync(channel: ChannelName): Promise<void> {

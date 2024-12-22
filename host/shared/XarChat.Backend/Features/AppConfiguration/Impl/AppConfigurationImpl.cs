@@ -114,7 +114,7 @@ namespace XarChat.Backend.Features.AppConfiguration.Impl
 
                 var oldAcd = _appConfigData;
                 _appConfigData = fdata.ToImmutableDictionary();
-                TriggerChanges(oldAcd, _appConfigData);
+                TriggerChanges(oldAcd, _appConfigData, null);
             }
             catch
             {
@@ -123,7 +123,8 @@ namespace XarChat.Backend.Features.AppConfiguration.Impl
 
         private void TriggerChanges(
             IImmutableDictionary<string, JsonNode> oldAcd,
-            IImmutableDictionary<string, JsonNode> acd)
+            IImmutableDictionary<string, JsonNode> acd,
+            Dictionary<string, object?>? changeMetadata)
         {
             var handledKeys = new HashSet<String>();
             foreach (var kvp in oldAcd)
@@ -136,7 +137,7 @@ namespace XarChat.Backend.Features.AppConfiguration.Impl
                 handledKeys.Add(kvp.Key);
                 if (!AreEqual(kvp.Value, v))
                 {
-                    TriggerChange(kvp.Key, v);
+                    TriggerChange(kvp.Key, v, changeMetadata);
                 }
             }
             foreach (var kvp in acd)
@@ -151,7 +152,7 @@ namespace XarChat.Backend.Features.AppConfiguration.Impl
                 handledKeys.Add(kvp.Key);
                 if (!AreEqual(kvp.Value, v))
                 {
-                    TriggerChange(kvp.Key, kvp.Value);
+                    TriggerChange(kvp.Key, kvp.Value, changeMetadata);
                 }
             }
         }
@@ -161,9 +162,9 @@ namespace XarChat.Backend.Features.AppConfiguration.Impl
             return ((a?.ToJsonString() ?? "null") == (b?.ToJsonString() ?? "null"));
         }
 
-        private void TriggerChange(string key, JsonNode value)
+        private void TriggerChange(string key, JsonNode value, Dictionary<string, object?>? changeMetadata)
         {
-            var cbs = new List<Action<string, JsonNode>>();
+            var cbs = new List<Action<string, JsonNode, Dictionary<string, object?>?>>();
             lock (_valueChangedCallbacks)
             {
                 cbs = _valueChangedCallbacks.Values.ToList();
@@ -171,15 +172,15 @@ namespace XarChat.Backend.Features.AppConfiguration.Impl
 
             foreach (var cb in cbs)
             {
-                try { cb(key, value); }
+                try { cb(key, value, changeMetadata); }
                 catch { }
             }
         }
 
-        private readonly Dictionary<object, Action<string, JsonNode>> _valueChangedCallbacks
-            = new Dictionary<object, Action<string, JsonNode>>();
+        private readonly Dictionary<object, Action<string, JsonNode, Dictionary<string, object?>?>> _valueChangedCallbacks
+            = new Dictionary<object, Action<string, JsonNode, Dictionary<string, object?>?>>();
 
-        public IDisposable OnValueChanged(Action<string, JsonNode?> callback)
+        public IDisposable OnValueChanged(Action<string, JsonNode?, Dictionary<string, object?>?> callback)
         {
             var myKey = new object();
             lock (_valueChangedCallbacks)
@@ -196,24 +197,24 @@ namespace XarChat.Backend.Features.AppConfiguration.Impl
             });
         }
 
-        public IDisposable OnValueChanged(string watchKey, Action<JsonNode?> callback, bool fireImmediately)
+        public IDisposable OnValueChanged(string watchKey, Action<JsonNode?, Dictionary<string, object?>?> callback, bool fireImmediately)
         {
-            var res = this.OnValueChanged((key, value) =>
+            var res = this.OnValueChanged((key, value, changeMetadata) =>
             {
                 if (String.Equals(key, watchKey, StringComparison.OrdinalIgnoreCase))
                 {
-                    callback(value);
+                    callback(value, changeMetadata);
                 }
             });
             if (fireImmediately)
             {
                 if (_appConfigData.TryGetValue(watchKey, out var value))
                 {
-                    callback(value);
+                    callback(value, null);
                 }
                 else
                 {
-                    callback(null);
+                    callback(null, null);
                 }
             }
             return res;
@@ -355,7 +356,7 @@ namespace XarChat.Backend.Features.AppConfiguration.Impl
             }
         }
 
-        public async Task SetArbitraryValueAsync(string key, JsonNode? value, CancellationToken cancellationToken)
+        public async Task SetArbitraryValueAsync(string key, JsonNode? value, Dictionary<string, object?>? changeMetadata, CancellationToken cancellationToken)
         {
             await _dataSem.WaitAsync(cancellationToken);
             try
@@ -370,7 +371,7 @@ namespace XarChat.Backend.Features.AppConfiguration.Impl
                     {
                         _appConfigData = _appConfigData.SetItem(key, value);
                     }
-                    TriggerChange(key, value);
+                    TriggerChange(key, value, changeMetadata);
                     await WriteAppConfigJsonAsync(CancellationToken.None);
                 }
             }

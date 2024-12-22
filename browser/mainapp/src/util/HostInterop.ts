@@ -89,6 +89,9 @@ export interface IHostInterop {
     registerConfigChangeCallback(callback: (value: ConfigKeyValue) => void): IDisposable;
 
     readonly logSearch: HostInteropLogSearch;
+
+    chooseLocalFileAsync(options?: ChooseLocalFileOptions): Promise<string | null>;
+    getLocalFileUrl(fn: string): string;
 }
 
 export interface IXarHost2HostInterop extends IHostInterop {
@@ -897,6 +900,27 @@ class XarHost2Interop implements IXarHost2HostInterop {
             this._configChangeListeners.delete(myId);
         });
     }
+
+    async chooseLocalFileAsync(options?: ChooseLocalFileOptions): Promise<string | null> {
+        try {
+            const resp = await fetch("/api/localFile/choose", { method: "POST", body: JSON.stringify(options) });
+            const respObj = await resp.json() as (string | null);
+            return respObj;
+        }
+        catch (e) {
+            return null;
+        }
+    }
+
+    getLocalFileUrl(fn: string): string {
+        return `/api/localFile/getLocalFile?fn=${encodeURIComponent(fn).replaceAll('+', '%20')}`;
+    }
+}
+
+export type ChooseLocalFileOptions = {
+    title?: string | null,
+    file?: string | null,
+    filters?: ({ name: string, pattern: string }[])
 }
 
 export type ConfigKeyValue = { key: string, value: (unknown | null)};

@@ -1,5 +1,5 @@
 import { EL } from "../../EL";
-import { getContentText } from "../BBCode";
+import { BBCodeClickContext, getContentText } from "../BBCode";
 import { BBCodeTag } from "../BBCodeTag";
 
 export const BBCodeTagSession = new BBCodeTag("session", true, true, (context, arg, content) => {
@@ -16,9 +16,14 @@ export const BBCodeTagSession = new BBCodeTag("session", true, true, (context, a
         document.createTextNode(arg ?? "Link") 
     ]);
     if (typeof context.parseOptions.sink?.sessionClick == "function") {
-        const sessionClick = context.parseOptions.sink!.sessionClick as ((target: string) => void);
+        const sessionClick = context.parseOptions.sink!.sessionClick!; // as ((target: string, titleHint: string) => void);
         x.addEventListener("click", (ev) => {
-            sessionClick.call(context.parseOptions.sink!, contentText);
+            const clickContext: BBCodeClickContext = {
+                channelContext: context.parseOptions.channelViewModel,
+                rightClick: false,
+                targetElement: x
+            };
+            sessionClick.call(context.parseOptions.sink!, contentText, arg ?? "Unknown Title", clickContext);
         });
     }
     return x;
