@@ -1,4 +1,4 @@
-import { FriendsList, ImageInfo, KinkList, KinkListGroupListItem, KinkPrefType, MappingList, ProfileFieldsInfoList, ProfileFieldsSectionListItem, ProfileInfo } from "../../fchat/api/FListApi";
+import { FriendsList, ImageInfo, KinkList, KinkListGroupListItem, KinkPrefType, MappingList, ProfileFieldsInfoList, ProfileFieldsSectionListItem, ProfileFriendsInfo, ProfileInfo } from "../../fchat/api/FListApi";
 import { CharacterName } from "../../shared/CharacterName";
 import { CancellationToken, CancellationTokenSource } from "../../util/CancellationTokenSource";
 import { CatchUtils } from "../../util/CatchUtils";
@@ -143,25 +143,6 @@ export class CharacterProfileDialogViewModel extends DialogViewModel<number> {
     }
 }
 
-// export class CharacterProfileDialogTabViewModel extends ObservableBase {
-//     constructor(
-//         public readonly parent: CharacterProfileDialogViewModel,
-//         kind: string,
-//         title: string) {
-
-//         super();
-
-//         this.kind = kind;
-//         this.title = title;
-//     }
-
-//     @observableProperty
-//     kind: string;
-
-//     @observableProperty
-//     title: string;
-// }
-
 export class CharacterProfileDetailViewModel extends ObservableBase {
     static async createAsync(
         parent: CharacterProfileDialogViewModel,
@@ -185,7 +166,9 @@ export class CharacterProfileDetailViewModel extends ObservableBase {
             mypix = pix;
         }
 
-        return new CharacterProfileDetailViewModel(parent, session, character, await atx, await mlx, await pfx, await klx, await pix, await mypix);
+        const frx = session.authenticatedApi.getCharacterFriendsAsync(character, cancellationToken);
+
+        return new CharacterProfileDetailViewModel(parent, session, character, await atx, await mlx, await pfx, await klx, await pix, await mypix, await frx);
     }
 
     private constructor(
@@ -197,7 +180,8 @@ export class CharacterProfileDetailViewModel extends ObservableBase {
         profileFieldsInfo: ProfileFieldsInfoList,
         kinksList: KinkList,
         public readonly profileInfo: ProfileInfo,
-        myProfileInfo: ProfileInfo) {
+        myProfileInfo: ProfileInfo,
+        profileFriendsInfo: ProfileFriendsInfo | null) {
 
         super();
 
@@ -228,6 +212,13 @@ export class CharacterProfileDetailViewModel extends ObservableBase {
         for (let altName of profileInfo.character_list) {
             const altVm = new CharacterProfileAltViewModel(this, CharacterName.create(altName.name));
             this.alts.push(altVm);
+        }
+
+        if (profileFriendsInfo && profileFriendsInfo.friends) {
+            for (let friendInfo of profileFriendsInfo.friends) {
+                const friendVm = new CharacterProfileFriendsViewModel(this, CharacterName.create(friendInfo.name));
+                this.friends.push(friendVm);
+            }
         }
     }
 
@@ -286,6 +277,9 @@ export class CharacterProfileDetailViewModel extends ObservableBase {
 
     @observableProperty
     canBookmark: boolean = true;
+
+    @observableProperty
+    friends: Collection<CharacterProfileFriendsViewModel> = new Collection();
 
     get isBookmarked() { return this.activeLoginViewModel.bookmarks.has(this.character); }
 
@@ -683,4 +677,26 @@ export class CharacterProfileDetailKinkItemViewModel extends ObservableBase {
 
     @observableProperty
     subkinks: (Collection<CharacterProfileDetailKinkItemViewModel> | null) = null;
+}
+
+export class CharacterProfileFriendsViewModel extends ObservableBase {
+    constructor(
+        public readonly parent: CharacterProfileDetailViewModel,
+        characterName: CharacterName) {
+
+        super();
+
+        this.characterName = characterName;
+    }
+    
+    @observableProperty
+    characterName: CharacterName;
+
+    click(targetElement: HTMLElement) {
+        this.parent.activeLoginViewModel.bbcodeSink.userClick(this.characterName, {
+            rightClick: false,
+            channelContext: null,
+            targetElement: targetElement
+        });
+    }
 }

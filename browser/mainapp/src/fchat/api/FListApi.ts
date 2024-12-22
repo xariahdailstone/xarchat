@@ -19,6 +19,7 @@ export interface FListAuthenticatedApi extends FListApi {
     removeBookmarkAsync(name: CharacterName, cancellationToken: CancellationToken): Promise<void>;
 
     getCharacterProfileAsync(name: CharacterName, cancellationToken: CancellationToken): Promise<ProfileInfo>;
+    getCharacterFriendsAsync(name: CharacterName, cancellationToken: CancellationToken): Promise<ProfileFriendsInfo | null>;
 
     saveMemoAsync(name: CharacterName, memoText: string, cancellationToken: CancellationToken): Promise<string>;
 }
@@ -41,6 +42,14 @@ export interface ApiTicketCharacters {
 export interface ApiTicketFriend {
     dest_name: string;
     source_name: string;
+}
+
+export interface ProfileFriendsInfo {
+    readonly friends: ProfileFriendsInfoItem[];
+}
+export interface ProfileFriendsInfoItem {
+    id: number,
+    name: string
 }
 
 export interface ProfileInfo {
