@@ -450,7 +450,8 @@
     vertical-align: baseline;
 }
 
-.profile-main-alts {
+.profile-main-alts,
+.profile-main-friends {
     display: flex;
     flex-direction: row;
     flex-wrap: wrap;
@@ -461,7 +462,8 @@
     overflow-x: hidden;
     overflow-y: auto;
 }
-.profile-main-alts-item {
+.profile-main-alts-item,
+.profile-main-friends-item {
     display: flex;
     flex-direction: column;
     border: 1px solid var(--bg-level-3-highlight);
@@ -472,13 +474,21 @@
     gap: 7px;
     cursor: pointer;
 }
-.profile-main-alts-item:hover {
+.profile-main-alts-item:hover,
+.profile-main-friends-item:hover {
     background: var(--bg-level-3-highlight);
 }
-.profile-main-alts-item-image {
+.profile-main-alts-item-image,
+.profile-main-friends-item-image {
     width: 100px;
     height: 100px;
 }
-.profile-main-alts-item-name {
+.profile-main-alts-item-name,
+.profile-main-friends-item-name {
     text-wrap: nowrap;
+}
+
+.profile-main-guestbook {
+    max-height: 100%;
+    overflow-y: auto;
 }

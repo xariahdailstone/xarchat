@@ -118,6 +118,45 @@ namespace XarChat.Backend.UrlHandlers.FListApiProxy
                     }, SourceGenerationContext.Default.FListApiErrorResponse, 500);
 				}
             });
+            app.MapGet(urlBase + "{account}/profile-friends/{name}", async (
+                [FromRoute] string account,
+                [FromRoute] string name,
+                CancellationToken cancellationToken) =>
+            {
+                var authApi = await flistApi.GetAlreadyAuthenticatedFListApiAsync(account, cancellationToken);
+                try
+                {
+                    var result = await authApi.GetCharacterFriendsAsync(name, cancellationToken);
+                    return CustomResults.NewtonsoftJsonResult(result, SourceGenerationContext.Default.ProfileFriendsInfo);
+                }
+                catch (FListApiException ex)
+                {
+                    return CustomResults.NewtonsoftJsonResult(new FListApiErrorResponse()
+                    {
+                        Error = ex.Message,
+                    }, SourceGenerationContext.Default.FListApiErrorResponse, 500);
+                }
+            });
+            app.MapGet(urlBase + "{account}/guestbook/{name}/{page}", async (
+                [FromRoute] string account,
+                [FromRoute] string name,
+                [FromRoute] int page,
+                CancellationToken cancellationToken) =>
+            {
+                var authApi = await flistApi.GetAlreadyAuthenticatedFListApiAsync(account, cancellationToken);
+                try
+                {
+                    var result = await authApi.GetCharacterGuestbookPageAsync(name, page, cancellationToken);
+                    return CustomResults.NewtonsoftJsonResult(result, SourceGenerationContext.Default.GuestbookPageInfo);
+                }
+                catch (FListApiException ex)
+                {
+                    return CustomResults.NewtonsoftJsonResult(new FListApiErrorResponse()
+                    {
+                        Error = ex.Message,
+                    }, SourceGenerationContext.Default.FListApiErrorResponse, 500);
+                }
+            });
             app.MapGet(urlBase + "{account}/ticket", async (
                 [FromRoute] string account,
                 [FromServices] IFalsifiedClientTicketManager fctm,

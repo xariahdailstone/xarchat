@@ -14,7 +14,7 @@ function isIDisposable(obj: any) {
          && typeof obj.dispose == "function");
 }
 
-function isDisposable(obj: any) {
+export function isDisposable(obj: any) {
     return (typeof obj == "object"
         && typeof obj[Symbol.dispose] == "function");
 }

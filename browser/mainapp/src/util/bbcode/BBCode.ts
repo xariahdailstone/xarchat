@@ -526,11 +526,36 @@ const profileTags: BBCodeTag[] = [
     BBCodeTagQuote
 ]
 
+const profileMinusInlinesTags: BBCodeTag[] = [
+    ...chatTags,
+    BBCodeTagHeading,
+    BBCodeTagIndent,
+    //BBCodeTagHR,
+    BBCodeTagCollapse,
+    BBCodeTagCenter,
+    BBCodeTagLeft,
+    BBCodeTagRight,
+    BBCodeTagJustify,
+    BBCodeTagBig,
+    BBCodeTagSmall,
+    BBCodeTagQuote
+]
+
 const chatParser = new BBCodeParser();
 chatParser.tags.push(...chatTags);
 
 const profileParser = new BBCodeParser({ enableHRProcessing: true });
 profileParser.tags.push(...profileTags);
 
+const profileMinusInlinesParser = new BBCodeParser({ enableHRProcessing: true });
+profileMinusInlinesParser.tags.push(...profileMinusInlinesTags);
+
 export const ChatBBCodeParser: BBCodeParser = chatParser;
 export const ProfileBBCodeParser: BBCodeParser = profileParser;
+export const ProfileNoInlinesBBCodeParser: BBCodeParser = profileMinusInlinesParser;
+
+export const RegisteredBBCodeParsers: { [key: string]: BBCodeParser | undefined } = {
+    "chat": chatParser,
+    "profile": profileParser,
+    "profilenoimg": profileMinusInlinesParser
+}
