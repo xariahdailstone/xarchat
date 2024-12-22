@@ -1,3 +1,5 @@
+import { IterableUtils } from "../util/IterableUtils";
+
 export interface ConfigSchemaDefinition {
     settings: ConfigSchemaItemDefinition[];
 }
@@ -24,7 +26,7 @@ export interface ConfigSchemaItemDefinitionSection {
 }
 
 export interface ConfigSchemaOptionDefinition {
-    id?: string;
+    id: string;
     type: ConfigSchemaOptionItemType;
     prompt?: string;
     value?: unknown;
@@ -34,18 +36,38 @@ export type ConfigSchemaItemDefinition = (ConfigSchemaItemDefinitionItem | Confi
 
 export type ConfigSchemaItemType = "text" | "boolean" | "text[]" | "radio" | "timespan" | "color" | "color-hs";
 export type ConfigSchemaOptionItemType = "string" | "file";
-export type ConfigSchemaScopeType = "global" | "char" | "char.chan" | "char.convo";
+export type ConfigSchemaScopeType = "global" | "char" | "char.chancategory" | "char.chan" | "char.convo";
+export type ConfigSchemaScopeTypeSimple = "global" | "char" | "chan" | "convo";
+
+function getScopeArray(def: ConfigSchemaScopeTypeSimple[]): ConfigSchemaScopeType[] {
+    const result: ConfigSchemaScopeType[] = [];
+    const defQueryable = IterableUtils.asQueryable(def);
+    if (defQueryable.where(i => i == "global").any()) {
+        result.push("global");
+    }
+    if (defQueryable.where(i => i == "char").any()) {
+        result.push("char");
+    }
+    if (defQueryable.where(i => i == "chan").any()) {
+        result.push("char.chancategory");
+        result.push("char.chan");
+    }
+    if (defQueryable.where(i => i == "convo").any()) {
+        result.push("char.convo");
+    }
+    return result;
+}
 
 export const ConfigSchema: ConfigSchemaDefinition = {
     settings: [
         {
-            scope: [ "global", "char", "char.chan", "char.convo" ],
+            scope: getScopeArray(["global", "char", "chan", "convo"]),
             sectionTitle: "General Settings",
             description: "These settings are still under development!  Check back in future versions of XarChat!",
             items: [
                 {
                     id: "autoIdle",
-                    scope: [ "global", "char" ],
+                    scope: getScopeArray(["global", "char"]),
                     title: "Auto Idle",
                     description: "Automatically change your status to Idle when your computer input is idle.",
                     type: "boolean",
@@ -54,7 +76,7 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                 },
                 {
                     id: "autoAway",
-                    scope: [ "global", "char" ],
+                    scope: getScopeArray(["global", "char"]),
                     title: "Auto Away",
                     description: "Automatically change your status to Away when your computer is locked.",
                     type: "boolean",
@@ -63,7 +85,7 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                 },
                 {
                     id: "autoReconnect",
-                    scope: [ "global", "char" ],
+                    scope: getScopeArray(["global", "char"]),
                     title: "Automatically Reconnect",
                     description: "Automatically attempt to reconnect to chat when the connection is lost unexpectedly.",
                     type: "boolean",
@@ -72,7 +94,7 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                 },
                 {
                     id: "restoreStatusMessageOnLogin",
-                    scope: [ "global", "char" ],
+                    scope: getScopeArray(["global", "char"]),
                     title: "Restore Status Message on Login",
                     description: "Restore your previous status message when logging in or reconnecting.",
                     type: "boolean",
@@ -81,7 +103,7 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                 },
                 {
                     id: "pingWords",
-                    scope: [ "global", "char", "char.chan" ],
+                    scope: getScopeArray(["global", "char", "chan"]),
                     title: "Ping Words",
                     description: "Words that will cause a message to get highlighted and generate a ping sound effect when seen in chat.",
                     type: "text[]",
@@ -90,7 +112,7 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                 },
                 {
                     id: "unseenIndicator",
-                    scope: [ "global", "char", "char.chan" ],
+                    scope: getScopeArray(["global", "char", "chan"]),
                     title: "Show Unseen Messages Indicator",
                     description: "Show a white dot on channels where new unseen messages that do not include ping words have arrived.",
                     type: "boolean",
@@ -99,7 +121,7 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                 },
                 {
                     id: "checkForUpdates",
-                    scope: [ "global" ],
+                    scope: getScopeArray(["global"]),
                     title: "Automatically Check For Updates",
                     description: "Check for new versions of XarChat when they are released.",
                     type: "boolean",
@@ -120,12 +142,12 @@ export const ConfigSchema: ConfigSchemaDefinition = {
             ]
         },
         {
-            scope: [ "global", "char", "char.chan", "char.convo" ],
+            scope: getScopeArray(["global", "char", "chan", "convo"]),
             sectionTitle: "Logging Options",
             items: [
                 {
                     id: "loggingEnabled",
-                    scope: [ "global", "char", "char.chan", "char.convo" ],
+                    scope: getScopeArray(["global", "char", "chan", "convo"]),
                     title: "Enable Logging",
                     description: "Log chat to a local file.",
                     type: "boolean",
@@ -135,144 +157,156 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                 },
                 {
                     id: "retentionPeriod.chan",
-                    scope: [ "global", "char", "char.chan" ],
+                    scope: getScopeArray(["global", "char", "chan"]),
                     title: "Channel Message Log Retention",
                     description: "How long to keep channel messages in the log file.",
                     type: "timespan",
                     defaultValue: 2160,  // 90 days * 24 hours
-                    configBlockKey: "loggingEnabled",
+                    configBlockKey: "loggingRetentionChannel",
                     notYetImplemented: true
                 },
                 {
                     id: "retentionPeriod.convo",
-                    scope: [ "global", "char", "char.convo" ],
+                    scope: getScopeArray(["global", "char", "convo"]),
                     title: "Private Message Log Retention",
                     description: "How long to keep private messages in the log file.",
                     type: "timespan",
                     defaultValue: 120000,  // 5000 days * 24 hours
-                    configBlockKey: "loggingEnabled",
+                    configBlockKey: "loggingRetentionConvo",
                     notYetImplemented: true
                 }
             ]
         },
         {
-            scope: [ "global", "char", "char.chan", "char.convo" ],
+            scope: getScopeArray(["global", "char", "chan", "convo"]),
             sectionTitle: "Sounds",
             description: "Configure the sounds XarChat will play on various events.",
             items: [
                 {
                     id: "sound.event.connect",
-                    scope: [ "global", "char" ],
+                    scope: getScopeArray(["global", "char"]),
                     title: "Connected",
                     description: "Sound to play when a connection to chat is established.",
                     type: "radio",
                     options: [
                         {
+                            id: "none",
                             type: "string",
                             prompt: "None",
-                            value: ""
+                            value: "none:"
                         },
                         {
+                            id: "default",
                             type: "string",
                             prompt: "Default",
-                            value: null
+                            value: "default:"
                         },
                         {
+                            id: "file",
                             type: "file",
-                            prompt: "Choose File"
+                            prompt: "Choose File",
+                            value: "file:@"
                         },
                     ],
-                    defaultValue: null,
-                    configBlockKey: "sound.event.connect",
-                    notYetImplemented: true
+                    defaultValue: "default:",
+                    configBlockKey: "sound.event.connect"
                 },
                 {
                     id: "sound.event.disconnect",
-                    scope: [ "global", "char" ],
+                    scope: getScopeArray(["global", "char"]),
                     title: "Disconnected",
                     description: "Sound to play when a connection to chat is lost.",
                     type: "radio",
                     options: [
                         {
+                            id: "none",
                             type: "string",
                             prompt: "None",
-                            value: ""
+                            value: "none:"
                         },
                         {
+                            id: "default",
                             type: "string",
                             prompt: "Default",
-                            value: null
+                            value: "default:"
                         },
                         {
+                            id: "file",
                             type: "file",
-                            prompt: "Choose File"
+                            prompt: "Choose File",
+                            value: "file:@"
                         },
                     ],
-                    defaultValue: null,
-                    configBlockKey: "sound.event.disconnect",
-                    notYetImplemented: true
+                    defaultValue: "default:",
+                    configBlockKey: "sound.event.disconnect"
                 },
                 {
                     id: "sound.event.pm",
-                    scope: [ "global", "char", "char.convo" ],
+                    scope: getScopeArray(["global", "char", "convo"]),
                     title: "New Private Message",
                     description: "Sound to play when a new unseen private message is received.",
                     type: "radio",
                     options: [
                         {
+                            id: "none",
                             type: "string",
                             prompt: "None",
-                            value: ""
+                            value: "none:"
                         },
                         {
+                            id: "default",
                             type: "string",
                             prompt: "Default",
-                            value: null
+                            value: "default:"
                         },
                         {
+                            id: "file",
                             type: "file",
-                            prompt: "Choose File"
+                            prompt: "Choose File",
+                            value: "file:@"
                         },
                     ],
-                    defaultValue: null,
-                    configBlockKey: "sound.event.pm",
-                    notYetImplemented: true
+                    defaultValue: "default:",
+                    configBlockKey: "sound.event.pm"
                 },
                 {
                     id: "sound.event.ping",
-                    scope: [ "global", "char", "char.chan" ],
+                    scope: getScopeArray(["global", "char", "chan"]),
                     title: "Ping",
                     description: "Sound to play when a message containing a ping word is received.",
                     type: "radio",
                     options: [
                         {
+                            id: "none",
                             type: "string",
                             prompt: "None",
-                            value: ""
+                            value: "none:"
                         },
                         {
+                            id: "default",
                             type: "string",
                             prompt: "Default",
-                            value: null
+                            value: "default:"
                         },
                         {
+                            id: "file",
                             type: "file",
-                            prompt: "Choose File"
+                            prompt: "Choose File",
+                            value: "file:@"
                         },
                     ],
-                    defaultValue: null,
-                    configBlockKey: "sound.event.ping",
-                    notYetImplemented: true
+                    defaultValue: "default:",
+                    configBlockKey: "sound.event.ping"
                 },
             ]
         },
         {
-            scope: [ "global" ],
+            scope: getScopeArray(["global"]),
             sectionTitle: "Colors",
             description: "Choose colors for various parts of the XarChat interface.",
             items: [
                 {
-                    scope: [ "global" ],
+                    scope: getScopeArray(["global"]),
                     id: "backgroundcolor",
                     title: "Background",
                     description: "Background color throughout XarChat.",
@@ -281,11 +315,11 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     configBlockKey: "bgColor"
                 },
                 {
-                    scope: [ "global" ],
+                    scope: getScopeArray(["global"]),
                     sectionTitle: "Genders",
                     items: [
                         {
-                            scope: [ "global" ],
+                            scope: getScopeArray(["global"]),
                             id: "gender.male",
                             title: "Male",
                             description: "[Coming Soon]",
@@ -295,7 +329,7 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                             notYetImplemented: true
                         },
                         {
-                            scope: [ "global" ],
+                            scope: getScopeArray(["global"]),
                             id: "gender.female",
                             title: "Female",
                             description: "[Coming Soon]",
@@ -305,7 +339,7 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                             notYetImplemented: true
                         },
                         {
-                            scope: [ "global" ],
+                            scope: getScopeArray(["global"]),
                             id: "gender.herm",
                             title: "Hermaphrodite",
                             description: "[Coming Soon]",
@@ -315,7 +349,7 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                             notYetImplemented: true
                         },
                         {
-                            scope: [ "global" ],
+                            scope: getScopeArray(["global"]),
                             id: "gender.male-herm",
                             title: "Male Hermaphrodite",
                             description: "[Coming Soon]",
@@ -325,7 +359,7 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                             notYetImplemented: true
                         },
                         {
-                            scope: [ "global" ],
+                            scope: getScopeArray(["global"]),
                             id: "gender.shemale",
                             title: "Shemale",
                             description: "[Coming Soon]",
@@ -335,7 +369,7 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                             notYetImplemented: true
                         },
                         {
-                            scope: [ "global" ],
+                            scope: getScopeArray(["global"]),
                             id: "gender.cunt-boy",
                             title: "Cuntboy",
                             description: "[Coming Soon]",
@@ -345,7 +379,7 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                             notYetImplemented: true
                         },
                         {
-                            scope: [ "global" ],
+                            scope: getScopeArray(["global"]),
                             id: "gender.transgender",
                             title: "Transgender",
                             description: "[Coming Soon]",
@@ -355,7 +389,7 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                             notYetImplemented: true
                         },
                         {
-                            scope: [ "global" ],
+                            scope: getScopeArray(["global"]),
                             id: "gender.none",
                             title: "None",
                             description: "[Coming Soon]",

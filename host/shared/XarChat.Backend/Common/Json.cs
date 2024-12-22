@@ -14,6 +14,7 @@ using XarChat.Backend.Features.ChatLogging;
 using XarChat.Backend.Features.EIconUpdateSubmitter.Impl;
 using XarChat.Backend.Features.FListApi;
 using XarChat.Backend.UrlHandlers.AppSettings;
+using XarChat.Backend.UrlHandlers.FileChooser;
 using XarChat.Backend.UrlHandlers.FListApiProxy;
 using XarChat.Backend.UrlHandlers.XCHostFunctions.SessionAdapters.OldNewAppSettings;
 using static XarChat.Backend.UrlHandlers.AppSettings.AppSettingsExtensions;
@@ -83,6 +84,11 @@ namespace XarChat.Backend.Common
     [JsonSerializable(typeof(IImmutableDictionary<string, JsonNode>))]
     [JsonSerializable(typeof(DataUpdateSubmitBody))]
     [JsonSerializable(typeof(FListApiErrorResponse))]
+    [JsonSerializable(typeof(IReadOnlyList<long>))]
+    [JsonSerializable(typeof(IReadOnlyList<string>))]
+    [JsonSerializable(typeof(IReadOnlyList<SearchResultItem>))]
+    [JsonSerializable(typeof(IReadOnlyList<LogCharacterInfo>))]
+    [JsonSerializable(typeof(ChooseLocalFileArgs))]
     internal partial class SourceGenerationContext : JsonSerializerContext
     {
     }

@@ -37,7 +37,8 @@ interface InitializationGroupOptions {
 export class SettingsDialogViewModel extends DialogViewModel<number> {
     constructor(parent: AppViewModel, 
         private readonly session?: ActiveLoginViewModel, 
-        private readonly channel?: ChannelViewModel) {
+        private readonly channel?: ChannelViewModel,
+        private readonly interlocutorName?: CharacterName) {
 
         super(parent);
         this.schemaDefinition = ConfigSchema;
@@ -53,17 +54,22 @@ export class SettingsDialogViewModel extends DialogViewModel<number> {
         this.tabs.push(new GlobalSettingsDialogTabViewModel(this));
         if (this.session) {
             this.tabs.push(new SessionSettingsDialogTabViewModel(this, this.session));
-        }
-        if (this.channel) {
-            if (this.channel instanceof ChatChannelViewModel) {
-                this.tabs.push(new ChannelSettingsDialogTabViewModel(this, this.channel));
-            }
-            else if (this.channel instanceof PMConvoChannelViewModel) {
-                this.tabs.push(new PMConvoSettingsDialogTabViewModel(this, this.channel));
+
+            if (this.channel || this.interlocutorName) {
+                if (this.channel instanceof ChatChannelViewModel) {
+                    this.tabs.push(new ChannelCategorySettingsDialogTabViewModel(this, this.channel.activeLoginViewModel.characterName, this.channel.channelCategory));
+                    this.tabs.push(new ChannelSettingsDialogTabViewModel(this, this.channel));
+                }
+                else if (this.channel instanceof PMConvoChannelViewModel) {
+                    this.tabs.push(PMConvoSettingsDialogTabViewModel.createForChannel(this, this.channel));
+                }
+                else if (this.interlocutorName instanceof CharacterName) {
+                    this.tabs.push(PMConvoSettingsDialogTabViewModel.createForCharacter(this, this.session?.characterName, this.interlocutorName));
+                }
             }
         }
 
-        this.selectedTab = IterableUtils.asQueryable(this.tabs).first();
+        this.selectedTab = IterableUtils.asQueryable(this.tabs).last();
     }
 
     @observableProperty
@@ -89,6 +95,7 @@ export abstract class SettingsDialogSettingViewModel extends ObservableBase {
     get showInheritedInfo(): boolean { return false; }
 
     get inheritedFromText(): string { return ""; }
+    get revertToText(): string { return ""; }
 
     revertToInherited() {
     }
@@ -149,6 +156,8 @@ export abstract class SettingsDialogTabViewModel extends SettingsDialogSettingVi
 
     get tabTitle(): string { return this.title; }
 
+    get tabInstructions(): string { return this.scope.scopeDescription; }
+
     select() {
         console.log("selecting tab", this.tabTitle);
         this.parent.selectedTab = this;
@@ -157,25 +166,49 @@ export abstract class SettingsDialogTabViewModel extends SettingsDialogSettingVi
 
 class GlobalSettingsDialogTabViewModel extends SettingsDialogTabViewModel {
     constructor(parent: SettingsDialogViewModel) {
-        super(parent, "Global", new ScopeData(parent.parent));
+        super(parent, 
+            "Global",
+            new ScopeData(parent.parent));
     }
 }
 
 class SessionSettingsDialogTabViewModel extends SettingsDialogTabViewModel {
     constructor(parent: SettingsDialogViewModel, session: ActiveLoginViewModel) {
-        super(parent, session.characterName.value, new ScopeData(parent.parent, session.characterName));
+        super(parent, 
+            `Session - ${session.characterName.value}`,
+            new ScopeData(parent.parent, session.characterName));
+    }
+}
+
+class ChannelCategorySettingsDialogTabViewModel extends SettingsDialogTabViewModel {
+    constructor(parent: SettingsDialogViewModel, myCharacterName: CharacterName, categoryName: string) {
+        super(parent, 
+            `Category - ${categoryName}`,
+            new ScopeData(parent.parent, myCharacterName, categoryName));
     }
 }
 
 class ChannelSettingsDialogTabViewModel extends SettingsDialogTabViewModel {
     constructor(parent: SettingsDialogViewModel, channel: ChatChannelViewModel) {
-        super(parent, channel.title, new ScopeData(parent.parent, channel.activeLoginViewModel.characterName, channel.name));
+        super(parent, 
+            `Channel - ${channel.title}`,
+            new ScopeData(parent.parent, channel.activeLoginViewModel.characterName, channel.channelCategory, channel.title));
     }
 }
 
 class PMConvoSettingsDialogTabViewModel extends SettingsDialogTabViewModel {
-    constructor(parent: SettingsDialogViewModel, convo: PMConvoChannelViewModel) {
-        super(parent, convo.character.value, new ScopeData(parent.parent, convo.activeLoginViewModel.characterName, undefined, convo.character));
+    static createForChannel(parent: SettingsDialogViewModel, convo: PMConvoChannelViewModel): PMConvoSettingsDialogTabViewModel {
+        return new PMConvoSettingsDialogTabViewModel(parent, convo.activeLoginViewModel.characterName, convo.character);
+    }
+
+    static createForCharacter(parent: SettingsDialogViewModel, myCharName: CharacterName, interlocutorName: CharacterName): PMConvoSettingsDialogTabViewModel {
+        return new PMConvoSettingsDialogTabViewModel(parent, myCharName, interlocutorName);
+    }
+
+    private constructor(parent: SettingsDialogViewModel, myCharName: CharacterName, interlocutorName: CharacterName) {
+        super(parent, 
+            `Character - ${interlocutorName.value}`,
+            new ScopeData(parent.parent, myCharName, undefined, undefined, interlocutorName));
     }
 }
 
@@ -274,6 +307,10 @@ export class SettingsDialogItemViewModel extends SettingsDialogSettingViewModel 
                     case "text[]":
                         this.assignTextListValue(value);
                         break;
+                    case "text":
+                    case "radio":
+                        this.assignStringValue(value);
+                        break;
                     default:
                         console.log(`don't know how to assign ${this.schema.type}`);
                 }
@@ -304,23 +341,14 @@ export class SettingsDialogItemViewModel extends SettingsDialogSettingViewModel 
         const ss = this.scope.scopeString;
         if (ss == "global" || !this.schema.scope) { return false; }
         if (ss == "char" && this.schema.scope?.filter(x => x == "global").length > 0 ) { return true; }
-        if (ss == "char.chan" && this.schema.scope?.filter(x => x == "char").length > 0 ) { return true; }
+        if (ss == "char.chancategory" && this.schema.scope?.filter(x => x == "char").length > 0 ) { return true; }
+        if (ss == "char.chan" && this.schema.scope?.filter(x => x == "char.chancategory").length > 0 ) { return true; }
         if (ss == "char.convo" && this.schema.scope?.filter(x => x == "char").length > 0 ) { return true; }
         return false;
     }
 
-    override get inheritedFromText(): string { 
-        switch (this.scope.scopeString) {
-            case "char":
-                return "the global settings";
-            case "char.chan":
-            case "char.convo":
-                return `the settings for ${this.scope.myCharacter!.value}`;
-            default:
-            case "global":
-                return "";
-        }
-    }
+    override get inheritedFromText(): string { return this.scope.settingIsInheritedPrompt; }
+    override get revertToText(): string { return this.scope.settingIsAssignedPrompt; }
 
     private _reverted: boolean = false;
     override revertToInherited() {
@@ -336,7 +364,8 @@ class ScopeData {
     constructor(
         public readonly appViewModel: AppViewModel,
         public readonly myCharacter?: CharacterName,
-        public readonly targetChannel?: ChannelName,
+        public readonly categoryName?: string,
+        public readonly targetChannel?: string,
         public readonly pmConvoCharacter?: CharacterName
     ) {
     }
@@ -347,6 +376,9 @@ class ScopeData {
         }
         else if (this.targetChannel != null) {
             return "char.chan";
+        }
+        else if (this.categoryName != null) {
+            return "char.chancategory";
         }
         else if (this.pmConvoCharacter != null) {
             return "char.convo";
@@ -360,7 +392,13 @@ class ScopeData {
         if (this.scopeString == "char") {
             return new ScopeData(this.appViewModel);
         }
-        else if (this.scopeString == "char.chan" || this.scopeString == "char.convo") {
+        else if (this.scopeString == "char.chancategory") {
+            return new ScopeData(this.appViewModel, this.myCharacter);
+        }
+        else if (this.scopeString == "char.chan") {
+            return new ScopeData(this.appViewModel, this.myCharacter, this.categoryName);
+        }
+        else if (this.scopeString == "char.convo") {
             return new ScopeData(this.appViewModel, this.myCharacter);
         }
         return null;
@@ -375,8 +413,11 @@ class ScopeData {
             case "char":
                 prefix = `character.${this.myCharacter!.canonicalValue}.any`;
                 break;
+            case "char.chancategory":
+                prefix = `character.${this.myCharacter!.canonicalValue}.channelcategory.${this.categoryName!.toLowerCase()}`;
+                break;
             case "char.chan":
-                prefix = `character.${this.myCharacter!.canonicalValue}.channel.${this.targetChannel!.canonicalValue}`;
+                prefix = `character.${this.myCharacter!.canonicalValue}.channel.${this.targetChannel!.toLowerCase()}`;
                 break;
             case "char.convo":
                 prefix = `character.${this.myCharacter!.canonicalValue}.pm.${this.pmConvoCharacter!.canonicalValue}`;
@@ -386,5 +427,56 @@ class ScopeData {
         }
 
         return `${prefix}.${baseKey}`;
+    }
+
+    get scopeDescription(): string {
+        switch (this.scopeString) {
+            case "global":
+                return "Settings that apply globally within XarChat.";
+            case "char":
+                return `Settings that apply only for sessions logged in as ${this.myCharacter!.value}.`;
+            case "char.chancategory":
+                return `Settings that apply to channels in the "${this.categoryName}" category when logged in as ${this.myCharacter!.value}.`;
+            case "char.chan":
+                return `Settings that apply to the channel "${this.targetChannel}" when logged in as ${this.myCharacter!.value}.`;
+            case "char.convo":
+                return `Settings that apply  to the character "${this.pmConvoCharacter!.value}" when logged in as ${this.myCharacter!.value}.`;
+            default:
+                throw new Error(`unknown scope string: ${this.scopeString}`);
+        }
+    }
+
+    get settingIsInheritedPrompt(): string {
+        switch (this.scopeString) {
+            case "global":
+                return "";
+            case "char":
+                return `Currently using the value inherited from the global settings.`;
+            case "char.chancategory":
+                return `Currently using the value inherited from the session settings for ${this.myCharacter?.value}.`;
+            case "char.chan":
+                return `Currently using the value inherited from the channel category settings for "${this.categoryName}".`;
+            case "char.convo":
+                return `Currently using the value inherited from the session settings for ${this.myCharacter?.value}.`;
+            default:
+                throw new Error(`unknown scope string: ${this.scopeString}`);
+        }
+    }
+
+    get settingIsAssignedPrompt(): string {
+        switch (this.scopeString) {
+            case "global":
+                return "";
+            case "char":
+                return `Using overridden value. Click @@ to use the value from the global settings instead.`;
+            case "char.chancategory":
+                return `Using overridden value. Click @@ to use the value from the session settings for ${this.myCharacter?.value} instead.`;
+            case "char.chan":
+                return `Using overridden value. Click @@ to use the value from the channel category settings for "${this.categoryName}" instead.`;
+            case "char.convo":
+                return `Using overridden value. Click @@ to use the value from the session settings for ${this.myCharacter?.value} instead.`;
+            default:
+                throw new Error(`unknown scope string: ${this.scopeString}`);
+        }
     }
 }

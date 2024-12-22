@@ -26,6 +26,9 @@ export class Mutex {
                 await ps.promise;
             }
         }
+        else {
+            this._held = true;
+        }
 
         let disposed = false;
         return asDisposable(() => {

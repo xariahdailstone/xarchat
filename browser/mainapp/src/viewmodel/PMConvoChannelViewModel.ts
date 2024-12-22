@@ -23,6 +23,7 @@ export class PMConvoChannelViewModel extends ChannelViewModel {
         super(parent, character.value);
 
         this.character = character;
+        this.showConfigButton = true;
 
         this.prefixMessages.add(
             ChannelMessageViewModel.createLogNavMessage(this, "Click here to see earlier messages in the Log Viewer", () => {
@@ -65,6 +66,10 @@ export class PMConvoChannelViewModel extends ChannelViewModel {
     readonly character: CharacterName;
 
     get collectiveName(): string { return `pm:${this.character.value}`; }
+
+    override async showSettingsDialogAsync() { 
+        await this.parent.appViewModel.showSettingsDialogAsync(this.parent, this.character);
+    }
 
     get description(): string { return this.parent.characterSet.getCharacterStatus(this.character).statusMessage; }
 

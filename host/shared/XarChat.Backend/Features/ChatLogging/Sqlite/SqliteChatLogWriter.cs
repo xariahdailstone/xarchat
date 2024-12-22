@@ -92,7 +92,7 @@ namespace XarChat.Backend.Features.ChatLogging.Sqlite
             }
         }
 
-        private async Task<T> WithSemaphore<T>(
+        internal async Task<T> WithSemaphore<T>(
             Func<SqliteConnection, CancellationToken, Task<T>> func,
             CancellationToken cancellationToken)
         {

@@ -3,12 +3,13 @@ import { SettingsDialogSectionViewModel, SettingsDialogItemViewModel, SettingsDi
 import { componentArea, componentElement } from "../ComponentBase";
 import { RenderingComponentBase } from "../RenderingComponentBase";
 import { DialogBorderType, DialogComponentBase, dialogViewFor } from "./DialogFrame";
-import { Fragment, init, jsx, VNode, styleModule, toVNode, propsModule, eventListenersModule } from "../../snabbdom/index.js";
+import { Fragment, init, jsx, VNode, styleModule, toVNode, propsModule, eventListenersModule, h } from "../../snabbdom/index.js";
 import { IterableUtils } from "../../util/IterableUtils";
 import { HTMLUtils } from "../../util/HTMLUtils";
 import { ConfigSchemaItemDefinitionItem } from "../../configuration/ConfigSchemaItem";
 import { ColorHSSelectPopup } from "../popups/ColorHSSelectPopup";
 import { ColorHSSelectPopupViewModel } from "../../viewmodel/popups/ColorHSSelectPopupViewModel";
+import { HostInterop } from "../../util/HostInterop";
 
 @componentArea("dialogs")
 @componentElement("x-settingsdialog")
@@ -55,6 +56,7 @@ export class SettingsDialogContent extends RenderingComponentBase<SettingsDialog
 
     private renderTabPane(tab: SettingsDialogTabViewModel): VNode {
         return <div classList={["tabpane", "tabpane-standard"]}>
+            <div classList={["tabpane-description"]}>{ tab.tabInstructions }</div>
             { IterableUtils.asQueryable(tab.settings).select(x => this.renderSetting(x)).toArray() }
         </div>;
     }
@@ -83,7 +85,7 @@ export class SettingsDialogContent extends RenderingComponentBase<SettingsDialog
                     inner = this.renderSettingColorHS(setting);
                     break;
                 case "radio":
-                    inner = this.renderSettingRadio(setting.schema);
+                    inner = this.renderSettingRadio(setting);
                     break;
                 case "text[]":
                     inner = this.renderSettingTextList(setting);
@@ -103,15 +105,35 @@ export class SettingsDialogContent extends RenderingComponentBase<SettingsDialog
         return <div classList={settingClasses} props={{ "inert": setting.isDisabled }}>
             <div classList={["setting-title"]}>{setting.title}</div>
             <div classList={["setting-description"]}>{setting.description}</div>
-            { setting.showInheritedInfo ? 
-                setting.useInheritedValue ? <div classList={["setting-inheritprompt", "setting-using-inherited"]}>Currently using the setting value inherited from {setting.inheritedFromText}.</div>
-                    : <div classList={["setting-inheritprompt", "setting-revert-to-inherited"]}><span>Using overridden value. Click </span>
-                        <span classList={["revert-link"]}
-                            on={{ "click": (e) => { setting.revertToInherited() } }}>here</span> 
-                        <span> to use the setting value from {setting.inheritedFromText} instead.</span></div>
-                : <></> }
+            { this.getInheritedInfoVNode(setting) }
             { inner }
         </div>;
+    }
+
+    private getInheritedInfoVNode(setting: SettingsDialogSettingViewModel): VNode {
+        if (setting.showInheritedInfo) {
+            if (setting.useInheritedValue) {
+                return <div classList={["setting-inheritprompt", "setting-using-inherited"]}>{setting.inheritedFromText}</div>
+            }
+            else {
+                const ihText = setting.revertToText;
+                const atatPos = ihText.indexOf("@@");
+                if (atatPos == -1) {
+                    return <div classList={["setting-inheritprompt", "setting-revert-to-inherited"]}>{ihText}</div>;
+                }
+                else {
+                    const beforeText = ihText.substring(0, atatPos);
+                    const afterText = ihText.substring(atatPos + 2);
+                    return <div classList={["setting-inheritprompt", "setting-revert-to-inherited"]}><span>{beforeText}</span>
+                            <span classList={["revert-link"]}
+                                on={{ "click": (e) => { setting.revertToInherited() } }}>here</span> 
+                        <span>{afterText}</span></div>
+                }
+            }
+        }
+        else {
+            return <></>;
+        }
     }
 
     private renderSettingText(setting: ConfigSchemaItemDefinitionItem): VNode {
@@ -157,11 +179,101 @@ export class SettingsDialogContent extends RenderingComponentBase<SettingsDialog
         }
     }
 
-    private renderSettingRadio(setting: ConfigSchemaItemDefinitionItem): VNode {
-        // return <div classList={["setting-entry", "setting-entry-radio-container"]}>
-        //     <input attr-type="text"></input>
-        // </div>
-        return <></>;
+    private renderSettingRadio(setting: SettingsDialogItemViewModel): VNode {
+        const schema = setting.schema;
+        const settingId = schema.id ?? this.getOrCreateSettingId(schema);
+        const radioName = `el${schema.id}radio`;
+
+        const curValue = setting.value as (string | undefined | null);
+
+        const optNodes: VNode[] = [];
+        for (let opts of schema.options!) {
+            const radioOptId = `el${schema.id}radio${opts.id}`;
+
+            let isEnabled: boolean;
+            let isChecked: boolean;
+            let labelContent: VNode;
+            let handleSelected: () => void;
+            
+            switch (opts.type) {
+                default:
+                    labelContent = <>{opts.prompt ?? opts.value ?? "unspecified"}</>;
+                    isChecked = (curValue == opts.value);
+                    isEnabled = true;
+                    handleSelected = () => {
+                        console.log("assigning", opts.value);
+                        setting.value = opts.value;
+                    };
+                    break;
+                case "file":
+                    {
+                        let curFileName: string;
+                        if (curValue && (curValue as string).startsWith("file:")) {
+                            curFileName = (curValue as string).substring(5);
+                            isEnabled = true;
+                        }
+                        else {
+                            curFileName = "";
+                            isEnabled = false;
+                        }
+
+                        handleSelected = () => {
+                            const assignValue = `file:${curFileName}`;
+                            console.log("assigning", assignValue);
+                            setting.value = assignValue;
+                        };
+                        const chooseFile = async () => {
+                            const fn = await HostInterop.chooseLocalFileAsync({
+                                title: `Choose Audio File`,
+                                file: curFileName,
+                                filters: [
+                                    { name: "MP3 Files (*.mp3)", pattern: "*.mp3" },
+                                    { name: "All Files (*.*)", pattern: "*.*" },
+                                ]
+                            });
+                            if (fn) {
+                                setting.value = `file:${fn}`;
+                            }
+                        };
+
+                        labelContent = <>
+                                <button classList={[ "theme-button", "theme-button-smaller" ]}
+                                    on={{ "click": (e) => chooseFile() }}>Select File</button>
+                                <span>{curFileName}</span>
+                            </>;
+                        isChecked = isEnabled;
+                    }
+                    break;
+            }
+
+            const optNode = <div classList={["setting-entry-radio-option"]}>
+                    <input attr-type="radio" id={radioOptId} attr-name={radioName} 
+                            props={{
+                                "checked": isChecked,
+                                "disabled": !isEnabled
+                            }}
+                            on={{
+                                "change": (e) => { if (((e.target) as HTMLInputElement).checked) { handleSelected(); } }
+                            }}/>
+                    <label attr-for={radioOptId}>{labelContent}</label>
+                </div>;
+            optNodes.push(optNode);
+        }
+        return <div classList={["setting-entry", "setting-entry-radio-container"]}>
+            {optNodes}
+        </div>
+    }
+
+    private static _nextGeneratedIdNum = 1;
+    private static readonly ItemGeneratedIdSym = Symbol("ItemGeneratedIdSym");
+
+    private getOrCreateSettingId(setting: ConfigSchemaItemDefinitionItem): string {
+        let id = (setting as any)[SettingsDialogContent.ItemGeneratedIdSym] as (string | undefined | null);
+        if (!id) {
+            id = `gen${SettingsDialogContent._nextGeneratedIdNum++}`;
+            (setting as any)[SettingsDialogContent.ItemGeneratedIdSym] = id;
+        }
+        return id;
     }
 
     private renderSettingTextList(setting: SettingsDialogItemViewModel): VNode {

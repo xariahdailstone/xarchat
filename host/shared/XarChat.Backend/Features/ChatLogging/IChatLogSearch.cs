@@ -4,11 +4,26 @@
     {
         Task<int> GetSearchResultCountAsync(SearchCriteria criteria, CancellationToken cancellationToken);
 
-        Task<int[]> GetSearchResultIdsAsync(SearchCriteria criteria, CancellationToken cancellationToken);
+        Task<IReadOnlyList<long>> GetSearchResultIdsAsync(
+            SearchCriteria criteria, int skip, int take,
+            CancellationToken cancellationToken);
 
-        Task<SearchResultItem[]> GetSearchResultsAsync(SearchCriteria criteria, CancellationToken cancellationToken);
+        Task<IReadOnlyList<SearchResultItem>> GetSearchResultSubsetAsync(
+            SearchCriteria criteria, int skip, int take, CancellationToken cancellationToken);
 
-        Task<SearchResultItem[]> GetSearchResultsForIdsAsync(IReadOnlyList<int> ids, CancellationToken cancellationToken);
+        Task<IReadOnlyList<SearchResultItem>> GetSearchResultsForIdsAsync(IReadOnlyList<long> ids, CancellationToken cancellationToken);
+
+        Task<IReadOnlyList<LogCharacterInfo>> GetMyCharacterInfosAsync(CancellationToken cancellationToken);
+
+        Task<IReadOnlyList<string>> GetChannelNamesAsync(CancellationToken cancellationToken);
+
+        Task<IReadOnlyList<LogCharacterInfo>> GetInterlocutorInfosAsync(
+            string? myCharacterName, CancellationToken cancellationToken);
+
+        Task<bool> ValidateChannelInLogsAsync(string channelName, CancellationToken cancellationToken);
+
+        Task<bool> ValidatePMConvoInLogsAsync(
+            string myCharacterName, string interlocutorName, CancellationToken cancellationToken);
     }
 
     public class SearchCriteria
@@ -24,7 +39,25 @@
 
     public class SearchResultItem
     {
+        public long MessageId { get; set; }
 
+        public string? ChannelName { get; set; }
+
+        public string? ChannelTitle { get; set; }
+
+        public string? MyCharacterName { get; set; }
+
+        public string? InterlocutorCharacterName { get; set; }
+
+        public string? SpeakingCharacterName { get; set; }
+
+        public int MessageType { get; set; }
+
+        public required string Text { get; set; }
+
+        public int GenderId { get; set; }
+
+        public int OnlineStatusId { get; set; }
     }
 
     public abstract class SearchCriterion { }
@@ -60,5 +93,12 @@
         public DateTime? Before { get; set; }
 
         public DateTime? After { get; set; }
+    }
+
+    public class LogCharacterInfo
+    {
+        public required string CharacterName { get; set; }
+
+        public int CharacterGender { get; set; }
     }
 }

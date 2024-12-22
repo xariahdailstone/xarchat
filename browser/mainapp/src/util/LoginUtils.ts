@@ -105,7 +105,7 @@ export class LoginUtils {
                 if (!existingCh || existingCh.presenceState != ChatChannelPresenceState.IN_CHANNEL) {
                     logger.logInfo("auto joining channel", channelName, channelTitle);
                     try {
-                        await cc.joinChannelAsync(channelName);
+                        await cc.joinChannelAsync(channelName, chp.title);
                     }
                     catch (e) {
                         if (!cc.disposed) {
@@ -175,7 +175,7 @@ export class LoginUtils {
             if (ch.presenceState == ChatChannelPresenceState.PENDING_RECONNECT) {
                 try {
                     logger.logDebug("reconnectAsync: joining channel...", ch.name, ch.title);
-                    await cc.joinChannelAsync(ch.name);
+                    await cc.joinChannelAsync(ch.name, ch.title);
                 }
                 catch (e) {
                     if (!cc.disposed) {

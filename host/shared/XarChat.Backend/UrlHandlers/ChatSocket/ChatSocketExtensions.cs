@@ -110,8 +110,10 @@ namespace XarChat.Backend.UrlHandlers.ChatSocket
                 var authApi = await fListApi.GetAlreadyAuthenticatedFListApiAsync(account, cancellationToken);
                 var gatResp = await authApi.GetApiTicketAsync(cancellationToken);
                 var canRetry = true;
+                var canRetryAgain = true;
                 while (gatResp.CameFromCache && canRetry)
                 {
+                    canRetry = canRetryAgain;
                     var fchatWebSocket = new ClientWebSocket();
                     var fchatWebSocketReturned = false;
                     try
@@ -145,7 +147,7 @@ namespace XarChat.Backend.UrlHandlers.ChatSocket
                             // Failure, but we can retry
                             await authApi.InvalidateApiTicketAsync(gatResp.Value.Ticket, cancellationToken);
                             gatResp = await authApi.GetApiTicketAsync(cancellationToken);
-                            canRetry = false;
+                            canRetryAgain = false;
                         }
                         else
                         {

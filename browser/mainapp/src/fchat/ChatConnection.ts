@@ -18,7 +18,7 @@ export interface ChatConnection extends IDisposable {
 
     quiesceAsync(): Promise<void>;
 
-    joinChannelAsync(channel: ChannelName): Promise<void>;
+    joinChannelAsync(channel: ChannelName, titleHint?: string): Promise<void>;
     leaveChannelAsync(channel: ChannelName): Promise<void>;
     closeChannelTab(channel: ChannelName): Promise<void>;
     markChannelSeen(channel: ChannelName): Promise<void>;
