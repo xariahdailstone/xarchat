@@ -103,6 +103,7 @@ export class CharacterProfileDialogInner extends RenderingComponentBase<Characte
             vtiTabs.push(this.renderImages(vm));
             vtiTabs.push(this.renderKinks(vm));
             vtiTabs.push(this.renderAlts(vm));
+            vtiTabs.push(this.renderFriends(vm));
 
             const createTabElement = (tabId: string, title: string) => {
                 const el = 
@@ -411,6 +412,29 @@ export class CharacterProfileDialogInner extends RenderingComponentBase<Characte
                 id: "alts",
                 title: `Alts (${vm.profileDetails.alts.length})`,
                 vnode: elAlts
+            };
+        }
+    }
+
+    private renderFriends(vm: CharacterProfileDialogViewModel) : ViewTabInfo | null {
+        if (vm.profileDetails == null || vm.profileDetails.friends.length == 0) {
+            return null;
+        }
+        else {
+            const elFriends = <div classList="profile-main-friends"></div>;
+            for (let tfriend of vm.profileDetails.friends) {
+                const elThisFriend =
+                    <div classList="profile-main-friends-item"
+                        on={{ "click": (e) => { tfriend.click(e.target as HTMLElement); } }}>
+                        <img classList="profile-main-friends-item-image" src={URLUtils.getAvatarImageUrl(tfriend.characterName)} />
+                        <div classList="profile-main-friends-item-name">{getEffectiveCharacterNameVNodes(tfriend.characterName, vm.activeLoginViewModel)}</div>
+                    </div>
+                elFriends.children!.push(elThisFriend);
+            }
+            return {
+                id: "friends",
+                title: `Friends (${vm.profileDetails.friends.length})`,
+                vnode: elFriends
             };
         }
     }

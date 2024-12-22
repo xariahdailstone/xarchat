@@ -1,6 +1,6 @@
 import { CharacterName } from "../../shared/CharacterName";
 import { CancellationToken } from "../../util/CancellationTokenSource";
-import { ApiTicket, FListApi, FListAuthenticatedApi, FriendsList, KinkList, MappingList, ProfileFieldsInfoList, ProfileInfo } from "./FListApi";
+import { ApiTicket, FListApi, FListAuthenticatedApi, FriendsList, KinkList, MappingList, ProfileFieldsInfoList, ProfileFriendsInfo, ProfileInfo } from "./FListApi";
 
 const API_URL_BASE = "/api/flist/";
 
@@ -112,6 +112,11 @@ export class HostInteropAuthenticatedApi implements FListAuthenticatedApi {
 
     async getCharacterProfileAsync(name: CharacterName, cancellationToken: CancellationToken): Promise<ProfileInfo> {
         const result = await this.owner.getFromHostInteropAsync<ProfileInfo>(`${this.account}/profile/${name.value}`, cancellationToken);
+        return result;
+    }
+
+    async getCharacterFriendsAsync(name: CharacterName, cancellationToken: CancellationToken): Promise<ProfileFriendsInfo | null> {
+        const result = await this.owner.getFromHostInteropAsync<ProfileFriendsInfo>(`${this.account}/profile-friends/${name.value}`, cancellationToken);
         return result;
     }
 

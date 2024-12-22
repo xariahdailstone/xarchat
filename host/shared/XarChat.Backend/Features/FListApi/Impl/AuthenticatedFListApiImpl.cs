@@ -210,5 +210,25 @@ namespace XarChat.Backend.Features.FListApi.Impl
 
             return result;
         }
+
+        public async Task<ProfileFriendsInfo> GetCharacterFriendsAsync(string name, CancellationToken cancellationToken)
+        {
+            var formData = new Dictionary<string, string>
+            {
+                { "name", name }
+            };
+
+            try
+            {
+                var result = await PerformAuthenticatedRequest<ProfileFriendsInfo>("api/character-friends.php", formData,
+                    SourceGenerationContext.Default.ProfileFriendsInfo, cancellationToken);
+
+                return result;
+            }
+            catch (FListApiException ex) when (ex.Message == "This user has disabled their friends tab.")
+            {
+                return new ProfileFriendsInfo() { Friends = [] };
+            }
+        }
     }
 }
