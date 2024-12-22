@@ -1,6 +1,7 @@
 import { ChannelMetadata } from "../fchat/ChatConnection";
 import { ChannelName } from "../shared/ChannelName";
 import { CatchUtils } from "../util/CatchUtils";
+import { ObjectUniqueId } from "../util/ObjectUniqueId";
 import { ObservableBase, observableProperty } from "../util/ObservableBase";
 import { ObservableOrderedDictionaryImpl, ObservableOrderedSetImpl } from "../util/ObservableKeyedLinkedList";
 import { StringUtils } from "../util/StringUtils";
@@ -295,8 +296,10 @@ export class AddChannelsItemViewModel {
         public readonly title: string,
         public readonly count: number) {
 
+        const uniqueId = ObjectUniqueId.get(this);
+
         const canonicalizedTitle = StringUtils.canonicalizeConfusables(title)!;
-        this.sortableTitle = canonicalizedTitle.replace(/ /g, "").replace(/[^A-Za-z0-9]/g, "").toLowerCase();
+        this.sortableTitle = canonicalizedTitle.replace(/ /g, "").replace(/[^A-Za-z0-9]/g, "").toLowerCase() + "!!!!!!" + uniqueId.toString();
         this.lowercaseTitle = title.toLowerCase();
     }
 
