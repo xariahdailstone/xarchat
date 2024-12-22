@@ -938,11 +938,11 @@ class ActiveLoginViewModelBBCodeSink implements BBCodeParseSink {
         catch { }
     }
 
-    async sessionClick(target: string, context: BBCodeClickContext) {
+    async sessionClick(target: string, titleHint: string, context: BBCodeClickContext) {
         this.logger.logInfo("sessionclick", target);
         try {
             const chanName = ChannelName.create(target);
-            await this.owner.chatConnectionConnected?.joinChannelAsync(chanName);
+            await this.owner.chatConnectionConnected?.joinChannelAsync(chanName, titleHint);
             const cvm = this.owner.getChannel(chanName);
             if (cvm) {
                 this.owner.selectedChannel = cvm;

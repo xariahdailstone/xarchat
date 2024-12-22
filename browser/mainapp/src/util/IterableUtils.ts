@@ -23,6 +23,7 @@ export interface Queryable<T> extends Iterable<T> {
     select<TOutput>(mapFunc: (item: T) => TOutput): Queryable<TOutput>;
     any(): boolean;
     first(): T;
+    last(): T;
     firstOrNull(): T | null;
     toArray(): T[];
     orderBy<TValue>(sortKeySelector: (item: T) => TValue, comparer: Comparer<TValue>): Queryable<T>;
@@ -101,6 +102,14 @@ class QueryableImpl<T> implements Queryable<T> {
             return item;
         }
         throw new Error("Iterable is empty");
+    }
+
+    last(): T {
+        let lastItem: T = null!;
+        for (let item of this.iterable) {
+            lastItem = item;
+        }
+        return lastItem;
     }
 
     firstOrNull(): T | null {

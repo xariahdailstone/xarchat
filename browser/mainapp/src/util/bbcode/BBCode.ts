@@ -50,7 +50,7 @@ interface SerStackEntry {
 
 export interface BBCodeParseSink {
     userClick(name: CharacterName, context: BBCodeClickContext): void;
-    sessionClick(target: string, context: BBCodeClickContext): void;
+    sessionClick(target: string, titleHint: string, context: BBCodeClickContext): void;
     webpageClick(url: string, forceExternal: boolean, context: BBCodeClickContext): void;
 }
 

@@ -1,17 +1,17 @@
 
 #elMain {
     display: grid;
-    grid-template-columns: auto 1fr;
+    grid-template-columns: auto 1fr auto;
     grid-template-rows: 1fr 1fr auto auto auto auto auto auto;
     grid-template-areas:
-        "icon name"
-        "icon onlinestatus"
-        "statusmessage statusmessage"
-        "alsoin alsoin"
-        "buttonbar buttonbar"
-        "chanopbuttonbar chanopbuttonbar"
-        "chanownerbuttonbar chanownerbuttonbar"
-        "serveropbuttonbar serveropbuttonbar";
+        "icon name ics"
+        "icon onlinestatus ics"
+        "statusmessage statusmessage statusmessage"
+        "alsoin alsoin alsoin"
+        "buttonbar buttonbar buttonbar"
+        "chanopbuttonbar chanopbuttonbar chanopbuttonbar"
+        "chanownerbuttonbar chanownerbuttonbar chanownerbuttonbar"
+        "serveropbuttonbar serveropbuttonbar serveropbuttonbar";
 
     max-width: 300px;
     font-size: 90%;
@@ -19,6 +19,7 @@
 
 .character-icon { grid-area: icon; }
 .character-name { grid-area: name; align-self: end; }
+.character-settings { grid-area: ics; align-self: center; padding-right: 5px; cursor: pointer; }
 .character-onlinestatus { grid-area: onlinestatus; align-self: start; }
 .character-statusmessage { grid-area: statusmessage; }
 .character-alsoinchannels { grid-area: alsoin; }
@@ -31,6 +32,13 @@
 }
 .character-name {
     font-weight: bold;
+}
+
+.character-settings > x-iconimage {
+    max-width: 20px;
+    max-height: 20px;
+    --iconimage-max-width: 20px;
+    --iconimage-max-height: 20px;
 }
 
 .character-onlinestatus {

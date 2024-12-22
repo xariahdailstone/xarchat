@@ -51,6 +51,7 @@ export class ChatChannelViewModel extends ChannelViewModel {
 
         this.name = name;
         this.title = title;
+        this.showConfigButton = true;
 
         this.mainMessages = this._bothMessages;
 
@@ -97,6 +98,10 @@ export class ChatChannelViewModel extends ChannelViewModel {
     }
 
     get collectiveName(): string { return `ch:${this.name.value}`; }
+
+    override async showSettingsDialogAsync() { 
+        await this.parent.appViewModel.showSettingsDialogForChannelAsync(this.parent, this);
+    }
 
     @observableProperty
     presenceState: ChatChannelPresenceState = ChatChannelPresenceState.NOT_IN_CHANNEL;
@@ -168,6 +173,16 @@ export class ChatChannelViewModel extends ChannelViewModel {
                 this.activeLoginViewModel.savedChatState.pinnedChannels.remove(this.name);
             }
             this.parent.updateChannelPinState(this);
+        }
+    }
+
+    @observableProperty
+    get channelCategory() {
+        if (this.isPinned) {
+            return "Pinned Channels";
+        }
+        else {
+            return "Other Channels";
         }
     }
 

@@ -50,6 +50,9 @@ using XarChat.Backend.Features.CommandableWindows;
 using XarChat.Backend.UrlHandlers.WIndowCommands;
 using XarChat.Backend.Features.MemoryHinter;
 using XarChat.Backend.Features.MemoryHinter.Impl;
+using XarChat.Backend.Features.StartupTasks;
+using XarChat.Backend.Features.ChatLogging.Sqlite.Search;
+using XarChat.Backend.UrlHandlers.FileChooser;
 
 namespace XarChat.Backend
 {
@@ -230,7 +233,11 @@ namespace XarChat.Backend
             services.AddSingleton<IAppSettingsManager, AppDataAppSettingsManager>();
             services.AddSingleton<IMimeTypeMapper, MimeTypeMapperImpl>();
             services.AddSingleton<ILocalDataCache, SqliteLocalDataCacheImpl>();
-            services.AddSingleton<IChatLogWriter, SqliteChatLogWriter>();
+
+            services.AddSingleton<SqliteChatLogWriter>();
+            services.AddSingleton<IChatLogWriter>(sp => sp.GetRequiredService<SqliteChatLogWriter>());
+            services.AddSingleton<IStartupTask>(sp => sp.GetRequiredService<SqliteChatLogWriter>().StartupTask);
+            services.AddSingleton<IChatLogSearch, SqliteChatLogSearch>();
 
             //services.AddSingleton<IProxiedImageCache, ProxiedImageCache>();
             services.AddMemoryCache();
@@ -377,6 +384,8 @@ namespace XarChat.Backend
                 startupLogWriter("XarChatBackend.Configure mapping log handler");
                 app.UseLogsHandler("/api/logs");
                 startupLogWriter("XarChatBackend.Configure mapping appsettings");
+                app.UseFileChooserHandler("/api/localFile");
+                startupLogWriter("XarChatBackend.Configure mapping filechooser");
                 app.UseAppSettings();
                 startupLogWriter("XarChatBackend.Configure windowcommand");
                 app.UseWindowCommands();

@@ -16,13 +16,16 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions.SessionNamespaces.LogSearc
     internal class LogSearchSessionNamespace : SessionNamespaceBase
     {
         private readonly IChatLogWriter _chatLogWriter;
+        private readonly IChatLogSearch _chatLogSearch;
 
         public LogSearchSessionNamespace(
             IChatLogWriter chatLogWriter,
+            IChatLogSearch chatLogSearch,
             Func<string, string?, CancellationToken, Task> writeMessageFunc) 
             : base(writeMessageFunc)
         {
             _chatLogWriter = chatLogWriter;
+            _chatLogSearch = chatLogSearch;
 
             this.RegisterTypedStreamCommandHandler<GetHintsFromTermArgs>(
                 "getHintsFromTerm",
@@ -81,7 +84,7 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions.SessionNamespaces.LogSearc
             {
                 case "pmconvo":
                     {
-                        result = await _chatLogWriter.ValidatePMConvoInLogsAsync(
+                        result = await _chatLogSearch.ValidatePMConvoInLogsAsync(
                             args.Data.LogsFor,
                             args.Data.SearchText,
                             cancellationToken);
@@ -89,7 +92,7 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions.SessionNamespaces.LogSearc
                     }
                 case "channel":
                     {
-                        result = await _chatLogWriter.ValidateChannelInLogsAsync(
+                        result = await _chatLogSearch.ValidateChannelInLogsAsync(
                             args.Data.SearchText,
                             cancellationToken);
                         break;

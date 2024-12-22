@@ -8,6 +8,7 @@ const freg = new FinalizationRegistry<string>((heldValue) => {
 
 export class CharacterName {
     static create(characterNameString: string): CharacterName {
+        characterNameString = StringUtils.discardUnseen(characterNameString);
         const canonical = characterNameString.toLowerCase();
         
         const cachedRef = cachedNames.get(canonical);

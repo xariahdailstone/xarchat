@@ -49,6 +49,11 @@ export abstract class ChannelViewModel extends ObservableBase {
     abstract get collectiveName(): string;
 
     @observableProperty
+    showConfigButton: boolean = false;
+    
+    showSettingsDialogAsync() { }
+
+    @observableProperty
     readonly abstract canClose: boolean;
 
     @observableProperty

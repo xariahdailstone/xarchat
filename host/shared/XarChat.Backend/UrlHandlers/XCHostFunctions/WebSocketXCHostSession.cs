@@ -45,7 +45,10 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions
             _ws = webSocket;
 
             var appCfg = _sp.GetRequiredService<IAppConfiguration>();
-            _constituents.Add(appCfg.OnValueChanged((key, value) => { this.ConfigDataChanged(key, value); }));
+            _constituents.Add(appCfg.OnValueChanged((key, value, changeMetadata) => 
+            { 
+                this.ConfigDataChanged(key, value, changeMetadata); 
+            }));
 
             _replyableCommandAdapters.Add("NewAppSettings", (sp) =>
             {
@@ -56,7 +59,8 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions
             this.AddSessionNamespace("logsearch", w =>
             {
                 var clw = sp.GetRequiredService<IChatLogWriter>();
-                return new LogSearchSessionNamespace(clw, w);
+                var cls = sp.GetRequiredService<IChatLogSearch>();
+                return new LogSearchSessionNamespace(clw, cls, w);
             });
         }
 
@@ -560,19 +564,34 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions
             return res;
         }
 
+        private static readonly string ChangeMetadataOriginatorKey = Guid.NewGuid().ToString();
+
         private async Task SetConfigDataAsync(string key, JsonNode value, CancellationToken cancellationToken)
         {
             var appConfig = _sp.GetRequiredService<IAppConfiguration>();
-            await appConfig.SetArbitraryValueAsync(key, value, cancellationToken);
+            var changeMetadata = new Dictionary<string, object?>
+            {
+                { ChangeMetadataOriginatorKey, this }
+            };
+
+            await appConfig.SetArbitraryValueAsync(key, value, changeMetadata, cancellationToken);
         }
 
-        private void ConfigDataChanged(string key, JsonNode? value)
+        private void ConfigDataChanged(string key, JsonNode? value, Dictionary<string, object?>? changeMetadata)
         {
-            _ = this.WriteAsync("configchange " + JsonUtilities.Serialize(new ConfigKeyValue()
+            if (changeMetadata is not null
+                && changeMetadata.TryGetValue(ChangeMetadataOriginatorKey, out var originator)
+                && originator == this)
             {
-                Key = key,
-                Value = value
-            }, SourceGenerationContext.Default.ConfigKeyValue));
+            }
+            else
+            {
+                _ = this.WriteAsync("configchange " + JsonUtilities.Serialize(new ConfigKeyValue()
+                {
+                    Key = key,
+                    Value = value
+                }, SourceGenerationContext.Default.ConfigKeyValue));
+            }
         }
 
         private async Task GetAllCssAsync(int messageId, CancellationToken cancellationToken)

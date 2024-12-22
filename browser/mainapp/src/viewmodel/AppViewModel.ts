@@ -290,10 +290,19 @@ export class AppViewModel extends ObservableBase {
         }
     }
 
+    async showSettingsDialogAsync(activeLoginViewModel?: ActiveLoginViewModel, interlocutor?: CharacterName) {
+        const dlg = new SettingsDialogViewModel(this, activeLoginViewModel, undefined, interlocutor);
+        await this.showDialogAsync(dlg);
+    }
+
+    async showSettingsDialogForChannelAsync(activeLoginViewModel: ActiveLoginViewModel, channel: ChannelViewModel) {
+        const dlg = new SettingsDialogViewModel(this, activeLoginViewModel, channel);
+        await this.showDialogAsync(dlg);
+    }
+
     getMainContextMenuItems(ctxVm: ContextMenuPopupViewModel<() => void>, activeLoginViewModel?: ActiveLoginViewModel) {
         ctxVm.addMenuItem("Settings", () => {
-            const dlg = new SettingsDialogViewModel(this, activeLoginViewModel);
-            this.showDialogAsync(dlg);
+            this.showSettingsDialogAsync(activeLoginViewModel);
         });
         ctxVm.addSeparator();
     }
@@ -319,12 +328,17 @@ export class AppViewModel extends ObservableBase {
             if (channel != null) {
                 if (channel instanceof ChatChannelViewModel) {
                     for (let key of keys) {
-                        k.push(`character.${alvm.characterName.canonicalValue}.channel.${channel.name.canonicalValue}.${key}`);
+                        k.push(`character.${alvm.characterName.canonicalValue}.channel.${channel.title.toLowerCase()}.${key}`);
+                    }
+                    if (channel.channelCategory != null) {
+                        for (let key of keys) {
+                            k.push(`character.${alvm.characterName.canonicalValue}.channelcategory.${channel.channelCategory.toLowerCase()}.${key}`);
+                        }
                     }
                 }
                 else if (channel instanceof PMConvoChannelViewModel) {
                     for (let key of keys) {
-                        k.push(`character.${alvm.characterName.canonicalValue}.channel.${channel.character.canonicalValue}.${key}`);
+                        k.push(`character.${alvm.characterName.canonicalValue}.pm.${channel.character.canonicalValue}.${key}`);
                     }
                 }
             }
@@ -340,12 +354,13 @@ export class AppViewModel extends ObservableBase {
 
     private readonly _audioCache: Map<string, HTMLAudioElement> = new Map();
 
+    private _currentNotificationAudio: HTMLAudioElement | null = null;
     soundNotification(event: AppNotifyEvent) {
         let fn: string | null = null;
 
         fn = this.getConfigEntryHierarchical(`sound.event.${event.eventType.toString()}`, event.activeLoginViewModel, event.channel) as (string | null);
 
-        if (fn == null)
+        if (fn == null || fn == "default:")
         {
             switch (event.eventType) {
                 case AppNotifyEventType.CONNECTED:
@@ -364,13 +379,26 @@ export class AppViewModel extends ObservableBase {
             }
             fn = `assets/sfx/${fn}`;
         }
+        else if (fn == "none:") {
+            fn = "";
+        }
+        else if (fn.startsWith("file:")) {
+            fn = HostInterop.getLocalFileUrl(fn.substring(5));
+        }
 
         if (fn && fn != "") {
+            if (this._currentNotificationAudio != null) {
+                this._currentNotificationAudio.pause();
+                this._currentNotificationAudio.currentTime = 0;
+                this._currentNotificationAudio = null;
+            }
+    
             let n = this._audioCache.get(fn);
             if (!n) {
                 n = new Audio(fn);
                 this._audioCache.set(fn, n);
             }
+            this._currentNotificationAudio = n;
             n.play();
         }
     }

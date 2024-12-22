@@ -73,11 +73,14 @@ export class ChatConnectionImpl implements ChatConnection {
     async bracketedSendAsync(message: ChatMessage | null, callback?: (recvMsg: HandleableChatMessage) => void, cancellationToken?: CancellationToken) {
         using _ = await this._bracketedSendMutex.acquireAsync(cancellationToken);
 
+        //console.log("sending bracket open");
         await this.sendMessageRawAsync({ code: "TPN", body: { character: this._identifiedCharacter.value, status: TypingStatusConvert.toString(TypingStatus.TYPING) }});
         if (message) {
+            //console.log("sending bracket message", message);
             await this.sendMessageRawAsync(message);
         }
-        await this.sendMessageRawAsync({ code: "TPN", body: { character: this._identifiedCharacter.value, status: TypingStatusConvert.toString(TypingStatus.NONE) }});
+        //console.log("sending bracket close");
+        await this.sendMessageRawAsync({ code: "TPN", body: { character: this._identifiedCharacter.value, status: TypingStatusConvert.toString(TypingStatus.IDLE) }});
 
         using ms = this.createIncomingMessageSink();
 
@@ -91,7 +94,7 @@ export class ChatConnectionImpl implements ChatConnection {
                     if (tstatus == TypingStatusConvert.toString(TypingStatus.TYPING)) {
                         inBracketedReceive = true;
                     }
-                    else if (tstatus == TypingStatusConvert.toString(TypingStatus.NONE)) {
+                    else if (tstatus == TypingStatusConvert.toString(TypingStatus.IDLE)) {
                         bracketFinished = true;
                     }
                 }
@@ -130,8 +133,33 @@ export class ChatConnectionImpl implements ChatConnection {
         }
     }
 
-    async joinChannelAsync(channel: ChannelName): Promise<void> {
-        await this.bracketedSendAsync({ code: "JCH", body: { channel: channel.value }}, ERRAsFailure);
+    async joinChannelAsync(channel: ChannelName, titleHint?: string): Promise<void> {
+        try {
+            await this.bracketedSendAsync({ code: "JCH", body: { channel: channel.value }}, (msg) => {
+                //console.log("joinChannelAsync msg", titleHint, msg);
+                if (msg.code == "ERR") {
+                    const body = (msg.body as ServerERRMessage);
+                    if (body.number == ServerErrorNumbers.CannotLocateChannel) {
+                        msg.handled = true;
+                        const displayAs = titleHint
+                            ? `${titleHint} (${channel.value})`
+                            : channel.value;
+                        this.handleERRMessage({
+                            handled: false,
+                            code: "ERR",
+                            body: {
+                                number: ServerErrorNumbers.CannotLocateChannel,
+                                message: `Could not locate channel \"${displayAs}\" to join.`
+                            }
+                        });
+                    }
+                    throw new ServerError(msg);
+                }
+            });
+        }
+        finally {
+            //console.log("joinChannelAsync done", titleHint);
+        }
     }
 
     async leaveChannelAsync(channel: ChannelName): Promise<void> {
@@ -668,6 +696,9 @@ export class ChatConnectionImpl implements ChatConnection {
     }
 
     private handleTPNMessage(msg: HandleableTypedChatMessage<ServerTPNMessage>) {
+        if (CharacterName.equals(CharacterName.create(msg.body.character), this._identifiedCharacter)) {
+            console.log("my TPN change", msg.body.status);
+        }
         this.sink.charactersStatusUpdated([
             { characterName: CharacterName.create(msg.body.character), typingStatus: TypingStatusConvert.toTypingStatus(msg.body.status) ?? TypingStatus.NONE }
         ], false, false);
@@ -1145,6 +1176,7 @@ export class ChatConnectionImpl implements ChatConnection {
                     readMore = false;
                 }
                 else if (msg.code == "ERR") {
+                    msg.handled = true;
                     throw new IdentificationFailedError(`Identification failed: ${msg.body?.message ?? 'generic error'}`);
                 }
             }, cancellationToken);

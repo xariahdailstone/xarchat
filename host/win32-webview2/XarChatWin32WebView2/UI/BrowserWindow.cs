@@ -51,7 +51,7 @@ namespace MinimalWin32Test.UI
                 var cancellationToken = _disposedCTS.Token;
 
                 var ac = (await _backend.GetServiceProviderAsync()).GetRequiredService<IAppConfiguration>();
-                using var subscr = ac.OnValueChanged("global.bgColor", (value) =>
+                using var subscr = ac.OnValueChanged("global.bgColor", (value, changeMetadata) =>
                 {
                     try
                     {
@@ -781,6 +781,24 @@ namespace MinimalWin32Test.UI
             {
                 if (_browserWindow != null) { _browserWindow.StylesheetChanged(stylesheetPath); }
             });
+        }
+
+        public Task InvokeOnUIThread(Action action)
+        {
+            var tcs = new TaskCompletionSource();
+            InvokeInApplication(() =>
+            {
+                try
+                {
+                    action();
+                    tcs.TrySetResult();
+                }
+                catch (Exception ex)
+                {
+                    tcs.TrySetException(ex);
+                }
+            });
+            return tcs.Task;
         }
     }
 

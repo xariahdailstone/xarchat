@@ -46,6 +46,10 @@ export class CharacterDetailPopupViewModel extends ContextPopupViewModel {
             await this.session.chatConnection.unignoreCharacterAsync(this.char);
         }
     }
+
+    showSettings() {
+        this.parent.showSettingsDialogAsync(this.session, this.char);
+    }
 }
 
 export class AlsoInChannelLineItem extends ObservableBase {
