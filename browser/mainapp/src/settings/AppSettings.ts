@@ -362,7 +362,7 @@ export class SavedLoginMap implements Iterable<SavedLogin> {
 
         if (existingItems.length > 0) {
             for (let existingItem of existingItems) {
-                this._inner = this._inner.filter(i => i == existingItem);
+                this._inner = this._inner.filter(i => i != existingItem);
             }
             this.updated();
             return true;

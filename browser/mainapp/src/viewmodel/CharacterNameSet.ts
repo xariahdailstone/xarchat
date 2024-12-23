@@ -2,13 +2,21 @@ import { CharacterName } from "../shared/CharacterName";
 import { CharacterStatus } from "../shared/CharacterSet";
 import { OnlineStatus } from "../shared/OnlineStatus";
 import { IDisposable } from "../util/Disposable";
+import { Collection } from "../util/ObservableCollection";
 import { ObservableOrderedDictionaryImpl } from "../util/ObservableKeyedLinkedList";
+import { KeyValuePair } from "../util/collections/KeyValuePair";
 import { StdObservableCollectionChangeType } from "../util/collections/ReadOnlyStdObservableCollection";
 import { ActiveLoginViewModel } from "./ActiveLoginViewModel";
 
 export class CharacterNameSet extends ObservableOrderedDictionaryImpl<CharacterName, CharacterName> {
     constructor() {
         super(cn => cn, CharacterName.compare);
+    }
+}
+
+export class UnsortedCharacterNameSet extends Collection<KeyValuePair<CharacterName, CharacterName>> {
+    constructor() {
+        super();
     }
 }
 

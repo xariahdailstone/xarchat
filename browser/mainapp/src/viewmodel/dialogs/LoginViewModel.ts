@@ -12,10 +12,11 @@ import { ObservableBase, observableProperty } from "../../util/ObservableBase";
 import { Collection } from "../../util/ObservableCollection";
 import { ObservableKeyExtractedOrderedDictionary, ObservableOrderedDictionaryImpl } from "../../util/ObservableKeyedLinkedList";
 import { StringUtils } from "../../util/StringUtils";
+import { KeyValuePair } from "../../util/collections/KeyValuePair";
 import { SnapshottableSet } from "../../util/collections/SnapshottableSet";
 import { ActiveLoginViewModel } from "../ActiveLoginViewModel";
 import { AppViewModel } from "../AppViewModel";
-import { CharacterNameSet } from "../CharacterNameSet";
+import { CharacterNameSet, UnsortedCharacterNameSet } from "../CharacterNameSet";
 import { ContextMenuPopupItemViewModel, ContextMenuPopupViewModel } from "../popups/ContextMenuPopupViewModel";
 import { DialogButtonStyle, DialogButtonViewModel, DialogViewModel } from "./DialogViewModel";
 
@@ -153,6 +154,17 @@ export class LoginViewModel extends DialogViewModel<boolean> {
     selectedCharacter: (CharacterName | null) = null;
 
     @observableProperty
+    selectedRecent: boolean = false;
+
+    @observableProperty
+    recentCharacters: Collection<KeyValuePair<CharacterName, CharacterName>> = new UnsortedCharacterNameSet();
+
+    @observableProperty
+    get canAutoLogin() {
+        return this.rememberAccountName && this.rememberPassword;
+    }
+
+    @observableProperty
     autoLogin: boolean = false;
 
     async getCharacters(cancellationToken: CancellationToken) { 
@@ -176,13 +188,47 @@ export class LoginViewModel extends DialogViewModel<boolean> {
                 this.parent.appSettings.savedAccountCredentials.updateCredentials(saveUsername, savePassword);
             }
 
+            const hasCharacters = new Set<CharacterName>();
+
+            const isAlreadyLoggedIn = (name: CharacterName) => {
+                for (let l of this.parent.logins) {
+                    if (l.characterName == name) {
+                        return true;
+                    }
+                }
+                return false;
+            };
+
             this.characters = new CharacterNameSet();
             for (let c of Object.getOwnPropertyNames(apiTicket.characters)) {
-                this.characters.add(CharacterName.create(c));
+                const cn = CharacterName.create(c);
+                if (!isAlreadyLoggedIn(cn)) {
+                    this.characters.add(cn);
+                }
+                hasCharacters.add(cn);
             }
             // TODO: select default_character
 
-            this.selectedCharacter = this.characters.minKey()!;
+            const recents = IterableUtils.asQueryable(this.parent.appSettings.savedChatStates.values())
+                .orderByDescending(scs => scs.lastLogin ?? 0)
+                .where(scs => hasCharacters.has(scs.characterName))
+                .take(3)
+                .toArray();
+            this.recentCharacters = new UnsortedCharacterNameSet();
+            for (let r of recents) {
+                if (!isAlreadyLoggedIn(r.characterName)) {
+                    this.recentCharacters.add(new KeyValuePair(r.characterName, r.characterName));
+                }
+            }
+
+            if (this.recentCharacters.length > 0) {
+                this.selectedRecent = true;
+                this.selectedCharacter = this.recentCharacters[0]!.key;
+            }
+            else {
+                this.selectedRecent = false;
+                this.selectedCharacter = this.characters.minKey()!;
+            }
 
             this.failureMessageSeverity = FailureSeverity.NONE;
             this.failureMessage = "";
