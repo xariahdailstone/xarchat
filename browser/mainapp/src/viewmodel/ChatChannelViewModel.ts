@@ -70,6 +70,14 @@ export class ChatChannelViewModel extends ChannelViewModel {
                         this.name
                     );
                 }
+                else {
+                    parent.openLogViewer(
+                        parent.characterName,
+                        DateAnchor.Before,
+                        new Date(),
+                        this.name
+                    );
+                }
             }));
 
         const isAlreadyInSCC = parent.savedChatState.joinedChannels.filter(x => x.name == name).length > 0;
