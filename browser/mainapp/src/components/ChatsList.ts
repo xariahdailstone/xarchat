@@ -1,3 +1,4 @@
+import { ChannelName } from "../shared/ChannelName.js";
 import { CharacterName } from "../shared/CharacterName.js";
 import { TypingStatus } from "../shared/TypingStatus.js";
 import { Fragment, jsx, VNode } from "../snabbdom/index.js";
@@ -7,6 +8,8 @@ import { IDisposable, asDisposable } from "../util/Disposable.js";
 import { EL } from "../util/EL.js";
 import { EventListenerUtil, MouseButton } from "../util/EventListenerUtil.js";
 import { HTMLUtils } from "../util/HTMLUtils.js";
+import { ObjectUniqueId } from "../util/ObjectUniqueId.js";
+import { ObservableExpression } from "../util/ObservableExpression.js";
 import { Optional } from "../util/Optional.js";
 import { WhenChangeManager } from "../util/WhenChange.js";
 import { KeyValuePair } from "../util/collections/KeyValuePair.js";
@@ -37,7 +40,7 @@ export class ChatsList extends ComponentBase<ActiveLoginViewModel> {
                         <div class="sectiontitle-text"><span id="elPinnedChannelsHeaderDot" class="header-dot-container"></span>Pinned Channels (<span id="elPinnedChannelCount">0</span>)</div>
                     </div>
                     <x-collapsebody id="elPinnedChannelsCollapseBody">
-                        <x-sortedchannelcollectionview modelpath="pinnedChannels" id="elPinnedChannelsCollectionView">
+                        <x-sortedchannelcollectionview modelpath="pinnedChannels" id="elPinnedChannelsCollectionView" supportsdragdrop="true">
                             <div class="sectionitems pinnedchatchannels" id="elPinnedChannels"></div>
                         </x-sortedchannelcollectionview>
                     </x-collapsebody>
@@ -51,7 +54,7 @@ export class ChatsList extends ComponentBase<ActiveLoginViewModel> {
                         <button class="sectiontitle-addbtn" id="elAddChannelsButton" tabindex="-1">+</button>
                     </div>
                     <x-collapsebody id="elUnpinnedChannelsCollapseBody">
-                        <x-sortedchannelcollectionview modelpath="unpinnedChannels" id="elUnpinnedChannelsCollectionView">
+                        <x-sortedchannelcollectionview modelpath="unpinnedChannels" id="elUnpinnedChannelsCollectionView" supportsdragdrop="true">
                             <div class="sectionitems unpinnedchatchannels" id="elUnpinnedChannels"></div>
                         </x-sortedchannelcollectionview>
                     </x-collapsebody>
@@ -156,7 +159,7 @@ export class ChatsList extends ComponentBase<ActiveLoginViewModel> {
                 elPMConvosCollapse.disableAnimation = false;
             }, 100);
         });
-        this.watch("pinnedChannels.size", v => {
+        this.watchExpr(vm => vm.pinnedChannels.length, v => {
             const elPinnedChannelsSection = this.$("elPinnedChannelsSection") as HTMLDivElement;
             const elOtherChannelsTitle = this.$("elOtherChannelsTitle") as HTMLSpanElement;
 
@@ -175,11 +178,11 @@ export class ChatsList extends ComponentBase<ActiveLoginViewModel> {
 
             this.updateHeaderDot(elPinnedChannelsCollapse, elPinnedChannelsHeaderDot, elPinnedChannelsCollectionView); 
         });
-        this.watch("unpinnedChannels.size", v => {
+        this.watchExpr(vm => vm.unpinnedChannels.length, v => {
             elUnpinnedChannelCount.innerText = (v != null) ? ("" + v) : "x";
             this.updateHeaderDot(elUnpinnedChannelsCollapse, elUnpinnedChannelsHeaderDot, elUnpinnedChannelsCollectionView); 
-        });
-        this.watch("pmConversations.size", v => {
+        })
+        this.watchExpr(vm => vm.pmConversations.length, v => {
             elPMConvoCount.innerText = (v != null) ? ("" + v) : "x";
             this.updateHeaderDot(elPMConvosCollapse, elPmConvosHeaderDot, elPmConversationsCollectionView); 
         });
@@ -402,7 +405,7 @@ export class ChatsList extends ComponentBase<ActiveLoginViewModel> {
             try {
                 for (let pair of cvEl.values()) {
                     const el = pair[0];
-                    const vm = pair[1].value;
+                    const vm = pair[1];
                     if (vm.hasPing) {
                         elsToWatch.add(el);
                     }
@@ -446,9 +449,14 @@ export class ChatsList extends ComponentBase<ActiveLoginViewModel> {
     }
 }
 
+const DragDataChannelName = "application/x-channelname";
+const DragDataChannelTitle = "application/x-channeltitle";
+const DragDataOwnerId = "application/x-ownerid";
+
 export class ChannelListItemLightweight extends LightweightComponentBase<ChatChannelViewModel | PMConvoChannelViewModel> {
     constructor(
         element: HTMLElement,
+        owner: SortedChannelCollectionView,
         viewModelFunc?: () => Optional<ChatChannelViewModel | PMConvoChannelViewModel>) {
 
         super(element, viewModelFunc);
@@ -465,7 +473,7 @@ export class ChannelListItemLightweight extends LightweightComponentBase<ChatCha
         let elCloseContainer: HTMLDivElement;
 
         this.element.appendChild(
-            elMain = EL("div", { class: "sectionitems-item-inner" }, [
+            elMain = EL("div", { class: "sectionitems-item-inner", draggable: "true" }, [
                 elUnseenIndicator = EL("div", { class: "sectionitems-item-unseen-container" }, [ "\u{2B24}" ]),
                 EL("div", { class: "sectionitems-item-icon-container" }, [
                    //elIcon = (EL("x-iconimage", { class: "sectionitems-item-icon" }) as IconImage),
@@ -650,6 +658,28 @@ export class ChannelListItemLightweight extends LightweightComponentBase<ChatCha
             return false;
         });
 
+        elMain.addEventListener("dragstart", (e) => {
+            const vm = this.viewModel;
+            if (vm && vm instanceof ChatChannelViewModel && owner.supportsDragDrop) {
+                console.log("dragstart");
+                //e.dataTransfer?.setDragImage(this.element, 0, 0);
+                const dt = e.dataTransfer!;
+                dt.effectAllowed = "move";
+                currentChannelDragData = {
+                    [DragDataChannelName]: vm.name,
+                    [DragDataChannelTitle]: vm.title,
+                    [DragDataOwnerId]: ObjectUniqueId.get(owner)
+                };
+            }
+            else {
+                e.preventDefault();
+                return false;
+            }
+        });
+        elMain.addEventListener("dragend", (e) => {
+            console.log("dragend");
+        });
+
         this.watchExpr(() => this.viewModel instanceof PMConvoChannelViewModel ? this.viewModel : null, vm => {
             if (vm) {
                 const elStatusDotInner = new StatusDotLightweight();
@@ -666,57 +696,216 @@ export class ChannelListItemLightweight extends LightweightComponentBase<ChatCha
     }
 }
 
+let currentChannelDragData: { [DragDataChannelName]: ChannelName, [DragDataChannelTitle]: string, [DragDataOwnerId]: number } | null = null;
+
 @componentElement("x-sortedchannelcollectionview")
-export class SortedChannelCollectionView extends CollectionViewLightweight<KeyValuePair<any, ChannelViewModel>> {
+export class SortedChannelCollectionView extends CollectionViewLightweight<ChannelViewModel> {
     constructor() {
         super();
     }
 
-    createUserElement(kvm: KeyValuePair<any, ChannelViewModel>): [HTMLElement, IDisposable] {
-        const vm = kvm.value;
+    get supportsDragDrop() {
+        return (this.getAttribute("supportsdragdrop") == "true");
+    }
 
+    private _dragIndicatorStylesheet: HTMLStyleElement | null = null;
+    private _dragIndicatorStylesheetB: HTMLStyleElement | null = null;
+    private _lastDragY: number | null = null;
+    private _dragIndicatorElement: HTMLDivElement | null = null;
+
+    private createDragCSS(toppx: number) {
+        if (toppx != this._lastDragY) {
+            const myClass = `dragTarget${ObjectUniqueId.get(this).toString()}`;
+            if (!this._dragIndicatorElement) {
+                this._dragIndicatorElement = document.createElement("div");
+                this._dragIndicatorElement.className = `${myClass}-dragindicator`;
+                this.containerElement!.appendChild(this._dragIndicatorElement);
+            }
+            if (!this._dragIndicatorStylesheetB) {
+                this._dragIndicatorStylesheetB = document.createElement("style");
+                this._dragIndicatorStylesheetB.setAttribute("type", "text/css");
+                this._dragIndicatorStylesheetB.innerText = `
+                    .${myClass} { position: relative; }
+                    .zzz${myClass} > * > * { pointer-events: none; }
+                `;
+                this.containerElement!.appendChild(this._dragIndicatorStylesheetB);
+            }
+
+            this.containerElement!.classList.add(myClass);
+            const newDIStyles = document.createElement("style");
+            newDIStyles.setAttribute("type", "text/css");
+            newDIStyles.innerText = `
+                .zzz${myClass} { position: relative; }
+                .${myClass} > * { background-color: rgba(0, 0, 0, 0.01); }
+                .zzz${myClass} > * > * { pointer-events: none; }
+                .${myClass}-dragindicator {
+                    position: absolute;
+                    top: ${toppx}px;
+                    height: 2px;
+                    left: 0;
+                    width: 100%;
+                    background-color: rgba(255, 255, 255, 0.5);
+                    user-select: none;
+                    pointer-events: none;
+                    z-index: 99999;
+                }
+            `;
+            this.containerElement!.appendChild(newDIStyles);
+
+            if (this._dragIndicatorStylesheet) {
+                this._dragIndicatorStylesheet.remove();
+            }
+            this._dragIndicatorStylesheet = newDIStyles;
+
+            this._lastDragY = toppx;
+        }
+    }
+
+    private removeDragCSS() {
+        if (this._dragIndicatorStylesheet) {
+            this._dragIndicatorStylesheet.remove();
+            this._dragIndicatorStylesheet = null;
+        }
+        if (this._dragIndicatorStylesheetB) {
+            this._dragIndicatorStylesheetB.remove();
+            this._dragIndicatorStylesheetB = null;
+        }
+        if (this._dragIndicatorElement) {
+            this._dragIndicatorElement.remove();
+            this._dragIndicatorElement = null;
+        }
+        this._lastDragY = null;
+    }
+
+    private findDragIndex(e: DragEvent): [number, ("before" | "after"), ChannelViewModel] | null {
+        const y = e.clientY;
+        let idx = 0;
+        for (let x of this.values()) {
+            const xEl = x[0];
+            const xRect = xEl.getBoundingClientRect();
+            if (xRect.top <= y && xRect.bottom > y) {
+                console.log("e.clientY", y, idx);
+                const containerRect = this.containerElement!.getBoundingClientRect();
+                if ((xRect.top + (xRect.height / 2)) > y) {
+                    // in top half
+                    return [(xRect.top - 1) - containerRect.top, "before", x[1]];
+                }
+                else {
+                    // in bottom half
+                    return [(xRect.bottom - 1) - containerRect.top, "after", x[1]];
+                }
+                break;
+            }
+            idx++;
+        }
+        console.log("e.clientY", y, "none");
+        return null;
+    }
+
+    private _connectedDisposables: IDisposable | null = null;
+    protected override connectedToDocument(): void {
+        super.connectedToDocument();
+
+        const disposables: IDisposable[] = [];
+        disposables.push(EventListenerUtil.addDisposableEventListener(this.containerElement!, "dragenter", (e: DragEvent) => {
+            const dt = e.dataTransfer!;
+            const dragDataOwner = currentChannelDragData![DragDataOwnerId];
+            const dragDataChannelName = currentChannelDragData![DragDataChannelName];
+            console.log("dragenter", dragDataOwner, dragDataChannelName);
+            if (this.supportsDragDrop && dragDataOwner == ObjectUniqueId.get(this)) {
+                // TODO: show drag highlight
+                const dragIdx = this.findDragIndex(e);
+                if (dragIdx) {
+                    this.createDragCSS(dragIdx[0]);
+                }
+                dt.dropEffect = "move";
+                console.log("dragenter", dragDataChannelName);
+                e.preventDefault();
+            }
+        }));
+        disposables.push(EventListenerUtil.addDisposableEventListener(this.containerElement!, "dragover", (e: DragEvent) => {
+            //console.log("dragover");
+            const dt = e.dataTransfer!;
+            const dragDataOwner = currentChannelDragData![DragDataOwnerId];
+            const dragDataChannelName = currentChannelDragData![DragDataChannelName];
+            if (this.supportsDragDrop && dragDataOwner == ObjectUniqueId.get(this)) {
+                // TODO: show drag highlight
+                const dragIdx = this.findDragIndex(e);
+                if (dragIdx) {
+                    this.createDragCSS(dragIdx[0]);
+                }
+                dt.dropEffect = "move";
+                //console.log("dragover!", dragDataChannelName);
+                e.preventDefault();
+            }
+        }));
+        disposables.push(EventListenerUtil.addDisposableEventListener(this.containerElement!, "dragleave", (e: DragEvent) => {
+            console.log("dragleave");
+            const dt = e.dataTransfer!;
+            const dragDataOwner = currentChannelDragData![DragDataOwnerId];
+            const dragDataChannelName = currentChannelDragData![DragDataChannelName];
+            if (this.supportsDragDrop && dragDataOwner == ObjectUniqueId.get(this)) {
+                // TODO: remove drag highlight
+                this.removeDragCSS();
+                console.log("dragleave", dragDataChannelName);
+            }
+        }));
+        disposables.push(EventListenerUtil.addDisposableEventListener(this.containerElement!, "drop", (e: DragEvent) => {
+            console.log("drop");
+            const dt = e.dataTransfer!;
+            const dragDataOwner = currentChannelDragData![DragDataOwnerId];
+            const dragDataChannelName = currentChannelDragData![DragDataChannelName];
+            if (this.supportsDragDrop && dragDataOwner == ObjectUniqueId.get(this)) {
+                // TODO: remove drag highlight
+                this.removeDragCSS();
+
+                const dragIdx = this.findDragIndex(e);
+                if (dragIdx) {
+                    dragIdx[2].activeLoginViewModel.reorderChannel(dragDataChannelName, dragIdx[1], dragIdx[2]);
+                }
+
+                console.log("drop!", dragDataChannelName);
+                e.preventDefault();
+            }
+        }));
+        this._connectedDisposables = asDisposable(...disposables);
+    }
+
+    protected override disconnectedFromDocument(): void {
+        if (this._connectedDisposables) {
+            this._connectedDisposables.dispose();
+            this._connectedDisposables = null;
+        }
+        super.disconnectedFromDocument();
+    }
+
+    createUserElement(vm: ChannelViewModel): [HTMLElement, IDisposable] {
         const el = document.createElement("div");
         el.classList.add("sectionitems-item");
-        const elListItem = new ChannelListItemLightweight(el);
+        const elListItem = new ChannelListItemLightweight(el, this);
         elListItem.viewModel = vm as (ChatChannelViewModel | PMConvoChannelViewModel);
         (el as any)["__ChannelListItemLightweight"] = elListItem;
         
-        const propChangeListener = vm.addEventListener("propertychange", (e) => {
-            if (e.propertyName == "unseenMessageCount" || e.propertyName == "hasPing") {
+        const obsExpr = new ObservableExpression(
+            () => [vm.unseenMessageCount, vm.hasPing], 
+            () => {
+               this.updateItemMentionsPings(elListItem); 
+            },
+            () => {
                 this.updateItemMentionsPings(elListItem);
-            }
-        });
+            });
         this.updateItemMentionsPings(elListItem);
         return [
             el,
-            asDisposable(() => el.remove(), propChangeListener, elListItem)
+            asDisposable(() => el.remove(), obsExpr, /* propChangeListener, */ elListItem)
         ];
     }
 
-    destroyUserElement(vm: KeyValuePair<any, ChannelViewModel>, el: HTMLElement): void {
+    destroyUserElement(vm: ChannelViewModel, el: HTMLElement): void {
         this._mentions.delete((el as any)["__ChannelListItemLightweight"] as ChannelListItemLightweight);
         this._pings.delete((el as any)["__ChannelListItemLightweight"] as ChannelListItemLightweight);
         this.pushMentionsPings();
     }
-
-    // createUserElementOLD(kvm: KeyValuePair<any, ChannelViewModel>): [HTMLElement, Disposable] {
-    //     const vm = kvm.value;
-    //     const el = new ChannelListItem(this);
-    //     el.viewModel = vm as (ChatChannelViewModel | PMConvoChannelViewModel);
-    //     const propChangeListener = vm.addEventListener("propertychange", (e) => {
-    //         if (e.propertyName == "unseenMessageCount" || e.propertyName == "hasPing") {
-    //             this.updateItemMentionsPings(el);
-    //         }
-    //     });
-    //     this.updateItemMentionsPings(el);
-    //     return [el, propChangeListener];
-    // }
-
-    // destroyUserElementOLD(vm: KeyValuePair<any, ChannelViewModel>, el: HTMLElement): void {
-    //     this._mentions.delete(el as ChannelListItem);
-    //     this._pings.delete(el as ChannelListItem);
-    //     this.pushMentionsPings();
-    // }
 
     private _mentions: Set<ChannelListItemLightweight> = new Set();
     private _pings: Set<ChannelListItemLightweight> = new Set();

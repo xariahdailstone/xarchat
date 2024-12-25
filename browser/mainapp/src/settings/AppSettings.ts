@@ -54,6 +54,7 @@ interface RawSavedChatState {
 interface RawSavedChatStateJoinedChannel {
     name: string;
     title: string;
+    order: number;
 }
 
 interface RawSavedChatStatePMConvo {
@@ -362,7 +363,7 @@ export class SavedLoginMap implements Iterable<SavedLogin> {
 
         if (existingItems.length > 0) {
             for (let existingItem of existingItems) {
-                this._inner = this._inner.filter(i => i == existingItem);
+                this._inner = this._inner.filter(i => i != existingItem);
             }
             this.updated();
             return true;
@@ -659,21 +660,11 @@ export class SavedChatStateJoinedChannelMap extends Collection<SavedChatStateJoi
 
         super();
         for (let x of items) {
-            const item = new SavedChatStateJoinedChannel(x);
+            const item = new SavedChatStateJoinedChannel(this, x);
             this.push(item);
         }
 
         this.addCollectionObserver(entries => {
-            for (let entry of entries) {
-                switch (entry.changeType) {
-                    case StdObservableCollectionChangeType.ITEM_ADDED:
-                        entry.item.parent = this;
-                        break;
-                    case StdObservableCollectionChangeType.ITEM_REMOVED:
-                        entry.item.parent = null;
-                        break;
-                }
-            }
             this.updated();
         });
     }
@@ -693,16 +684,17 @@ export class SavedChatStateJoinedChannelMap extends Collection<SavedChatStateJoi
 
 export class SavedChatStateJoinedChannel {
     constructor(
+        public readonly parent: SavedChatStateJoinedChannelMap,
         item?: RawSavedChatStateJoinedChannel) {
 
         this._name = item ? ChannelName.create(item.name) : ChannelName.create("");
         this._title = item?.title ?? this._name.value;
+        this._order = item?.order ?? 0;
     }
-
-    parent: SavedChatStateJoinedChannelMap | null = null;
 
     private _name: ChannelName;
     private _title: string;
+    private _order: number;
 
     get name() { return this._name; }
     set name(value) {
@@ -720,6 +712,14 @@ export class SavedChatStateJoinedChannel {
         }
     }
 
+    get order() { return this._order; }
+    set order(value) {
+        if (value != this._order) {
+            this._order = value;
+            this.updated();
+        }
+    }
+
     updated() {
         if (this.parent) {
             this.parent.updated();
@@ -729,7 +729,8 @@ export class SavedChatStateJoinedChannel {
     toJSON() {
         const result: RawSavedChatStateJoinedChannel = {
             name: this._name.value,
-            title: this._title
+            title: this._title,
+            order: this._order
         };
         return result;
     }
