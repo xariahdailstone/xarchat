@@ -18,6 +18,7 @@ import { SnapshottableSet } from "../util/collections/SnapshottableSet.js";
 import { DialogButtonStyle } from "./dialogs/DialogViewModel.js";
 import { KeyCodes } from "../util/KeyCodes.js";
 import { SlashCommandViewModel } from "./SlashCommandViewModel.js";
+import { IterableUtils } from "../util/IterableUtils.js";
 
 export class ChatChannelUserViewModel extends ObservableBase implements IDisposable {
     constructor(
@@ -44,7 +45,24 @@ export class ChatChannelUserViewModel extends ObservableBase implements IDisposa
     get characterSet() { return this.parent.parent.characterSet; }
 }
 
-export type ChatChannelViewModelSortKey = { zsortOrder: number, ztitle: string, zpinned: boolean };
+export class ChatChannelViewModelSortKey {
+    constructor(
+        public readonly zsortOrder: number,
+        public readonly ztitle: string,
+        public readonly zpinned: boolean) {
+    }
+
+    static compare(a: ChatChannelViewModelSortKey, b: ChatChannelViewModelSortKey): number {
+        if (a.zsortOrder < b.zsortOrder) return -1;
+        if (a.zsortOrder > b.zsortOrder) return 1;
+
+        if (a.ztitle < b.ztitle) return -1;
+        if (a.ztitle > b.ztitle) return 1;
+
+        return 0;
+    }
+}
+
 export class ChatChannelViewModel extends ChannelViewModel {
     constructor(parent: ActiveLoginViewModel, name: ChannelName, title: string) {
         super(parent, title);
@@ -80,9 +98,14 @@ export class ChatChannelViewModel extends ChannelViewModel {
                 }
             }));
 
-        const isAlreadyInSCC = parent.savedChatState.joinedChannels.filter(x => x.name == name).length > 0;
-        if (!isAlreadyInSCC) {
-            parent.savedChatState.joinedChannels.push(new SavedChatStateJoinedChannel({ name: name.value, title: title ?? name.value }));
+        const existingSCC = IterableUtils.asQueryable(parent.savedChatState.joinedChannels).where(x => x.name == name).firstOrNull();
+        if (!existingSCC) {
+            parent.savedChatState.joinedChannels.push(new SavedChatStateJoinedChannel(
+                parent.savedChatState.joinedChannels,
+                { name: name.value, title: title ?? name.value, order: this.order }));
+        }
+        else {
+            this._order = existingSCC.order;
         }
     }
 
@@ -102,6 +125,19 @@ export class ChatChannelViewModel extends ChannelViewModel {
         if (value !== this._title) {
             this._title = value;
             this.parent.updateChannelPinState(this);
+        }
+    }
+
+    private _order: number = 0;
+    @observableProperty
+    get order(): number { return this._order; }
+    set order(value: number) {
+        if (value !== this._order) {
+            this._order = value;
+            const scc = IterableUtils.asQueryable(this.parent.savedChatState.joinedChannels).where(scc => scc.name == this.name).firstOrNull();
+            if (scc) {
+                scc.order = value;
+            }
         }
     }
 

@@ -11,7 +11,9 @@ import { AppNotifyEventType, AppViewModel } from "../viewmodel/AppViewModel";
 import { ChatChannelPresenceState } from "../viewmodel/ChatChannelViewModel";
 import { CancellationToken } from "./CancellationTokenSource";
 import { CatchUtils } from "./CatchUtils";
+import { TupleComparer } from "./Comparer";
 import { HostInterop } from "./HostInterop";
+import { IterableUtils } from "./IterableUtils";
 import { Logging } from "./Logger";
 import { TaskUtils } from "./TaskUtils";
 
@@ -137,6 +139,11 @@ export class LoginUtils {
                 }
             }
 
+            const channelsOrdered = IterableUtils.asQueryable(savedChatState.joinedChannels)
+                .orderBy(jc => [jc.order, jc.title], TupleComparer)
+                .select(jc => jc.name).toArray();
+            ns.setChannelOrdering(channelsOrdered);
+
             ns.pinnedChannelsCollapsed = savedChatState.pinnedChannelSectionCollapsed;
             ns.channelsCollapsed = savedChatState.unpinnedChannelSectionCollapsed;
             ns.pmConvosCollapsed = savedChatState.pmConvosSectionCollapsed;
@@ -169,7 +176,7 @@ export class LoginUtils {
 
         // Reconnect pending channels
         logger.logDebug("reconnectAsync: reconnecting pending channels...");
-        for (let ch of [...activeLoginViewModel.pinnedChannels.values(), ...activeLoginViewModel.unpinnedChannels.values()]) {
+        for (let ch of [...activeLoginViewModel.pinnedChannels, ...activeLoginViewModel.unpinnedChannels]) {
             if (cc.disposed) {
                 throw new Error("Disconnected during reconnect");
             }

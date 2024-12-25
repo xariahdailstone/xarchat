@@ -144,6 +144,9 @@ namespace XarChat.Backend.UrlHandlers.AppSettings
 
             [JsonPropertyName("title")]
             public string Title { get; set; }
+
+            [JsonPropertyName("order")]
+            public int Order { get; set; } = 0;
         }
 
         public class SavedPMConvo

@@ -283,9 +283,11 @@ export class AddChannelsViewModel extends ObservableBase implements SelectableTa
     }
 
     private extractSortableChannelTitle(rawTitle: string): string {
-        const canonicalizedTitle = StringUtils.canonicalizeConfusables(rawTitle)!;
-        const result = canonicalizedTitle.replace(/ /g, "").replace(/[^A-Za-z0-9]/g, "").toLowerCase();
+        const result = StringUtils.channelTitleAsSortableString(rawTitle);
         return result;
+        // const canonicalizedTitle = StringUtils.canonicalizeConfusables(rawTitle)!;
+        // const result = canonicalizedTitle.replace(/ /g, "").replace(/[^A-Za-z0-9]/g, "").toLowerCase();
+        // return result;
     }
 }
 

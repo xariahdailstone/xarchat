@@ -287,6 +287,18 @@ export class Collection<T> implements ObservableCollection<T>, Observable {
         return (idx != -1);
     }
 
+    sortBy(compareFunc: (a: T, b: T) => number) {
+        const sortedItems = [...this._items];
+        sortedItems.sort(compareFunc);
+
+        for (let i = 0; i < sortedItems.length; i++) {
+            if (this[i] != sortedItems[i]) {
+                this.remove(sortedItems[i]);
+                this.addAt(sortedItems[i], i);
+            }
+        }
+    }
+
     *[Symbol.iterator](): Iterator<T> {
         const x = this._itemsEnumerated.value;
         for (let item of this._items) {

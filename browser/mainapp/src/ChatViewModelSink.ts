@@ -83,7 +83,7 @@ class EventMessagesConfig {
                         for (let oc of this.activeLoginViewModel.openChannels) {
                             addedChans.add(oc);
                         }
-                        for (let pmc of this.activeLoginViewModel.pmConversations.values()) {
+                        for (let pmc of this.activeLoginViewModel.pmConversations) {
                             addedChans.add(pmc);
                         }
                         for (let ac of addedChans.values()) {

@@ -16,7 +16,23 @@ import { DateAnchor } from "../util/HostInteropLogSearch.js";
 import { IDisposable } from "../util/Disposable.js";
 
 
-export type PMConvoChannelViewModelSortKey = { zlastInteraction: number, zname: CharacterName }
+export class PMConvoChannelViewModelSortKey { 
+    constructor(
+        public readonly zlastInteraction: number,
+        public readonly zname: CharacterName) {
+    }
+
+    static compare(a: PMConvoChannelViewModelSortKey, b: PMConvoChannelViewModelSortKey): number {
+        // inverse
+        if (a.zlastInteraction > b.zlastInteraction) return -1;
+        if (a.zlastInteraction < b.zlastInteraction) return 1;
+
+        if (a.zname.value < b.zname.value) return -1;
+        if (a.zname.value > b.zname.value) return 1;
+
+        return 0;
+    }
+}
 
 export class PMConvoChannelViewModel extends ChannelViewModel {
     constructor(parent: ActiveLoginViewModel, character: CharacterName) {
@@ -104,7 +120,7 @@ export class PMConvoChannelViewModel extends ChannelViewModel {
 
     private _typingStatusIdleTimeoutHandle: number | null = null;
     protected override onTextBoxContentUpdated() {
-        if (!(this.activeLoginViewModel.pmConversations.has(this.sortKey) || this.activeLoginViewModel.selectedTab == this)) {
+        if (!(this.activeLoginViewModel.pmConversations.contains(this) || this.activeLoginViewModel.selectedTab == this)) {
             this.myTypingStatus = TypingStatus.NONE;
         }
         else {
@@ -117,7 +133,7 @@ export class PMConvoChannelViewModel extends ChannelViewModel {
                     window.clearTimeout(this._typingStatusIdleTimeoutHandle);
                 }
                 this._typingStatusIdleTimeoutHandle = window.setTimeout(() => {
-                    if (!(this.activeLoginViewModel.pmConversations.has(this.sortKey) || this.activeLoginViewModel.selectedTab == this)) {
+                    if (!(this.activeLoginViewModel.pmConversations.contains(this) || this.activeLoginViewModel.selectedTab == this)) {
                         this.myTypingStatus = TypingStatus.NONE;
                     }
                     else {
@@ -280,13 +296,13 @@ export class PMConvoChannelViewModel extends ChannelViewModel {
     private _sortKey: (PMConvoChannelViewModelSortKey | null) = null;
     get sortKey() {
         if (!this._sortKey) {
-            this._sortKey = { zlastInteraction: this.lastInteractionAt, zname: this.character };
+            this._sortKey = new PMConvoChannelViewModelSortKey(this.lastInteractionAt, this.character);
         }
         return this._sortKey;
     }
 
     rekey() {
-        this._sortKey = { zlastInteraction: this.lastInteractionAt, zname: this.character };
+        this._sortKey = new PMConvoChannelViewModelSortKey(this.lastInteractionAt, this.character);
     }
     needRekey() {
         return this.sortKey.zlastInteraction != this.lastInteractionAt ||
