@@ -160,6 +160,8 @@ export class LoginUtils {
             else if (savedSelectedChannel == "console") {
                 ns.selectedChannel = ns.console;
             }
+
+            savedChatState.lastLogin = (new Date()).getTime();
         }
 
         appViewModel.currentlySelectedSession = ns;

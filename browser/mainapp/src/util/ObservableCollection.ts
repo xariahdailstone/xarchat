@@ -122,7 +122,9 @@ export class Collection<T> implements ObservableCollection<T>, Observable {
     private readonly _items: T[] = [];
     private readonly _itemsEnumerated: ObservableValue<object> = new ObservableValue<object>({});
 
-    get length(): number { return this._items.length; }
+    private readonly _itemsLength: ObservableValue<number> = new ObservableValue<number>(0);
+
+    get length(): number { return this._itemsLength.value; }
 
     add(item: T): T {
         this.push(item);
@@ -358,6 +360,7 @@ export class Collection<T> implements ObservableCollection<T>, Observable {
     }
 
     protected raiseCollectionChangeEvent(type: CollectionChangeType, index?: number, count?: number, removedItem?: T): void {
+        this._itemsLength.value = this._items.length;
         this._itemsEnumerated.value = {};
         if (this._collectionChangeHandlers.size > 0) {
             this._collectionChangeHandlers.forEachValueSnapshotted(f => {

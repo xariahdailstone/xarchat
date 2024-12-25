@@ -52,9 +52,24 @@ export class LoginDialog extends DialogComponentBase<LoginViewModel> {
                 <div class="instructions">
                     Select a character.
                 </div>
-                <x-charslist id="elCharsView" modelpath="characters">
-                    <div class="charslist" id="elCharsList"></div>
-                </x-charslist>
+                <div class="charslist">
+                    <div id="elCharsViewRecentContainer">
+                        <div class="charslist-heading">Recently Used Characters</div>
+                        <x-charslist id="elCharsViewRecent" modelpath="recentCharacters" isrecent="true">
+                            <div id="elCharsListRecent"></div>
+                        </x-charslist>
+                        <div class="charslist-heading">All Characters</div>
+                    </div>
+                    <x-charslist id="elCharsView" modelpath="characters">
+                        <div id="elCharsList"></div>
+                    </x-charslist>
+                </div>
+                <div class="autologincharacter" id="elAutoLoginCharacterContainer">
+                    <label>
+                        <input type="checkbox" id="elAutoLoginCharacter" />
+                        <div>Automatically sign in as this character</div>
+                    </label>
+                </div>
             </div>
             <div class="state-loggingin">
                 <div class="instructions">
@@ -73,14 +88,21 @@ export class LoginDialog extends DialogComponentBase<LoginViewModel> {
 
         const elCharsView = this.$("elCharsView") as CharsList;
         const elCharsList = this.$("elCharsList") as HTMLDivElement;
+        const elCharsViewRecent = this.$("elCharsViewRecent") as CharsList;
+        const elCharsViewRecentContainer = this.$("elCharsViewRecentContainer") as HTMLDivElement;
+
+        const elAutoLoginCharacterContainer = this.$("elAutoLoginCharacterContainer") as HTMLDivElement;
+        const elAutoLoginCharacter = this.$("elAutoLoginCharacter") as HTMLInputElement;
 
         this.setupTwoWayBinding(elUsername, "accountName");
         this.setupTwoWayBinding(elPassword, "password");
         this.setupCheckboxTwoWayBinding(elRememberUsername, "rememberAccountName");
         this.setupCheckboxTwoWayBinding(elRememberPassword, "rememberPassword");
+        this.setupCheckboxTwoWayBinding(elAutoLoginCharacter, "autoLogin");
 
         this.watch(".", v => {
             elCharsView.loginViewModel = v;
+            elCharsViewRecent.loginViewModel = v;
         });
         let flowStateCTS = new WhenChangeManager();
         this.watch("flowState", v => {
@@ -118,6 +140,21 @@ export class LoginDialog extends DialogComponentBase<LoginViewModel> {
                     });
                 }
             });
+        });
+
+        this.watchExpr(vm => vm.canAutoLogin, canAutoLogin => {
+            canAutoLogin = !!canAutoLogin;
+            elAutoLoginCharacterContainer.classList.toggle("hidden", !canAutoLogin);
+            if (!canAutoLogin) {
+                elAutoLoginCharacter.checked = false;
+                if (this.viewModel) {
+                    this.viewModel.autoLogin = false;
+                }
+            }
+        });
+
+        this.watchExpr(vm => vm.recentCharacters.length, rccount => {
+            elCharsViewRecentContainer.classList.toggle("hidden", (rccount == null || rccount == 0));
         });
 
         btnUsernameDD.addEventListener("click", () => {
@@ -181,11 +218,12 @@ export class CharsList extends CollectionViewLightweight<KeyValuePair<any, Chara
         this._loginViewModel = value;
         this._loginViewModelWCM.assign({ loginViewModel: this._loginViewModel }, (args) => {
             return args.loginViewModel?.addPropertyListener("selectedCharacter", () => {
-                this._selectedCharWCM.assign({ char: args.loginViewModel!.selectedCharacter }, (args) => {
+                this._selectedCharWCM.assign({ char: args.loginViewModel!.selectedCharacter, charRecent: args.loginViewModel!.selectedRecent }, (args) => {
+                    const isRecent = !!this.getAttribute("isRecent");
                     for (let vv of this.values()) {
                         const el = vv[0];
                         const vm = vv[1];
-                        if (vm.value == args.char) {
+                        if (vm.value == args.char && isRecent == args.charRecent) {
                             el.classList.add("selected");
                             return asDisposable(() => {
                                 el.classList.remove("selected");
@@ -213,8 +251,11 @@ export class CharsList extends CollectionViewLightweight<KeyValuePair<any, Chara
         el.appendChild(name);
 
         el.addEventListener("click", () => {
+            const isRecent = !!this.getAttribute("isRecent");
+
             const lvm = this.loginViewModel;
             if (lvm) {
+                lvm.selectedRecent = isRecent;
                 lvm.selectedCharacter = vm;
             }
         });

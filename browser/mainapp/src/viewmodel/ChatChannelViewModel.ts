@@ -88,6 +88,14 @@ export class ChatChannelViewModel extends ChannelViewModel {
                         this.name
                     );
                 }
+                else {
+                    parent.openLogViewer(
+                        parent.characterName,
+                        DateAnchor.Before,
+                        new Date(),
+                        this.name
+                    );
+                }
             }));
 
         const existingSCC = IterableUtils.asQueryable(parent.savedChatState.joinedChannels).where(x => x.name == name).firstOrNull();

@@ -887,6 +887,14 @@ export class ActiveLoginViewModel extends ObservableBase {
         }
     }
 
+    private removeFromAutoLogins() {
+        for (let x of [...this.appViewModel.appSettings.savedLogins]) {
+            if (x.characterName == this.characterName) {
+                this.appViewModel.appSettings.savedLogins.delete(x.account, x.characterName);
+            }
+        }
+    }
+
     showMainContextMenu(contextElement: HTMLElement) {
         const ctxVm = new ContextMenuPopupViewModel<() => void>(this.appViewModel, contextElement);
 
@@ -894,14 +902,17 @@ export class ActiveLoginViewModel extends ObservableBase {
 
         if (this.chatConnection.extendedFeaturesEnabled) {
             ctxVm.addMenuItem("Disconnect", () => {
+                this.removeFromAutoLogins();
                 this.chatConnection.disconnect();
             });
             ctxVm.addMenuItem("Log Out", () => {
+                this.removeFromAutoLogins();
                 this.chatConnection.logOut();
             });
         }
         else {
             ctxVm.addMenuItem("Log Out", () => { 
+                this.removeFromAutoLogins();
                 this.chatConnection.disconnect();
             });
         }
