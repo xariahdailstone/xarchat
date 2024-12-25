@@ -38,6 +38,8 @@ import { DateAnchor } from "../util/HostInteropLogSearch.js";
 import { URLUtils } from "../util/URLUtils.js";
 import { SlashCommandViewModel } from "./SlashCommandViewModel.js";
 import { IdleDetection } from "../util/IdleDetection.js";
+import { StringUtils } from "../util/StringUtils.js";
+import { ObservableExpression } from "../util/ObservableExpression.js";
 
 declare const XCHost: any;
 
@@ -95,7 +97,9 @@ export class ActiveLoginViewModel extends ObservableBase {
                     case StdObservableCollectionChangeType.ITEM_REMOVED:
                         change.item.removeEventListener("propertychange", openChannelPingMentionChange);
                         this._pinnedChannels.delete(change.item.sortKey);
+                        this._pinnedChannels2.remove(change.item);
                         this._unpinnedChannels.delete(change.item.sortKey);
+                        this._unpinnedChannels2.remove(change.item);
                         this.openChannelsByChannelName.delete(change.item.name);
                         this.refreshPingMentionCount();
                         break;
@@ -105,23 +109,29 @@ export class ActiveLoginViewModel extends ObservableBase {
                 }
             }
         });
-        this.pmConversations.addCollectionObserver(changes => {
+        this._pmConversations2.addCollectionObserver(changes => {
             for (let change of changes) {
                 switch (change.changeType) {
                     case StdObservableCollectionChangeType.ITEM_ADDED:
-                        change.item.value.addEventListener("propertychange", openChannelPingMentionChange);
+                        (change.item as any)[this._chanPropChangeSym] = new ObservableExpression(
+                                () => [ change.item.hasPing, change.item.unseenMessageCount ],
+                                () => { this.refreshPingMentionCount(); },
+                                () => { this.refreshPingMentionCount(); });
+                            // change.item.addEventListener("propertychange", openChannelPingMentionChange);
                         this.refreshPingMentionCount();
-                        if (change.item.value instanceof PMConvoChannelViewModel) {
-                            if (!this.savedChatState.pmConvos.contains(change.item.value.savedChatStatePMConvo)) {
-                                this.savedChatState.pmConvos.push(change.item.value.savedChatStatePMConvo);
+                        if (change.item instanceof PMConvoChannelViewModel) {
+                            if (!this.savedChatState.pmConvos.contains(change.item.savedChatStatePMConvo)) {
+                                this.savedChatState.pmConvos.push(change.item.savedChatStatePMConvo);
                             }
                         }
                         break;
                     case StdObservableCollectionChangeType.ITEM_REMOVED:
-                        change.item.value.removeEventListener("propertychange", openChannelPingMentionChange);
+                        (change.item as any)[this._chanPropChangeSym].dispose();
+                        delete (change.item as any)[this._chanPropChangeSym];
+                        //change.item.removeEventListener("propertychange", openChannelPingMentionChange);
                         this.refreshPingMentionCount();
-                        if (change.item.value instanceof PMConvoChannelViewModel) {
-                            this.savedChatState.pmConvos.removeWhere(x => x.character.equals(change.item.value.character));
+                        if (change.item instanceof PMConvoChannelViewModel) {
+                            this.savedChatState.pmConvos.removeWhere(x => x.character.equals(change.item.character));
                         }
                         break;
                     case StdObservableCollectionChangeType.CLEARED:
@@ -135,6 +145,8 @@ export class ActiveLoginViewModel extends ObservableBase {
 
         this.getMyFriendsListInfo(CancellationToken.NONE);
     }
+
+    private readonly _chanPropChangeSym = Symbol("ActiveLoginViewModel.ChanPropChange");
 
     private readonly _viewModelId: number;
     private readonly _logger: Logger;
@@ -158,12 +170,19 @@ export class ActiveLoginViewModel extends ObservableBase {
             if (value != ChatConnectionState.CONNECTED) {
                 HostInterop.endCharacterSession(this.characterName);
             }
-            for (let ch of this._unpinnedChannels.values()) {
+            for (let ch of this._unpinnedChannels2) {
                 ch.sessionConnectionStateChanged();
             }
-            for (let ch of this._pinnedChannels.values()) {
+            for (let ch of this._pinnedChannels2) {
                 ch.sessionConnectionStateChanged();
             }
+
+            // for (let ch of this._unpinnedChannels.values()) {
+            //     ch.sessionConnectionStateChanged();
+            // }
+            // for (let ch of this._pinnedChannels.values()) {
+            //     ch.sessionConnectionStateChanged();
+            // }
 
             if (value == ChatConnectionState.CONNECTED && previousConnectionState != ChatConnectionState.CONNECTED) {
                 this.appViewModel.soundNotification({ 
@@ -314,7 +333,7 @@ export class ActiveLoginViewModel extends ObservableBase {
     private refreshPingMentionCount() {
         let newUnseen = false;
         let newPings = false;
-        for (let ch of IterableUtils.combine<ChannelViewModel>(this.openChannels, this.pmConversations.values())) {
+        for (let ch of IterableUtils.combine<ChannelViewModel>(this.openChannels, this._pmConversations2)) {
             newPings = newPings || ch.hasPing;
             newUnseen = newUnseen || (ch.unseenMessageCount > 0);
             if (newPings && newUnseen) {
@@ -325,34 +344,63 @@ export class ActiveLoginViewModel extends ObservableBase {
         this.hasPings = newPings;
     }
 
+    private readonly _pinnedChannels2: Collection<ChatChannelViewModel> = new Collection<ChatChannelViewModel>();
+    private readonly _unpinnedChannels2: Collection<ChatChannelViewModel> = new Collection<ChatChannelViewModel>();
+    private readonly _pmConversations2: Collection<PMConvoChannelViewModel> = new Collection<PMConvoChannelViewModel>();
+
     private readonly _pinnedChannels = new SortedChannelSet();
     private readonly _unpinnedChannels = new SortedChannelSet();
     private readonly _pmConversations = new SortedPMConvoSet();
 
     @observableProperty
-    readonly pinnedChannels: ObservableKeyExtractedOrderedDictionary<ChatChannelViewModelSortKey, ChatChannelViewModel> = this._pinnedChannels;
+    readonly pinnedChannelsOLD: ObservableKeyExtractedOrderedDictionary<ChatChannelViewModelSortKey, ChatChannelViewModel> = this._pinnedChannels;
 
     @observableProperty
-    readonly unpinnedChannels: ObservableKeyExtractedOrderedDictionary<ChatChannelViewModelSortKey, ChatChannelViewModel> = this._unpinnedChannels;
+    readonly unpinnedChannelsOLD: ObservableKeyExtractedOrderedDictionary<ChatChannelViewModelSortKey, ChatChannelViewModel> = this._unpinnedChannels;
 
     @observableProperty
-    readonly pmConversations: ObservableKeyExtractedOrderedDictionary<PMConvoChannelViewModelSortKey, PMConvoChannelViewModel> = this._pmConversations;
+    readonly pinnedChannels: Collection<ChatChannelViewModel> = this._pinnedChannels2;
+
+    @observableProperty
+    readonly unpinnedChannels: Collection<ChatChannelViewModel> = this._unpinnedChannels2;
+
+    @observableProperty
+    readonly pmConversationsOLD: ObservableKeyExtractedOrderedDictionary<PMConvoChannelViewModelSortKey, PMConvoChannelViewModel> = this._pmConversations;
+
+    @observableProperty
+    readonly pmConversations: Collection<PMConvoChannelViewModel> = this._pmConversations2;
+
+    private addChannelToCollectionSorted(channel: ChatChannelViewModel, collection: Collection<ChatChannelViewModel>) {
+        const insertingChannelTitle = StringUtils.channelTitleAsSortableString(channel.title);
+        for (let i = 0; i < collection.length; i++) {
+            const comparingChannelTitle = StringUtils.channelTitleAsSortableString(collection[i]!.title);
+            if (comparingChannelTitle > insertingChannelTitle) {
+                collection.addAt(channel, i);
+                return;
+            }
+        }
+        collection.push(channel);
+    }
 
     updateChannelPinState(ch: ChatChannelViewModel) {
         const origSk = ch.sortKey;
         if (ch.needRekey()) {
             if (origSk.zpinned) {
                 this._pinnedChannels.delete(ch.sortKey);
+                this._pinnedChannels2.remove(ch);
             }
             else {
                 this._unpinnedChannels.delete(ch.sortKey);
+                this._unpinnedChannels2.remove(ch);
             }
             ch.rekey();
             if (ch.isPinned) {
                 this._pinnedChannels.add(ch);
+                this.addChannelToCollectionSorted(ch, this._pinnedChannels2);
             }
             else {
                 this._unpinnedChannels.add(ch);
+                this.addChannelToCollectionSorted(ch, this._unpinnedChannels2);
             }
         }
     }
@@ -361,9 +409,23 @@ export class ActiveLoginViewModel extends ObservableBase {
         const origSk = ch.sortKey;
         if (ch.needRekey()) {
             this._pmConversations.delete(ch.sortKey);
+            this._pmConversations2.remove(ch);
             ch.rekey();
             this._pmConversations.add(ch);
+            this.insertPMConversation(ch);
         }
+    }
+
+    private insertPMConversation(ch: PMConvoChannelViewModel) {
+        ch.rekey();
+        const chSortKey = ch.sortKey;
+        for (let i = 0; i < this._pmConversations2.length; i++) {
+            if (PMConvoChannelViewModelSortKey.compare(this._pmConversations2[i]!.sortKey, chSortKey) > 0) {
+                this._pmConversations2.addAt(ch, i);
+                return;
+            }
+        }
+        this._pmConversations2.add(ch);
     }
 
     @observableProperty
@@ -426,8 +488,53 @@ export class ActiveLoginViewModel extends ObservableBase {
         }
     }
 
+    setChannelOrdering(names: ChannelName[]) {
+        this.setChannelOrderingInternal(names, this._pinnedChannels2);
+        this.setChannelOrderingInternal(names, this._unpinnedChannels2);
+        this.renumberChannelOrders();
+    }
+
+    private renumberChannelOrders() {
+        let idx = 0;
+        for (let c of this._pinnedChannels2) {
+            c.order = idx;
+            idx++;
+        }
+        for (let c of this._unpinnedChannels2) {
+            c.order = idx;
+            idx++;
+        }
+    }
+
+    private setChannelOrderingInternal(names: ChannelName[], list: Collection<ChatChannelViewModel>) {
+        const nameToOrderMap = new Map<ChannelName, number>();
+        for (let i = 0; i < names.length; i++) {
+            nameToOrderMap.set(names[i], i);
+        }
+
+        list.sortBy((a, b) => nameToOrderMap.get(a.name)! - nameToOrderMap.get(b.name)!);
+    }
+
+    reorderChannel(name: ChannelName, where: ("before" | "after"), relTo: ChannelViewModel) {
+        const movingChan = this.getChannel(name);
+        if (movingChan && relTo instanceof ChatChannelViewModel && movingChan.channelCategory == relTo.channelCategory &&
+            movingChan != relTo) {
+            if (movingChan.isPinned) {
+                this.pinnedChannels.remove(movingChan);
+                const targetIdx = this.pinnedChannels.indexOf(relTo);
+                this.pinnedChannels.addAt(movingChan, targetIdx + (where == "after" ? 1 : 0));
+            }
+            else {
+                this.unpinnedChannels.remove(movingChan);
+                const targetIdx = this.unpinnedChannels.indexOf(relTo);
+                this.unpinnedChannels.addAt(movingChan, targetIdx + (where == "after" ? 1 : 0));
+            }
+            this.renumberChannelOrders();
+        }
+    }
+
     getOrCreatePmConvo(convoCharacter: CharacterName, transient: boolean = false): (PMConvoChannelViewModel | null) {
-        const x = this._pmConversations.getByCharacter(convoCharacter);
+        const x = this.getPmConvo(convoCharacter);
         if (!x) {
             if (this.ignoredChars.has(convoCharacter)) { return null; }
 
@@ -442,6 +549,7 @@ export class ActiveLoginViewModel extends ObservableBase {
 
             if (!transient) {
                 this._pmConversations.add(newConvo);
+                this.insertPMConversation(newConvo);
             }
 
             this.chatConnectionConnected?.openPrivateMessageTab(convoCharacter);
@@ -467,19 +575,19 @@ export class ActiveLoginViewModel extends ObservableBase {
     }
 
     getPmConvo(convoCharacter: CharacterName): PMConvoChannelViewModel | null {
-        const x = this._pmConversations.getByCharacter(convoCharacter);
-        if (!x) {
-            return null;
+        for (let i = 0; i < this._pmConversations2.length; i++) {
+            if (this._pmConversations2[i]?.character == convoCharacter) {
+                return this._pmConversations2[i]!;
+            }
         }
-        else {
-            return x;
-        }
+        return null;
     }
 
     closePmConvo(convoCharacter: CharacterName) {
         const convo = this.getPmConvo(convoCharacter);
         if (convo) {
             this._pmConversations.deleteByValue(convo);
+            this._pmConversations2.remove(convo);
             this.removeFromSelectedChannelHistory(convo, true);
             this.chatConnectionConnected?.closePrivateMessageTab(convoCharacter);
         }

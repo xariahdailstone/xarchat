@@ -123,6 +123,12 @@ export class StringUtils {
             throw new Error("cannot parse as boolean");
         }
     }
+
+    public static channelTitleAsSortableString(title: string) {
+        const canonicalizedTitle = StringUtils.canonicalizeConfusables(title)!;
+        const result = canonicalizedTitle.replace(/ /g, "").replace(/[^A-Za-z0-9]/g, "").toLowerCase();
+        return result + "!!" + title;
+    }
 }
 
 (async function () {

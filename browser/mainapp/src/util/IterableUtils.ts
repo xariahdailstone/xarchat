@@ -26,8 +26,10 @@ export interface Queryable<T> extends Iterable<T> {
     last(): T;
     firstOrNull(): T | null;
     toArray(): T[];
+    toMap<TKey>(keySelector: (item: T) => TKey): Map<TKey, T>;
     orderBy<TValue>(sortKeySelector: (item: T) => TValue, comparer: Comparer<TValue>): Queryable<T>;
     concat(other: Iterable<T>): Queryable<T>;
+    reverse(): Queryable<T>;
 }
 
 class QueryableImpl<T> implements Queryable<T> {
@@ -88,6 +90,27 @@ class QueryableImpl<T> implements Queryable<T> {
         for (let item of other) {
             yield item;
         }
+    }
+
+    reverse(): Queryable<T> {
+        const result = new QueryableImpl<T>(this.reverseInternal());
+        return result;
+    }
+
+    *reverseInternal() {
+        const buf = [...this.iterable];
+        for (let i = buf.length - 1; i >= 0; i--) {
+            yield buf[i];
+        }
+    }
+
+    toMap<TKey>(keySelector: (item: T) => TKey): Map<TKey, T> {
+        const result = new Map<TKey, T>();
+        for (let item of this.iterable) {
+            const key = keySelector(item);
+            result.set(key, item);
+        }
+        return result;
     }
 
     any(): boolean {
