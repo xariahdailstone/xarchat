@@ -89,6 +89,8 @@ export class AppViewModel extends ObservableBase {
         })();
     }
 
+    isInStartup: boolean = true;
+
     readonly colorTheme: ColorThemeViewModel;
 
     private _updateCheckerClient: UpdateCheckerClient | null = null;

@@ -139,7 +139,7 @@ namespace MinimalWin32Test.UI
         private bool _pendingWebViewResize = false;
         private bool _alreadySized = false;
 
-        private OversizeBrowserManager? _obm;
+        //private OversizeBrowserManager? _obm;
 
         internal int NormalizedPixelsToSystemPixels(int normPx)
         {
@@ -302,20 +302,24 @@ namespace MinimalWin32Test.UI
 
         private void MaybeUpdateWindowSize()
         {
-            if (_webView != null && _appReady && !_destroyed)
+            if (_webViewController != null && _webView != null && _appReady && !_destroyed)
             {
                 var clientRect = this.WindowHandle.ClientRect;
                 if (clientRect.Width != _lastNotifiedClientSize.Width || clientRect.Height != _lastNotifiedClientSize.Height)
                 {
-                    if (_obm == null)
-                    {
-                        _obm = new OversizeBrowserManager(_app, this, _webViewController!);
-                    }
+                    //if (_obm == null)
+                    //{
+                    //    _obm = new OversizeBrowserManager(_app, this, _webViewController!);
+                    //}
 
                     var width = clientRect.Width;
                     var height = clientRect.Height;
 
-                    _obm.OnWindowResize(width, height);
+                    _webViewController.Bounds = new System.Drawing.Rectangle(
+                        0, this.NormalizedPixelsToSystemPixels(BrowserWindow.TOP_BORDER_THICKNESS),
+                        width + 1, height - this.NormalizedPixelsToSystemPixels(BrowserWindow.TOP_BORDER_THICKNESS) + 1);
+
+                    //_obm.OnWindowResize(width, height);
                     _webView!.PostWebMessageAsJson($"{{ \"type\": \"clientresize\", \"bounds\": [{width + 1},{height - NormalizedPixelsToSystemPixels(TOP_BORDER_THICKNESS) + 1}] }}");
                     _lastNotifiedClientSize = clientRect.Size;
                 }
@@ -802,53 +806,53 @@ namespace MinimalWin32Test.UI
         }
     }
 
-    public class OversizeBrowserManager
-    {
-        private readonly MessageLoop _app;
-        private readonly BrowserWindow _browserWindow;
-        private readonly CoreWebView2Controller _coreWebView2Controller;
+    //public class OversizeBrowserManager
+    //{
+    //    private readonly MessageLoop _app;
+    //    private readonly BrowserWindow _browserWindow;
+    //    private readonly CoreWebView2Controller _coreWebView2Controller;
 
-        private readonly Timer _tmr;
+    //    private readonly Timer _tmr;
 
-        const int MIN_OVERSIZE_WIDTH = 1920 * 2;
-        const int MIN_OVERSIZE_HEIGHT = 1080 * 2;
+    //    const int MIN_OVERSIZE_WIDTH = 1920 * 2;
+    //    const int MIN_OVERSIZE_HEIGHT = 1080 * 2;
 
-        public OversizeBrowserManager(MessageLoop app, BrowserWindow browserWindow, CoreWebView2Controller coreWebView2Controller)
-        {
-            _app = app;
-            _browserWindow = browserWindow;
-            _coreWebView2Controller = coreWebView2Controller;
-            _tmr = new Timer(app);
-        }
+    //    public OversizeBrowserManager(MessageLoop app, BrowserWindow browserWindow, CoreWebView2Controller coreWebView2Controller)
+    //    {
+    //        _app = app;
+    //        _browserWindow = browserWindow;
+    //        _coreWebView2Controller = coreWebView2Controller;
+    //        _tmr = new Timer(app);
+    //    }
 
-        public void OnWindowResize(int windowWidth, int windowHeight)
-        {
-            if (_coreWebView2Controller != null)
-            {
-                try
-                {
-                    var curBounds = _coreWebView2Controller.Bounds;
-                    var w = Math.Max(curBounds.Width, Math.Max(MIN_OVERSIZE_WIDTH, windowWidth));
-                    var h = Math.Max(curBounds.Height, Math.Max(MIN_OVERSIZE_HEIGHT, windowHeight));
+    //    public void OnWindowResize(int windowWidth, int windowHeight)
+    //    {
+    //        if (_coreWebView2Controller != null)
+    //        {
+    //            try
+    //            {
+    //                var curBounds = _coreWebView2Controller.Bounds;
+    //                var w = Math.Max(curBounds.Width, Math.Max(MIN_OVERSIZE_WIDTH, windowWidth));
+    //                var h = Math.Max(curBounds.Height, Math.Max(MIN_OVERSIZE_HEIGHT, windowHeight));
 
-                    if (w != curBounds.Width || h != curBounds.Height)
-                    {
-                        _coreWebView2Controller.Bounds = new System.Drawing.Rectangle(
-                            0, _browserWindow.NormalizedPixelsToSystemPixels(BrowserWindow.TOP_BORDER_THICKNESS),
-                            w, h - _browserWindow.NormalizedPixelsToSystemPixels(BrowserWindow.TOP_BORDER_THICKNESS));
-                    }
+    //                if (w != curBounds.Width || h != curBounds.Height)
+    //                {
+    //                    _coreWebView2Controller.Bounds = new System.Drawing.Rectangle(
+    //                        0, _browserWindow.NormalizedPixelsToSystemPixels(BrowserWindow.TOP_BORDER_THICKNESS),
+    //                        w, h - _browserWindow.NormalizedPixelsToSystemPixels(BrowserWindow.TOP_BORDER_THICKNESS));
+    //                }
 
-                    _tmr.Change(TimeSpan.FromSeconds(1), () =>
-                    {
-                        _coreWebView2Controller.Bounds = new System.Drawing.Rectangle(
-                            0, _browserWindow.NormalizedPixelsToSystemPixels(BrowserWindow.TOP_BORDER_THICKNESS),
-                            windowWidth + 1, windowHeight - _browserWindow.NormalizedPixelsToSystemPixels(BrowserWindow.TOP_BORDER_THICKNESS) + 1);
-                    });
-                }
-                catch { }
-            }
-        }
-    }
+    //                _tmr.Change(TimeSpan.FromSeconds(1), () =>
+    //                {
+    //                    _coreWebView2Controller.Bounds = new System.Drawing.Rectangle(
+    //                        0, _browserWindow.NormalizedPixelsToSystemPixels(BrowserWindow.TOP_BORDER_THICKNESS),
+    //                        windowWidth + 1, windowHeight - _browserWindow.NormalizedPixelsToSystemPixels(BrowserWindow.TOP_BORDER_THICKNESS) + 1);
+    //                });
+    //            }
+    //            catch { }
+    //        }
+    //    }
+    //}
 
     public class Timer
     {
