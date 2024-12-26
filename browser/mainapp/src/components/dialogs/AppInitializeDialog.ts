@@ -38,5 +38,7 @@ export class AppInitializeDialog extends DialogComponentBase<AppInitializeViewMo
         });
     }
 
-    override get dialogBorderType(): DialogBorderType { return DialogBorderType.FULLPAGE; }
+    override get dialogBorderType(): DialogBorderType { 
+        return this.viewModel && this.viewModel.parent.isInStartup ? DialogBorderType.FULLPAGENOENTRYANIM : DialogBorderType.FULLPAGE; 
+    }
 }

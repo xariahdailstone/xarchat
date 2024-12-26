@@ -251,6 +251,7 @@ export abstract class DialogComponentBase<TViewModel> extends ComponentBase<TVie
 
 export class DialogBorderType {
     static readonly NORMAL: DialogBorderType = new DialogBorderType("frame-normal");
+    static readonly FULLPAGENOENTRYANIM: DialogBorderType = new DialogBorderType("frame-fullpage frame-fullpage-noentryanim");
     static readonly FULLPAGE: DialogBorderType = new DialogBorderType("frame-fullpage");
     static readonly FULLPAGEWITHTITLEBAR: DialogBorderType = new DialogBorderType("frame-fullpage frame-fullpagewithtitlebar");
     static readonly RIGHTPANE: DialogBorderType = new DialogBorderType("frame-rightpane");
