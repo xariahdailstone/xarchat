@@ -132,6 +132,7 @@ onReady(async () => {
     const initializeVM = new AppInitializeViewModel(vm);
     const dlgShowPromise = vm.showDialogAsync(initializeVM);
     initializeVM.runAsync(true);
+    vm.isInStartup = false;
     await dlgShowPromise;
     
 });

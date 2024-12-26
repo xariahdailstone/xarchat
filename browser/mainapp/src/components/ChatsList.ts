@@ -426,12 +426,14 @@ export class ChatsList extends ComponentBase<ActiveLoginViewModel> {
             elsToWatch.add(elPmConvosHeaderDot);
         }
 
+        let updatedList = false;
         for (let el of this._elementsWithAlerts.values()) {
             if (!elsToWatch.has(el)) {
                 //this.log("stop watching", el);
                 this._elementsWithAlerts.delete(el);
                 this._elementsWithAlertsNotVisibleAbove.delete(el);
                 this._elementsWithAlertsNotVisibleBelow.delete(el);
+                updatedList = true;
                 if (this._alertElRemove != null) {
                     this._alertElRemove(el);
                 }
@@ -445,6 +447,13 @@ export class ChatsList extends ComponentBase<ActiveLoginViewModel> {
                     this._alertElAdd(el);
                 }
             }
+        }
+
+        if (updatedList) {
+            const elNewAlertsAbove = this.$("elNewAlertsAbove") as HTMLElement;
+            const elNewAlertsBelow  = this.$("elNewAlertsBelow") as HTMLElement;
+            elNewAlertsAbove.classList.toggle("hidden", this._elementsWithAlertsNotVisibleAbove.size == 0);
+            elNewAlertsBelow.classList.toggle("hidden", this._elementsWithAlertsNotVisibleBelow.size == 0);
         }
     }
 }

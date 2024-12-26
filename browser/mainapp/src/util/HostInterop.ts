@@ -139,7 +139,7 @@ class XarHost2Interop implements IXarHost2HostInterop {
 
         const processMessage = (data: any) => {
             if (data.type == "clientresize") {
-                this.doClientResize(data.bounds[0], data.bounds[1]);
+                this.doClientResize(data.bounds[0], data.bounds[1], false);
             }
             else if (data.type == "windowBoundsChange") {
                 this.doWindowBoundsChange(data.desktopMetrics, data.windowBounds);
@@ -160,6 +160,7 @@ class XarHost2Interop implements IXarHost2HostInterop {
         }
 
         this.logSearch = new XarHost2InteropLogSearch((msg) => this.writeToXCHostSocket("logsearch." + msg));
+        this.doClientResize(window.innerWidth, window.innerHeight, true);
     }
 
     readonly logSearch: XarHost2InteropLogSearch;
@@ -286,7 +287,7 @@ class XarHost2Interop implements IXarHost2HostInterop {
 
         if (cmd == "clientresize") {
             const argo = JSON.parse(arg);
-            this.doClientResize(argo[0], argo[1]);
+            this.doClientResize(argo[0], argo[1], false);
         }
         else if (cmd == "windowboundschange") {
             const argo = JSON.parse(arg);
@@ -372,7 +373,7 @@ class XarHost2Interop implements IXarHost2HostInterop {
     private neededWidth: number = 0;
     private neededHeight: number = 0;
     private hasResizeQueued = false;
-    private doClientResize(width: number, height: number) {
+    private doClientResize(width: number, height: number, isInitial: boolean) {
         this.neededHeight = height;
         this.neededWidth = width;
         if (!this.hasResizeQueued) {
@@ -392,9 +393,11 @@ class XarHost2Interop implements IXarHost2HostInterop {
                         break;
                     default:
                         {
+                            const w = this.neededWidth / (isInitial ? 1 : window.devicePixelRatio);
+                            const h = this.neededHeight / (isInitial ? 1 : window.devicePixelRatio);
                             elMain.style.top = "-6px";
-                            elMain.style.width = `${this.neededWidth / window.devicePixelRatio}px`;
-                            elMain.style.height = `${(this.neededHeight / window.devicePixelRatio) + 6}px`;
+                            elMain.style.width = `${w}px`;
+                            elMain.style.height = `${(h) + 6}px`;
                             elMain.style.setProperty("--main-interface-width", `${this.neededWidth / window.devicePixelRatio}px`);
                         }
                         break;
@@ -503,6 +506,9 @@ class XarHost2Interop implements IXarHost2HostInterop {
 
     appReady(): void {
         this.writeToXCHostSocket("appReady");
+        window.requestAnimationFrame(() => {
+            document.body.classList.add("loaded");
+        });
     }
 
     minimizeWindow(): void {
