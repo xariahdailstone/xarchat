@@ -40,6 +40,7 @@ import { SlashCommandViewModel } from "./SlashCommandViewModel.js";
 import { IdleDetection } from "../util/IdleDetection.js";
 import { StringUtils } from "../util/StringUtils.js";
 import { ObservableExpression } from "../util/ObservableExpression.js";
+import { LogSearch2ViewModel } from "./LogSearch2ViewModel.js";
 
 declare const XCHost: any;
 
@@ -61,6 +62,8 @@ export class ActiveLoginViewModel extends ObservableBase {
         this.miscTabs.push(new MiscTabViewModel(this, "Console", this.console));
         this._logSearchViewModel = new LogSearchViewModel(this, this.appViewModel, savedChatState.characterName);
         this.miscTabs.push(new MiscTabViewModel(this, "Log Viewer", this._logSearchViewModel));
+        this._logSearchViewModel2 = new LogSearch2ViewModel(this, this.appViewModel, savedChatState.characterName);
+        this.miscTabs.push(new MiscTabViewModel(this, "Log Viewer 2", this._logSearchViewModel2));
 
         //this.serverOps.addEventListener("collectionchange", (ev) => { this.notifyChannelsOfCharacterChange(this.serverOps, ev); });
         //this.watchedChars.addEventListener("collectionchange", (ev) => { this.notifyChannelsOfCharacterChange(this.watchedChars, ev); });
@@ -152,6 +155,8 @@ export class ActiveLoginViewModel extends ObservableBase {
     private readonly _logger: Logger;
 
     private readonly _logSearchViewModel: LogSearchViewModel;
+
+    private readonly _logSearchViewModel2: LogSearch2ViewModel;
 
     get appViewModel() { return this.parent; }
 
@@ -943,7 +948,7 @@ export class ActiveLoginViewModel extends ObservableBase {
     }
 }
 
-export type SelectedChannel = ChannelViewModel | AddChannelsViewModel | LogSearchViewModel;
+export type SelectedChannel = ChannelViewModel | AddChannelsViewModel | LogSearchViewModel | LogSearch2ViewModel;
 
 export type SelectableTab = SelectedChannel;
 
