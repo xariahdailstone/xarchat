@@ -42,7 +42,8 @@ export class URLUtils {
     }
 
     static getEIconUrl(name: string, addUniqueTag: (string | null) = null): string {
-        const url = `/api/eicon/${encodeURIComponent(name.toLowerCase())}`;
+        const url = `xarchat://local/eicon/${encodeURIComponent(name.toLowerCase())}`;
+        //const url = `/api/eicon/${encodeURIComponent(name.toLowerCase())}`;
         //const url = `https://static.f-list.net/images/eicon/${encodeURIComponent(name.toLowerCase())}.gif`;
         if (addUniqueTag) {
             if (url.indexOf("?") != -1) {

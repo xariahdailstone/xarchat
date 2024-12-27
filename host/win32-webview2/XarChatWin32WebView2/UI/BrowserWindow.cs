@@ -22,6 +22,8 @@ using XarChat.Backend.Features.MemoryHinter;
 using WinRT;
 using XarChat.Backend.Features.AppConfiguration;
 using Windows.ApplicationModel.DataTransfer;
+using XarChat.Backend.Features.AppCustomProtocol;
+using Microsoft.Extensions.Hosting;
 
 namespace MinimalWin32Test.UI
 {
@@ -445,15 +447,28 @@ namespace MinimalWin32Test.UI
                 var sp = await _backend.GetServiceProviderAsync();
                 var appDataFolder = sp.GetRequiredService<IAppDataFolder>().GetAppDataFolder();
 
+                var csrs = new List<CoreWebView2CustomSchemeRegistration>()
+                {
+                    new CoreWebView2CustomSchemeRegistration("xarchat")
+                    {
+                        AllowedOrigins = [ "https://localhost:*" ],
+                        HasAuthorityComponent = true,
+                        TreatAsSecure = true
+                    }
+                };
+
                 WriteToStartupLog("BrowserWindow.OnHandleCreated - Creating CoreWebView2Environment");
                 var cenv = await Microsoft.Web.WebView2.Core.CoreWebView2Environment.CreateAsync(
                     browserExecutableFolder: null,
                     userDataFolder: Path.Combine(appDataFolder, "WebView2Data"),
                     new Microsoft.Web.WebView2.Core.CoreWebView2EnvironmentOptions(
-                        additionalBrowserArguments: "--enable-features=msWebView2EnableDraggableRegions",
+                        additionalBrowserArguments: 
+                            "--enable-features=msWebView2EnableDraggableRegions " +
+                            "--autoplay-policy=no-user-gesture-required",
                         language: null,
                         targetCompatibleBrowserVersion: null,
-                        allowSingleSignOnUsingOSPrimaryAccount: false
+                        allowSingleSignOnUsingOSPrimaryAccount: false,
+                        customSchemeRegistrations: csrs
                     ));
                 _cenv = cenv;
 
@@ -466,6 +481,8 @@ namespace MinimalWin32Test.UI
                 _webView.Settings.IsGeneralAutofillEnabled = false;
                 _webView.Settings.IsPasswordAutosaveEnabled = false;
 				_webView.NewWindowRequested += _webView_NewWindowRequested;
+                _webView.AddWebResourceRequestedFilter("xarchat:*", CoreWebView2WebResourceContext.All);
+                _webView.WebResourceRequested += _webView_WebResourceRequested;
 
                 WriteToStartupLog("BrowserWindow.OnHandleCreated - Creating WebViewMemoryUsageManager");
                 _webViewMemManager = new WebViewMemoryUsageManager(_backend, _app, _webView);
@@ -499,7 +516,81 @@ namespace MinimalWin32Test.UI
             });
         }
 
-		private void _webView_NewWindowRequested(object? sender, CoreWebView2NewWindowRequestedEventArgs e)
+        private void _webView_WebResourceRequested(object? sender, CoreWebView2WebResourceRequestedEventArgs e)
+        {
+            if (Uri.TryCreate(e.Request.Uri, UriKind.Absolute, out var reqUri))
+            {
+                if (reqUri.Scheme == "xarchat")
+                {
+                    var deferral = e.GetDeferral();
+                    var pr = new XarChatProtocolRequest(
+                        HttpMethod.Parse(e.Request.Method), reqUri,
+                        new List<KeyValuePair<string, string>>(e.Request.Headers),
+                        e.Request.Content);
+                    Task.Run(async () =>
+                    {
+                        try
+                        {
+                            var sp = await _backend.GetServiceProviderAsync();
+                            await using var asyncScope = sp.CreateAsyncScope();
+                            var scopedSP = asyncScope.ServiceProvider;
+                            var hal = scopedSP.GetRequiredService<IHostApplicationLifetime>();
+                            var xcph = scopedSP.GetRequiredService<IXarChatProtocolHandler>();
+                            var presp = await xcph.HandleRequestAsync(pr, hal.ApplicationStopped);
+
+                            _app.Post(() =>
+                            {
+                                try
+                                {
+                                    var webViewEnv = _cenv!;
+                                    var wvresp = webViewEnv.CreateWebResourceResponse(
+                                        Content: presp.Content is not null
+                                            ? presp.Content
+                                            : new MemoryStream(),
+                                        StatusCode: presp.StatusCode,
+                                        ReasonPhrase: presp.ReasonPhrase,
+                                        Headers: presp.Headers is not null
+                                            ? String.Join("\n", presp.Headers.Select(kvp => $"{kvp.Key}: {kvp.Value}"))
+                                            : "");
+                                    e.Response = wvresp;
+                                    deferral.Complete();
+                                }
+                                catch (Exception ex)
+                                {
+                                    var ms = new MemoryStream(
+                                        System.Text.Encoding.UTF8.GetBytes(ex.ToString()));
+
+                                    var wvresp = _webView!.Environment.CreateWebResourceResponse(
+                                        Content: ms, StatusCode: 500,
+                                        ReasonPhrase: "Internal Server Error",
+                                        Headers: "");
+                                    e.Response = wvresp;
+                                    deferral.Complete();
+                                }
+                            });
+
+                        }
+                        catch (Exception ex)
+                        {
+                            _app.Send(() =>
+                            {
+                                var ms = new MemoryStream(
+                                    System.Text.Encoding.UTF8.GetBytes(ex.ToString()));
+
+                                var wvresp = _webView!.Environment.CreateWebResourceResponse(
+                                    Content: ms, StatusCode: 500,
+                                    ReasonPhrase: "Internal Server Error",
+                                    Headers: "");
+                                e.Response = wvresp;
+                                deferral.Complete();
+                            });
+                        }
+                    });
+                }
+            }
+        }
+
+        private void _webView_NewWindowRequested(object? sender, CoreWebView2NewWindowRequestedEventArgs e)
 		{
             var deferral = e.GetDeferral();
             var sbw = new SecondaryBrowserWindow(_backend, _cenv!, _app, e.Uri);

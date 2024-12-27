@@ -53,6 +53,10 @@ using XarChat.Backend.Features.MemoryHinter.Impl;
 using XarChat.Backend.Features.StartupTasks;
 using XarChat.Backend.Features.ChatLogging.Sqlite.Search;
 using XarChat.Backend.UrlHandlers.FileChooser;
+using XarChat.Backend.Features.EIconLoader;
+using XarChat.Backend.Features.EIconLoader.Impl;
+using XarChat.Backend.Features.AppCustomProtocol;
+using XarChat.Backend.Features.AppCustomProtocol.Impl;
 
 namespace XarChat.Backend
 {
@@ -250,6 +254,9 @@ namespace XarChat.Backend
             services.AddSingleton<DataUpdateSubmitter>();
             services.AddHostedService(sp => sp.GetRequiredService<DataUpdateSubmitter>());
             services.AddSingleton<IDataUpdateSubmitter>(sp => sp.GetRequiredService<DataUpdateSubmitter>());
+
+            services.AddSingleton<IEIconLoader, EIconLoaderImpl>();
+            services.AddSingleton<IXarChatProtocolHandler, XarChatProtocolHandlerImpl>();
 
             services.AddSingleton<FListApiImpl>();
             services.AddSingleton<IFListApi>(sp =>
