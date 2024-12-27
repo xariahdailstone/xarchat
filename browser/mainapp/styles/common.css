@@ -19,11 +19,13 @@
 
 .ignored { opacity: 0.4; }
 
+
+
 *::-webkit-scrollbar {
     width: 16px;
 }
 *::-webkit-scrollbar-track {
-    background: transparent; /* rgba(0, 0, 0, 0.1); */
+    background: transparent;
     pointer-events: all;
 }
 *::-webkit-scrollbar-thumb {
