@@ -13,6 +13,7 @@ import { CharacterProfileDetailImageInfoViewModel } from "./CharacterProfileDeta
 import { CharacterProfileDetailSectionInfoViewModel } from "./CharacterProfileDetailSectionInfoViewModel";
 import { CharacterProfileDetailSummaryInfoViewModel } from "./CharacterProfileDetailSummaryInfoViewModel";
 import { CharacterGuestbookPostViewModel, CharacterGuestbookViewModel } from "./CharacterGuestbookViewModel";
+import { PromiseSource } from "../../../util/PromiseSource";
 
 
 export class CharacterProfileDetailViewModel extends ObservableBase {
@@ -38,9 +39,18 @@ export class CharacterProfileDetailViewModel extends ObservableBase {
             mypix = pix;
         }
 
-        const frx = session.authenticatedApi.getCharacterFriendsAsync(character, cancellationToken);
+        const profileInfo = await pix;
+        let frx: Promise<ProfileFriendsInfo | null>;
+        if (profileInfo.settings.show_friends) {
+            frx = session.authenticatedApi.getCharacterFriendsAsync(character, cancellationToken);
+        }
+        else {
+            const ps = new PromiseSource<ProfileFriendsInfo | null>();
+            ps.resolve(null);
+            frx = ps.promise;
+        }
 
-        return new CharacterProfileDetailViewModel(parent, session, character, await atx, await mlx, await pfx, await klx, await pix, await mypix, await frx);
+        return new CharacterProfileDetailViewModel(parent, session, character, await atx, await mlx, await pfx, await klx, profileInfo, await mypix, await frx);
     }
 
     private constructor(
