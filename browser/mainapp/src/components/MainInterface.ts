@@ -219,7 +219,7 @@ export class MainInterface extends ComponentBase<AppViewModel> {
             }
         }
         
-        console.log(`anyDialogsCount=${anyDialogsCount}  unclosedDialogsCount=${unclosedDialogsCount}`);
+        this.logger.logDebug(`anyDialogsCount=${anyDialogsCount}  unclosedDialogsCount=${unclosedDialogsCount}`);
         const hasDialogs = (anyDialogsCount > 0);
         this.elMain.classList.toggle("has-dialogs", hasDialogs);
 

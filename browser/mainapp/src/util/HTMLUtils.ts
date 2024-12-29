@@ -80,7 +80,7 @@ export class HTMLUtils {
     //         return node.cloneNode(true);
     //     }
     //     else {
-    //         console.log("don't know how to smartclone this", node);
+    //         this.logging.logError("don't know how to smartclone this", node);
     //         return node.cloneNode(true);
     //     }
     // }

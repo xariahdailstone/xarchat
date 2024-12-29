@@ -16,6 +16,7 @@ using XarChat.Backend.Common;
 using XarChat.Backend.Features.AppConfiguration;
 using XarChat.Backend.Features.AppFileServer;
 using XarChat.Backend.Features.ChatLogging;
+using XarChat.Backend.Features.CommandableWindows;
 using XarChat.Backend.Features.EIconIndexing;
 using XarChat.Backend.Features.IdleDetection;
 using XarChat.Backend.Features.NewAppSettings;
@@ -26,7 +27,7 @@ using XarChat.Backend.UrlHandlers.XCHostFunctions.SessionAdapters;
 using XarChat.Backend.UrlHandlers.XCHostFunctions.SessionAdapters.OldNewAppSettings;
 using XarChat.Backend.UrlHandlers.XCHostFunctions.SessionNamespaces;
 using XarChat.Backend.UrlHandlers.XCHostFunctions.SessionNamespaces.LogSearch;
-
+using XarChat.Backend.UrlHandlers.XCHostFunctions.SessionNamespaces.WindowCommand;
 using SplitWriteFunc = System.Func<string, string?, System.Threading.CancellationToken, System.Threading.Tasks.Task>;
 
 namespace XarChat.Backend.UrlHandlers.XCHostFunctions
@@ -61,6 +62,11 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions
                 var clw = sp.GetRequiredService<IChatLogWriter>();
                 var cls = sp.GetRequiredService<IChatLogSearch>();
                 return new LogSearchSessionNamespace(clw, cls, w);
+            });
+            this.AddSessionNamespace("windowcommand", w =>
+            {
+                var cwr = sp.GetRequiredService<ICommandableWindowRegistry>();
+                return new WindowCommandSessionNamespace(cwr, w);
             });
         }
 
@@ -724,12 +730,23 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions
             mgr.SetNotificationBadge(type);
         }
 
+        private string _lastWrittenWindowState = "";
+
+        private void MaybeWriteWindowState(string winState)
+        {
+            if (winState != _lastWrittenWindowState)
+            {
+                _lastWrittenWindowState = winState;
+                _ = this.WriteAsync(winState);
+            }
+        }
+
         public override void WindowRestored()
         {
             try
             {
                 base.WindowRestored();
-                _ = this.WriteAsync("win.restored");
+                MaybeWriteWindowState("win.restored");
             }
             catch { }
         }
@@ -739,7 +756,7 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions
             try
             {
                 base.WindowMinimized();
-                _ = this.WriteAsync("win.minimized");
+                MaybeWriteWindowState("win.minimized");
             }
             catch { }
         }
@@ -749,7 +766,7 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions
             try
             {
                 base.WindowMaximized();
-                _ = this.WriteAsync("win.maximized");
+                MaybeWriteWindowState("win.maximized");
             }
             catch { }
         }

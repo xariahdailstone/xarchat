@@ -1,4 +1,6 @@
 import { IDisposable, EmptyDisposable, asDisposable } from "../util/Disposable.js";
+import { Logger, Logging } from "../util/Logger.js";
+import { ObjectUniqueId } from "../util/ObjectUniqueId.js";
 import { ObservableValue } from "../util/Observable.js";
 import { ObservableExpression } from "../util/ObservableExpression.js";
 import { Optional } from "../util/Optional.js";
@@ -7,6 +9,8 @@ export abstract class LightweightComponentBase<TViewModel> implements IDisposabl
     constructor(
         public readonly element: HTMLElement,
         viewModelFunc?: () => Optional<TViewModel>) {
+
+        this.logger = Logging.createLogger(`${this.constructor.name}#${ObjectUniqueId.get(this)}`);
 
         this._viewModel = new ObservableValue(null);
         if (viewModelFunc) {
@@ -18,6 +22,8 @@ export abstract class LightweightComponentBase<TViewModel> implements IDisposabl
             this._viewModelExpression = null;
         }
     }
+
+    protected readonly logger: Logger;
 
     private readonly _viewModelExpression: ObservableExpression<Optional<TViewModel>> | null;
     private _disposed = false;

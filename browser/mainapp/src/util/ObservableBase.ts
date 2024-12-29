@@ -1,5 +1,7 @@
 import { SnapshottableSet } from "./collections/SnapshottableSet.js";
 import { asDisposable, EmptyDisposable, IDisposable } from "./Disposable.js";
+import { Logger, Logging } from "./Logger.js";
+import { ObjectUniqueId } from "./ObjectUniqueId.js";
 import { Observable, PropertyChangeEvent, PropertyChangeEventListener, ValueSubscription } from "./Observable.js";
 import { Collection } from "./ObservableCollection.js";
 
@@ -13,10 +15,13 @@ const obsPropsMetadata: Map<Function, ObservableReader[]> = new Map();
 
 export abstract class ObservableBase implements Observable {
     constructor() {
+        this.logger = Logging.createLogger(`${this.constructor.name}#${ObjectUniqueId.get(this)}`);
     }
 
     private readonly _lastSeenProps: Map<string, any> = new Map();
     private readonly _propertyListeners: Map<string, SnapshottableSet<PropertyChangeEventListener>> = new Map();
+
+    protected logger: Logger;
 
     addPropertyListener(propertyName: string, onChangeCallback: PropertyChangeEventListener): IDisposable {
         let lset = this._propertyListeners.get(propertyName);
@@ -86,7 +91,7 @@ export abstract class ObservableBase implements Observable {
 
     scanForChanges(debug?: boolean) {
         if (debug) {
-            console.log("scanForChanges", this);
+            this.logger.logDebug("scanForChanges", this);
         }
         let xx = this; //Object.getPrototypeOf(this);
         while (xx != null) {
@@ -102,12 +107,12 @@ export abstract class ObservableBase implements Observable {
                         if (this._lastSeenProps && prevValue !== value) {
                             this._lastSeenProps.set(key, value);
                             if (debug) {
-                                console.log("raising prop change", this, key);
+                                this.logger.logDebug("raising prop change", this, key);
                             }
                             this.raisePropertyChangeEvent(key, value);
                         }
                         else {
-                            //console.log("prop unchanged", key);
+                            //this.logger.logDebug("prop unchanged", key);
                         }
                     }
                     catch { }
@@ -245,6 +250,7 @@ function *enumAllProperties<T>(obj: T): IterableIterator<Extract<keyof T, string
     }
 }
 
+const wrapModelLogger: Logger = Logging.createLogger("wrapModel");
 export function wrapModel<T extends object>(rawModel: T): (T & Observable) {
 
     const previousPropertyValues = new Map<Extract<keyof T, string>, any>();
@@ -264,7 +270,7 @@ export function wrapModel<T extends object>(rawModel: T): (T & Observable) {
                 continue;
             }
             if (propName == DEBUG_PROP) {
-                console.log(`${propName} from ${previousPropertyValues.get(propName)} to ${ovalue}`);
+                wrapModelLogger.logDebug(`${propName} from ${previousPropertyValues.get(propName)} to ${ovalue}`);
             }
             if (previousPropertyValues.get(propName) !== ovalue) {
                 //changedProps.push(propName);
@@ -331,14 +337,14 @@ export function wrapModel<T extends object>(rawModel: T): (T & Observable) {
                     try { Observable.publishRead(result, prop, gotValue); } catch { }
                 }
                 if (prop == DEBUG_PROP) {
-                    console.log(`get ${prop} = ${gotValue}`);
+                    wrapModelLogger.logDebug(`get ${prop} = ${gotValue}`);
                 }
                 return gotValue;
             }
         },
         set(target: T, prop: PropertyKey, value: unknown) {
             if (prop == DEBUG_PROP) {
-                console.log(`set ${prop} = ${value}`);
+                wrapModelLogger.logDebug(`set ${prop} = ${value}`);
             }
             const result = Reflect.set(target, prop, value);
             scanForChanges();
@@ -360,6 +366,7 @@ export function observableProperty(target: any, propertyKey: string, descriptor?
     return observablePropertyInternal({target, propertyKey, descriptor});
 }
 
+const observablePropertyInternalLogger: Logger = Logging.createLogger("observablePropertyInternal");
 function observablePropertyInternal(options: { target: any, propertyKey: string, descriptor?: PropertyDescriptor, debug?: boolean }) {
     const target = options.target;
     const propertyKey = options.propertyKey;
@@ -372,7 +379,7 @@ function observablePropertyInternal(options: { target: any, propertyKey: string,
     }
     const mdArray = obsPropsMetadata.get(taa)!;
 
-    //console.log(`defining get/set for ${descriptor ? 'property' : 'field'} ${propertyKey} on ${taa.name}`);
+    //observablePropertyInternalLogger.logDebug(`defining get/set for ${descriptor ? 'property' : 'field'} ${propertyKey} on ${taa.name}`);
 
     if (descriptor) {
         const origGet = descriptor.get;
@@ -380,12 +387,12 @@ function observablePropertyInternal(options: { target: any, propertyKey: string,
     
         descriptor.get = function() {
             const result = origGet?.call(this);
-            if (debug) console.log("reading prop", propertyKey, result);
+            if (debug) observablePropertyInternalLogger.logDebug("reading prop", propertyKey, result);
             Observable.publishRead(this, propertyKey, result);
             return result;
         };
         descriptor.set = function(value: any) {
-            if (debug) console.log("writing prop", propertyKey, value);
+            if (debug) observablePropertyInternalLogger.logDebug("writing prop", propertyKey, value);
             origSet?.call(this, value);
             if (this && typeof((this as any).scanForChanges) == "function") {
                 (this as any).scanForChanges(debug);
@@ -402,13 +409,13 @@ function observablePropertyInternal(options: { target: any, propertyKey: string,
 
         Object.defineProperty(target, propertyKey, {
             get: function() {
-                if (debug) console.log("reading fld", propertyKey);
+                if (debug) observablePropertyInternalLogger.logDebug("reading fld", propertyKey);
                 const result = (this as any)[SYM_PROP_FIELD];
                 Observable.publishRead(this, propertyKey, result);
                 return result;
             },
             set: function(value: any) {
-                if (debug) console.log("writing fld", propertyKey, value);
+                if (debug) observablePropertyInternalLogger.logDebug("writing fld", propertyKey, value);
                 (this as any)[SYM_PROP_FIELD] = value;
                 if (this && typeof((this as any).scanForChanges) == "function") {
                     (this as any).scanForChanges(debug);

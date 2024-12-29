@@ -12,8 +12,9 @@ import { CancellationToken, CancellationTokenSource } from "./CancellationTokenS
 import { SnapshottableMap } from "./collections/SnapshottableMap";
 import { IDisposable, EmptyDisposable, asDisposable } from "./Disposable";
 import { EventListenerUtil } from "./EventListenerUtil";
-import { HostInteropLogSearch, XarHost2InteropLogSearch } from "./HostInteropLogSearch";
+import { HostInteropLogSearch, XarHost2InteropLogSearch, XarHost2InteropSession, XarHost2InteropWindowCommand } from "./HostInteropLogSearch";
 import { IdleDetectionScreenState, IdleDetectionUserState } from "./IdleDetection";
+import { Logger, Logging } from "./Logger";
 import { PromiseSource } from "./PromiseSource";
 import { StringUtils } from "./StringUtils";
 import { TaskUtils } from "./TaskUtils";
@@ -136,6 +137,8 @@ export enum HostWindowState {
 
 class XarHost2Interop implements IXarHost2HostInterop {
     constructor() {
+        this.logger = Logging.createLogger("XarHost2Interop");
+
         this.writeToXCHostSocket = () => { };
         this.webSocketManagementLoop();
 
@@ -163,9 +166,23 @@ class XarHost2Interop implements IXarHost2HostInterop {
 
         this.logSearch = new XarHost2InteropLogSearch((msg) => this.writeToXCHostSocket("logsearch." + msg));
         this.doClientResize(window.innerWidth, window.innerHeight, true);
+
+        this._windowCommandSession = new XarHost2InteropWindowCommand();
+
+        this.sessions = [
+            this._windowCommandSession
+        ];
+        for (let sess of this.sessions) {
+            sess.writeMessage = (msg) => this.writeToXCHostSocket(sess.prefix + msg);
+        }
     }
 
+    readonly logger: Logger;
+
     readonly logSearch: XarHost2InteropLogSearch;
+
+    readonly sessions: XarHost2InteropSession[];
+    private _windowCommandSession: XarHost2InteropWindowCommand;
 
     private _nextEIconSearchId: number = 0;
     private _pendingEIconSearches: Set<(results: any) => boolean> = new Set();
@@ -198,7 +215,7 @@ class XarHost2Interop implements IXarHost2HostInterop {
     }
 
     private distributeSearchResults(results: any) {
-        console.log("eiconsearchresult", results);
+        this.logger.logDebug("eiconsearchresult", results);
         for (let x of this._pendingEIconSearches.values()) {
             if (x(results)) {
                 this._pendingEIconSearches.delete(x);
@@ -364,6 +381,15 @@ class XarHost2Interop implements IXarHost2HostInterop {
         else if (cmd.startsWith("logsearch.")) {
             const argo = JSON.parse(arg);
             this.logSearch.receiveMessage(rcmd.substring(10), argo);
+        }
+        else {
+            for (let sess of this.sessions) {
+                if (cmd.startsWith(sess.prefix)) {
+                    const argo = JSON.parse(arg);
+                    sess.receiveMessage(rcmd.substring(sess.prefix.length), argo);
+                    break;
+                }
+            }
         }
     }
 
@@ -924,16 +950,13 @@ class XarHost2Interop implements IXarHost2HostInterop {
         return `/api/localFile/getLocalFile?fn=${encodeURIComponent(fn).replaceAll('+', '%20')}`;
     }
 
-    async performWindowCommandAsync(windowId: number | null, args: object): Promise<object> {
+    async performWindowCommandAsync(windowId: number | null, args: { cmd: string, [x: string]: any }): Promise<object> {
         if (windowId == null) {
             const qp = new URLSearchParams(document.location.search);
             windowId = +(qp.get("windowid")!);
         }
-        const resp = await fetch(`/api/windowcommand/${windowId}`, {
-            method: "POST",
-            body: JSON.stringify(args)
-        });
-        const respObj = await resp.json() as object;
+
+        const respObj = await this._windowCommandSession.performWindowCommand(windowId, args, CancellationToken.NONE);
         return respObj;
     }
 }
