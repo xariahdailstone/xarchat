@@ -501,13 +501,19 @@ namespace MinimalWin32Test.UI
                     devModeStr = "&devmode=true";
                 }
 
-                _webView.Navigate($"https://localhost:{assetPortNumber}/app/index.html" +
+                var navUrl = $"https://localhost:{assetPortNumber}/app/index.html" +
                     $"?XarHostMode=2{devModeStr}" +
                     $"&ClientVersion={HttpUtility.UrlEncode(AssemblyVersionInfo.XarChatVersion.ToString())}" +
                     $"&ClientPlatform=win-x64" +
                     $"&ClientBranch={HttpUtility.UrlEncode(AssemblyVersionInfo.XarChatBranch)}" +
                     $"&wsport={wsPortNumber}" +
-                    $"&windowid={cwId}");
+                    $"&windowid={cwId}";
+                if (_commandLineOptions.DisableGpuAcceleration)
+                {
+                    navUrl += "&nogpu=1";
+                }
+
+                _webView.Navigate(navUrl);
                 if ((_commandLineOptions.EnableDevTools ?? false) && (_commandLineOptions.OpenDevToolsOnLaunch ?? false))
                 {
                     _webView.OpenDevToolsWindow();
@@ -658,12 +664,12 @@ namespace MinimalWin32Test.UI
 
         public void StylesheetChanged(string stylesheetPath)
         {
-            if (_webView != null)
+            Task.Run(async () =>
             {
-                stylesheetPath = stylesheetPath
-                    .Replace("'", "\\'");
-                _webView.ExecuteScriptAsync($"window.__refreshCss('{stylesheetPath}');");
-            }
+                var hsp = (await _backend.GetServiceProviderAsync()).GetRequiredService<IXCHostSessionProvider>();
+                var sess = hsp.XCHostSession;
+                sess.CssFileUpdated(stylesheetPath);
+            });
         }
 
         public void Close()

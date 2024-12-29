@@ -12,7 +12,7 @@ import { CancellationToken, CancellationTokenSource } from "./CancellationTokenS
 import { SnapshottableMap } from "./collections/SnapshottableMap";
 import { IDisposable, EmptyDisposable, asDisposable } from "./Disposable";
 import { EventListenerUtil } from "./EventListenerUtil";
-import { HostInteropLogSearch, XarHost2InteropLogSearch, XarHost2InteropSession, XarHost2InteropWindowCommand } from "./HostInteropLogSearch";
+import { DateAnchor, HostInteropLogSearch, LogSearchKind, LogSearchResult, LogSearchResultChannelMessage, LogSearchResultPMConvoMessage, XarHost2InteropLogSearch, XarHost2InteropSession, XarHost2InteropWindowCommand } from "./HostInteropLogSearch";
 import { IdleDetectionScreenState, IdleDetectionUserState } from "./IdleDetection";
 import { Logger, Logging } from "./Logger";
 import { PromiseSource } from "./PromiseSource";
@@ -382,6 +382,10 @@ class XarHost2Interop implements IXarHost2HostInterop {
             const argo = JSON.parse(arg);
             this.logSearch.receiveMessage(rcmd.substring(10), argo);
         }
+        else if (cmd == "cssfileupdated") {
+            const argo = JSON.parse(arg);
+            (window as any).__refreshCss(argo.filename);
+        }
         else {
             for (let sess of this.sessions) {
                 if (cmd.startsWith(sess.prefix)) {
@@ -594,24 +598,15 @@ class XarHost2Interop implements IXarHost2HostInterop {
     }
 
     async getRecentLoggedChannelMessagesAsync(channelName: ChannelName, maxEntries: number): Promise<LogChannelMessage[]> {
-        const fd = new URLSearchParams();
-        fd.append("channelName", channelName.value);
-        fd.append("maxEntries", maxEntries.toString());
-        fd.append("x", new Date().toString());
-        const resp = await fetch(`/api/logs/getRecentLoggedChannelMessages?${fd.toString()}`);
-        const json: any[] = await resp.json();
-        return json.map(x => { return this.convertFromApiChannelLoggedMessage(x); });
+        const lsrs = await this.logSearch.performSearchAsync(CharacterName.SYSTEM, LogSearchKind.Channels,
+            channelName.value, DateAnchor.Before, new Date(), 200, CancellationToken.NONE);
+        return lsrs.map(x => this.convertToLogChannelMessage(x as LogSearchResultChannelMessage));
     }
 
     async getRecentLoggedPMConvoMessagesAsync(myCharacterName: CharacterName, interlocutor: CharacterName, maxEntries: number): Promise<LogPMConvoMessage[]> {
-        const fd = new URLSearchParams();
-        fd.append("myCharacterName", myCharacterName.value);
-        fd.append("interlocutor", interlocutor.value);
-        fd.append("maxEntries", maxEntries.toString());
-        fd.append("x", new Date().toString());
-        const resp = await fetch(`/api/logs/getRecentLoggedPMConvoMessages?${fd.toString()}`);
-        const json: any[] = await resp.json();
-        return json.map(x => { return this.convertFromApiPMConvoLoggedMessage(x); });
+        const lsrs = await this.logSearch.performSearchAsync(myCharacterName, LogSearchKind.PrivateMessages,
+            interlocutor.canonicalValue, DateAnchor.Before, new Date(), 200, CancellationToken.NONE);
+        return lsrs.map(x => this.convertToLogPMConvoMessage(x as LogSearchResultPMConvoMessage));
     }
 
     convertFromApiChannelLoggedMessage(x: any): LogChannelMessage {
@@ -627,7 +622,33 @@ class XarHost2Interop implements IXarHost2HostInterop {
         };
     }
 
+    convertToLogChannelMessage(x: LogSearchResultChannelMessage): LogChannelMessage {
+        return {
+            channelName: ChannelName.create(x.channelName),
+            channelTitle: x.channelTitle,
+            speakingCharacter: CharacterName.create(x.speakerName),
+            messageType: x.messageType,
+            messageText: x.messageText,
+            timestamp: new Date(x.timestamp),
+            speakingCharacterGender: (x.gender as CharacterGender) ?? CharacterGender.NONE,
+            speakingCharacterOnlineStatus: (x.status as OnlineStatus) ?? OnlineStatus.OFFLINE,
+        };
+    }
+
     convertFromApiPMConvoLoggedMessage(x: any): LogPMConvoMessage {
+        return {
+            myCharacterName: CharacterName.create(x.myCharacterName),
+            interlocutor: CharacterName.create(x.interlocutorName),
+            speakingCharacter: CharacterName.create(x.speakerName),
+            messageType: x.messageType,
+            messageText: x.messageText,
+            timestamp: new Date(x.timestamp),
+            speakingCharacterGender: (x.gender as CharacterGender) ?? CharacterGender.NONE,
+            speakingCharacterOnlineStatus: (x.status as OnlineStatus) ?? OnlineStatus.OFFLINE,
+        };
+    }
+
+    convertToLogPMConvoMessage(x: LogSearchResultPMConvoMessage): LogPMConvoMessage {
         return {
             myCharacterName: CharacterName.create(x.myCharacterName),
             interlocutor: CharacterName.create(x.interlocutorName),

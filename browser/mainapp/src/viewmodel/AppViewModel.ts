@@ -208,6 +208,12 @@ export class AppViewModel extends ObservableBase {
         catch { }
     }
 
+    @observableProperty
+    get noGpuMode() {
+        const p = new URLSearchParams(document.location.search);
+        return (p.get("nogpu") == "1");
+    }
+
     async launchUpdateUrlAsync(): Promise<void> {
         const p = new URLSearchParams(document.location.search);
         const ver = encodeURIComponent(p.get("ClientVersion")!);

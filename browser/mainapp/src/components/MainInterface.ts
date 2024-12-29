@@ -225,6 +225,7 @@ export class MainInterface extends ComponentBase<AppViewModel> {
 
         const hasUnclosedDialogs = (unclosedDialogsCount > 0);
         this.elMain.classList.toggle("has-unclosed-dialogs", hasUnclosedDialogs);
+        this.elMain.classList.toggle("nogpu", this.viewModel?.noGpuMode ?? false);
         elChatUi.inert = hasUnclosedDialogs;
     }
 

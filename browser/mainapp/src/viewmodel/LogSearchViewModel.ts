@@ -158,7 +158,7 @@ export class LogSearchViewModel extends ObservableBase {
                 const dateAnchor = this.dateAnchor;
                 const sdate = this.date instanceof Date ? this.date : this.date.getDate();
 
-                const lsrs = await this.performSearchAsync(this.logsFor, this.searchKind, this.searchText, this.dateAnchor, sdate, cancellationToken);
+                const lsrs = await this.performSearchAsync(this.logsFor, this.searchKind, this.searchText, this.dateAnchor, sdate, 200, cancellationToken);
                 if (this._currentSearchKey != mySearchKey) return;
 
                 const newResults = new Collection<LogSearchResultItem>();
@@ -183,7 +183,7 @@ export class LogSearchViewModel extends ObservableBase {
         this.updatingElements = true;
         try {
             const minTimestamp = lsrs.map(lsr => lsr.timestamp).reduce((prev, curr) => Math.min(prev, curr)) - 1;
-            const newLsrs = await this.performSearchAsync(logsFor, searchKind, searchText, DateAnchor.Before, new Date(minTimestamp), CancellationToken.NONE);
+            const newLsrs = await this.performSearchAsync(logsFor, searchKind, searchText, DateAnchor.Before, new Date(minTimestamp), 200, CancellationToken.NONE);
 
             const idx = this.results.indexOf(esri);
             if (idx != -1) {
@@ -220,7 +220,7 @@ export class LogSearchViewModel extends ObservableBase {
         this.updatingElements = true;
         try {
             const maxTimestamp = lsrs.map(lsr => lsr.timestamp).reduce((prev, curr) => Math.max(prev, curr)) + 1;
-            const newLsrs = await this.performSearchAsync(logsFor, searchKind, searchText, DateAnchor.After, new Date(maxTimestamp), CancellationToken.NONE);
+            const newLsrs = await this.performSearchAsync(logsFor, searchKind, searchText, DateAnchor.After, new Date(maxTimestamp), 200, CancellationToken.NONE);
 
             const idx = this.results.indexOf(esri);
             if (idx != -1) {
@@ -257,8 +257,10 @@ export class LogSearchViewModel extends ObservableBase {
         return res;
     }
 
-    private async performSearchAsync(logsFor: CharacterName, searchKind: LogSearchKind, searchText: string, dateAnchor: DateAnchor, date: Date, cancellationToken: CancellationToken): Promise<LogSearchResult[]> {
-        const res = await HostInterop.logSearch.performSearchAsync(logsFor, searchKind, searchText, dateAnchor, date, cancellationToken);
+    private async performSearchAsync(logsFor: CharacterName, searchKind: LogSearchKind, searchText: string, 
+        dateAnchor: DateAnchor, date: Date, maxEntries: number, cancellationToken: CancellationToken): Promise<LogSearchResult[]> {
+
+        const res = await HostInterop.logSearch.performSearchAsync(logsFor, searchKind, searchText, dateAnchor, date, maxEntries, cancellationToken);
         return res;
     }
 

@@ -119,6 +119,11 @@ onReady(async () => {
         await StyleLoader.loadAsync(f);
     }
 
+    const p = new URLSearchParams(document.location.search);
+    if (p.get("nogpu") == "1") {
+        document.body.classList.add("nogpu");
+    }
+
     let vm = new AppViewModel(cb);
     (window as any)["__vm"] = vm;
     //vm.pingWords = [ "xariah" ];

@@ -116,11 +116,16 @@ namespace XarChat.Backend.UrlHandlers.EIconLoader
 
             if (findResult.Headers.TryGetValue("Failed", out var znf) && znf == "true")
             {
-                var errRes = new ContentResult();
-                errRes.StatusCode = 500;
-                errRes.ContentType = "text/plain";
-                errRes.Content = await new StreamReader(findResult.Stream).ReadToEndAsync();
-                return new ActionResultResult(errRes);
+                //var errRes = new ContentResult();
+                //errRes.StatusCode = 500;
+                //errRes.ContentType = "text/plain";
+                //errRes.Content = await new StreamReader(findResult.Stream).ReadToEndAsync();
+                //return new ActionResultResult(errRes);
+                return Results.Content(
+                    content: await new StreamReader(findResult.Stream).ReadToEndAsync(),
+                    contentType: "text/plain",
+                    statusCode: 500);
+                    
             }
             if (findResult.Headers.TryGetValue("Not-Found", out var nf) && nf == "true")
             {

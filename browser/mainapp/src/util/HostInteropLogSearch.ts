@@ -7,7 +7,8 @@ export interface HostInteropLogSearch {
 
     validateSearchTextAsync(logsFor: CharacterName, kind: LogSearchKind, searchText: string, cancellationToken: CancellationToken): Promise<boolean>;
 
-    performSearchAsync(logsFor: CharacterName, kind: LogSearchKind, searchText: string, dateAnchor: DateAnchor, date: Date, cancellationToken: CancellationToken): Promise<LogSearchResult[]>;
+    performSearchAsync(logsFor: CharacterName, kind: LogSearchKind, searchText: string, 
+        dateAnchor: DateAnchor, date: Date, maxEntries: number, cancellationToken: CancellationToken): Promise<LogSearchResult[]>;
 }
 
 export enum LogSearchKind {
@@ -27,6 +28,16 @@ export interface LogSearchResult {
     speakerName: string;
     status: number;
     timestamp: number;
+}
+
+export interface LogSearchResultChannelMessage extends LogSearchResult {
+    channelName: string;
+    channelTitle: string;
+}
+
+export interface LogSearchResultPMConvoMessage extends LogSearchResult {
+    myCharacterName: string;
+    interlocutorName: string;
 }
 
 export abstract class XarHost2InteropSession {
@@ -172,7 +183,9 @@ export class XarHost2InteropLogSearch implements HostInteropLogSearch {
         return result;
     }
 
-    async performSearchAsync(logsFor: CharacterName, kind: LogSearchKind, searchText: string, dateAnchor: DateAnchor, date: Date, cancellationToken: CancellationToken): Promise<LogSearchResult[]> {
+    async performSearchAsync(logsFor: CharacterName, kind: LogSearchKind, searchText: string, 
+        dateAnchor: DateAnchor, date: Date, maxEntries: number, cancellationToken: CancellationToken): Promise<LogSearchResult[]> {
+
         let results: LogSearchResult[] = [];
         if (kind == LogSearchKind.Channels) {
             await this.sendAndReceiveAsync("performChannelSearch", { 
@@ -180,7 +193,7 @@ export class XarHost2InteropLogSearch implements HostInteropLogSearch {
                     dateAnchor: dateAnchor, 
                     date: date.getTime(), 
                     searchText: searchText,
-                    maxEntries: 200,
+                    maxEntries: maxEntries,
                 }, cancellationToken, (rcmd, rdata) => {
                 if (rcmd == "performedChannelSearch") {
                     results = rdata.results;
@@ -193,7 +206,7 @@ export class XarHost2InteropLogSearch implements HostInteropLogSearch {
                     dateAnchor: dateAnchor,
                     date: date.getTime(),
                     searchText: searchText,
-                    maxEntries: 200,
+                    maxEntries: maxEntries,
                 }, cancellationToken, (rcmd, rdata) => {
                 if (rcmd == "performedPMConvoSearch") {
                     results = rdata.results;
