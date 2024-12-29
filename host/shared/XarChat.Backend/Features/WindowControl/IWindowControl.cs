@@ -21,5 +21,7 @@ namespace XarChat.Backend.Features.WindowControl
         void Close();
 
         Task InvokeOnUIThread(Action action);
+
+        Task RestartGPUProcess();
     }
 }

@@ -92,6 +92,8 @@ export interface IHostInterop {
 
     chooseLocalFileAsync(options?: ChooseLocalFileOptions): Promise<string | null>;
     getLocalFileUrl(fn: string): string;
+
+    performWindowCommandAsync(windowId: number | null, args: object): Promise<object>;
 }
 
 export interface IXarHost2HostInterop extends IHostInterop {
@@ -920,6 +922,19 @@ class XarHost2Interop implements IXarHost2HostInterop {
 
     getLocalFileUrl(fn: string): string {
         return `/api/localFile/getLocalFile?fn=${encodeURIComponent(fn).replaceAll('+', '%20')}`;
+    }
+
+    async performWindowCommandAsync(windowId: number | null, args: object): Promise<object> {
+        if (windowId == null) {
+            const qp = new URLSearchParams(document.location.search);
+            windowId = +(qp.get("windowid")!);
+        }
+        const resp = await fetch(`/api/windowcommand/${windowId}`, {
+            method: "POST",
+            body: JSON.stringify(args)
+        });
+        const respObj = await resp.json() as object;
+        return respObj;
     }
 }
 
