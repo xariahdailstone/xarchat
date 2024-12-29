@@ -372,7 +372,7 @@ export class ChatsList extends ComponentBase<ActiveLoginViewModel> {
                 for (let pair of cvEl.values()) {
                     const el = pair[0];
                     const vm = pair[1];
-                    if (vm.hasPing) {
+                    if (vm && vm.hasPing) {
                         elsToWatch.add(el);
                     }
                 }
@@ -797,6 +797,7 @@ export class SortedChannelCollectionView extends CollectionViewLightweight<Chann
                 this.logger.logDebug("dragenter", dragDataChannelName);
                 e.preventDefault();
             }
+            e.stopPropagation();
         }));
         disposables.push(EventListenerUtil.addDisposableEventListener(this.containerElement!, "dragover", (e: DragEvent) => {
             //this.logger.logDebug("dragover");
@@ -813,6 +814,7 @@ export class SortedChannelCollectionView extends CollectionViewLightweight<Chann
                 //this.logger.logDebug("dragover!", dragDataChannelName);
                 e.preventDefault();
             }
+            e.stopPropagation();
         }));
         disposables.push(EventListenerUtil.addDisposableEventListener(this.containerElement!, "dragleave", (e: DragEvent) => {
             this.logger.logDebug("dragleave");
@@ -824,6 +826,7 @@ export class SortedChannelCollectionView extends CollectionViewLightweight<Chann
                 this.removeDragCSS();
                 this.logger.logDebug("dragleave", dragDataChannelName);
             }
+            e.stopPropagation();
         }));
         disposables.push(EventListenerUtil.addDisposableEventListener(this.containerElement!, "drop", (e: DragEvent) => {
             this.logger.logDebug("drop");
@@ -842,6 +845,7 @@ export class SortedChannelCollectionView extends CollectionViewLightweight<Chann
                 this.logger.logDebug("drop!", dragDataChannelName);
                 e.preventDefault();
             }
+            e.stopPropagation();
         }));
         this._connectedDisposables = asDisposable(...disposables);
     }

@@ -124,6 +124,10 @@ onReady(async () => {
         document.body.classList.add("nogpu");
     }
 
+    window.addEventListener("dragenter", (e) => { e.preventDefault(); e.dataTransfer!.dropEffect = "none"; return false; });
+    window.addEventListener("dragover", (e) => { e.preventDefault(); e.dataTransfer!.dropEffect = "none"; return false; });
+    window.addEventListener("drop", (e) => { e.preventDefault(); return false; });
+
     let vm = new AppViewModel(cb);
     (window as any)["__vm"] = vm;
     //vm.pingWords = [ "xariah" ];
