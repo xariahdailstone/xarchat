@@ -62,6 +62,7 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions
                 { "eiconSearch", (sess, arg, ct) => sess.HandleEIconSearchCommand(arg, ct) },
                 { "eiconSearchClear", (sess, arg, ct) => sess.HandleEIconSearchClearCommand(arg, ct) },
                 { "getcssdata", (sess, arg, ct) => sess.HandleGetCssData(arg, ct) },
+                { "getsvgdata", (sess, arg, ct) => sess.HandleGetSvgData(arg, ct) },
                 { "getconfig", (sess, arg, ct) => sess.HandleGetConfig(arg, ct) },
                 { "setconfig", (sess, arg, ct) => sess.HandleSetConfig(arg, ct) },
                 { "getallcss", (sess, arg, ct) => sess.HandleGetAllCss(arg, ct) },
@@ -503,6 +504,26 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions
                 data = "";
             }
             await this.WriteAsync("gotcssdata " +
+                JsonUtilities.Serialize(new GotCssDataResult()
+                {
+                    MessageId = parsedArgs.MessageId,
+                    Data = data
+                }, SourceGenerationContext.Default.GotCssDataResult));
+        }
+
+        private async Task HandleGetSvgData(string arg, CancellationToken cancellationToken)
+        {
+            var parsedArgs = JsonUtilities.Deserialize<GetCssDataArgs>(arg, SourceGenerationContext.Default.GetCssDataArgs)!;
+            string data;
+            try
+            {
+                data = await GetCssDataAsync(parsedArgs.Url, cancellationToken);
+            }
+            catch
+            {
+                data = "";
+            }
+            await this.WriteAsync("gotsvgdata " +
                 JsonUtilities.Serialize(new GotCssDataResult()
                 {
                     MessageId = parsedArgs.MessageId,

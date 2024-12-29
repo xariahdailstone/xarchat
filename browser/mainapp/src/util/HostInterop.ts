@@ -85,6 +85,8 @@ export interface IHostInterop {
     getAllCssFilesAsync(): Promise<string[]>;
     getCssDataAsync(path: string, cancellationToken: CancellationToken): Promise<string>;
 
+    getSvgDataAsync(path: string, cancellationToken: CancellationToken): Promise<string>;
+
     getConfigValuesAsync(): Promise<ConfigKeyValue[]>;
     setConfigValue(key: string, value: (unknown | null)): void;
     registerConfigChangeCallback(callback: (value: ConfigKeyValue) => void): IDisposable;
@@ -364,6 +366,12 @@ class XarHost2Interop implements IXarHost2HostInterop {
             const msgid = argo.msgid;
             const data = argo.data;
             this.returnCssDataXC(msgid, data);
+        }
+        else if (cmd == "gotsvgdata") {
+            const argo = JSON.parse(arg);
+            const msgid = argo.msgid;
+            const data = argo.data;
+            this.returnSvgDataXC(msgid, data);
         }
         else if (cmd == "gotconfig") {
             const argo = JSON.parse(arg);
@@ -868,8 +876,12 @@ class XarHost2Interop implements IXarHost2HostInterop {
     }
 
     async getCssDataAsync(url: string, cancellationToken: CancellationToken): Promise<string> {
-        //const result = await this.getCssDataFetchAsync(url, cancellationToken);
         const result = await this.getCssDataXCAsync(url, cancellationToken);
+        return result;
+    }
+
+    async getSvgDataAsync(path: string, cancellationToken: CancellationToken): Promise<string> {
+        const result = await this.getSvgDataXCAsync(path, cancellationToken);
         return result;
     }
 
@@ -907,6 +919,30 @@ class XarHost2Interop implements IXarHost2HostInterop {
         const ps = this._cssDataReaders.get(msgid);
         if (ps) {
             this._cssDataReaders.delete(msgid);
+            ps.tryResolve(data);
+        }
+    }
+
+    private readonly _svgDataReaders: Map<number, PromiseSource<string>> = new Map();
+    private _nextSvgDataReaderId: number = 0;
+
+    private getSvgDataXCAsync(url: string, cancellationToken: CancellationToken): Promise<string> {
+        const ps = new PromiseSource<string>();
+        const mySvgDataReaderId = this._nextSvgDataReaderId++;
+        this._svgDataReaders.set(mySvgDataReaderId, ps);
+
+        this.writeToXCHostSocket("getsvgdata " + JSON.stringify({
+            msgid: mySvgDataReaderId,
+            url: url
+        }));
+        
+        return ps.promise;
+    }
+
+    private returnSvgDataXC(msgid: number, data: string): void {
+        const ps = this._svgDataReaders.get(msgid);
+        if (ps) {
+            this._svgDataReaders.delete(msgid);
             ps.tryResolve(data);
         }
     }
