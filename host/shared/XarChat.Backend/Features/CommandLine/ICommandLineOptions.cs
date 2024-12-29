@@ -21,5 +21,7 @@ namespace XarChat.Backend.Features.CommandLine
         bool? OpenDevToolsOnLaunch { get; }
 
         string? ProfilePath { get; }
+
+        bool DisableGpuAcceleration { get; }
     }
 }

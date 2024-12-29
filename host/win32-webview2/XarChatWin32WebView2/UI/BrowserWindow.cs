@@ -450,13 +450,24 @@ namespace MinimalWin32Test.UI
             {
                 var sp = await _backend.GetServiceProviderAsync();
                 var appDataFolder = sp.GetRequiredService<IAppDataFolder>().GetAppDataFolder();
+                var clOpts = sp.GetRequiredService<ICommandLineOptions>();
+
+                var browserArguments = new List<string>()
+                {
+                    "--enable-features=msWebView2EnableDraggableRegions",
+                    "--autoplay-policy=no-user-gesture-required",
+                };
+                if (clOpts.DisableGpuAcceleration)
+                {
+                    browserArguments.Add("--disable-gpu");
+                }
 
                 WriteToStartupLog("BrowserWindow.OnHandleCreated - Creating CoreWebView2Environment");
                 var cenv = await Microsoft.Web.WebView2.Core.CoreWebView2Environment.CreateAsync(
                     browserExecutableFolder: null,
                     userDataFolder: Path.Combine(appDataFolder, "WebView2Data"),
                     new Microsoft.Web.WebView2.Core.CoreWebView2EnvironmentOptions(
-                        additionalBrowserArguments: "--enable-features=msWebView2EnableDraggableRegions",
+                        additionalBrowserArguments: String.Join(" ", browserArguments),
                         language: null,
                         targetCompatibleBrowserVersion: null,
                         allowSingleSignOnUsingOSPrimaryAccount: false
