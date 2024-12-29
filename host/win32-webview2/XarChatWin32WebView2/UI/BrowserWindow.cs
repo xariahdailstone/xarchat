@@ -495,23 +495,26 @@ namespace MinimalWin32Test.UI
                 var fn = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/index.html");
                 WriteToStartupLog("BrowserWindow.OnHandleCreated - Navigating to app");
 
-                var devModeStr = "";
-                if (AssemblyVersionInfo.XarChatBranch != "master")
+                var launchParams = new Dictionary<string, string>()
                 {
-                    devModeStr = "&devmode=true";
-                }
-
-                var navUrl = $"https://localhost:{assetPortNumber}/app/index.html" +
-                    $"?XarHostMode=2{devModeStr}" +
-                    $"&ClientVersion={HttpUtility.UrlEncode(AssemblyVersionInfo.XarChatVersion.ToString())}" +
-                    $"&ClientPlatform=win-x64" +
-                    $"&ClientBranch={HttpUtility.UrlEncode(AssemblyVersionInfo.XarChatBranch)}" +
-                    $"&wsport={wsPortNumber}" +
-                    $"&windowid={cwId}";
+                    { "XarHostMode", "2" },
+                    { "ClientVersion", AssemblyVersionInfo.XarChatVersion.ToString() },
+                    { "ClientPlatform", "win-x64" },
+                    { "ClientBranch", AssemblyVersionInfo.XarChatBranch },
+                    { "wsport", wsPortNumber.ToString() },
+                    { "windowid", cwId.ToString() }
+                };
                 if (_commandLineOptions.DisableGpuAcceleration)
                 {
-                    navUrl += "&nogpu=1";
+                    launchParams.Add("nogpu", "1");
                 }
+                if (AssemblyVersionInfo.XarChatBranch != "master")
+                {
+                    launchParams.Add("devmode", "true");
+                }
+
+                var navUrl = $"https://localhost:{assetPortNumber}/app/index.html?" +
+                    String.Join("&", launchParams.Select(kvp => $"{kvp.Key}={HttpUtility.UrlEncode(kvp.Value)}"));
 
                 _webView.Navigate(navUrl);
                 if ((_commandLineOptions.EnableDevTools ?? false) && (_commandLineOptions.OpenDevToolsOnLaunch ?? false))
@@ -611,8 +614,28 @@ namespace MinimalWin32Test.UI
                     if (contextMenuTarget.Kind == CoreWebView2ContextMenuTargetKind.Image)
                     {
                         var sourceUri = contextMenuTarget.SourceUri;
-                        string? resultingUri;
-                        if (sourceUri.Contains("proxyImageUrl"))
+                        string? resultingUri = null;
+
+                        try
+                        {
+                            var u = new Uri(sourceUri);
+                            if (u.Fragment is not null && u.Fragment.StartsWith("#"))
+                            {
+                                var parts = u.Fragment.Substring(1).Split("&")
+                                    .Select(x => x.Split("="))
+                                    .Select(x => new KeyValuePair<string, string>(x[0], HttpUtility.UrlDecode(x[1])));
+                                foreach (var part in parts)
+                                {
+                                    if (String.Equals("canonicalUrl", part.Key, StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        resultingUri = part.Value;
+                                    }
+                                }
+                            }
+                        }
+                        catch { }
+
+                        if (resultingUri == null && sourceUri.Contains("proxyImageUrl"))
                         {
                             var u = new Uri(sourceUri);
                             var targetUri = u.Query.Substring(1).Split("&").Select(qp =>
@@ -633,7 +656,7 @@ namespace MinimalWin32Test.UI
                                 .FirstOrDefault();
                             resultingUri = targetUri.Value ?? sourceUri;
                         }
-                        else
+                        else if (resultingUri == null)
                         {
                             resultingUri = sourceUri;
                         }
