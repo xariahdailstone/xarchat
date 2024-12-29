@@ -138,8 +138,15 @@ onReady(async () => {
 });
 
 document.addEventListener("keydown", (e) => {
-    if (e.ctrlKey) {
-        if (e.keyCode == KeyCodes.KEY_R) {
+    if (e.keyCode == KeyCodes.KEY_R) {
+        if (e.ctrlKey) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+    }
+    else if (e.keyCode == KeyCodes.KEY_G) {
+        if (e.ctrlKey && e.shiftKey) {
+            HostInterop.performWindowCommandAsync(null, { cmd: "restartgpu" });
             e.preventDefault();
             e.stopPropagation();
         }

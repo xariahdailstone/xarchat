@@ -22,10 +22,12 @@ using XarChat.Backend.Features.MemoryHinter;
 using WinRT;
 using XarChat.Backend.Features.AppConfiguration;
 using Windows.ApplicationModel.DataTransfer;
+using XarChat.Backend.Features.CommandableWindows;
+using System.Text.Json.Nodes;
 
 namespace MinimalWin32Test.UI
 {
-    public class BrowserWindow : WindowBase
+    public class BrowserWindow : WindowBase, ICommandableWindow
     {
         private static int _nextClassNum = 0;
         private WindowClass? _windowClass;
@@ -432,6 +434,10 @@ namespace MinimalWin32Test.UI
 
         protected override void OnHandleCreated()
         {
+            var cwr = _backend.GetServiceProviderAsync().Result.GetRequiredService<ICommandableWindowRegistry>();
+            var cwId = cwr.GetNewWindowId();
+            cwr.RegisterWindow(cwId, this);
+
             WriteToStartupLog("BrowserWindow.OnHandleCreated - Getting Backend Port...");
             var assetPortNumber = _backend.GetAssetPortNumber().Result;
             WriteToStartupLog("BrowserWindow.OnHandleCreated - Getting Backend WS Port...");
@@ -489,7 +495,8 @@ namespace MinimalWin32Test.UI
                     $"&ClientVersion={HttpUtility.UrlEncode(AssemblyVersionInfo.XarChatVersion.ToString())}" +
                     $"&ClientPlatform=win-x64" +
                     $"&ClientBranch={HttpUtility.UrlEncode(AssemblyVersionInfo.XarChatBranch)}" +
-                    $"&wsport={wsPortNumber}");
+                    $"&wsport={wsPortNumber}" +
+                    $"&windowid={cwId}");
                 if ((_commandLineOptions.EnableDevTools ?? false) && (_commandLineOptions.OpenDevToolsOnLaunch ?? false))
                 {
                     _webView.OpenDevToolsWindow();
@@ -665,6 +672,23 @@ namespace MinimalWin32Test.UI
             MaybeUpdateWindowSize();
         }
 
+        public async Task<JsonObject> ExecuteCommandAsync(JsonObject commandObject, CancellationToken cancellationToken)
+        {
+            var cmdStr = (commandObject["cmd"]?.ToString() ?? "").ToLower();
+            switch (cmdStr)
+            {
+                case "restartgpu":
+                    {
+                        await _wc.RestartGPUProcess();
+                        var res = new JsonObject();
+                        res["result"] = "ok";
+                        return res;
+                    }
+                default:
+                    return new JsonObject();
+            }
+        }
+
         public WindowState WindowState
         {
             get 
@@ -803,6 +827,28 @@ namespace MinimalWin32Test.UI
                 }
             });
             return tcs.Task;
+        }
+
+        public Task RestartGPUProcess()
+        {
+            try
+            {
+                var curProcessId = System.Diagnostics.Process.GetCurrentProcess().Id;
+                foreach (var childProcessId in NtDll.EnumerateChildProcesses((nint)curProcessId, true))
+                {
+                    if (NtDll.ProcessCommandLine.Retrieve(childProcessId, out var cmdLine) == 0)
+                    {
+                        if (cmdLine?.Contains("--type=gpu-process") ?? false)
+                        {
+                            var p = System.Diagnostics.Process.GetProcessById((int)childProcessId);
+                            p.Kill();
+                            return Task.CompletedTask;
+                        }
+                    }
+                }
+            }
+            catch { }
+            return Task.CompletedTask;
         }
     }
 
