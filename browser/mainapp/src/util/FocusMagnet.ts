@@ -1,3 +1,5 @@
+import { Logger, Logging } from "./Logger";
+import { ObjectUniqueId } from "./ObjectUniqueId";
 
 export class FocusMagnet {
 
@@ -10,19 +12,23 @@ export class FocusMagnet {
     }
 
     constructor() {
+        this.logger = Logging.createLogger(`FocusMagnet#${ObjectUniqueId.get(this)}`);
+
         document.addEventListener("focus", (e) => { 
-            //console.log("focusmanager document.focus", e.target);
+            //this.logger.logDebug("focusmanager document.focus", e.target);
             this.ultimateFocus = this.drillDown(e.target as Element);
         }, { capture: true });
         document.addEventListener("blur", (e) => {
-            //console.log("focusmanager document.blur", e.target);
+            //this.logger.logDebug("focusmanager document.blur", e.target);
             this.ultimateFocus = null;
         }, { capture: true });
 
         // document.addEventListener("selectionchange", (e) => {
-        //     console.log("focusmanager document.selectionchange", e.target);
+        //     this.logger.logDebug("focusmanager document.selectionchange", e.target);
         // }, { capture: true });
     }
+
+    readonly logger: Logger;
 
     private _scopeElement: HTMLElement | null = null;
 
@@ -31,14 +37,14 @@ export class FocusMagnet {
     set ultimateFocus(value: Element | null) {
         if (value != this._ultimateFocus) {
             this._ultimateFocus = value;
-            console.log("focusmanager ultimate element", value);
+            this.logger.logDebug("focusmanager ultimate element", value);
         }
     }
 
     setScope(scopeElement: HTMLElement | null) {
         if (scopeElement != this._scopeElement) {
             this._scopeElement = scopeElement;
-            // console.log(`focusmanager scope set`, scopeElement);
+            // this.logger.logDebug(`focusmanager scope set`, scopeElement);
         }
     }
 
@@ -51,11 +57,11 @@ export class FocusMagnet {
             if (!(shadowRoot as any)["__fmattached"]) {
                 (shadowRoot as any)["__fmattached"] = true;
                 shadowRoot.addEventListener("focus", (e) => {
-                    //console.log("focusmanager shadowroot.focus", topElement, e.target);
+                    //this.logger.logDebug("focusmanager shadowroot.focus", topElement, e.target);
                     this.ultimateFocus = this.drillDown(e.target as Element);
                 }, { capture: true });
                 shadowRoot.addEventListener("blur", (e) => {
-                    //console.log("focusmanager shadowroot.blur", topElement, e.target);
+                    //this.logger.logDebug("focusmanager shadowroot.blur", topElement, e.target);
                     //this.ultimateFocus = this.drillDown(e.target as Element);
                 }, { capture: true });
             }

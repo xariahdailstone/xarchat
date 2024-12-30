@@ -164,7 +164,7 @@ export class AppViewModel extends ObservableBase {
     get isWindowActive() { return this._isWindowActive.value; }
     set isWindowActive(value) {
         if (value !== this._isWindowActive.value) {
-            //console.log("isWindowActive", value);
+            //this.logger.logDebug("isWindowActive", value);
             this._isWindowActive.value = value;
             if (this.currentlySelectedSession) {
                 this.currentlySelectedSession.isActiveSession = this.isWindowActive;
@@ -206,6 +206,12 @@ export class AppViewModel extends ObservableBase {
             await HostInterop.launchUrl(this, url, forceExternal ?? false);
         }
         catch { }
+    }
+
+    @observableProperty
+    get noGpuMode() {
+        const p = new URLSearchParams(document.location.search);
+        return (p.get("nogpu") == "1");
     }
 
     async launchUpdateUrlAsync(): Promise<void> {
@@ -272,7 +278,7 @@ export class AppViewModel extends ObservableBase {
                 (async () => {
                     const id = await IdleDetection.createAsync(value, (userState, screenState) => {
                         if (this._idleAfterAssign == thisIdleAssign) {
-                            console.log("idledetect", userState, screenState);
+                            this.logger.logDebug("idledetect", userState, screenState);
                             this.userState = userState;
                             this.screenState = screenState;
                         }    

@@ -593,7 +593,7 @@ export class ChatViewModelSink implements ChatConnectionSink {
                             eventName: "characterStatusUpdated",
                             defaultRouting: {
                                 "me": "console,currenttab",
-                                "watched": "currenttab,pmconvo"
+                                "watched": "console,currenttab,pmconvo"
                             },
                             targetCharacter: ns.characterName,
                             suppressPing: true
@@ -619,7 +619,7 @@ export class ChatViewModelSink implements ChatConnectionSink {
                         eventName: "characterStatusUpdated",
                         defaultRouting: {
                             "me": "console,currenttab",
-                            "watched": "currenttab,pmconvo"
+                            "watched": "console,currenttab,pmconvo"
                         },
                         targetCharacter: s.characterName
                     });
@@ -639,7 +639,7 @@ export class ChatViewModelSink implements ChatConnectionSink {
             eventName: "characterCameOnline",
             defaultRouting: {
                 "others": "pmconvo",
-                "watched": "pmconvo,currenttab",
+                "watched": "console,pmconvo,currenttab",
                 "me": ""
             },
             targetCharacter: character
@@ -661,7 +661,7 @@ export class ChatViewModelSink implements ChatConnectionSink {
             eventName: "characterWentOffline",
             defaultRouting: {
                 "others": "pmconvo",
-                "watched": "pmconvo,currenttab",
+                "watched": "console,pmconvo,currenttab",
                 "me": ""
             },
             targetCharacter: character

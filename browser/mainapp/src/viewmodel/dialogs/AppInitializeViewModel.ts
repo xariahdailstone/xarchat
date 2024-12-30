@@ -53,7 +53,7 @@ export class AppInitializeViewModel extends DialogViewModel<void> {
                     while (!exitLoop) {
                         try {
                             const updateCheckerState = await updateCheckerStateExpr.waitForChange(updateCheckCTS.token);
-                            console.log(`updateCheckerState = ${updateCheckerState}`);
+                            this.logger.logDebug(`updateCheckerState = ${updateCheckerState}`);
                             switch (updateCheckerState) {
                                 default:
                                 case UpdateCheckerState.NoUpdatesAvailable:

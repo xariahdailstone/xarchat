@@ -3,7 +3,19 @@ import { IDisposable } from "./Disposable";
 import { PromiseSource } from "./PromiseSource";
 
 export class TaskUtils {
+    static async waitForCancel(cancellationToken: CancellationToken): Promise<void> {
+        const ps = new PromiseSource<void>();
+        using creg = cancellationToken.register(() => {
+            ps.trySetCancelled(cancellationToken);
+        });
+        await ps.promise;
+    }
+
     static delay(ms: number, cancellationToken?: CancellationToken) {
+        if (ms == -1) { 
+            return TaskUtils.waitForCancel(cancellationToken ?? CancellationToken.NONE); 
+        }
+
         const ps = new PromiseSource<void>();
         let resolved = false;
 

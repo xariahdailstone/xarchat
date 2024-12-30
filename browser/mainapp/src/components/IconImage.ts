@@ -1,5 +1,7 @@
+import { CancellationToken } from "../util/CancellationTokenSource.js";
 import { IDisposable } from "../util/Disposable.js";
 import { EL } from "../util/EL.js";
+import { HostInterop } from "../util/HostInterop.js";
 import { HTMLUtils } from "../util/HTMLUtils.js";
 import { runInAnimationFrame } from "../util/RequestAnimationFrameHook.js";
 import { createStylesheet, setStylesheetAdoption } from "../util/StyleSheetPolyfill.js";
@@ -82,19 +84,26 @@ class CachedImageInfo {
             return resultEl;
         }
         else {
-            const resp = await fetch(this._src);
             if (this._src.endsWith(".svg")) {
-                const text = await resp.text();
-                return text;
+                const p = HostInterop.getSvgDataAsync(this._src, CancellationToken.NONE);
+                return p;
             }
             else {
-                const blob = await resp.blob();
-                const objectUrl = URL.createObjectURL(blob);
-                this._innerInfo.setBlobUrl(objectUrl);
-                return objectUrl;
+                const resp = await fetch(this._src);
+                if (this._src.endsWith(".svg")) {
+                    const text = await resp.text();
+                    return text;
+                }
+                else {
+                    const blob = await resp.blob();
+                    const objectUrl = URL.createObjectURL(blob);
+                    this._innerInfo.setBlobUrl(objectUrl);
+                    return objectUrl;
+                }
             }
         }
     }
+
 
     private _getTemplateAsync: Promise<HTMLTemplateElement> | null = null;
 

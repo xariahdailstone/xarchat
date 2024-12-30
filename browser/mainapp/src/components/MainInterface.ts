@@ -219,12 +219,13 @@ export class MainInterface extends ComponentBase<AppViewModel> {
             }
         }
         
-        console.log(`anyDialogsCount=${anyDialogsCount}  unclosedDialogsCount=${unclosedDialogsCount}`);
+        this.logger.logDebug(`anyDialogsCount=${anyDialogsCount}  unclosedDialogsCount=${unclosedDialogsCount}`);
         const hasDialogs = (anyDialogsCount > 0);
         this.elMain.classList.toggle("has-dialogs", hasDialogs);
 
         const hasUnclosedDialogs = (unclosedDialogsCount > 0);
         this.elMain.classList.toggle("has-unclosed-dialogs", hasUnclosedDialogs);
+        this.elMain.classList.toggle("nogpu", this.viewModel?.noGpuMode ?? false);
         elChatUi.inert = hasUnclosedDialogs;
     }
 

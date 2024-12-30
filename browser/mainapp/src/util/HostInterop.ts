@@ -12,8 +12,9 @@ import { CancellationToken, CancellationTokenSource } from "./CancellationTokenS
 import { SnapshottableMap } from "./collections/SnapshottableMap";
 import { IDisposable, EmptyDisposable, asDisposable } from "./Disposable";
 import { EventListenerUtil } from "./EventListenerUtil";
-import { HostInteropLogSearch, XarHost2InteropLogSearch } from "./HostInteropLogSearch";
+import { DateAnchor, HostInteropLogSearch, LogSearchKind, LogSearchResult, LogSearchResultChannelMessage, LogSearchResultPMConvoMessage, XarHost2InteropLogSearch, XarHost2InteropSession, XarHost2InteropWindowCommand } from "./HostInteropLogSearch";
 import { IdleDetectionScreenState, IdleDetectionUserState } from "./IdleDetection";
+import { Logger, Logging } from "./Logger";
 import { PromiseSource } from "./PromiseSource";
 import { StringUtils } from "./StringUtils";
 import { TaskUtils } from "./TaskUtils";
@@ -84,6 +85,8 @@ export interface IHostInterop {
     getAllCssFilesAsync(): Promise<string[]>;
     getCssDataAsync(path: string, cancellationToken: CancellationToken): Promise<string>;
 
+    getSvgDataAsync(path: string, cancellationToken: CancellationToken): Promise<string>;
+
     getConfigValuesAsync(): Promise<ConfigKeyValue[]>;
     setConfigValue(key: string, value: (unknown | null)): void;
     registerConfigChangeCallback(callback: (value: ConfigKeyValue) => void): IDisposable;
@@ -136,6 +139,8 @@ export enum HostWindowState {
 
 class XarHost2Interop implements IXarHost2HostInterop {
     constructor() {
+        this.logger = Logging.createLogger("XarHost2Interop");
+
         this.writeToXCHostSocket = () => { };
         this.webSocketManagementLoop();
 
@@ -163,9 +168,23 @@ class XarHost2Interop implements IXarHost2HostInterop {
 
         this.logSearch = new XarHost2InteropLogSearch((msg) => this.writeToXCHostSocket("logsearch." + msg));
         this.doClientResize(window.innerWidth, window.innerHeight, true);
+
+        this._windowCommandSession = new XarHost2InteropWindowCommand();
+
+        this.sessions = [
+            this._windowCommandSession
+        ];
+        for (let sess of this.sessions) {
+            sess.writeMessage = (msg) => this.writeToXCHostSocket(sess.prefix + msg);
+        }
     }
 
+    readonly logger: Logger;
+
     readonly logSearch: XarHost2InteropLogSearch;
+
+    readonly sessions: XarHost2InteropSession[];
+    private _windowCommandSession: XarHost2InteropWindowCommand;
 
     private _nextEIconSearchId: number = 0;
     private _pendingEIconSearches: Set<(results: any) => boolean> = new Set();
@@ -198,7 +217,7 @@ class XarHost2Interop implements IXarHost2HostInterop {
     }
 
     private distributeSearchResults(results: any) {
-        console.log("eiconsearchresult", results);
+        this.logger.logDebug("eiconsearchresult", results);
         for (let x of this._pendingEIconSearches.values()) {
             if (x(results)) {
                 this._pendingEIconSearches.delete(x);
@@ -348,6 +367,12 @@ class XarHost2Interop implements IXarHost2HostInterop {
             const data = argo.data;
             this.returnCssDataXC(msgid, data);
         }
+        else if (cmd == "gotsvgdata") {
+            const argo = JSON.parse(arg);
+            const msgid = argo.msgid;
+            const data = argo.data;
+            this.returnSvgDataXC(msgid, data);
+        }
         else if (cmd == "gotconfig") {
             const argo = JSON.parse(arg);
             const msgid = argo.msgid;
@@ -364,6 +389,19 @@ class XarHost2Interop implements IXarHost2HostInterop {
         else if (cmd.startsWith("logsearch.")) {
             const argo = JSON.parse(arg);
             this.logSearch.receiveMessage(rcmd.substring(10), argo);
+        }
+        else if (cmd == "cssfileupdated") {
+            const argo = JSON.parse(arg);
+            (window as any).__refreshCss(argo.filename);
+        }
+        else {
+            for (let sess of this.sessions) {
+                if (cmd.startsWith(sess.prefix)) {
+                    const argo = JSON.parse(arg);
+                    sess.receiveMessage(rcmd.substring(sess.prefix.length), argo);
+                    break;
+                }
+            }
         }
     }
 
@@ -568,24 +606,15 @@ class XarHost2Interop implements IXarHost2HostInterop {
     }
 
     async getRecentLoggedChannelMessagesAsync(channelName: ChannelName, maxEntries: number): Promise<LogChannelMessage[]> {
-        const fd = new URLSearchParams();
-        fd.append("channelName", channelName.value);
-        fd.append("maxEntries", maxEntries.toString());
-        fd.append("x", new Date().toString());
-        const resp = await fetch(`/api/logs/getRecentLoggedChannelMessages?${fd.toString()}`);
-        const json: any[] = await resp.json();
-        return json.map(x => { return this.convertFromApiChannelLoggedMessage(x); });
+        const lsrs = await this.logSearch.performSearchAsync(CharacterName.SYSTEM, LogSearchKind.Channels,
+            channelName.value, DateAnchor.Before, new Date(), 200, CancellationToken.NONE);
+        return lsrs.map(x => this.convertToLogChannelMessage(x as LogSearchResultChannelMessage));
     }
 
     async getRecentLoggedPMConvoMessagesAsync(myCharacterName: CharacterName, interlocutor: CharacterName, maxEntries: number): Promise<LogPMConvoMessage[]> {
-        const fd = new URLSearchParams();
-        fd.append("myCharacterName", myCharacterName.value);
-        fd.append("interlocutor", interlocutor.value);
-        fd.append("maxEntries", maxEntries.toString());
-        fd.append("x", new Date().toString());
-        const resp = await fetch(`/api/logs/getRecentLoggedPMConvoMessages?${fd.toString()}`);
-        const json: any[] = await resp.json();
-        return json.map(x => { return this.convertFromApiPMConvoLoggedMessage(x); });
+        const lsrs = await this.logSearch.performSearchAsync(myCharacterName, LogSearchKind.PrivateMessages,
+            interlocutor.canonicalValue, DateAnchor.Before, new Date(), 200, CancellationToken.NONE);
+        return lsrs.map(x => this.convertToLogPMConvoMessage(x as LogSearchResultPMConvoMessage));
     }
 
     convertFromApiChannelLoggedMessage(x: any): LogChannelMessage {
@@ -601,7 +630,33 @@ class XarHost2Interop implements IXarHost2HostInterop {
         };
     }
 
+    convertToLogChannelMessage(x: LogSearchResultChannelMessage): LogChannelMessage {
+        return {
+            channelName: ChannelName.create(x.channelName),
+            channelTitle: x.channelTitle,
+            speakingCharacter: CharacterName.create(x.speakerName),
+            messageType: x.messageType,
+            messageText: x.messageText,
+            timestamp: new Date(x.timestamp),
+            speakingCharacterGender: (x.gender as CharacterGender) ?? CharacterGender.NONE,
+            speakingCharacterOnlineStatus: (x.status as OnlineStatus) ?? OnlineStatus.OFFLINE,
+        };
+    }
+
     convertFromApiPMConvoLoggedMessage(x: any): LogPMConvoMessage {
+        return {
+            myCharacterName: CharacterName.create(x.myCharacterName),
+            interlocutor: CharacterName.create(x.interlocutorName),
+            speakingCharacter: CharacterName.create(x.speakerName),
+            messageType: x.messageType,
+            messageText: x.messageText,
+            timestamp: new Date(x.timestamp),
+            speakingCharacterGender: (x.gender as CharacterGender) ?? CharacterGender.NONE,
+            speakingCharacterOnlineStatus: (x.status as OnlineStatus) ?? OnlineStatus.OFFLINE,
+        };
+    }
+
+    convertToLogPMConvoMessage(x: LogSearchResultPMConvoMessage): LogPMConvoMessage {
         return {
             myCharacterName: CharacterName.create(x.myCharacterName),
             interlocutor: CharacterName.create(x.interlocutorName),
@@ -821,8 +876,12 @@ class XarHost2Interop implements IXarHost2HostInterop {
     }
 
     async getCssDataAsync(url: string, cancellationToken: CancellationToken): Promise<string> {
-        //const result = await this.getCssDataFetchAsync(url, cancellationToken);
         const result = await this.getCssDataXCAsync(url, cancellationToken);
+        return result;
+    }
+
+    async getSvgDataAsync(path: string, cancellationToken: CancellationToken): Promise<string> {
+        const result = await this.getSvgDataXCAsync(path, cancellationToken);
         return result;
     }
 
@@ -860,6 +919,30 @@ class XarHost2Interop implements IXarHost2HostInterop {
         const ps = this._cssDataReaders.get(msgid);
         if (ps) {
             this._cssDataReaders.delete(msgid);
+            ps.tryResolve(data);
+        }
+    }
+
+    private readonly _svgDataReaders: Map<number, PromiseSource<string>> = new Map();
+    private _nextSvgDataReaderId: number = 0;
+
+    private getSvgDataXCAsync(url: string, cancellationToken: CancellationToken): Promise<string> {
+        const ps = new PromiseSource<string>();
+        const mySvgDataReaderId = this._nextSvgDataReaderId++;
+        this._svgDataReaders.set(mySvgDataReaderId, ps);
+
+        this.writeToXCHostSocket("getsvgdata " + JSON.stringify({
+            msgid: mySvgDataReaderId,
+            url: url
+        }));
+        
+        return ps.promise;
+    }
+
+    private returnSvgDataXC(msgid: number, data: string): void {
+        const ps = this._svgDataReaders.get(msgid);
+        if (ps) {
+            this._svgDataReaders.delete(msgid);
             ps.tryResolve(data);
         }
     }
@@ -924,16 +1007,13 @@ class XarHost2Interop implements IXarHost2HostInterop {
         return `/api/localFile/getLocalFile?fn=${encodeURIComponent(fn).replaceAll('+', '%20')}`;
     }
 
-    async performWindowCommandAsync(windowId: number | null, args: object): Promise<object> {
+    async performWindowCommandAsync(windowId: number | null, args: { cmd: string, [x: string]: any }): Promise<object> {
         if (windowId == null) {
             const qp = new URLSearchParams(document.location.search);
             windowId = +(qp.get("windowid")!);
         }
-        const resp = await fetch(`/api/windowcommand/${windowId}`, {
-            method: "POST",
-            body: JSON.stringify(args)
-        });
-        const respObj = await resp.json() as object;
+
+        const respObj = await this._windowCommandSession.performWindowCommand(windowId, args, CancellationToken.NONE);
         return respObj;
     }
 }

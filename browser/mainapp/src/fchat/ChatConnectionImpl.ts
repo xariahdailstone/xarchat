@@ -22,6 +22,7 @@ import { IdleDetectionScreenState, IdleDetectionUserState } from "../util/IdleDe
 import { XarChatUtils } from "../util/XarChatUtils";
 import { Logger, Logging } from "../util/Logger";
 import { ImmutableList } from "../util/collections/ImmutableList";
+import { ObjectUniqueId } from "../util/ObjectUniqueId";
 
 export class ServerError extends Error {
     constructor(message: ChatMessage);
@@ -52,6 +53,8 @@ export class ChatConnectionImpl implements ChatConnection {
         sink: Partial<ChatConnectionSink>,
         private readonly onOutgoingData: (data: string) => (Promise<void> | void)) {
 
+        this.logger = Logging.createLogger(`ChatConnectionImpl#${ObjectUniqueId.get(this)}`);
+
         this._chatConnId = nextChatConnId++;
         this._logger = Logging.createLogger("ChatConnectionImpl");
         this._logger.enterScope(`id=#${this._chatConnId}`);
@@ -60,6 +63,8 @@ export class ChatConnectionImpl implements ChatConnection {
         this.processIncomingDataLoop();
     }
     private readonly sink: ChatConnectionSink;
+
+    readonly logger: Logger;
 
     private readonly _chatConnId: number;
     private readonly _logger: Logger;
@@ -73,13 +78,13 @@ export class ChatConnectionImpl implements ChatConnection {
     async bracketedSendAsync(message: ChatMessage | null, callback?: (recvMsg: HandleableChatMessage) => void, cancellationToken?: CancellationToken) {
         using _ = await this._bracketedSendMutex.acquireAsync(cancellationToken);
 
-        //console.log("sending bracket open");
+        //this.logger.logDebug("sending bracket open");
         await this.sendMessageRawAsync({ code: "TPN", body: { character: this._identifiedCharacter.value, status: TypingStatusConvert.toString(TypingStatus.TYPING) }});
         if (message) {
-            //console.log("sending bracket message", message);
+            //this.logger.logDebug("sending bracket message", message);
             await this.sendMessageRawAsync(message);
         }
-        //console.log("sending bracket close");
+        //this.logger.logDebug("sending bracket close");
         await this.sendMessageRawAsync({ code: "TPN", body: { character: this._identifiedCharacter.value, status: TypingStatusConvert.toString(TypingStatus.IDLE) }});
 
         using ms = this.createIncomingMessageSink();
@@ -136,7 +141,7 @@ export class ChatConnectionImpl implements ChatConnection {
     async joinChannelAsync(channel: ChannelName, titleHint?: string): Promise<void> {
         try {
             await this.bracketedSendAsync({ code: "JCH", body: { channel: channel.value }}, (msg) => {
-                //console.log("joinChannelAsync msg", titleHint, msg);
+                //this.logger.logDebug("joinChannelAsync msg", titleHint, msg);
                 if (msg.code == "ERR") {
                     const body = (msg.body as ServerERRMessage);
                     if (body.number == ServerErrorNumbers.CannotLocateChannel) {
@@ -158,7 +163,7 @@ export class ChatConnectionImpl implements ChatConnection {
             });
         }
         finally {
-            //console.log("joinChannelAsync done", titleHint);
+            //this.logger.logDebug("joinChannelAsync done", titleHint);
         }
     }
 
@@ -374,9 +379,9 @@ export class ChatConnectionImpl implements ChatConnection {
         try {
             let i = 0;
             while (true) { // TODO: exit condition
-                //console.log("readmsg", ++i);
+                //this.logger.logDebug("readmsg", ++i);
                 const data = await this._incomingMessageBuffer.dequeueAsync(cancellationToken);
-                //console.log("gotmsg", i);
+                //this.logger.logDebug("gotmsg", i);
                 const msg = this.parseChatMessage(data);
 
                 try {
@@ -697,7 +702,7 @@ export class ChatConnectionImpl implements ChatConnection {
 
     private handleTPNMessage(msg: HandleableTypedChatMessage<ServerTPNMessage>) {
         if (CharacterName.equals(CharacterName.create(msg.body.character), this._identifiedCharacter)) {
-            console.log("my TPN change", msg.body.status);
+            this.logger.logDebug("my TPN change", msg.body.status);
         }
         this.sink.charactersStatusUpdated([
             { characterName: CharacterName.create(msg.body.character), typingStatus: TypingStatusConvert.toTypingStatus(msg.body.status) ?? TypingStatus.NONE }

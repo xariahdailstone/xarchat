@@ -681,18 +681,15 @@ export class DefaultStreamScrollManager implements StreamScrollManager {
         let msRemaining = 1000;
         let lastTimestamp = performance.now();
 
-        //console.log(`resumeScrollRecordingWhenTop start targetTop=${targetTop}`);
         const tick = (msElapsed: number) => {
             const curScrollTop = this.containerElement.scrollTop;
             msRemaining -= (msElapsed - lastTimestamp);
             lastTimestamp = msElapsed;
 
-            //console.log(`resumeScrollRecordingWhenTop curtop=${curScrollTop} targettop=${targetTop} msremain=${msRemaining}`);
             if (this.containerElement.scrollTop != targetTop && msRemaining > 0) {
                 window.requestAnimationFrame(tick);
             }
             else {
-                //console.log("resumeScrollRecordingWhenTop done");
                 this.resumeScrollRecording();
             }
         };
@@ -816,7 +813,6 @@ export class DefaultStreamScrollManager implements StreamScrollManager {
             }
         }
         else {
-            //console.log("skipped unnecessary scroll");
         }
         return isScrolledToMaximum;
     }

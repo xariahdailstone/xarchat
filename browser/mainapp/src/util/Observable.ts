@@ -57,7 +57,7 @@ export class Observable {
         finally {
             this._currentFireStackDepth--;
             if (this._currentFireStackDepth == 0) {
-                //console.log(`[ObservableFireStack] maxDepth=${this._maxFireStackDepth} count=${this._currentFireStackCount}`);
+                //this.logging.logDebug(`[ObservableFireStack] maxDepth=${this._maxFireStackDepth} count=${this._currentFireStackCount}`);
                 this._currentFireStackCount = 0;
                 this._currentFireStackDepth = 0;
                 this._maxFireStackDepth = 0;

@@ -75,6 +75,10 @@
     filter: blur(6px) opacity(0.3);
     /*opacity: 0.3;*/
 }
+#elMain.nogpu.has-unclosed-dialogs .chatui {
+    filter: opacity(0.3);
+}
+
 #elMain.has-dialogs .dialogstack {
     display: block;
     position: absolute;
@@ -128,6 +132,9 @@
 
 .dialogstack > .inactive {
     filter: blur(6px) brightness(0.5);
+}
+.nogpu .dialogstack > .inactive {
+    filter: brightness(0.5);
 }
 
 .dialogframe.new {

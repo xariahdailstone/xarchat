@@ -1,5 +1,7 @@
 import { SnapshottableSet } from "../util/collections/SnapshottableSet";
 import { HTMLUtils } from "../util/HTMLUtils";
+import { Logger, Logging } from "../util/Logger";
+import { ObjectUniqueId } from "../util/ObjectUniqueId";
 
 class SvgIcon extends HTMLElement {
 
@@ -7,6 +9,8 @@ class SvgIcon extends HTMLElement {
 
     constructor() {
         super();
+
+        this.logger = Logging.createLogger(`SvgIcon#${ObjectUniqueId.get(this)}`);
 
         this._sroot = this.attachShadow({ mode: 'closed' });
         HTMLUtils.assignStaticHTMLFragment(this._sroot, `
@@ -17,12 +21,14 @@ class SvgIcon extends HTMLElement {
 
         // this.elIcon.addEventListener("load", () => {
         //     this.elMain.classList.add("loaded");
-        //     console.log("svgicon loaded", this.src);
+        //     this.logger.logDebug("svgicon loaded", this.src);
         //     this.recheckStyle();
         // });
 
         this.recheckStyle();
     }
+
+    readonly logger: Logger;
 
     private readonly _sroot: ShadowRoot;
 
@@ -89,7 +95,7 @@ class SvgIcon extends HTMLElement {
     private attrSrcChanged(oldValue?: string, newValue?: string) {
         this.recheckStyle();
         if (newValue != null) {
-            console.log("svgicon attrSrcChanged", this.src);
+            this.logger.logDebug("svgicon attrSrcChanged", this.src);
             this.elMain.classList.remove("loaded");
             this.elMain.classList.remove("styled");
 
@@ -118,7 +124,7 @@ class SvgIcon extends HTMLElement {
             this.recheckStyle();
         }
         else {
-            console.log("svgicon attrSrcCleared", this.src);
+            this.logger.logDebug("svgicon attrSrcCleared", this.src);
             this.elMain.classList.remove("loaded");
             this.elMain.classList.remove("styled");
             this.elMain.firstElementChild?.remove();
@@ -166,7 +172,7 @@ class SvgIcon extends HTMLElement {
         }
         
         if (svgDoc) {
-            console.log("svgicon styled", this.src);
+            this.logger.logDebug("svgicon styled", this.src);
             this.elMain.classList.add("styled");
         }
     }

@@ -85,6 +85,9 @@ namespace XarChat.Backend.Features.CommandLine.Impl
                     case "--images-internal":
                         this.LaunchImagesInternally = true;
                         break;
+                    case "--disable-gpu":
+                        this.DisableGpuAcceleration = true;
+                        break;
                 }
             }
         }
@@ -102,5 +105,7 @@ namespace XarChat.Backend.Features.CommandLine.Impl
         public bool? OpenDevToolsOnLaunch { get; private set; } = null;
 
         public string? ProfilePath { get; private set; } = null;
+
+        public bool DisableGpuAcceleration { get; private set; } = false;
     }
 }

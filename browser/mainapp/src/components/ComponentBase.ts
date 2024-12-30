@@ -8,6 +8,8 @@ import { testEquality } from "../util/Equality.js";
 import { EventListenerUtil } from "../util/EventListenerUtil.js";
 import { FastEventSource } from "../util/FastEventSource.js";
 import { HostInterop } from "../util/HostInterop.js";
+import { Logger, Logging, LogLevel } from "../util/Logger.js";
+import { ObjectUniqueId } from "../util/ObjectUniqueId.js";
 import { Observable, ValueSubscription } from "../util/Observable.js";
 import { ObservableBase } from "../util/ObservableBase.js";
 import { Collection } from "../util/ObservableCollection.js";
@@ -110,6 +112,8 @@ export abstract class ComponentBase<TViewModel> extends HTMLElement {
     constructor() {
         super();
 
+        this.logger = Logging.createLogger(`${this.constructor.name}#${ObjectUniqueId.get(this)}`);
+
         this._fastEventSource = new FastEventSource(this.fastEvents, this);
 
         this._sroot = this.attachShadow({ mode: 'closed' });
@@ -183,11 +187,18 @@ export abstract class ComponentBase<TViewModel> extends HTMLElement {
     private static _nextUniqueId = 1;
     protected readonly uniqueId: number;
 
-    protected log(...params: any[]) {
+    protected logger: Logger;
+
+    protected log(logLevel: LogLevel, message: string, ...params: any[]) {
         const logId = this.getAttribute("logid");
         const logIdStr = logId ? `#${logId}` : "";
-        console.log(`${this.constructor.name}#${this.uniqueId}${logIdStr}`, ...params);
+        this.logger.log(logLevel, message, ...params);
     }
+
+    protected logDebug(message: string, ...params: any[]) { this.log(LogLevel.DEBUG, message, ...params); }
+    protected logInfo(message: string, ...params: any[]) { this.log(LogLevel.INFO, message, ...params); }
+    protected logWarn(message: string, ...params: any[]) { this.log(LogLevel.WARN, message, ...params); }
+    protected logError(message: string, ...params: any[]) { this.log(LogLevel.ERROR, message, ...params); }
 
     private readonly _styleLoader: StyleLoader;
 
@@ -337,7 +348,7 @@ export abstract class ComponentBase<TViewModel> extends HTMLElement {
         let curEl = this.parentNode;
         while (curEl != null) {
             if (curEl instanceof ComponentBase) {
-                //console.log(`parent component of ${this.tagName} is ${curEl.tagName}`);
+                //this.logger.logDebug(`parent component of ${this.tagName} is ${curEl.tagName}`);
                 return curEl;
             }
 
@@ -349,7 +360,7 @@ export abstract class ComponentBase<TViewModel> extends HTMLElement {
             }
         }
 
-        //console.log(`parent component of ${this.tagName} is null`);
+        //this.logger.logDebug(`parent component of ${this.tagName} is null`);
         return null;
     }
 
@@ -409,7 +420,7 @@ export abstract class ComponentBase<TViewModel> extends HTMLElement {
 
         if (newVm != this._lastExposedViewModel) {
             this._lastExposedViewModel = newVm;
-            //console.log(`viewModelChanged in ${this.tagName} to ${newVm}`);
+            //this.logger.logDebug(`viewModelChanged in ${this.tagName} to ${newVm}`);
             this.viewModelChangedInternal();
         }
     }

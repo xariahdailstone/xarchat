@@ -120,14 +120,14 @@ export class LoginUtils {
                     }
                 }
                 else {
-                    //console.log("not auto joining channel", channelName, channelTitle);
+                    //this.logging.logWarn("not auto joining channel", channelName, channelTitle);
                 }
             }
             for (let pc of savedChatState.pinnedChannels) {
                 const channelName = pc;
                 const ch = ns.getChannel(channelName);
                 if (ch) {
-                    //console.log("auto pinning channel", channelName, ch.title);
+                    //this.logging.logInfo("auto pinning channel", channelName, ch.title);
                     ch.isPinned = true;
                 }
             }
