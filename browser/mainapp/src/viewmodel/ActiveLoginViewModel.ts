@@ -40,6 +40,8 @@ import { SlashCommandViewModel } from "./SlashCommandViewModel.js";
 import { IdleDetection } from "../util/IdleDetection.js";
 import { StringUtils } from "../util/StringUtils.js";
 import { ObservableExpression } from "../util/ObservableExpression.js";
+import { InAppToastViewModel } from "./InAppToastViewModel.js";
+import { InAppToastManagerViewModel } from "./InAppToastManagerViewModel.js";
 
 declare const XCHost: any;
 
@@ -56,6 +58,8 @@ export class ActiveLoginViewModel extends ObservableBase {
         this._viewModelId = nextViewModelId++;
         this._logger = Logging.createLogger("ActiveLoginViewModel");
         this._logger.enterScope(`id#${this._viewModelId}`);
+
+        this.toastManager = new InAppToastManagerViewModel(this);
 
         this.console = new ConsoleChannelViewModel(this);
         this.miscTabs.push(new MiscTabViewModel(this, "Console", this.console));
@@ -941,6 +945,8 @@ export class ActiveLoginViewModel extends ObservableBase {
     getFirstConfigEntryHierarchical(keys: string[], channel?: ChannelViewModel | null): (unknown | null) {
         return this.appViewModel.getFirstConfigEntryHierarchical(keys, this, channel);
     }
+
+    readonly toastManager: InAppToastManagerViewModel;
 }
 
 export type SelectedChannel = ChannelViewModel | AddChannelsViewModel | LogSearchViewModel;

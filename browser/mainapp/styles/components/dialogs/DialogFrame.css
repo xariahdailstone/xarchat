@@ -240,6 +240,20 @@
     opacity: 0;
 }
 
+#elMain.frame-fullpage-noentryanim {
+    transform: scale(1);
+    opacity: 1;
+}
+#elMain.frame-fullpage-noentryanim.new {
+    transform: scale(1);
+    opacity: 0;
+}
+#elMain.frame-fullpage-noentryanim.closed {
+    transform: scale(0.75);
+    opacity: 0;
+    transition: transform 0.2s, opacity 0.2s;
+}
+
 #elMain.frame-fullpage {
     transform: scale(1);
     opacity: 1;

@@ -42,6 +42,12 @@ export class URLUtils {
     }
 
     static getEIconUrl(name: string, addUniqueTag: (string | null) = null): string {
+        const rawUrl = this.getEIconUrlInternal(name, addUniqueTag);
+        const canonicalUrl = `https://static.f-list.net/images/eicon/${encodeURIComponent(name.toLowerCase())}.gif`;
+        return `${rawUrl}#canonicalUrl=${encodeURIComponent(canonicalUrl)}`;
+    }
+
+    static getEIconUrlInternal(name: string, addUniqueTag: (string | null) = null): string {
         const url = `/api/eicon/${encodeURIComponent(name.toLowerCase())}`;
         //const url = `https://static.f-list.net/images/eicon/${encodeURIComponent(name.toLowerCase())}.gif`;
         if (addUniqueTag) {
@@ -78,7 +84,7 @@ export class URLUtils {
             const u = new URL(imageUrl);
             const pathParts = u.pathname.split('/');
             const lastPathPart = pathParts[pathParts.length - 1];
-            return `/api/proxyImageUrl/${encodeURIComponent(lastPathPart)}?url=${encodeURIComponent(imageUrl)}&loadAs=${loadAs}`;
+            return `/api/proxyImageUrl/${encodeURIComponent(lastPathPart)}?url=${encodeURIComponent(imageUrl)}&loadAs=${loadAs}#canonicalUrl=${encodeURIComponent(imageUrl)}`;
         }
         else {
             return null;

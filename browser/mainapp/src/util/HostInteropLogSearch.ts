@@ -7,7 +7,8 @@ export interface HostInteropLogSearch {
 
     validateSearchTextAsync(logsFor: CharacterName, kind: LogSearchKind, searchText: string, cancellationToken: CancellationToken): Promise<boolean>;
 
-    performSearchAsync(logsFor: CharacterName, kind: LogSearchKind, searchText: string, dateAnchor: DateAnchor, date: Date, cancellationToken: CancellationToken): Promise<LogSearchResult[]>;
+    performSearchAsync(logsFor: CharacterName, kind: LogSearchKind, searchText: string, 
+        dateAnchor: DateAnchor, date: Date, maxEntries: number, cancellationToken: CancellationToken): Promise<LogSearchResult[]>;
 }
 
 export enum LogSearchKind {
@@ -27,6 +28,91 @@ export interface LogSearchResult {
     speakerName: string;
     status: number;
     timestamp: number;
+}
+
+export interface LogSearchResultChannelMessage extends LogSearchResult {
+    channelName: string;
+    channelTitle: string;
+}
+
+export interface LogSearchResultPMConvoMessage extends LogSearchResult {
+    myCharacterName: string;
+    interlocutorName: string;
+}
+
+export abstract class XarHost2InteropSession {
+    abstract readonly prefix: string;
+
+    receiveMessage(cmd: string, data: object) {
+        const msgid = +(data as any)["msgid"];
+        const rh = this._msgResponseHandlers.get(msgid);
+        if (rh) {
+            rh(cmd, data);
+            if (cmd == "endresponse") {
+                this._msgResponseHandlers.delete(msgid);
+            }
+        }
+    }
+
+    private _nextId: number = 1;
+    private _msgResponseHandlers: Map<number, (cmd: string, data: object) => void> = new Map();
+    protected sendAndReceiveAsync(cmd: string, data: object, cancellationToken: CancellationToken, onReply: (cmd: string, data: any) => void) {
+        const ps = new PromiseSource<void>();
+
+        const myId = this._nextId++;
+        (data as any)["msgid"] = myId;
+        this.writeMessage(`${cmd} ${JSON.stringify(data)}`);
+
+        const ctreg = cancellationToken.register(() => {
+            this.writeMessage(`cancel ${JSON.stringify({ msgid: myId })}`);
+        });
+        
+        this._msgResponseHandlers.set(myId, (cmd: string, data: object) => {
+            if (cmd == "endresponse") {
+                ctreg.dispose();
+                ps.resolve();
+            }
+            else {
+                onReply(cmd, data);
+            }
+        });
+
+        return ps.promise;
+    }
+
+    writeMessage: (message: string) => void = (m) => {};
+}
+
+export class XarHost2InteropWindowCommand extends XarHost2InteropSession {
+    constructor() {
+        super();
+    }
+
+    override readonly prefix: string = "windowcommand.";
+
+    async performWindowCommand(windowId: number, args: object, cancellationToken: CancellationToken): Promise<object> {
+        
+        let resultError: Error | null = null;
+        let resultObject: object | null = null;
+
+        await this.sendAndReceiveAsync("executeWindowCommand", { windowId: windowId, args: args }, cancellationToken, (rcmd, rdata) => {
+            if (rcmd == "executedWindowCommand") {
+                if (rdata.result) {
+                    resultObject = rdata.result as object;
+                }
+                else if (rdata.errorMessage) {
+                    resultError = new Error(rdata.errorMessage);
+                }
+            }
+        });
+
+        if (resultError != null) {
+            throw resultError;
+        }
+        else {
+            return resultObject!;
+        }
+    }
 }
 
 
@@ -97,7 +183,9 @@ export class XarHost2InteropLogSearch implements HostInteropLogSearch {
         return result;
     }
 
-    async performSearchAsync(logsFor: CharacterName, kind: LogSearchKind, searchText: string, dateAnchor: DateAnchor, date: Date, cancellationToken: CancellationToken): Promise<LogSearchResult[]> {
+    async performSearchAsync(logsFor: CharacterName, kind: LogSearchKind, searchText: string, 
+        dateAnchor: DateAnchor, date: Date, maxEntries: number, cancellationToken: CancellationToken): Promise<LogSearchResult[]> {
+
         let results: LogSearchResult[] = [];
         if (kind == LogSearchKind.Channels) {
             await this.sendAndReceiveAsync("performChannelSearch", { 
@@ -105,7 +193,7 @@ export class XarHost2InteropLogSearch implements HostInteropLogSearch {
                     dateAnchor: dateAnchor, 
                     date: date.getTime(), 
                     searchText: searchText,
-                    maxEntries: 200,
+                    maxEntries: maxEntries,
                 }, cancellationToken, (rcmd, rdata) => {
                 if (rcmd == "performedChannelSearch") {
                     results = rdata.results;
@@ -118,7 +206,7 @@ export class XarHost2InteropLogSearch implements HostInteropLogSearch {
                     dateAnchor: dateAnchor,
                     date: date.getTime(),
                     searchText: searchText,
-                    maxEntries: 200,
+                    maxEntries: maxEntries,
                 }, cancellationToken, (rcmd, rdata) => {
                 if (rcmd == "performedPMConvoSearch") {
                     results = rdata.results;

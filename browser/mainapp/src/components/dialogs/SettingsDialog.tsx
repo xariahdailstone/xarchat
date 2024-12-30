@@ -145,7 +145,7 @@ export class SettingsDialogContent extends RenderingComponentBase<SettingsDialog
         const schema = setting.schema;
         return <x-themetoggle classList={["setting-entry", "setting-entry-boolean"]} 
             props={{ "value": !!setting.value }}
-            on={{ "change": (e) => { console.log('on change', (e.target as any).value, setting); setting.value = (e.target as any).value; } }}></x-themetoggle>
+            on={{ "change": (e) => { this.logger.logDebug('on change', (e.target as any).value, setting); setting.value = (e.target as any).value; } }}></x-themetoggle>
     }
 
     private renderSettingColor(setting: SettingsDialogItemViewModel): VNode {
@@ -201,7 +201,7 @@ export class SettingsDialogContent extends RenderingComponentBase<SettingsDialog
                     isChecked = (curValue == opts.value);
                     isEnabled = true;
                     handleSelected = () => {
-                        console.log("assigning", opts.value);
+                        this.logger.logDebug("assigning", opts.value);
                         setting.value = opts.value;
                     };
                     break;
@@ -219,7 +219,7 @@ export class SettingsDialogContent extends RenderingComponentBase<SettingsDialog
 
                         handleSelected = () => {
                             const assignValue = `file:${curFileName}`;
-                            console.log("assigning", assignValue);
+                            this.logger.logDebug("assigning", assignValue);
                             setting.value = assignValue;
                         };
                         const chooseFile = async () => {

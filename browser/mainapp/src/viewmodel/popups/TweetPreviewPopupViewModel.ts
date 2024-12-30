@@ -114,7 +114,7 @@ export class TweetPreviewPopupViewModel extends PopupViewModel {
                     elIFrame.style.width = `${effWidth}px`;
                     elIFrame.style.height = `${effHeight}px`;
                     if (elIFrame.contentWindow) {
-                        console.log("sending set-scale to popup", scale);
+                        this.logger.logDebug("sending set-scale to popup", scale);
                         elIFrame.contentWindow?.postMessage({ kind: "set-scale", scale: scale }, "*");
                         await TaskUtils.delay(0, CancellationToken.NONE);
                     }

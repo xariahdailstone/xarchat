@@ -6,6 +6,8 @@
         void WindowMinimized();
         void WindowMaximized();
 
+        void CssFileUpdated(string filename);
+
         void PushStateTo(IXCHostSession session);
 
         event EventHandler? Disposed;

@@ -119,6 +119,15 @@ onReady(async () => {
         await StyleLoader.loadAsync(f);
     }
 
+    const p = new URLSearchParams(document.location.search);
+    if (p.get("nogpu") == "1") {
+        document.body.classList.add("nogpu");
+    }
+
+    window.addEventListener("dragenter", (e) => { e.preventDefault(); e.dataTransfer!.dropEffect = "none"; return false; });
+    window.addEventListener("dragover", (e) => { e.preventDefault(); e.dataTransfer!.dropEffect = "none"; return false; });
+    window.addEventListener("drop", (e) => { e.preventDefault(); return false; });
+
     let vm = new AppViewModel(cb);
     (window as any)["__vm"] = vm;
     //vm.pingWords = [ "xariah" ];
@@ -132,13 +141,21 @@ onReady(async () => {
     const initializeVM = new AppInitializeViewModel(vm);
     const dlgShowPromise = vm.showDialogAsync(initializeVM);
     initializeVM.runAsync(true);
+    vm.isInStartup = false;
     await dlgShowPromise;
     
 });
 
 document.addEventListener("keydown", (e) => {
-    if (e.ctrlKey) {
-        if (e.keyCode == KeyCodes.KEY_R) {
+    if (e.keyCode == KeyCodes.KEY_R) {
+        if (e.ctrlKey) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+    }
+    else if (e.keyCode == KeyCodes.KEY_G) {
+        if (e.ctrlKey && e.shiftKey) {
+            HostInterop.performWindowCommandAsync(null, { cmd: "restartgpu" });
             e.preventDefault();
             e.stopPropagation();
         }

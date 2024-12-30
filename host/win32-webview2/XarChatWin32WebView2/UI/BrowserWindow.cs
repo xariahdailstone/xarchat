@@ -22,10 +22,12 @@ using XarChat.Backend.Features.MemoryHinter;
 using WinRT;
 using XarChat.Backend.Features.AppConfiguration;
 using Windows.ApplicationModel.DataTransfer;
+using XarChat.Backend.Features.CommandableWindows;
+using System.Text.Json.Nodes;
 
 namespace MinimalWin32Test.UI
 {
-    public class BrowserWindow : WindowBase
+    public class BrowserWindow : WindowBase, ICommandableWindow
     {
         private static int _nextClassNum = 0;
         private WindowClass? _windowClass;
@@ -139,7 +141,7 @@ namespace MinimalWin32Test.UI
         private bool _pendingWebViewResize = false;
         private bool _alreadySized = false;
 
-        private OversizeBrowserManager? _obm;
+        //private OversizeBrowserManager? _obm;
 
         internal int NormalizedPixelsToSystemPixels(int normPx)
         {
@@ -302,20 +304,24 @@ namespace MinimalWin32Test.UI
 
         private void MaybeUpdateWindowSize()
         {
-            if (_webView != null && _appReady && !_destroyed)
+            if (_webViewController != null && _webView != null && _appReady && !_destroyed)
             {
                 var clientRect = this.WindowHandle.ClientRect;
                 if (clientRect.Width != _lastNotifiedClientSize.Width || clientRect.Height != _lastNotifiedClientSize.Height)
                 {
-                    if (_obm == null)
-                    {
-                        _obm = new OversizeBrowserManager(_app, this, _webViewController!);
-                    }
+                    //if (_obm == null)
+                    //{
+                    //    _obm = new OversizeBrowserManager(_app, this, _webViewController!);
+                    //}
 
                     var width = clientRect.Width;
                     var height = clientRect.Height;
 
-                    _obm.OnWindowResize(width, height);
+                    _webViewController.Bounds = new System.Drawing.Rectangle(
+                        0, this.NormalizedPixelsToSystemPixels(BrowserWindow.TOP_BORDER_THICKNESS),
+                        width + 1, height - this.NormalizedPixelsToSystemPixels(BrowserWindow.TOP_BORDER_THICKNESS) + 1);
+
+                    //_obm.OnWindowResize(width, height);
                     _webView!.PostWebMessageAsJson($"{{ \"type\": \"clientresize\", \"bounds\": [{width + 1},{height - NormalizedPixelsToSystemPixels(TOP_BORDER_THICKNESS) + 1}] }}");
                     _lastNotifiedClientSize = clientRect.Size;
                 }
@@ -428,6 +434,10 @@ namespace MinimalWin32Test.UI
 
         protected override void OnHandleCreated()
         {
+            var cwr = _backend.GetServiceProviderAsync().Result.GetRequiredService<ICommandableWindowRegistry>();
+            var cwId = cwr.GetNewWindowId();
+            cwr.RegisterWindow(cwId, this);
+
             WriteToStartupLog("BrowserWindow.OnHandleCreated - Getting Backend Port...");
             var assetPortNumber = _backend.GetAssetPortNumber().Result;
             WriteToStartupLog("BrowserWindow.OnHandleCreated - Getting Backend WS Port...");
@@ -440,13 +450,24 @@ namespace MinimalWin32Test.UI
             {
                 var sp = await _backend.GetServiceProviderAsync();
                 var appDataFolder = sp.GetRequiredService<IAppDataFolder>().GetAppDataFolder();
+                var clOpts = sp.GetRequiredService<ICommandLineOptions>();
+
+                var browserArguments = new List<string>()
+                {
+                    "--enable-features=msWebView2EnableDraggableRegions",
+                    "--autoplay-policy=no-user-gesture-required",
+                };
+                if (clOpts.DisableGpuAcceleration)
+                {
+                    browserArguments.Add("--disable-gpu");
+                }
 
                 WriteToStartupLog("BrowserWindow.OnHandleCreated - Creating CoreWebView2Environment");
                 var cenv = await Microsoft.Web.WebView2.Core.CoreWebView2Environment.CreateAsync(
                     browserExecutableFolder: null,
                     userDataFolder: Path.Combine(appDataFolder, "WebView2Data"),
                     new Microsoft.Web.WebView2.Core.CoreWebView2EnvironmentOptions(
-                        additionalBrowserArguments: "--enable-features=msWebView2EnableDraggableRegions",
+                        additionalBrowserArguments: String.Join(" ", browserArguments),
                         language: null,
                         targetCompatibleBrowserVersion: null,
                         allowSingleSignOnUsingOSPrimaryAccount: false
@@ -474,18 +495,28 @@ namespace MinimalWin32Test.UI
                 var fn = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/index.html");
                 WriteToStartupLog("BrowserWindow.OnHandleCreated - Navigating to app");
 
-                var devModeStr = "";
+                var launchParams = new Dictionary<string, string>()
+                {
+                    { "XarHostMode", "2" },
+                    { "ClientVersion", AssemblyVersionInfo.XarChatVersion.ToString() },
+                    { "ClientPlatform", "win-x64" },
+                    { "ClientBranch", AssemblyVersionInfo.XarChatBranch },
+                    { "wsport", wsPortNumber.ToString() },
+                    { "windowid", cwId.ToString() }
+                };
+                if (_commandLineOptions.DisableGpuAcceleration)
+                {
+                    launchParams.Add("nogpu", "1");
+                }
                 if (AssemblyVersionInfo.XarChatBranch != "master")
                 {
-                    devModeStr = "&devmode=true";
+                    launchParams.Add("devmode", "true");
                 }
 
-                _webView.Navigate($"https://localhost:{assetPortNumber}/app/index.html" +
-                    $"?XarHostMode=2{devModeStr}" +
-                    $"&ClientVersion={HttpUtility.UrlEncode(AssemblyVersionInfo.XarChatVersion.ToString())}" +
-                    $"&ClientPlatform=win-x64" +
-                    $"&ClientBranch={HttpUtility.UrlEncode(AssemblyVersionInfo.XarChatBranch)}" +
-                    $"&wsport={wsPortNumber}");
+                var navUrl = $"https://localhost:{assetPortNumber}/app/index.html?" +
+                    String.Join("&", launchParams.Select(kvp => $"{kvp.Key}={HttpUtility.UrlEncode(kvp.Value)}"));
+
+                _webView.Navigate(navUrl);
                 if ((_commandLineOptions.EnableDevTools ?? false) && (_commandLineOptions.OpenDevToolsOnLaunch ?? false))
                 {
                     _webView.OpenDevToolsWindow();
@@ -583,8 +614,28 @@ namespace MinimalWin32Test.UI
                     if (contextMenuTarget.Kind == CoreWebView2ContextMenuTargetKind.Image)
                     {
                         var sourceUri = contextMenuTarget.SourceUri;
-                        string? resultingUri;
-                        if (sourceUri.Contains("proxyImageUrl"))
+                        string? resultingUri = null;
+
+                        try
+                        {
+                            var u = new Uri(sourceUri);
+                            if (u.Fragment is not null && u.Fragment.StartsWith("#"))
+                            {
+                                var parts = u.Fragment.Substring(1).Split("&")
+                                    .Select(x => x.Split("="))
+                                    .Select(x => new KeyValuePair<string, string>(x[0], HttpUtility.UrlDecode(x[1])));
+                                foreach (var part in parts)
+                                {
+                                    if (String.Equals("canonicalUrl", part.Key, StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        resultingUri = part.Value;
+                                    }
+                                }
+                            }
+                        }
+                        catch { }
+
+                        if (resultingUri == null && sourceUri.Contains("proxyImageUrl"))
                         {
                             var u = new Uri(sourceUri);
                             var targetUri = u.Query.Substring(1).Split("&").Select(qp =>
@@ -605,7 +656,7 @@ namespace MinimalWin32Test.UI
                                 .FirstOrDefault();
                             resultingUri = targetUri.Value ?? sourceUri;
                         }
-                        else
+                        else if (resultingUri == null)
                         {
                             resultingUri = sourceUri;
                         }
@@ -636,12 +687,12 @@ namespace MinimalWin32Test.UI
 
         public void StylesheetChanged(string stylesheetPath)
         {
-            if (_webView != null)
+            Task.Run(async () =>
             {
-                stylesheetPath = stylesheetPath
-                    .Replace("'", "\\'");
-                _webView.ExecuteScriptAsync($"window.__refreshCss('{stylesheetPath}');");
-            }
+                var hsp = (await _backend.GetServiceProviderAsync()).GetRequiredService<IXCHostSessionProvider>();
+                var sess = hsp.XCHostSession;
+                sess.CssFileUpdated(stylesheetPath);
+            });
         }
 
         public void Close()
@@ -659,6 +710,23 @@ namespace MinimalWin32Test.UI
             _lastNotifiedClientSize.Width = 0;
             _lastNotifiedClientSize.Height = 0;
             MaybeUpdateWindowSize();
+        }
+
+        public async Task<JsonObject> ExecuteCommandAsync(JsonObject commandObject, CancellationToken cancellationToken)
+        {
+            var cmdStr = (commandObject["cmd"]?.ToString() ?? "").ToLower();
+            switch (cmdStr)
+            {
+                case "restartgpu":
+                    {
+                        await _wc.RestartGPUProcess();
+                        var res = new JsonObject();
+                        res["result"] = "ok";
+                        return res;
+                    }
+                default:
+                    return new JsonObject();
+            }
         }
 
         public WindowState WindowState
@@ -800,55 +868,77 @@ namespace MinimalWin32Test.UI
             });
             return tcs.Task;
         }
-    }
 
-    public class OversizeBrowserManager
-    {
-        private readonly MessageLoop _app;
-        private readonly BrowserWindow _browserWindow;
-        private readonly CoreWebView2Controller _coreWebView2Controller;
-
-        private readonly Timer _tmr;
-
-        const int MIN_OVERSIZE_WIDTH = 1920 * 2;
-        const int MIN_OVERSIZE_HEIGHT = 1080 * 2;
-
-        public OversizeBrowserManager(MessageLoop app, BrowserWindow browserWindow, CoreWebView2Controller coreWebView2Controller)
+        public Task RestartGPUProcess()
         {
-            _app = app;
-            _browserWindow = browserWindow;
-            _coreWebView2Controller = coreWebView2Controller;
-            _tmr = new Timer(app);
-        }
-
-        public void OnWindowResize(int windowWidth, int windowHeight)
-        {
-            if (_coreWebView2Controller != null)
+            try
             {
-                try
+                var curProcessId = System.Diagnostics.Process.GetCurrentProcess().Id;
+                foreach (var childProcessId in NtDll.EnumerateChildProcesses((nint)curProcessId, true))
                 {
-                    var curBounds = _coreWebView2Controller.Bounds;
-                    var w = Math.Max(curBounds.Width, Math.Max(MIN_OVERSIZE_WIDTH, windowWidth));
-                    var h = Math.Max(curBounds.Height, Math.Max(MIN_OVERSIZE_HEIGHT, windowHeight));
-
-                    if (w != curBounds.Width || h != curBounds.Height)
+                    if (NtDll.ProcessCommandLine.Retrieve(childProcessId, out var cmdLine) == 0)
                     {
-                        _coreWebView2Controller.Bounds = new System.Drawing.Rectangle(
-                            0, _browserWindow.NormalizedPixelsToSystemPixels(BrowserWindow.TOP_BORDER_THICKNESS),
-                            w, h - _browserWindow.NormalizedPixelsToSystemPixels(BrowserWindow.TOP_BORDER_THICKNESS));
+                        if (cmdLine?.Contains("--type=gpu-process") ?? false)
+                        {
+                            var p = System.Diagnostics.Process.GetProcessById((int)childProcessId);
+                            p.Kill();
+                            return Task.CompletedTask;
+                        }
                     }
-
-                    _tmr.Change(TimeSpan.FromSeconds(1), () =>
-                    {
-                        _coreWebView2Controller.Bounds = new System.Drawing.Rectangle(
-                            0, _browserWindow.NormalizedPixelsToSystemPixels(BrowserWindow.TOP_BORDER_THICKNESS),
-                            windowWidth + 1, windowHeight - _browserWindow.NormalizedPixelsToSystemPixels(BrowserWindow.TOP_BORDER_THICKNESS) + 1);
-                    });
                 }
-                catch { }
             }
+            catch { }
+            return Task.CompletedTask;
         }
     }
+
+    //public class OversizeBrowserManager
+    //{
+    //    private readonly MessageLoop _app;
+    //    private readonly BrowserWindow _browserWindow;
+    //    private readonly CoreWebView2Controller _coreWebView2Controller;
+
+    //    private readonly Timer _tmr;
+
+    //    const int MIN_OVERSIZE_WIDTH = 1920 * 2;
+    //    const int MIN_OVERSIZE_HEIGHT = 1080 * 2;
+
+    //    public OversizeBrowserManager(MessageLoop app, BrowserWindow browserWindow, CoreWebView2Controller coreWebView2Controller)
+    //    {
+    //        _app = app;
+    //        _browserWindow = browserWindow;
+    //        _coreWebView2Controller = coreWebView2Controller;
+    //        _tmr = new Timer(app);
+    //    }
+
+    //    public void OnWindowResize(int windowWidth, int windowHeight)
+    //    {
+    //        if (_coreWebView2Controller != null)
+    //        {
+    //            try
+    //            {
+    //                var curBounds = _coreWebView2Controller.Bounds;
+    //                var w = Math.Max(curBounds.Width, Math.Max(MIN_OVERSIZE_WIDTH, windowWidth));
+    //                var h = Math.Max(curBounds.Height, Math.Max(MIN_OVERSIZE_HEIGHT, windowHeight));
+
+    //                if (w != curBounds.Width || h != curBounds.Height)
+    //                {
+    //                    _coreWebView2Controller.Bounds = new System.Drawing.Rectangle(
+    //                        0, _browserWindow.NormalizedPixelsToSystemPixels(BrowserWindow.TOP_BORDER_THICKNESS),
+    //                        w, h - _browserWindow.NormalizedPixelsToSystemPixels(BrowserWindow.TOP_BORDER_THICKNESS));
+    //                }
+
+    //                _tmr.Change(TimeSpan.FromSeconds(1), () =>
+    //                {
+    //                    _coreWebView2Controller.Bounds = new System.Drawing.Rectangle(
+    //                        0, _browserWindow.NormalizedPixelsToSystemPixels(BrowserWindow.TOP_BORDER_THICKNESS),
+    //                        windowWidth + 1, windowHeight - _browserWindow.NormalizedPixelsToSystemPixels(BrowserWindow.TOP_BORDER_THICKNESS) + 1);
+    //                });
+    //            }
+    //            catch { }
+    //        }
+    //    }
+    //}
 
     public class Timer
     {
