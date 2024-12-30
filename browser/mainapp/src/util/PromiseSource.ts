@@ -1,6 +1,12 @@
 import { CancellationToken } from "./CancellationTokenSource";
 
 export class PromiseSource<T> {
+    static resolvedPromise<T>(value: T): Promise<T> {
+        const ps = new PromiseSource<T>();
+        ps.resolve(value);
+        return ps.promise;
+    }
+
     constructor() {
         let fresolve: (value: T) => void;
         let freject: (reason?: any) => void;
@@ -32,10 +38,14 @@ export class PromiseSource<T> {
         this.reject(new OperationCancelledError(undefined, cancellationToken));
     }
 
-    tryResolve(value: T) {
+    tryResolve(value: T): boolean {
         if (!this._complete) {
             this._complete = true;
             this._resolve(value);
+            return true;
+        }
+        else {
+            return false;
         }
     }
 
