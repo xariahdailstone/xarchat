@@ -309,6 +309,7 @@ export class SettingsDialogItemViewModel extends SettingsDialogSettingViewModel 
                         break;
                     case "text":
                     case "radio":
+                    case "notifroutes":
                         this.assignStringValue(value);
                         break;
                     default:

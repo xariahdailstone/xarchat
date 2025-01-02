@@ -400,16 +400,28 @@ namespace MinimalWin32Test.UI
         protected virtual void OnWindowMaximized()
         {
             _webViewMemManager?.SetNormal();
+            if (_webViewController is not null && _fullyCreated)
+            {
+                _webViewController.IsVisible = true;
+            }
         }
 
         protected virtual void OnWindowRestored()
         {
             _webViewMemManager?.SetNormal();
+            if (_webViewController is not null && _fullyCreated)
+            {
+                _webViewController.IsVisible = true;
+            }
         }
 
         protected virtual void OnWindowMinimized()
         {
             _webViewMemManager?.SetLow();
+            if (_webViewController is not null && _fullyCreated)
+            {
+                _webViewController.IsVisible = false;
+            }
         }
 
         protected override (WindowStyles WindowStyles, ExtendedWindowStyles ExtendedWindowStyles) GetWindowStyles()
