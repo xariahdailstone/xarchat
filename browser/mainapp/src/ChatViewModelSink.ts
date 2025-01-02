@@ -1,3 +1,5 @@
+import { getFullRoutedNotificationConfigName, RoutedNotificationEventName } from "./configuration/ConfigSchemaItem";
+import { NotificationRouting } from "./configuration/NotificationRouting";
 import { BottleSpinData, BroadcastMessageData, ChannelMessageData, ChatConnectionSink, ChatDisconnectReason, RollData } from "./fchat/ChatConnectionSink";
 import { SavedChatStateJoinedChannel } from "./settings/AppSettings";
 import { ChannelName } from "./shared/ChannelName";
@@ -158,26 +160,68 @@ export class ChatViewModelSink implements ChatConnectionSink {
     private readonly _logger: Logger;
     private readonly _emc: EventMessagesConfig;
 
-    private sendSystemMessageMultiRouted(
+    private sendRoutedNotification(
         options: {
             text: string,
-            eventName: string,
-            defaultRouting: Record<string, string>,
+            eventName: RoutedNotificationEventName
             targetChannel?: ChannelName,
             targetCharacter?: CharacterName,
             suppressPing?: boolean
         }
     ) {
-        const routing = this._emc.getRouting({
-            eventType: options.eventName,
-            defaultValue: options.defaultRouting,
-            targetChannel: options.targetChannel,
-            targetCharacter: options.targetCharacter
-        });
-        for (let troute of routing) {
-            troute.chanVm.addSystemMessage(new Date(), options.text, troute.isImportant, options.suppressPing ?? false);
+        const cfg = this.viewModel.getConfigSettingById(getFullRoutedNotificationConfigName(options.eventName)) as string;
+        const nr = new NotificationRouting(cfg);
+        const targets = new Map<ChannelViewModel, boolean>();
+        if (nr.console != "no") {
+            targets.set(this.viewModel.console, targets.get(this.viewModel.console) || nr.console == "important");
+        }
+        if (nr.currentTab != "no" && this.viewModel.selectedChannel) {
+            targets.set(this.viewModel.selectedChannel, targets.get(this.viewModel.selectedChannel) || nr.currentTab == "important");
+        }
+        if (nr.pmConvo != "no" && options.targetCharacter) {
+            const pmc = this.viewModel.getPmConvo(options.targetCharacter);
+            if (pmc) {
+                targets.set(pmc, targets.get(pmc) || nr.pmConvo == "important");
+            }
+        }
+        if (nr.targetChannel != "no" && options.targetChannel) {
+            const cc = this.viewModel.getChannel(options.targetChannel);
+            if (cc) {
+                targets.set(cc, targets.get(cc) || nr.targetChannel == "important");
+            }
+        }
+        if (nr.everywhere != "no") {
+            for (let c of this.viewModel.openChannels) {
+                targets.set(c, targets.get(c) || nr.targetChannel == "important");
+            }
+        }
+        for (let kvp of targets) {
+            const chan = kvp[0];
+            const isImportant = kvp[1];
+            chan.addSystemMessage(new Date(), options.text, isImportant, options.suppressPing ?? false);
         }
     }
+
+    // private sendSystemMessageMultiRouted(
+    //     options: {
+    //         text: string,
+    //         eventName: string,
+    //         defaultRouting: Record<string, string>,
+    //         targetChannel?: ChannelName,
+    //         targetCharacter?: CharacterName,
+    //         suppressPing?: boolean
+    //     }
+    // ) {
+    //     const routing = this._emc.getRouting({
+    //         eventType: options.eventName,
+    //         defaultValue: options.defaultRouting,
+    //         targetChannel: options.targetChannel,
+    //         targetCharacter: options.targetCharacter
+    //     });
+    //     for (let troute of routing) {
+    //         troute.chanVm.addSystemMessage(new Date(), options.text, troute.isImportant, options.suppressPing ?? false);
+    //     }
+    // }
 
     private sendSystemMessageToMulti(
         options: {
@@ -252,17 +296,17 @@ export class ChatViewModelSink implements ChatConnectionSink {
     }
 
     serverErrorReceived(number: number, message: string): void {
-        this.sendSystemMessageMultiRouted({
+        this.sendRoutedNotification({
             text: `Error #${number}: ${message}`, 
-            eventName: "errorReceived",
-            defaultRouting: {
-                "": "console,*currenttab"
-            },
+            eventName: "errorGet",
+            suppressPing: true
         });
-        // this.sendSystemMessageToMulti({ 
+        // this.sendSystemMessageMultiRouted({
         //     text: `Error #${number}: ${message}`, 
-        //     channels: [ this.viewModel.console ], 
-        //     importantChannels: [ this.viewModel.selectedChannel ]
+        //     eventName: "errorReceived",
+        //     defaultRouting: {
+        //         "": "console,*currenttab"
+        //     },
         // });
     }
 
@@ -278,22 +322,19 @@ export class ChatViewModelSink implements ChatConnectionSink {
         if (!data.isHistorical) {
             const now = new Date();
 
-            this.sendSystemMessageMultiRouted({
+            this.sendRoutedNotification({
                 text: data.message, 
-                eventName: "broadcastReceived",
-                defaultRouting: {
-                    "": "*everywhere"
-                },
+                eventName: "broadcastGet",
                 suppressPing: true
             });
-            
-            // ns.console.addSystemMessage(now, data.message, true);
-            // for (let ch of ns.openChannels) {
-            //     ch.addSystemMessage(now, data.message, true);
-            // }
-            // for (let convo of ns.pmConversations.values()) {
-            //     convo.addSystemMessage(now, data.message, true);
-            // }
+            // this.sendSystemMessageMultiRouted({
+            //     text: data.message, 
+            //     eventName: "broadcastReceived",
+            //     defaultRouting: {
+            //         "": "*everywhere"
+            //     },
+            //     suppressPing: true
+            // });
         }
         else if (data.historicalChannel) {
             let ch = ns.getOrCreateChannel(data.historicalChannel);
@@ -325,17 +366,19 @@ export class ChatViewModelSink implements ChatConnectionSink {
             if (!isInitial) {
                 const msg = `[user]${char.value}[/user] was added to your bookmarks.`;
 
-                this.sendSystemMessageMultiRouted({
+                this.sendRoutedNotification({
                     text: msg, 
-                    eventName: "bookmarkAdded",
-                    defaultRouting: {
-                        "": "console,currenttab,pmconvo"
-                    },
-                    targetCharacter: char
+                    eventName: "bookmarkAddRemove",
+                    targetCharacter: char,
+                    suppressPing: true
                 });
-                // this.sendSystemMessageToMulti({
+                // this.sendSystemMessageMultiRouted({
                 //     text: msg, 
-                //     channels: [ ns.console, ns.selectedChannel, ns.getPmConvo(char) ]
+                //     eventName: "bookmarkAdded",
+                //     defaultRouting: {
+                //         "": "console,currenttab,pmconvo"
+                //     },
+                //     targetCharacter: char
                 // });
             }
         }
@@ -350,17 +393,18 @@ export class ChatViewModelSink implements ChatConnectionSink {
 
             const msg = `[user]${char.value}[/user] was removed from your bookmarks.`;
 
-            this.sendSystemMessageMultiRouted({
+            this.sendRoutedNotification({
                 text: msg, 
-                eventName: "bookmarkRemoved",
-                defaultRouting: {
-                    "": "console,currenttab,pmconvo"
-                },
+                eventName: "bookmarkAddRemove",
                 targetCharacter: char
             });
-            // this.sendSystemMessageToMulti({
+            // this.sendSystemMessageMultiRouted({
             //     text: msg, 
-            //     channels: [ ns.console, ns.selectedChannel, ns.getPmConvo(char) ]
+            //     eventName: "bookmarkRemoved",
+            //     defaultRouting: {
+            //         "": "console,currenttab,pmconvo"
+            //     },
+            //     targetCharacter: char
             // });
         }
         ns.expireMyFriendsListInfo()
@@ -375,17 +419,18 @@ export class ChatViewModelSink implements ChatConnectionSink {
             ns.ignoredChars.add(ch);
 
             if (!isInitial) {
-                this.sendSystemMessageMultiRouted({
+                this.sendRoutedNotification({
                     text: `[user]${ch.value}[/user] was added to your ignore list.`,
-                    eventName: "ignoreAdded",
-                    defaultRouting: {
-                        "": "console,currenttab,pmconvo"
-                    },
+                    eventName: "ignoreAddRemove",
                     targetCharacter: ch
                 });
-                // this.sendSystemMessageToMulti({
+                // this.sendSystemMessageMultiRouted({
                 //     text: `[user]${ch.value}[/user] was added to your ignore list.`,
-                //     channels: [ ns.console, ns.selectedChannel, ns.getPmConvo(ch) ]
+                //     eventName: "ignoreAdded",
+                //     defaultRouting: {
+                //         "": "console,currenttab,pmconvo"
+                //     },
+                //     targetCharacter: ch
                 // });
             }
         }
@@ -396,17 +441,18 @@ export class ChatViewModelSink implements ChatConnectionSink {
         for (let ch of characters) {
             ns.ignoredChars.delete(ch);
 
-            this.sendSystemMessageMultiRouted({
+            this.sendRoutedNotification({
                 text: `[user]${ch.value}[/user] was removed from your ignore list.`,
-                eventName: "ignoreRemoved",
-                defaultRouting: {
-                    "": "console,currenttab,pmconvo"
-                },
+                eventName: "ignoreAddRemove",
                 targetCharacter: ch
             });
-            // this.sendSystemMessageToMulti({
+            // this.sendSystemMessageMultiRouted({
             //     text: `[user]${ch.value}[/user] was removed from your ignore list.`,
-            //     channels: [ ns.console, ns.selectedChannel, ns.getPmConvo(ch) ]
+            //     eventName: "ignoreRemoved",
+            //     defaultRouting: {
+            //         "": "console,currenttab,pmconvo"
+            //     },
+            //     targetCharacter: ch
             // });
         }
     }
@@ -418,17 +464,18 @@ export class ChatViewModelSink implements ChatConnectionSink {
 
         const msg = `[user]${character.value}[/user] was added as a friend.`;
 
-        this.sendSystemMessageMultiRouted({
+        this.sendRoutedNotification({
             text: msg,
-            eventName: "friendAdded",
-            defaultRouting: {
-                "": "console,currenttab,pmconvo"
-            },
+            eventName: "friendAddRemove",
             targetCharacter: character
         });
-        // this.sendSystemMessageToMulti({
+        // this.sendSystemMessageMultiRouted({
         //     text: msg,
-        //     channels: [ ns.console, ns.selectedChannel, ns.getPmConvo(character) ]
+        //     eventName: "friendAdded",
+        //     defaultRouting: {
+        //         "": "console,currenttab,pmconvo"
+        //     },
+        //     targetCharacter: character
         // });
 
         ns.expireMyFriendsListInfo();
@@ -441,17 +488,18 @@ export class ChatViewModelSink implements ChatConnectionSink {
 
         const msg = `[user]${character.value}[/user] is no longer a friend.`;
 
-        this.sendSystemMessageMultiRouted({
+        this.sendRoutedNotification({
             text: msg,
-            eventName: "friendRemoved",
-            defaultRouting: {
-                "": "console,currenttab,pmconvo"
-            },
+            eventName: "friendAddRemove",
             targetCharacter: character
         });
-        // this.sendSystemMessageToMulti({
+        // this.sendSystemMessageMultiRouted({
         //     text: msg,
-        //     channels: [ ns.console, ns.selectedChannel, ns.getPmConvo(character) ]
+        //     eventName: "friendRemoved",
+        //     defaultRouting: {
+        //         "": "console,currenttab,pmconvo"
+        //     },
+        //     targetCharacter: character
         // });
 
         ns.expireMyFriendsListInfo();
@@ -462,14 +510,19 @@ export class ChatViewModelSink implements ChatConnectionSink {
 
         const msg = `[user]${character.value}[/user] has requested to be your friend.`;
 
-        this.sendSystemMessageMultiRouted({
+        this.sendRoutedNotification({
             text: msg,
             eventName: "friendRequest",
-            defaultRouting: {
-                "": "console,currenttab,pmconvo"
-            },
             targetCharacter: character
         });
+        // this.sendSystemMessageMultiRouted({
+        //     text: msg,
+        //     eventName: "friendRequest",
+        //     defaultRouting: {
+        //         "": "console,currenttab,pmconvo"
+        //     },
+        //     targetCharacter: character
+        // });
     }
 
     interestAdded(character: CharacterName): void {
@@ -479,17 +532,18 @@ export class ChatViewModelSink implements ChatConnectionSink {
 
         const msg = `[user]${character.value}[/user] was added as an interest.`;
 
-        this.sendSystemMessageMultiRouted({
+        this.sendRoutedNotification({
             text: msg,
-            eventName: "interestAdded",
-            defaultRouting: {
-                "": "console,currenttab,pmconvo"
-            },
+            eventName: "interestAddRemove",
             targetCharacter: character
         });
-        // this.sendSystemMessageToMulti({
+        // this.sendSystemMessageMultiRouted({
         //     text: msg,
-        //     channels: [ ns.console, ns.selectedChannel, ns.getPmConvo(character) ]
+        //     eventName: "interestAdded",
+        //     defaultRouting: {
+        //         "": "console,currenttab,pmconvo"
+        //     },
+        //     targetCharacter: character
         // });
 
         ns.expireMyFriendsListInfo();
@@ -502,17 +556,18 @@ export class ChatViewModelSink implements ChatConnectionSink {
 
         const msg = `[user]${character.value}[/user] is no longer an interest.`;
 
-        this.sendSystemMessageMultiRouted({
+        this.sendRoutedNotification({
             text: msg,
-            eventName: "interestRemoved",
-            defaultRouting: {
-                "": "console,currenttab,pmconvo"
-            },
+            eventName: "interestAddRemove",
             targetCharacter: character
         });
-        // this.sendSystemMessageToMulti({
+        // this.sendSystemMessageMultiRouted({
         //     text: msg,
-        //     channels: [ ns.console, ns.selectedChannel, ns.getPmConvo(character) ]
+        //     eventName: "interestRemoved",
+        //     defaultRouting: {
+        //         "": "console,currenttab,pmconvo"
+        //     },
+        //     targetCharacter: character
         // });
 
         ns.expireMyFriendsListInfo();
@@ -526,18 +581,18 @@ export class ChatViewModelSink implements ChatConnectionSink {
         for (let char of characters) {
             ns.serverOps.add(char);
             if (!isInitial) {
-                this.sendSystemMessageMultiRouted({
+                this.sendRoutedNotification({
                     text: `[user]${char.value}[/user] is now a server operator.`,
-                    eventName: "serverOpAdded",
-                    defaultRouting: {
-                        "": "console,*currenttab,pmconvo"
-                    },
+                    eventName: "serverOpAddRemove",
                     targetCharacter: char
                 });
-                // this.sendSystemMessageToMulti({
+                // this.sendSystemMessageMultiRouted({
                 //     text: `[user]${char.value}[/user] is now a server operator.`,
-                //     channels: [ ns.console ],
-                //     importantChannels: [ ns.selectedChannel ]
+                //     eventName: "serverOpAdded",
+                //     defaultRouting: {
+                //         "": "console,*currenttab,pmconvo"
+                //     },
+                //     targetCharacter: char
                 // });
             }
         }
@@ -547,18 +602,18 @@ export class ChatViewModelSink implements ChatConnectionSink {
         const ns = this.viewModel;
         for (let ch of characters) {
             ns.serverOps.delete(ch);
-            this.sendSystemMessageMultiRouted({
+            this.sendRoutedNotification({
                 text: `[user]${ch.value}[/user] is no longer a server operator.`,
-                eventName: "serverOpAdded",
-                defaultRouting: {
-                    "": "console,*currenttab,pmconvo"
-                },
+                eventName: "serverOpAddRemove",
                 targetCharacter: ch
             });
-            // this.sendSystemMessageToMulti({
+            // this.sendSystemMessageMultiRouted({
             //     text: `[user]${ch.value}[/user] is no longer a server operator.`,
-            //     channels: [ ns.console ],
-            //     importantChannels: [ ns.selectedChannel ]
+            //     eventName: "serverOpAdded",
+            //     defaultRouting: {
+            //         "": "console,*currenttab,pmconvo"
+            //     },
+            //     targetCharacter: ch
             // });
         }
     }
@@ -588,19 +643,20 @@ export class ChatViewModelSink implements ChatConnectionSink {
                         const msgText = `You changed status to ${OnlineStatusConvert.toString(newStatus.status) ?? "unknown"}` +
                             (!StringUtils.isNullOrWhiteSpace(newStatus.statusMessage) ? `: ${newStatus.statusMessage}` : `.`);
 
-                        this.sendSystemMessageMultiRouted({
+                        this.sendRoutedNotification({
                             text: msgText,
-                            eventName: "characterStatusUpdated",
-                            defaultRouting: {
-                                "me": "console,currenttab",
-                                "watched": "console,currenttab,pmconvo"
-                            },
+                            eventName: "meStatusUpdate",
                             targetCharacter: ns.characterName,
                             suppressPing: true
                         });
-                        // this.sendSystemMessageToMulti({
+                        // this.sendSystemMessageMultiRouted({
                         //     text: msgText,
-                        //     channels: [ ns.console, ns.selectedChannel ],
+                        //     eventName: "characterStatusUpdated",
+                        //     defaultRouting: {
+                        //         "me": "console,currenttab",
+                        //         "watched": "console,currenttab,pmconvo"
+                        //     },
+                        //     targetCharacter: ns.characterName,
                         //     suppressPing: true
                         // });
                     }
@@ -614,18 +670,25 @@ export class ChatViewModelSink implements ChatConnectionSink {
                         msgText = `[user]${s.characterName.value}[/user] changed status to ${OnlineStatusConvert.toString(s.status) ?? "unknown"}.`;
                     }
 
-                    this.sendSystemMessageMultiRouted({
-                        text: msgText,
-                        eventName: "characterStatusUpdated",
-                        defaultRouting: {
-                            "me": "console,currenttab",
-                            "watched": "console,currenttab,pmconvo"
-                        },
-                        targetCharacter: s.characterName
-                    });
-                    // this.sendSystemMessageToMulti({
+                    const eventName = this.viewModel.friends.has(s.characterName) ? "friendStatusUpdate"
+                        : this.viewModel.bookmarks.has(s.characterName) ? "bookmarkStatusUpdate"
+                        : this.viewModel.interests.has(s.characterName) ? "interestStatusUpdate"
+                        : null;
+                    if (eventName) {
+                        this.sendRoutedNotification({
+                            text: msgText,
+                            eventName: eventName,
+                            targetCharacter: s.characterName
+                        });
+                    }
+                    // this.sendSystemMessageMultiRouted({
                     //     text: msgText,
-                    //     channels: [ ns.getPmConvo(s.characterName), ns.watchedChars.has(s.characterName) ? ns.selectedChannel : null ]
+                    //     eventName: "characterStatusUpdated",
+                    //     defaultRouting: {
+                    //         "me": "console,currenttab",
+                    //         "watched": "console,currenttab,pmconvo"
+                    //     },
+                    //     targetCharacter: s.characterName
                     // });
                 }
             }
@@ -634,19 +697,27 @@ export class ChatViewModelSink implements ChatConnectionSink {
 
     characterCameOnline(character: CharacterName): void {
         const ns = this.viewModel;
-        this.sendSystemMessageMultiRouted({
-            text: `[user]${character.value}[/user] came online.`, 
-            eventName: "characterCameOnline",
-            defaultRouting: {
-                "others": "pmconvo",
-                "watched": "console,pmconvo,currenttab",
-                "me": ""
-            },
-            targetCharacter: character
-        });
-        // this.sendSystemMessageToMulti({
+
+        const eventName = this.viewModel.friends.has(character) ? "friendOnlineChange"
+            : this.viewModel.bookmarks.has(character) ? "bookmarkOnlineChange"
+            : this.viewModel.interests.has(character) ? "interestOnlineChange"
+            : null;
+        if (eventName) {
+            this.sendRoutedNotification({
+                text: `[user]${character.value}[/user] came online.`, 
+                eventName: eventName,
+                targetCharacter: character
+            });
+        }
+        // this.sendSystemMessageMultiRouted({
         //     text: `[user]${character.value}[/user] came online.`, 
-        //     channels: [ ns.getPmConvo(character), ns.watchedChars.has(character) ? ns.selectedChannel : null ] 
+        //     eventName: "characterCameOnline",
+        //     defaultRouting: {
+        //         "others": "pmconvo",
+        //         "watched": "console,pmconvo,currenttab",
+        //         "me": ""
+        //     },
+        //     targetCharacter: character
         // });
     }
 
@@ -656,19 +727,26 @@ export class ChatViewModelSink implements ChatConnectionSink {
             ch.removeUser(character);
         }
 
-        this.sendSystemMessageMultiRouted({
-            text: `[user]${character.value}[/user] went offline.`, 
-            eventName: "characterWentOffline",
-            defaultRouting: {
-                "others": "pmconvo",
-                "watched": "console,pmconvo,currenttab",
-                "me": ""
-            },
-            targetCharacter: character
-        });
-        // this.sendSystemMessageToMulti({
-        //     text: `[user]${character.value}[/user] went offline.`,
-        //     channels: [ ns.getPmConvo(character), ns.watchedChars.has(character) ? ns.selectedChannel : null ]
+        const eventName = this.viewModel.friends.has(character) ? "friendOnlineChange"
+            : this.viewModel.bookmarks.has(character) ? "bookmarkOnlineChange"
+            : this.viewModel.interests.has(character) ? "interestOnlineChange"
+            : null;
+        if (eventName) {
+            this.sendRoutedNotification({
+                text: `[user]${character.value}[/user] went offline.`, 
+                eventName: eventName,
+                targetCharacter: character
+            });
+        }
+        // this.sendSystemMessageMultiRouted({
+        //     text: `[user]${character.value}[/user] went offline.`, 
+        //     eventName: "characterWentOffline",
+        //     defaultRouting: {
+        //         "others": "pmconvo",
+        //         "watched": "console,pmconvo,currenttab",
+        //         "me": ""
+        //     },
+        //     targetCharacter: character
         // });
     }
 
@@ -722,19 +800,21 @@ export class ChatViewModelSink implements ChatConnectionSink {
             ccvm.presenceState = ChatChannelPresenceState.NOT_IN_CHANNEL;
         }
 
-        this.sendSystemMessageMultiRouted({
+        this.sendRoutedNotification({
             text: `You were kicked from [session=${ccvm?.title ?? channel.value}]${channel.value}[/session] by [user]${operator}[/user].`, 
-            eventName: "kickedFromChannel",
-            defaultRouting: {
-                "me": "*console,*currenttab,*targetchannel"
-            },
+            eventName: "meKicked",
             targetCharacter: ns.characterName,
             targetChannel: channel
         });
-        // this.sendSystemMessageToMulti({
+
+        // this.sendSystemMessageMultiRouted({
         //     text: `You were kicked from [session=${ccvm?.title ?? channel.value}]${channel.value}[/session] by [user]${operator}[/user].`, 
-        //     channels: [],
-        //     importantChannels: [ ns.console, ccvm ]
+        //     eventName: "kickedFromChannel",
+        //     defaultRouting: {
+        //         "me": "*console,*currenttab,*targetchannel"
+        //     },
+        //     targetCharacter: ns.characterName,
+        //     targetChannel: channel
         // });
 
         this.pruneLeaveIgnores();
@@ -749,19 +829,20 @@ export class ChatViewModelSink implements ChatConnectionSink {
             ccvm.presenceState = ChatChannelPresenceState.NOT_IN_CHANNEL;
         }
 
-        this.sendSystemMessageMultiRouted({
+        this.sendRoutedNotification({
             text: `You were [b]banned[/b] from [session=${ccvm?.title ?? channel.value}]${channel.value}[/session] by [user]${operator}[/user].`,
-            eventName: "bannedFromChannel",
-            defaultRouting: {
-                "me": "*console,*currenttab,*targetchannel"
-            },
+            eventName: "meKicked",
             targetCharacter: ns.characterName,
             targetChannel: channel
         });
-        // this.sendSystemMessageToMulti({
+        // this.sendSystemMessageMultiRouted({
         //     text: `You were [b]banned[/b] from [session=${ccvm?.title ?? channel.value}]${channel.value}[/session] by [user]${operator}[/user].`,
-        //     channels: [],
-        //     importantChannels: [ ns.console, ccvm ]
+        //     eventName: "bannedFromChannel",
+        //     defaultRouting: {
+        //         "me": "*console,*currenttab,*targetchannel"
+        //     },
+        //     targetCharacter: ns.characterName,
+        //     targetChannel: channel
         // });
 
         this.pruneLeaveIgnores();
@@ -776,19 +857,20 @@ export class ChatViewModelSink implements ChatConnectionSink {
             ccvm.presenceState = ChatChannelPresenceState.NOT_IN_CHANNEL;
         }
 
-        this.sendSystemMessageMultiRouted({
+        this.sendRoutedNotification({
             text: `You were [b]temporarily banned[/b] from [session=${ccvm?.title ?? channel.value}]${channel.value}[/session] by [user]${operator}[/user] for ${lengthMin} minute(s).`, 
-            eventName: "timedOutFromChannel",
-            defaultRouting: {
-                "me": "*console,*currenttab,*targetchannel"
-            },
+            eventName: "meKicked",
             targetCharacter: ns.characterName,
             targetChannel: channel
         });
-        // this.sendSystemMessageToMulti({
+        // this.sendSystemMessageMultiRouted({
         //     text: `You were [b]temporarily banned[/b] from [session=${ccvm?.title ?? channel.value}]${channel.value}[/session] by [user]${operator}[/user] for ${lengthMin} minute(s).`, 
-        //     channels: [], 
-        //     importantChannels: [ ns.console, ccvm ]
+        //     eventName: "timedOutFromChannel",
+        //     defaultRouting: {
+        //         "me": "*console,*currenttab,*targetchannel"
+        //     },
+        //     targetCharacter: ns.characterName,
+        //     targetChannel: channel
         // });
 
         this.pruneLeaveIgnores();
@@ -810,18 +892,22 @@ export class ChatViewModelSink implements ChatConnectionSink {
         if (ccvm) {
             ccvm.setOwner(character);
             if (!isInitial) {
-                this.sendSystemMessageMultiRouted({
+                this.sendRoutedNotification({
                     text: `[user]${character?.value}[/user] is now the owner of channel [session=${ccvm.title}]${ccvm.name.value}[/session].`, 
-                    eventName: "channelOwnerChanged",
-                    defaultRouting: {
-                        "me": "console,currenttab,targetchannel",
-                        "notme": "targetchannel"
-                    },
+                    eventName: "chanOpChange",
                     targetCharacter: character ?? undefined,
                     targetChannel: channel
                 });
-
-                //ccvm.addSystemMessage(new Date(), `[user]${character?.value}[/user] is now the owner of channel [session=${ccvm.title}]${ccvm.name.value}[/session].`, false);
+                // this.sendSystemMessageMultiRouted({
+                //     text: `[user]${character?.value}[/user] is now the owner of channel [session=${ccvm.title}]${ccvm.name.value}[/session].`, 
+                //     eventName: "channelOwnerChanged",
+                //     defaultRouting: {
+                //         "me": "console,currenttab,targetchannel",
+                //         "notme": "targetchannel"
+                //     },
+                //     targetCharacter: character ?? undefined,
+                //     targetChannel: channel
+                // });
             }
         }
     }
@@ -838,18 +924,22 @@ export class ChatViewModelSink implements ChatConnectionSink {
             }
             if (!isInitial) {
                 for (let char of characters) {
-                    this.sendSystemMessageMultiRouted({
+                    this.sendRoutedNotification({
                         text: `[user]${char.value}[/user] is now an operator for channel [session=${ccvm.title}]${ccvm.name.value}[/session].`, 
-                        eventName: "channelOpAdded",
-                        defaultRouting: {
-                            "me": "console,currenttab,targetchannel",
-                            "notme": "targetchannel"
-                        },
+                        eventName: "chanOpChange",
                         targetCharacter: char,
                         targetChannel: channel
-                    });
-
-                    //ccvm.addSystemMessage(new Date(), `[user]${char.value}[/user] is now an operator for channel [session=${ccvm.title}]${ccvm.name.value}[/session].`, false);
+                    })
+                    // this.sendSystemMessageMultiRouted({
+                    //     text: `[user]${char.value}[/user] is now an operator for channel [session=${ccvm.title}]${ccvm.name.value}[/session].`, 
+                    //     eventName: "channelOpAdded",
+                    //     defaultRouting: {
+                    //         "me": "console,currenttab,targetchannel",
+                    //         "notme": "targetchannel"
+                    //     },
+                    //     targetCharacter: char,
+                    //     targetChannel: channel
+                    // });
                 }
             }
         }
@@ -861,17 +951,22 @@ export class ChatViewModelSink implements ChatConnectionSink {
         if (ccvm) {
             ccvm.removeChannelOp(character);
 
-            this.sendSystemMessageMultiRouted({
+            this.sendRoutedNotification({
                 text: `[user]${character}[/user] is no longer an operator for channel [session=${ccvm.title}]${ccvm.name.value}[/session].`, 
-                eventName: "channelOpRemoved",
-                defaultRouting: {
-                    "me": "console,currenttab,targetchannel",
-                    "notme": "targetchannel"
-                },
+                eventName: "chanOpChange",
                 targetCharacter: character,
                 targetChannel: channel
             });
-            //ccvm.addSystemMessage(new Date(), `[user]${character}[/user] is no longer an operator for channel [session=${ccvm.title}]${ccvm.name.value}[/session].`, false);
+            // this.sendSystemMessageMultiRouted({
+            //     text: `[user]${character}[/user] is no longer an operator for channel [session=${ccvm.title}]${ccvm.name.value}[/session].`, 
+            //     eventName: "channelOpRemoved",
+            //     defaultRouting: {
+            //         "me": "console,currenttab,targetchannel",
+            //         "notme": "targetchannel"
+            //     },
+            //     targetCharacter: character,
+            //     targetChannel: channel
+            // });
         }
     }
 
@@ -901,17 +996,23 @@ export class ChatViewModelSink implements ChatConnectionSink {
             ccvm.removeUser(kickedCharacter);
             const suppressPing = (operator.equals(ns.characterName));
 
-            this.sendSystemMessageMultiRouted({
+            this.sendRoutedNotification({
                 text: `[user]${kickedCharacter.value}[/user] was kicked from the channel by [user]${operator.value}[/user].`,
-                eventName: "kickedFromChannel",
-                defaultRouting: {
-                    "notme": "targetchannel"
-                },
+                eventName: "otherKicked",
                 targetCharacter: kickedCharacter,
                 targetChannel: channel,
                 suppressPing: suppressPing
             });
-            //ccvm.addSystemMessage(new Date(), `[user]${kickedCharacter.value}[/user] was kicked from the channel by [user]${operator.value}[/user].`, false, suppressPing);
+            // this.sendSystemMessageMultiRouted({
+            //     text: `[user]${kickedCharacter.value}[/user] was kicked from the channel by [user]${operator.value}[/user].`,
+            //     eventName: "kickedFromChannel",
+            //     defaultRouting: {
+            //         "notme": "targetchannel"
+            //     },
+            //     targetCharacter: kickedCharacter,
+            //     targetChannel: channel,
+            //     suppressPing: suppressPing
+            // });
         }
     }
 
@@ -922,17 +1023,23 @@ export class ChatViewModelSink implements ChatConnectionSink {
             ccvm.removeUser(bannedCharacter);
             const suppressPing = (operator.equals(ns.characterName));
 
-            this.sendSystemMessageMultiRouted({
+            this.sendRoutedNotification({
                 text: `[user]${bannedCharacter.value}[/user] was [b]banned[/b] from the channel by [user]${operator.value}[/user].`,
-                eventName: "bannedFromChannel",
-                defaultRouting: {
-                    "notme": "targetchannel"
-                },
+                eventName: "otherKicked",
                 targetCharacter: bannedCharacter,
                 targetChannel: channel,
                 suppressPing: suppressPing
             });
-            //ccvm.addSystemMessage(new Date(), `[user]${bannedCharacter.value}[/user] was [b]banned[/b] from the channel by [user]${operator.value}[/user].`, false, suppressPing);
+            // this.sendSystemMessageMultiRouted({
+            //     text: `[user]${bannedCharacter.value}[/user] was [b]banned[/b] from the channel by [user]${operator.value}[/user].`,
+            //     eventName: "bannedFromChannel",
+            //     defaultRouting: {
+            //         "notme": "targetchannel"
+            //     },
+            //     targetCharacter: bannedCharacter,
+            //     targetChannel: channel,
+            //     suppressPing: suppressPing
+            // });
         }
     }
 
@@ -943,19 +1050,23 @@ export class ChatViewModelSink implements ChatConnectionSink {
             ccvm.removeUser(timedOutCharacter);
             const suppressPing = (operator.equals(ns.characterName));
 
-            this.sendSystemMessageMultiRouted({
+            this.sendRoutedNotification({
                 text: `[user]${timedOutCharacter.value}[/user] was [b]temporarily banned[/b] from the channel by [user]${operator.value}[/user] for ${lengthMin} minute(s).`,
-                eventName: "timedOutFromChannel",
-                defaultRouting: {
-                    "notme": "targetchannel"
-                },
+                eventName: "otherKicked",
                 targetCharacter: timedOutCharacter,
                 targetChannel: channel,
                 suppressPing: suppressPing
             });
-            // ccvm.addSystemMessage(new Date(), 
-            //     `[user]${timedOutCharacter.value}[/user] was [b]temporarily banned[/b] from the channel by [user]${operator.value}[/user] for ${lengthMin} minute(s).`,
-            //     false, suppressPing);
+            // this.sendSystemMessageMultiRouted({
+            //     text: `[user]${timedOutCharacter.value}[/user] was [b]temporarily banned[/b] from the channel by [user]${operator.value}[/user] for ${lengthMin} minute(s).`,
+            //     eventName: "timedOutFromChannel",
+            //     defaultRouting: {
+            //         "notme": "targetchannel"
+            //     },
+            //     targetCharacter: timedOutCharacter,
+            //     targetChannel: channel,
+            //     suppressPing: suppressPing
+            // });
         }
     }
 
@@ -1003,17 +1114,18 @@ export class ChatViewModelSink implements ChatConnectionSink {
         const ns = this.viewModel;
         const msg = `[user]${sender}[/user] has invited you to join [session=${title}]${channel.value}[/session]`;
 
-        this.sendSystemMessageMultiRouted({
+        this.sendRoutedNotification({
             text: msg,
-            eventName: "channelInviteReceived",
-            defaultRouting: {
-                "me": "console,targetchannel"
-            },
+            eventName: "chanInvited",
             targetCharacter: ns.characterName
         });
-        // this.sendSystemMessageToMulti({
+        // this.sendSystemMessageMultiRouted({
         //     text: msg,
-        //     channels: [ ns.console, ns.selectedChannel ]
+        //     eventName: "channelInviteReceived",
+        //     defaultRouting: {
+        //         "me": "console,targetchannel"
+        //     },
+        //     targetCharacter: ns.characterName
         // });
     }
 
@@ -1064,19 +1176,19 @@ export class ChatViewModelSink implements ChatConnectionSink {
         const ns = this.viewModel;
         const url = URLUtils.getNoteUrl(noteId); 
 
-        this.sendSystemMessageMultiRouted({
+        this.sendRoutedNotification({
             text: `New note received from [user]${sender.value}[/user]: [url=${url}]${subject}[/url]`, 
-            eventName: "noteReceived",
-            defaultRouting: {
-                "": "console,pmconvo,currenttab"
-            },
+            eventName: "noteGet",
             targetCharacter: sender
         });
-        // this.sendSystemMessageToMulti({
+        // this.sendSystemMessageMultiRouted({
         //     text: `New note received from [user]${sender.value}[/user]: [url=${url}]${subject}[/url]`, 
-        //     channels: [ ns.console, ns.selectedChannel ]
+        //     eventName: "noteReceived",
+        //     defaultRouting: {
+        //         "": "console,pmconvo,currenttab"
+        //     },
+        //     targetCharacter: sender
         // });
-        // TODO: play notification sound
     }
 
     consoleClear(): void {
@@ -1087,22 +1199,18 @@ export class ChatViewModelSink implements ChatConnectionSink {
     systemMessageReceived(channel: (ChannelName | null), message: string): void {
         const ns = this.viewModel;
 
-        this.sendSystemMessageMultiRouted({
+        this.sendRoutedNotification({
             text: message, 
-            eventName: "systemMessageReceived",
-            defaultRouting: {
-                "": "console,currenttab,targetchannel"
-            },
+            eventName: "systemMessageGet",
             targetChannel: channel ?? undefined
         });
-        // this.sendSystemMessageToMulti({
+        // this.sendSystemMessageMultiRouted({
         //     text: message, 
-        //     channels: [ 
-        //         ns.console,
-        //         channel == null ? ns.selectedChannel : null,
-        //         channel != null ? ns.getChannel(channel) : null
-        //     ],
-        //     importantChannels: []
+        //     eventName: "systemMessageReceived",
+        //     defaultRouting: {
+        //         "": "console,currenttab,targetchannel"
+        //     },
+        //     targetChannel: channel ?? undefined
         // });
     }
 

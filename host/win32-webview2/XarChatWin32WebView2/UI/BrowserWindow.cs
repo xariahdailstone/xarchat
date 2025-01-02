@@ -296,9 +296,13 @@ namespace MinimalWin32Test.UI
         protected virtual void OnWindowActivated()
         {
             _webViewMemManager?.SetNormal();
-            if (_webViewController is not null)
+            if (_webViewController is not null && _fullyCreated)
             {
-                _webViewController.MoveFocus(CoreWebView2MoveFocusReason.Programmatic);
+                try
+                {
+                    _webViewController.MoveFocus(CoreWebView2MoveFocusReason.Programmatic);
+                }
+                catch { }
             }
         }
 
@@ -396,16 +400,28 @@ namespace MinimalWin32Test.UI
         protected virtual void OnWindowMaximized()
         {
             _webViewMemManager?.SetNormal();
+            if (_webViewController is not null && _fullyCreated)
+            {
+                _webViewController.IsVisible = true;
+            }
         }
 
         protected virtual void OnWindowRestored()
         {
             _webViewMemManager?.SetNormal();
+            if (_webViewController is not null && _fullyCreated)
+            {
+                _webViewController.IsVisible = true;
+            }
         }
 
         protected virtual void OnWindowMinimized()
         {
             _webViewMemManager?.SetLow();
+            if (_webViewController is not null && _fullyCreated)
+            {
+                _webViewController.IsVisible = false;
+            }
         }
 
         protected override (WindowStyles WindowStyles, ExtendedWindowStyles ExtendedWindowStyles) GetWindowStyles()
@@ -523,8 +539,11 @@ namespace MinimalWin32Test.UI
                 }
 
                 WriteToStartupLog("BrowserWindow.OnHandleCreated - done");
+                _fullyCreated = true;
             });
         }
+
+        private bool _fullyCreated = false;
 
 		private void _webView_NewWindowRequested(object? sender, CoreWebView2NewWindowRequestedEventArgs e)
 		{
