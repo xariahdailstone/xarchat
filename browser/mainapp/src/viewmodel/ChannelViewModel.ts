@@ -68,6 +68,9 @@ export abstract class ChannelViewModel extends ObservableBase {
     userListWidth: number = 245;
 
     @observableProperty
+    filterOptions: ChannelFilterOptions | null = null;
+
+    @observableProperty
     textBoxHeight: number = 90;
 
     private _textBoxContent: string = "";
@@ -851,4 +854,25 @@ export enum PendingMessageSendState {
     NOTYETSENT,
     SENDING,
     FAILED
+}
+
+
+export abstract class ChannelFilterOptions extends ObservableBase {
+}
+
+export class SingleSelectChannelFilterOptions extends ChannelFilterOptions {
+    @observableProperty
+    items: Collection<SingleSelectChannelFilterOptionItem> = new Collection();
+}
+
+export class SingleSelectChannelFilterOptionItem {
+    constructor(
+        public readonly value: string,
+        public readonly title: string,
+        private readonly onSelect: () => any) {
+    }
+
+    select() {
+        this.onSelect();
+    }
 }
