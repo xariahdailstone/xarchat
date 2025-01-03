@@ -25,7 +25,7 @@ namespace MinimalWin32Test
         [STAThread]
         static int Main(string[] args)
         {
-            var pid = Process.GetCurrentProcess().Id;
+            var pid = Environment.ProcessId;
             var startupLogFile = Path.Combine(Path.GetTempPath(), $"XarChat.startup-{DateTime.Now.ToString("yyyyMMhddHHmmss")}-{pid}.log");
             if (File.Exists(startupLogFile))
             {

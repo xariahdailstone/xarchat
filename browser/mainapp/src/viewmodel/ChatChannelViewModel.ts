@@ -1,5 +1,5 @@
 import { ChannelName } from "../shared/ChannelName.js";
-import { AddMessageOptions, ChannelMessageType, ChannelMessageViewModel, ChannelMessageViewModelOrderedDictionary, ChannelViewModel, PendingMessageSendViewModel, PendingMessageType } from "./ChannelViewModel.js";
+import { AddMessageOptions, ChannelMessageType, ChannelMessageViewModel, ChannelMessageViewModelOrderedDictionary, ChannelViewModel, PendingMessageSendViewModel, PendingMessageType, SingleSelectChannelFilterOptionItem, SingleSelectChannelFilterOptions } from "./ChannelViewModel.js";
 import { ActiveLoginViewModel, CharactersEventListener, ChatConnectionState } from "./ActiveLoginViewModel.js";
 import { Collection, CollectionChangeType, ObservableCollection, ReadOnlyObservableCollection } from "../util/ObservableCollection.js";
 import { CharacterName } from "../shared/CharacterName.js";
@@ -107,6 +107,8 @@ export class ChatChannelViewModel extends ChannelViewModel {
         else {
             this._order = existingSCC.order;
         }
+
+        this.updateFilterOptions();
     }
 
     private _name: ChannelName = ChannelName.create("");
@@ -234,8 +236,28 @@ export class ChatChannelViewModel extends ChannelViewModel {
     private _adMessages: ChannelMessageViewModelOrderedDictionary = new ChannelMessageViewModelOrderedDictionary();
     private _bothMessages: ChannelMessageViewModelOrderedDictionary = new ChannelMessageViewModelOrderedDictionary();
 
+    private _messageMode: ChatChannelMessageMode = ChatChannelMessageMode.BOTH;
     @observableProperty
-    messageMode: ChatChannelMessageMode = ChatChannelMessageMode.BOTH;
+    get messageMode() { return this._messageMode; }
+    set messageMode(value: ChatChannelMessageMode) {
+        if (value != this._messageMode) {
+            this._messageMode = value;
+            this.updateFilterOptions();
+        }
+    }
+
+    private updateFilterOptions() {
+        if (this._messageMode == ChatChannelMessageMode.BOTH) {
+            const fo = new SingleSelectChannelFilterOptions();
+            fo.items.push(new SingleSelectChannelFilterOptionItem("ads", "Ads Only", () => { this.filterMode2 = "ads"; }));
+            fo.items.push(new SingleSelectChannelFilterOptionItem("chat", "Chat Only", () => { this.filterMode2 = "chat"; }));
+            fo.items.push(new SingleSelectChannelFilterOptionItem("both", "Both", () => { this.filterMode2 = "both"; }));
+            this.filterOptions = fo;
+        }
+        else {
+            this.filterOptions = null;
+        }
+    }
 
     private _usersModerators: ObservableKeyExtractedOrderedDictionary<CharacterName, ChatChannelUserViewModel> = new ObservableOrderedDictionaryImpl<CharacterName, ChatChannelUserViewModel>(x => x.character, CharacterName.compare);
     private _usersWatched: ObservableKeyExtractedOrderedDictionary<CharacterName, ChatChannelUserViewModel> = new ObservableOrderedDictionaryImpl<CharacterName, ChatChannelUserViewModel>(x => x.character, CharacterName.compare);

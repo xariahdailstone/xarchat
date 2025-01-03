@@ -892,7 +892,7 @@ namespace MinimalWin32Test.UI
         {
             try
             {
-                var curProcessId = System.Diagnostics.Process.GetCurrentProcess().Id;
+                var curProcessId = Environment.ProcessId;
                 foreach (var childProcessId in NtDll.EnumerateChildProcesses((nint)curProcessId, true))
                 {
                     if (NtDll.ProcessCommandLine.Retrieve(childProcessId, out var cmdLine) == 0)

@@ -143,6 +143,15 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     configBlockKey: "checkForUpdates",
                     notYetImplemented: true
                 },
+                {
+                    id: "highlightMyMessages",
+                    scope: getScopeArray(["global", "char", "chan", "convo"]),
+                    title: "Highlight My Messages",
+                    description: "Highlight to messages from me with a lighter background color.",
+                    type: "boolean",
+                    defaultValue: true,
+                    configBlockKey: "highlightMyMessages"
+                },
                 // {
                 //     id: "submitNewEIcons",
                 //     scope: [ "global" ],

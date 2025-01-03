@@ -1,4 +1,5 @@
 import { CharacterGenderConvert } from "../shared/CharacterGender.js";
+import { CharacterName } from "../shared/CharacterName.js";
 import { OnlineStatusConvert } from "../shared/OnlineStatus.js";
 import { BBCodeParser, ChatBBCodeParser } from "../util/bbcode/BBCode.js";
 import { CharacterLinkUtils } from "../util/CharacterLinkUtils.js";
@@ -124,6 +125,10 @@ export class ChannelStream extends ComponentBase<ChannelViewModel> {
         this.watch("pendingSendsCount", len => {
             len = len ?? 0;
             elSending.classList.toggle("shown", (len > 0));
+        });
+
+        this.watchExpr(vm => vm.getConfigSettingById("highlightMyMessages"), hmm => {
+            elMessageContainer.classList.toggle("highlight-from-me", !!hmm);
         });
     }
 
@@ -549,6 +554,7 @@ export class ChannelMessageCollectionView extends CollectionViewLightweight<KeyV
         elMain.classList.toggle("system", isSystemMessage);
         elMain.classList.toggle("important", (vm.type == ChannelMessageType.SYSTEM_IMPORTANT));
         elMain.classList.toggle("has-ping", vm.containsPing);
+        elMain.classList.toggle("from-me", CharacterName.equals(vm.characterStatus.characterName, vm.activeLoginViewModel.characterName));
 
         const collapseAds = vm.type == ChannelMessageType.AD && vm.appViewModel.collapseAds;
         if (collapseAds) {
