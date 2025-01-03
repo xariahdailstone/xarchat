@@ -31,6 +31,10 @@
 }
 
 
+.highlight-from-me .from-me {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
 
 
 .typingstatusindicator { user-select: none; }

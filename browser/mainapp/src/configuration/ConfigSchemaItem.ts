@@ -15,6 +15,12 @@ export interface ConfigSchemaItemDefinitionItem {
     configBlockKey: string;
     items?: ConfigSchemaItemDefinition[];
     notYetImplemented?: boolean;
+    notifRouteOptions?: ConfigSchemaNotifRouteItemOptions;
+}
+
+export interface ConfigSchemaNotifRouteItemOptions {
+    hasChannelContext?: boolean;
+    hasCharacterContext?: boolean;
 }
 
 export interface ConfigSchemaItemDefinitionSection {
@@ -34,10 +40,18 @@ export interface ConfigSchemaOptionDefinition {
 
 export type ConfigSchemaItemDefinition = (ConfigSchemaItemDefinitionItem | ConfigSchemaItemDefinitionSection);
 
-export type ConfigSchemaItemType = "text" | "boolean" | "text[]" | "radio" | "timespan" | "color" | "color-hs";
+export type ConfigSchemaItemType = "text" | "boolean" | "text[]" | "radio" | "timespan" | "color" | "color-hs" | "notifroutes";
 export type ConfigSchemaOptionItemType = "string" | "file";
 export type ConfigSchemaScopeType = "global" | "char" | "char.chancategory" | "char.chan" | "char.convo";
 export type ConfigSchemaScopeTypeSimple = "global" | "char" | "chan" | "convo";
+
+export type RoutedNotificationEventName = "errorGet" | "broadcastGet" | "systemMessageGet" | "friendAddRemove" | "friendRequest" | "bookmarkAddRemove" |
+    "interestAddRemove" | "ignoreAddRemove" | "serverOpAddRemove" | "meStatusUpdate" | "friendStatusUpdate" | "bookmarkStatusUpdate" |
+    "interestStatusUpdate" | "friendOnlineChange" | "bookmarkOnlineChange" | "interestOnlineChange" | "meKicked" | "otherKicked" | "chanOpChange" |
+    "chanInvited" | "noteGet";
+export function getFullRoutedNotificationConfigName(en: RoutedNotificationEventName) {
+    return `notifrouting.${en}`;
+}
 
 function getScopeArray(def: ConfigSchemaScopeTypeSimple[]): ConfigSchemaScopeType[] {
     const result: ConfigSchemaScopeType[] = [];
@@ -128,6 +142,15 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     defaultValue: true,
                     configBlockKey: "checkForUpdates",
                     notYetImplemented: true
+                },
+                {
+                    id: "highlightMyMessages",
+                    scope: getScopeArray(["global", "char", "chan", "convo"]),
+                    title: "Highlight My Messages",
+                    description: "Highlight to messages from me with a lighter background color.",
+                    type: "boolean",
+                    defaultValue: true,
+                    configBlockKey: "highlightMyMessages"
                 },
                 // {
                 //     id: "submitNewEIcons",
@@ -401,6 +424,237 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     ]
                 }
             ]
+        },
+        {
+            scope: getScopeArray(["global", "char"]),
+            sectionTitle: "Notifications",
+            description: "Configure where notification messages for various events are displayed.",
+            items: [
+                {
+                    scope: getScopeArray(["global", "char"]),
+                    id: getFullRoutedNotificationConfigName("errorGet"),
+                    title: "Error Messages",
+                    description: "Error messages sent by F-Chat.",
+                    type: "notifroutes",
+                    defaultValue: "console,*currenttab",
+                    configBlockKey: getFullRoutedNotificationConfigName("errorGet"),
+                    notYetImplemented: true
+                },
+                {
+                    scope: getScopeArray(["global", "char"]),
+                    id: getFullRoutedNotificationConfigName("broadcastGet"),
+                    title: "Admin Broadcasts",
+                    description: "Broadcasts sent by chat administrators to all online characters.",
+                    type: "notifroutes",
+                    defaultValue: "*everywhere",
+                    configBlockKey: getFullRoutedNotificationConfigName("broadcastGet"),
+                    notYetImplemented: true
+                },
+                {
+                    scope: getScopeArray(["global", "char"]),
+                    id: getFullRoutedNotificationConfigName("systemMessageGet"),
+                    title: "System Message",
+                    description: "Uncategorized messages sent by the F-Chat system.",
+                    type: "notifroutes",
+                    defaultValue: "console,currenttab,targetchannel",
+                    configBlockKey: getFullRoutedNotificationConfigName("systemMessageGet"),
+                    notYetImplemented: true
+                },
+                {
+                    scope: getScopeArray(["global", "char"]),
+                    id: getFullRoutedNotificationConfigName("friendAddRemove"),
+                    title: "Friend Added/Removed",
+                    description: "A character was added or removed from your friends list.",
+                    type: "notifroutes",
+                    defaultValue: "console,currenttab,pmconvo",
+                    configBlockKey: getFullRoutedNotificationConfigName("friendAddRemove"),
+                    notifRouteOptions: {
+                        hasCharacterContext: true
+                    }
+                },
+                {
+                    scope: getScopeArray(["global", "char"]),
+                    id: getFullRoutedNotificationConfigName("friendRequest"),
+                    title: "Friend Request",
+                    description: "A character requested to be your friend.",
+                    type: "notifroutes",
+                    defaultValue: "console,currenttab,pmconvo",
+                    configBlockKey: getFullRoutedNotificationConfigName("friendRequest"),
+                    notifRouteOptions: {
+                        hasCharacterContext: true
+                    }
+                },
+                {
+                    scope: getScopeArray(["global", "char"]),
+                    id: getFullRoutedNotificationConfigName("bookmarkAddRemove"),
+                    title: "Bookmark Added/Removed",
+                    description: "A character was added or removed from your bookmarks list.",
+                    type: "notifroutes",
+                    defaultValue: "console,currenttab,pmconvo",
+                    configBlockKey: getFullRoutedNotificationConfigName("bookmarkAddRemove"),
+                    notifRouteOptions: {
+                        hasCharacterContext: true
+                    }
+                },
+                {
+                    scope: getScopeArray(["global", "char"]),
+                    id: getFullRoutedNotificationConfigName("interestAddRemove"),
+                    title: "Interest Added/Removed",
+                    description: "A character was added or removed from your interests list.",
+                    type: "notifroutes",
+                    defaultValue: "console,currenttab,pmconvo",
+                    configBlockKey: getFullRoutedNotificationConfigName("interestAddRemove"),
+                    notifRouteOptions: {
+                        hasCharacterContext: true
+                    }
+                },
+                {
+                    scope: getScopeArray(["global", "char"]),
+                    id: getFullRoutedNotificationConfigName("ignoreAddRemove"),
+                    title: "Ignore Added/Removed",
+                    description: "A character was added or removed from your ignore list.",
+                    type: "notifroutes",
+                    defaultValue: "console,currenttab,pmconvo",
+                    configBlockKey: getFullRoutedNotificationConfigName("ignoreAddRemove"),
+                    notifRouteOptions: {
+                        hasCharacterContext: true
+                    }
+                },
+                {
+                    scope: getScopeArray(["global", "char"]),
+                    id: getFullRoutedNotificationConfigName("serverOpAddRemove"),
+                    title: "Server Operator Added/Removed",
+                    description: "A character was promoted or demoted to/from F-Chat server operator status by the chat administrators.",
+                    type: "notifroutes",
+                    defaultValue: "console,*currenttab,pmconvo",
+                    configBlockKey: getFullRoutedNotificationConfigName("serverOpAddRemove")
+                },
+                {
+                    scope: getScopeArray(["global", "char"]),
+                    id: getFullRoutedNotificationConfigName("meStatusUpdate"),
+                    title: "Your Character Status Updated",
+                    description: "Your character status was updated.",
+                    type: "notifroutes",
+                    defaultValue: "console,currenttab",
+                    configBlockKey: getFullRoutedNotificationConfigName("meStatusUpdate")
+                },
+                {
+                    scope: getScopeArray(["global", "char"]),
+                    id: getFullRoutedNotificationConfigName("friendStatusUpdate"),
+                    title: "Friend Character Status Updated",
+                    description: "A friend updated their character status.",
+                    type: "notifroutes",
+                    defaultValue: "console,currenttab,pmconvo",
+                    configBlockKey: getFullRoutedNotificationConfigName("friendStatusUpdate")
+                },
+                {
+                    scope: getScopeArray(["global", "char"]),
+                    id: getFullRoutedNotificationConfigName("bookmarkStatusUpdate"),
+                    title: "Bookmark Character Status Updated",
+                    description: "A bookmark updated their character status.",
+                    type: "notifroutes",
+                    defaultValue: "console,currenttab,pmconvo",
+                    configBlockKey: getFullRoutedNotificationConfigName("bookmarkStatusUpdate")
+                },
+                {
+                    scope: getScopeArray(["global", "char"]),
+                    id: getFullRoutedNotificationConfigName("interestStatusUpdate"),
+                    title: "Interest Character Status Updated",
+                    description: "An interest updated their character status.",
+                    type: "notifroutes",
+                    defaultValue: "console,currenttab,pmconvo",
+                    configBlockKey: getFullRoutedNotificationConfigName("interestStatusUpdate")
+                },
+                {
+                    scope: getScopeArray(["global", "char"]),
+                    id: getFullRoutedNotificationConfigName("friendOnlineChange"),
+                    title: "Friend Online/Offline",
+                    description: "A friend came online or went offline.",
+                    type: "notifroutes",
+                    defaultValue: "console,currenttab,pmconvo",
+                    configBlockKey: getFullRoutedNotificationConfigName("friendOnlineChange")
+                },
+                {
+                    scope: getScopeArray(["global", "char"]),
+                    id: getFullRoutedNotificationConfigName("bookmarkOnlineChange"),
+                    title: "Bookmark Online/Offline",
+                    description: "A bookmark came online or went offline.",
+                    type: "notifroutes",
+                    defaultValue: "console,currenttab,pmconvo",
+                    configBlockKey: getFullRoutedNotificationConfigName("bookmarkOnlineChange")
+                },
+                {
+                    scope: getScopeArray(["global", "char"]),
+                    id: getFullRoutedNotificationConfigName("interestOnlineChange"),
+                    title: "Interest Online/Offline",
+                    description: "An interest came online or went offline.",
+                    type: "notifroutes",
+                    defaultValue: "console,currenttab,pmconvo",
+                    configBlockKey: getFullRoutedNotificationConfigName("interestOnlineChange")
+                },
+                {
+                    scope: getScopeArray(["global", "char"]),
+                    id: getFullRoutedNotificationConfigName("meKicked"),
+                    title: "You Kicked/Banned From Channel",
+                    description: "You were kicked, banned, or timed out from a channel.",
+                    type: "notifroutes",
+                    defaultValue: "*console,*currenttab,*targetchannel",
+                    configBlockKey: getFullRoutedNotificationConfigName("meKicked"),
+                    notifRouteOptions: {
+                        hasChannelContext: true
+                    }
+                },
+                {
+                    scope: getScopeArray(["global", "char"]),
+                    id: getFullRoutedNotificationConfigName("otherKicked"),
+                    title: "Someone Else Kicked/Banned From Channel",
+                    description: "Someone else was kicked, banned, or timed out from a channel.",
+                    type: "notifroutes",
+                    defaultValue: "targetchannel",
+                    configBlockKey: getFullRoutedNotificationConfigName("otherKicked"),
+                    notifRouteOptions: {
+                        hasChannelContext: true
+                    }
+                },
+                {
+                    scope: getScopeArray(["global", "char"]),
+                    id: getFullRoutedNotificationConfigName("chanOpChange"),
+                    title: "Channel Owner/Operator Changed",
+                    description: "A change was made to a channel's owner or operator list.",
+                    type: "notifroutes",
+                    defaultValue: "targetchannel",
+                    configBlockKey: getFullRoutedNotificationConfigName("chanOpChange"),
+                    notifRouteOptions: {
+                        hasChannelContext: true,
+                        hasCharacterContext: true
+                    }
+                },
+                {
+                    scope: getScopeArray(["global", "char"]),
+                    id: getFullRoutedNotificationConfigName("chanInvited"),
+                    title: "Channel Invite Received",
+                    description: "An invitation to join a channel was received.",
+                    type: "notifroutes",
+                    defaultValue: "console,currenttab,pmconvo",
+                    configBlockKey: getFullRoutedNotificationConfigName("chanInvited"),
+                    notifRouteOptions: {
+                        hasChannelContext: false, // can't see an invite when you're already in the channel!
+                        hasCharacterContext: true
+                    }
+                },
+                {
+                    scope: getScopeArray(["global", "char"]),
+                    id: getFullRoutedNotificationConfigName("noteGet"),
+                    title: "Note Received",
+                    description: "A new note on F-List was received.",
+                    type: "notifroutes",
+                    defaultValue: "console,pmconvo,currenttab",
+                    configBlockKey: getFullRoutedNotificationConfigName("noteGet"),
+                    notifRouteOptions: {
+                        hasCharacterContext: true
+                    }
+                }
+            ]
         }
     ]
 };
@@ -413,7 +667,10 @@ export function getConfigSchemaItemById(id: string): ConfigSchemaItemDefinitionI
                 return s as ConfigSchemaItemDefinitionItem;
             }
             if (s.items) {
-                return chk(s.items);
+                const iresult = chk(s.items) as (ConfigSchemaItemDefinitionItem | null);
+                if (iresult) {
+                    return iresult;
+                }
             }
         }
         return null;
