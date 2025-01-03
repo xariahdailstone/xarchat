@@ -123,6 +123,25 @@ export class MainInterface extends ComponentBase<AppViewModel> {
             this.updateWindowState();
         });
 
+        window.addEventListener("wheel", (e) => {
+            if (e.ctrlKey) {
+                if (this.viewModel) {
+                    if (e.deltaY > 0) {
+                        this.viewModel.interfaceZoom = Math.max(0.5, this.viewModel.interfaceZoom - 0.02);
+                    }
+                    else {
+                        this.viewModel.interfaceZoom = Math.min(3.0, this.viewModel.interfaceZoom + 0.02);
+                    }
+                }
+                e.preventDefault();
+            }
+        }, { passive: false });
+        this.watchExpr(vm => vm.interfaceZoom, izoom => {
+            if (izoom != null) {
+                this.elMain.style.zoom = izoom.toString();
+            }
+        });
+
         this.watch("showTitlebar", v => {
             if (!!v) {
                 elTitleBar.classList.remove("hidden");
