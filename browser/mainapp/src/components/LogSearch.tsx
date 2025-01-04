@@ -4,7 +4,7 @@ import { ComponentBase, componentElement } from "./ComponentBase";
 import { RenderingComponentBase } from "./RenderingComponentBase";
 import { Fragment, jsx, VNode } from "../snabbdom/index.js";
 import { IDisposable, asDisposable } from "../util/Disposable.js";
-import { stageViewFor } from "./Stage";
+import { RenderingStageViewComponent, stageViewFor } from "./Stage";
 import { DateAnchor, LogSearchKind } from "../util/HostInteropLogSearch";
 import { CollectionViewLightweight } from "./CollectionViewLightweight";
 import { EL } from "../util/EL";
@@ -16,7 +16,7 @@ import { CharacterName } from "../shared/CharacterName";
 
 @componentElement("x-logsearch")
 @stageViewFor(LogSearchViewModel)
-export class LogSearch extends RenderingComponentBase<LogSearchViewModel> {
+export class LogSearch extends RenderingStageViewComponent<LogSearchViewModel> {
     constructor() {
         super();
 

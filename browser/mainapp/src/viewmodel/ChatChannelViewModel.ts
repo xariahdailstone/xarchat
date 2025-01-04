@@ -36,11 +36,15 @@ export class ChatChannelUserViewModel extends ObservableBase implements IDisposa
 
     private readonly _statusListener: IDisposable;
 
-    dispose() {
-        this._statusListener.dispose();
-    }
-
+    private _disposed: boolean = false;
     [Symbol.dispose]() { this.dispose(); }
+    dispose() {
+        if (!this._disposed) {
+            this._disposed = true;
+            this._statusListener.dispose();
+        }
+    }
+    get isDisposed() { return this._disposed; }
 
     get characterSet() { return this.parent.parent.characterSet; }
 }
@@ -109,6 +113,16 @@ export class ChatChannelViewModel extends ChannelViewModel {
         }
 
         this.updateFilterOptions();
+    }
+
+    override dispose(): void {
+        for (let m of [...this._bothMessages.values(), ...this._adMessages.values(), ...this._chatMessages.values()]) {
+            m.dispose();
+        }
+        this._bothMessages.clear();
+        this._adMessages.clear();
+        this._chatMessages.clear();
+        super.dispose();
     }
 
     private _name: ChannelName = ChannelName.create("");

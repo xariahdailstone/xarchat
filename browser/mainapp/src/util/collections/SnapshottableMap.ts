@@ -17,6 +17,8 @@ class SnapshottedMap<K, V> implements ReadonlyMap<K, V>, IDisposable {
 
     [Symbol.dispose]() { this.dispose(); }
 
+    get isDisposed() { return this._disposed; }
+
     forEach(callbackfn: (value: V, key: K, map: ReadonlyMap<K, V>) => void, thisArg?: any): void {
         this._map.forEach((v, k, map) => callbackfn(v, k, this), thisArg);
     }

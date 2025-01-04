@@ -73,6 +73,10 @@ export class PMConvoChannelViewModel extends ChannelViewModel {
         });
     }
 
+    override dispose(): void {
+        this._characterStatusListener.dispose();
+    }
+
     private readonly _characterStatusListener: IDisposable;
 
     private _scc: SavedChatStatePMConvo;

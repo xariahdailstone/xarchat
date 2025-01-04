@@ -17,12 +17,19 @@ export class InAppToastManagerViewModel extends ObservableBase implements IDispo
 
     private _disposeCTS: CancellationTokenSource = new CancellationTokenSource();
 
+    private _disposed: boolean = false;
     dispose(): void {
+        if (!this._disposed) {
+            this._disposed = true;
+            this._disposeCTS.cancel();
+        }
     }
 
     [Symbol.dispose](): void {
         this.dispose();
     }
+
+    get isDisposed() { return this._disposed; }
 
     private maximumShowingToasts: number = 3;
 

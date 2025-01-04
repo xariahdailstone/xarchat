@@ -162,6 +162,8 @@ export class StatusDotLightweight implements IDisposable {
         this.dispose();
     }
 
+    get isDisposed() { return this._disposed; }
+
     readonly element: HTMLElement;
 
     private readonly _wcm: WhenChangeManager = new WhenChangeManager();

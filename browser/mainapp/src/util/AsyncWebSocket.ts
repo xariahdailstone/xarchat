@@ -59,16 +59,22 @@ export class AsyncWebSocket implements IDisposable, Disposable {
         }
     }
 
+    private _disposed: boolean = false;
     dispose() {
-        if (this.ws.readyState == WebSocket.OPEN) {
-            this.ws.close();
-            this.onClose();
+        if (!this._disposed) {
+            this._disposed = true;
+            if (this.ws.readyState == WebSocket.OPEN) {
+                this.ws.close();
+                this.onClose();
+            }
         }
     }
 
     [Symbol.dispose]() {
         this.dispose();
     }
+
+    get isDisposed() { return this._disposed; }
 
     get readyState() { return this.ws.readyState; }
 

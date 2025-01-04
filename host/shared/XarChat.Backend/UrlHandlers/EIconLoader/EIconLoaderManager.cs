@@ -46,120 +46,127 @@ namespace XarChat.Backend.UrlHandlers.EIconLoader
             [FromServices] IHostApplicationLifetime hostApplicationLifetime,
             CancellationToken cancellationToken)
         {
-            var requestHandlerStartedAt = DateTimeOffset.UtcNow;
+            try
+            {
+                var requestHandlerStartedAt = DateTimeOffset.UtcNow;
 
-            name = name.ToLowerInvariant();
-            var url = $"https://static.f-list.net/images/eicon/{HttpUtility.UrlEncode(name)}.gif";
-            url = url.Replace("+", "%20");
+                name = name.ToLowerInvariant();
+                var url = $"https://static.f-list.net/images/eicon/{HttpUtility.UrlEncode(name)}.gif";
+                url = url.Replace("+", "%20");
 
-            var findResult = await proxiedImageCache2.GetOrCreateAsync(
-                cacheKey: url,
-                cancellationToken: cancellationToken,
-                createFuncAsync: async () =>
-                {
-                    try
+                var findResult = await proxiedImageCache2.GetOrCreateAsync(
+                    cacheKey: url,
+                    cancellationToken: cancellationToken,
+                    createFuncAsync: async () =>
                     {
-                        logger.LogInformation("EIcon not found in cache: {name}", name);
-
-                        var sw = Stopwatch.StartNew();
-                        var (stream, headers) = await GetEIconFromFListAsync(url, requestHandlerStartedAt,
-                            (DateTimeOffset)httpContext.Items["RequestStartAt"]!,
-                            cancellationToken);
-                        sw.Stop();
-                        logger.LogInformation("Got uncached EIcon response {name}: {time}ms", name, sw.ElapsedMilliseconds);
-
-                        if (headers.TryGetValue("ETag", out var etagHeader) &&
-                            headers.TryGetValue("Content-Length", out var contentLengthHeader) &&
-                            Int64.TryParse(contentLengthHeader, out var contentLengthLong))
+                        try
                         {
-                            _ = Task.Run(async () =>
+                            logger.LogInformation("EIcon not found in cache: {name}", name);
+
+                            var sw = Stopwatch.StartNew();
+                            var (stream, headers) = await GetEIconFromFListAsync(url, requestHandlerStartedAt,
+                                (DateTimeOffset)httpContext.Items["RequestStartAt"]!,
+                                cancellationToken);
+                            sw.Stop();
+                            logger.LogInformation("Got uncached EIcon response {name}: {time}ms", name, sw.ElapsedMilliseconds);
+
+                            if (headers.TryGetValue("ETag", out var etagHeader) &&
+                                headers.TryGetValue("Content-Length", out var contentLengthHeader) &&
+                                Int64.TryParse(contentLengthHeader, out var contentLengthLong))
                             {
-                                await eIconUpdateSubmitter.SubmitHardLoadedEIconInfoAsync(
-                                    name, etagHeader, contentLengthLong, hostApplicationLifetime.ApplicationStopping);
+                                _ = Task.Run(async () =>
+                                {
+                                    await eIconUpdateSubmitter.SubmitHardLoadedEIconInfoAsync(
+                                        name, etagHeader, contentLengthLong, hostApplicationLifetime.ApplicationStopping);
+                                });
+                            }
+
+                            var expiresAt = DateTime.UtcNow + TimeSpan.FromMinutes(15);
+                            // TODO: get expiration from headers?
+                            //if (headers.TryGetValue("Expires", out var hdrExpires))
+                            //{
+                            //    DateTime.TryParseExact(hdrExpires, "R", null, System.Globalization.DateTimeStyles.AssumeUniversal, out expiresAt);
+                            //}
+
+                            var expiresIn = expiresAt - DateTime.UtcNow;
+                            if (expiresIn < TimeSpan.FromSeconds(30))
+                            {
+                                expiresIn = TimeSpan.FromSeconds(30);
+                            }
+
+                            var popSW = Stopwatch.StartNew();
+                            var popStream = new DisposeWrappedStream(stream, () =>
+                            {
+                                popSW.Stop();
+                                logger.LogInformation("Uncached EIcon stream read {name}: {time}ms", name, popSW.ElapsedMilliseconds);
                             });
+
+                            return (headers, popStream, expiresIn);
                         }
-
-                        var expiresAt = DateTime.UtcNow + TimeSpan.FromMinutes(15);
-                        // TODO: get expiration from headers?
-                        //if (headers.TryGetValue("Expires", out var hdrExpires))
-                        //{
-                        //    DateTime.TryParseExact(hdrExpires, "R", null, System.Globalization.DateTimeStyles.AssumeUniversal, out expiresAt);
-                        //}
-
-                        var expiresIn = expiresAt - DateTime.UtcNow;
-                        if (expiresIn < TimeSpan.FromSeconds(30))
+                        catch (Exception ex)
                         {
-                            expiresIn = TimeSpan.FromSeconds(30);
-                        }
+                            var ms = new MemoryStream();
+                            ms.Write(System.Text.Encoding.UTF8.GetBytes(ex.ToString()));
+                            ms.Position = 0;
 
-                        var popSW = Stopwatch.StartNew();
-                        var popStream = new DisposeWrappedStream(stream, () =>
-                        {
-                            popSW.Stop();
-                            logger.LogInformation("Uncached EIcon stream read {name}: {time}ms", name, popSW.ElapsedMilliseconds);
-                        });
-
-                        return (headers, popStream, expiresIn);
-                    }
-                    catch (Exception ex)
-                    {
-                        var ms = new MemoryStream();
-                        ms.Write(System.Text.Encoding.UTF8.GetBytes(ex.ToString()));
-                        ms.Position = 0;
-
-                        return (new Dictionary<string, string>()
-                            {
+                            return (new Dictionary<string, string>()
+                                {
                                 { "Failed", "true" }
-                            }, ms, TimeSpan.FromSeconds(30));
-                    }
-				});
+                                }, ms, TimeSpan.FromSeconds(30));
+                        }
+                    });
 
-            if (findResult.Headers.TryGetValue("Failed", out var znf) && znf == "true")
-            {
-                //var errRes = new ContentResult();
-                //errRes.StatusCode = 500;
-                //errRes.ContentType = "text/plain";
-                //errRes.Content = await new StreamReader(findResult.Stream).ReadToEndAsync();
-                //return new ActionResultResult(errRes);
-                return Results.Content(
-                    content: await new StreamReader(findResult.Stream).ReadToEndAsync(),
-                    contentType: "text/plain",
-                    statusCode: 500);
-                    
-            }
-            if (findResult.Headers.TryGetValue("Not-Found", out var nf) && nf == "true")
-            {
-                findResult.Stream.Dispose();
-                return Results.NotFound();
-            }
-
-            void includeHeader(string headerName)
-            {
-                if (findResult.Headers.TryGetValue(headerName, out var hdrValue))
+                if (findResult.Headers.TryGetValue("Failed", out var znf) && znf == "true")
                 {
-                    httpContext.Response.Headers[headerName] = hdrValue;
+                    //var errRes = new ContentResult();
+                    //errRes.StatusCode = 500;
+                    //errRes.ContentType = "text/plain";
+                    //errRes.Content = await new StreamReader(findResult.Stream).ReadToEndAsync();
+                    //return new ActionResultResult(errRes);
+                    return Results.Content(
+                        content: await new StreamReader(findResult.Stream).ReadToEndAsync(),
+                        contentType: "text/plain",
+                        statusCode: 500);
+
                 }
+                if (findResult.Headers.TryGetValue("Not-Found", out var nf) && nf == "true")
+                {
+                    findResult.Stream.Dispose();
+                    return Results.NotFound();
+                }
+
+                void includeHeader(string headerName)
+                {
+                    if (findResult.Headers.TryGetValue(headerName, out var hdrValue))
+                    {
+                        httpContext.Response.Headers[headerName] = hdrValue;
+                    }
+                }
+
+                //includeHeader("Date");
+                httpContext.Response.Headers["Date"] = DateTime.UtcNow.ToString("R");
+                includeHeader("Last-Modified");
+                includeHeader("ETag");
+                includeHeader("Cache-Control");
+                includeHeader("X-Backend-Request-ID");
+                includeHeader("X-Backend-Request-Duration");
+                includeHeader("X-Backend-Request-Timestamp");
+                includeHeader("X-Backend-Request-Handler-StartTimestamp");
+                includeHeader("X-Backend-Request-Pipeline-StartTimestamp");
+                includeHeader("Expires");
+
+                var streamSW = Stopwatch.StartNew();
+                var respStream = new DisposeWrappedStream(findResult.Stream, () =>
+                {
+                    streamSW.Stop();
+                    logger.LogInformation("Stream transmission took {time}ms", streamSW.ElapsedMilliseconds);
+                });
+                return Results.Stream(respStream, findResult.Headers["Content-Type"]);
             }
-
-            //includeHeader("Date");
-            httpContext.Response.Headers["Date"] = DateTime.UtcNow.ToString("R");
-            includeHeader("Last-Modified");
-            includeHeader("ETag");
-            includeHeader("Cache-Control");
-            includeHeader("X-Backend-Request-ID");
-            includeHeader("X-Backend-Request-Duration");
-			includeHeader("X-Backend-Request-Timestamp");
-            includeHeader("X-Backend-Request-Handler-StartTimestamp");
-            includeHeader("X-Backend-Request-Pipeline-StartTimestamp");
-			includeHeader("Expires");
-
-            var streamSW = Stopwatch.StartNew();
-            var respStream = new DisposeWrappedStream(findResult.Stream, () =>
+            catch when (cancellationToken.IsCancellationRequested)
             {
-                streamSW.Stop();
-                logger.LogInformation("Stream transmission took {time}ms", streamSW.ElapsedMilliseconds );
-            });
-            return Results.Stream(respStream, findResult.Headers["Content-Type"]);
+                return Results.Empty;
+            }
         }
 
         private static int _nextBackendRequestId = 1;

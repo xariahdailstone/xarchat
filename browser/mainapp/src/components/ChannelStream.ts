@@ -419,11 +419,12 @@ export class ChannelMessageCollectionView extends CollectionViewLightweight<KeyV
         elMessageText.appendChild(vm.text != "" ? vm.parsedText : emptySpan!);
         elMain.appendChild(elMessageText);
 
-        return [elMain, asDisposable(() => {})];
+        return [elMain, asDisposable()];
     }
 
     private createStandardUserElement(vm: ChannelMessageViewModel): [HTMLElement, IDisposable] {
-        let resultDisposable: IDisposable = EmptyDisposable;
+        const resultDisposables: IDisposable[] = [];
+        //let resultDisposable: IDisposable = EmptyDisposable;
 
         let elMain = document.createElement("div");
         elMain.classList.add("messageitem");
@@ -486,7 +487,7 @@ export class ChannelMessageCollectionView extends CollectionViewLightweight<KeyV
             sdLightweight.element.classList.add("character-status");
             sdLightweight.element.setAttribute("data-copycontent", "");
             elMain.appendChild(sdLightweight.element);
-            resultDisposable = sdLightweight;
+            resultDisposables.push(sdLightweight);
 
             // const elUsernameStatus = document.createElement("x-statusdot");
             // elUsernameStatus.classList.add("character-status");
@@ -565,7 +566,7 @@ export class ChannelMessageCollectionView extends CollectionViewLightweight<KeyV
             outerEl.setAttribute("data-copyinline", "true");
             outerEl.appendChild(elMain);
             AdCollapseManager.add(vm, outerEl, elMain);
-            return [outerEl, asDisposable(resultDisposable, () => {
+            return [outerEl, asDisposable(...resultDisposables, () => {
                 AdCollapseManager.remove(outerEl);
             })];
         }
@@ -575,7 +576,7 @@ export class ChannelMessageCollectionView extends CollectionViewLightweight<KeyV
             outerEl.classList.add("collapse-host");
             outerEl.setAttribute("data-copyinline", "true");
             outerEl.appendChild(elMain);
-            return [outerEl, resultDisposable];
+            return [outerEl, asDisposable(...resultDisposables)];
         }
     }
 
@@ -630,6 +631,7 @@ export class NullStreamScrollManager implements StreamScrollManager {
 
     dispose(): void { }
     [Symbol.dispose](): void { }
+    get isDisposed(): boolean { return true; }
     setNextUpdateIsSmooth(): void { }
     scrolledTo: any;
     resetScroll(): void { }
@@ -652,14 +654,20 @@ export class DefaultStreamScrollManager implements StreamScrollManager {
     private _suppressionCount: number = 0;
     private _knownSize: { width: number, cheight: number, sheight: number } = { width: 0, cheight: 0, sheight: 0 };
 
+    private _disposed: boolean = false;
     dispose() {
-        for (let d of this._disposables) {
-            d.dispose();
+        if (!this._disposed) {
+            this._disposed = true;
+            for (let d of this._disposables) {
+                d.dispose();
+            }
+            this._disposables = [];
         }
-        this._disposables = [];
     }
 
     [Symbol.dispose]() { this.dispose(); }
+
+    get isDisposed() { return this._disposed; }
 
     private _scrollAnchorTo: ScrollAnchorTo = ScrollAnchorTo.TOP;
     get scrollAnchorTo(): ScrollAnchorTo { return this._scrollAnchorTo; }

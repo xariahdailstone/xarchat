@@ -43,7 +43,7 @@ export class ChannelTextBox extends ComponentBase<ChannelViewModel> {
                             </div>
                             <div class="textbox-toolbar-separator"></div>
                             <div class="textbox-toolbar-button" data-buttoncommand="spoiler" title="Spoiler (Ctrl+K)">
-                            <x-iconimage src="assets/ui/textbox-toolbar/spoiler.svg"></x-iconimage>
+                                <x-iconimage src="assets/ui/textbox-toolbar/spoiler.svg"></x-iconimage>
                             </div>
                             <div class="textbox-toolbar-separator"></div>
                             <div class="textbox-toolbar-button" data-buttoncommand="user" title="User Link (Ctrl+R)">
@@ -220,8 +220,10 @@ export class ChannelTextBox extends ComponentBase<ChannelViewModel> {
     }
 
     focusTextBox() {
-        const elTextbox = this.$("elTextbox")! as HTMLTextAreaElement;
-        elTextbox.focus();
+        window.requestAnimationFrame(() => {
+            const elTextbox = this.$("elTextbox")! as HTMLTextAreaElement;
+            elTextbox.focus();
+        });
     }
 
     private tryHandleButtonCommand(cmd: string) {

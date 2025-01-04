@@ -34,6 +34,8 @@ export class AwaitableObservableExpression<T> implements IDisposable, Disposable
         this.dispose();
     }
 
+    get isDisposed() { return this._disposed; }
+
     private valueChanged(newValue: T | undefined) {
         if (this._disposed) return;
 
@@ -89,6 +91,8 @@ export class ObservableExpression<T> implements IDisposable {
     }
 
     [Symbol.dispose]() { this.dispose(); }
+
+    get isDisposed() { return this._disposed; }
 
     private _disposed = false;
     private _previousValue: (T | undefined) = ObservableExpression.NO_VALUE;

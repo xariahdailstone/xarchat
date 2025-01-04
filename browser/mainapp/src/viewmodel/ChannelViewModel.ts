@@ -11,7 +11,7 @@ import { KeyValuePair } from "../util/collections/KeyValuePair.js";
 import { ReadOnlyStdObservableCollection } from "../util/collections/ReadOnlyStdObservableCollection.js";
 import { StdObservableConcatCollectionView } from "../util/collections/StdObservableConcatCollectionView.js";
 import { StdObservableList } from "../util/collections/StdObservableView.js";
-import { asDisposable, IDisposable } from "../util/Disposable.js";
+import { asDisposable, tryDispose as maybeDispose, IDisposable, isDisposable } from "../util/Disposable.js";
 import { LoggedMessage, LogMessageType } from "../util/HostInterop.js";
 import { IterableUtils } from "../util/IterableUtils.js";
 import { Observable, ObservableValue } from "../util/Observable.js";
@@ -25,7 +25,7 @@ import { SlashCommandViewModel } from "./SlashCommandViewModel.js";
 
 
 
-export abstract class ChannelViewModel extends ObservableBase {
+export abstract class ChannelViewModel extends ObservableBase implements IDisposable {
     constructor(parent: ActiveLoginViewModel, title: string) {
         super();
 
@@ -34,6 +34,21 @@ export abstract class ChannelViewModel extends ObservableBase {
 
         this.mainMessages = new ChannelMessageViewModelOrderedDictionary();
     }
+
+    private _disposed: boolean = false;
+    [Symbol.dispose]() { this.dispose(); }
+    dispose() {
+        if (!this._disposed) {
+            this._disposed = true;
+            for (let m of [...this.mainMessages.values(), ...this.prefixMessages.values(), ...this.suffixMessages.values()]) {
+                m.dispose();
+            }
+            this.mainMessages.clear();
+            this.prefixMessages.clear();
+            this.suffixMessages.clear();
+        }
+    }
+    get isDisposed() { return this._disposed; }
 
     @observableProperty
     readonly parent: ActiveLoginViewModel;
@@ -276,7 +291,9 @@ export abstract class ChannelViewModel extends ObservableBase {
             this.mainMessages.add(message);
 
             while (this.mainMessages.size >= this.messageLimit) {
-                this.mainMessages.delete(this.mainMessages.minKey()!);
+                const messageBeingRemoved = this.mainMessages.minKey()!;
+                this.mainMessages.delete(messageBeingRemoved);
+                messageBeingRemoved.dispose();
             }
 
             if (!(options?.seen ?? false)) {
@@ -511,6 +528,7 @@ export function ChannelMessageViewModelComparer(a: ChannelMessageViewModel, b: C
 }
 
 const cleanupRegistry = new FinalizationRegistry<IDisposable>(hv => {
+    console.log("cleanupdispose", hv);
     try { hv.dispose(); }
     catch { }
 });
@@ -519,7 +537,7 @@ function registerCleanupDispose(cmvm: ChannelMessageViewModel, disposable: IDisp
 }
 
 let nextUniqueMessageId: number = 1;
-export class ChannelMessageViewModel extends ObservableBase {
+export class ChannelMessageViewModel extends ObservableBase implements IDisposable {
     static createChatMessage(parent: ChannelViewModel, timestamp: Date, character: CharacterName, text: string,
         gender?: CharacterGender | null, onlineStatus?: OnlineStatus | null): ChannelMessageViewModel {
 
@@ -648,7 +666,7 @@ export class ChannelMessageViewModel extends ObservableBase {
 
 
     private constructor(
-        public readonly parent: ChannelViewModel | null,
+        parent: ChannelViewModel | null,
         public readonly activeLoginViewModel: ActiveLoginViewModel,
         public readonly appViewModel: AppViewModel,
         public readonly timestamp: Date,
@@ -659,9 +677,25 @@ export class ChannelMessageViewModel extends ObservableBase {
         public readonly onClick?: () => any
     ) {
         super();
+        this._weakParent = parent ? new WeakRef<ChannelViewModel>(parent) : null;
         this.uniqueMessageId = nextUniqueMessageId++;
         this.containsPing = this.checkForPing();
     }
+
+    private _disposed: boolean = false;
+    [Symbol.dispose]() { this.dispose(); }
+    dispose() {
+        if (!this._disposed) {
+            this._disposed = true;
+            maybeDispose(this._parsedText);
+            this._parsedText = null;
+        }
+    }
+    get isDisposed() { return this._disposed; }
+
+    private readonly _weakParent: WeakRef<ChannelViewModel> | null;
+
+    get parent() { return this._weakParent?.deref() ?? null; }
 
     get channelViewModel() { return this.parent; }
     //get activeLoginViewModel() { return this.parent.activeLoginViewModel; }
@@ -692,7 +726,7 @@ export class ChannelMessageViewModel extends ObservableBase {
                 imagePreviewPopups: true,
                 eiconsUniqueLoadTag: "bbcodemsg#"
             });
-            registerCleanupDispose(this, parseResult);
+            //registerCleanupDispose(this, parseResult);
             this._parsedText = parseResult;
         }
         return this._parsedText.element;

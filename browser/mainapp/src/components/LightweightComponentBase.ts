@@ -44,10 +44,21 @@ export abstract class LightweightComponentBase<TViewModel> implements IDisposabl
             while (this.element.firstChild) {
                 this.element.firstChild.remove();
             }
+
+            for (let d of this._onDispose) {
+                d();
+            }
         }
     }
 
     [Symbol.dispose]() { this.dispose(); }
+
+    get isDisposed() { return this._disposed; }
+
+    private readonly _onDispose: (() => any)[] = [];
+    addOnDispose(func: () => any) {
+        this._onDispose.push(func);
+    }
 
     private _viewModel: ObservableValue<Optional<TViewModel>>;
     get viewModel(): Optional<TViewModel> { return this._viewModel.value; }
@@ -109,6 +120,8 @@ class WatchRegistration<T> implements IDisposable {
     }
 
     [Symbol.dispose]() { this.dispose(); }
+
+    get isDisposed() { return this._disposed; }
 
     private invokeCallback(v: Optional<T>) {
         if (this._currentCallbackDisposable) {

@@ -17,6 +17,8 @@ class SnapshottedSet<T> implements ReadonlySet<T>, IDisposable {
 
     [Symbol.dispose]() { this.dispose(); }
 
+    get isDisposed() { return this._disposed; }
+
     forEach(callbackfn: (value: T, value2: T, set: ReadonlySet<T>) => void, thisArg?: any): void {
         this._set.forEach((value, value2, set) => callbackfn(value, value2, this), thisArg);
     }

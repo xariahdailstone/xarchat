@@ -1,5 +1,5 @@
 import { SnapshottableSet } from "./collections/SnapshottableSet.js";
-import { asDisposable, EmptyDisposable, IDisposable } from "./Disposable.js";
+import { asDisposable, EmptyDisposable, IDisposable, isDisposable } from "./Disposable.js";
 import { Logger, Logging } from "./Logger.js";
 import { ObjectUniqueId } from "./ObjectUniqueId.js";
 import { Observable, PropertyChangeEvent, PropertyChangeEventListener, ValueSubscription } from "./Observable.js";
@@ -17,6 +17,8 @@ export abstract class ObservableBase implements Observable {
     constructor() {
         this.logger = Logging.createLogger(`${this.constructor.name}#${ObjectUniqueId.get(this)}`);
     }
+
+    private readonly _disposeSentinel: object | null = null;
 
     private readonly _lastSeenProps: Map<string, any> = new Map();
     private readonly _propertyListeners: Map<string, SnapshottableSet<PropertyChangeEventListener>> = new Map();
@@ -144,6 +146,8 @@ export class ValueSubscriptionImpl implements ValueSubscription {
     }
 
     [Symbol.dispose]() { this.dispose(); }
+
+    get isDisposed() { return this._disposed; }
 }
 
 export function setupValueSubscription(observable: Observable, propertyPath: string, handler: (value: any) => any): ValueSubscription {

@@ -20,9 +20,9 @@ export class IncomingMessageSink implements IDisposable, Disposable {
 
     dispose() {
         if (!this._disposed) {
+            this._disposed = true;
             this._cancellationTokenReg.dispose();
             this._buffer.enqueue({ message: null, complete: null });
-            this._disposed = true;
             this.onDispose();
         }
     }
@@ -30,6 +30,8 @@ export class IncomingMessageSink implements IDisposable, Disposable {
     [Symbol.dispose]() {
         this.dispose();
     }
+
+    get isDisposed() { return this._disposed; }
 
     private _buffer: AsyncBuffer<BufferedMessage> = new AsyncBuffer();
 

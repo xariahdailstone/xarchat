@@ -112,10 +112,10 @@
     color: white;
 }
 .header-ping-icon {
-    max-height: 0.7lh;
-    max-width: 0.7lh;
-    height: 0.7lh;
-    width: 0.7lh;
+    max-height: 0.7em;
+    max-width: 0.7em;
+    height: 0.7em;
+    width: 0.7em;
     color: red;
     display: inline-block;
 }
@@ -151,8 +151,8 @@
 }
 .new-alerts-ping-icon {
     grid-area: icon;
-    height: 1lh;
-    width: 1lh;
+    height: 1em;
+    width: 1em;
     display: inline-block;
     vertical-align: bottom;
 }
@@ -293,14 +293,14 @@
     display: block;
 }
 .sectionitems-item-titleicon-image {
-    max-width: 0.6lh;
-    max-height: 0.6lh;
-    width: 0.6lh;
-    height: 0.6lh;
+    max-width: 0.6em;
+    max-height: 0.6em;
+    width: 0.6em;
+    height: 0.6em;
     color: var(--ping-icon-fill);
     vertical-align: baseline;
     display: inline-block;
-    margin-right: 0.2lh;
+    margin-right: 0.2em;
 }
 
 .sectionitems-item-name { 

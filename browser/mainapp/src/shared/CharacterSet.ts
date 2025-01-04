@@ -108,18 +108,14 @@ export class CharacterSet {
         set.add(handler);
 
         return asDisposable(() => {
-            this.removeStatusListener(characterName, handler);
-        });
-    }
-
-    removeStatusListener(characterName: CharacterName, handler: CharacterStatusChangeHandler) {
-        let set = this._statusListeners.get(characterName);
-        if (set) {
-            set.delete(handler);
-            if (set.size == 0) {
-                this._statusListeners.delete(characterName);
+            let set = this._statusListeners.get(characterName);
+            if (set) {
+                set.delete(handler);
+                if (set.size == 0) {
+                    this._statusListeners.delete(characterName);
+                }
             }
-        }
+            });
     }
 
     private characterStatusUpdated(newStatus: CharacterStatus, previousStatus: CharacterStatus) {
@@ -129,7 +125,15 @@ export class CharacterSet {
             //const status = this.getCharacterStatus(characterName);
             listeners.forEachValueSnapshotted(handler => {
                 try {
-                    handler(newStatus, previousStatus);
+                    if (handler) {
+                        handler(newStatus, previousStatus);
+                    }
+                    else {
+                        listeners.delete(handler);
+                        if (listeners.size == 0) {
+                            this._statusListeners.delete(characterName);
+                        }
+                    }
                 }
                 catch { }
             });

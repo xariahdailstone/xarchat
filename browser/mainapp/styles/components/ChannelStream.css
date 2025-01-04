@@ -41,7 +41,7 @@
 .messageitem.typingstatusindicator {
     padding: 3px 0px; 
     border-bottom: 1px solid transparent;
-    min-height: 1lh;
+    min-height: 1em;
 }
 
 .messageitem.typingstatusindicator .messagetext {

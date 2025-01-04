@@ -246,7 +246,7 @@ export class NullChatConnection implements ChatConnection {
 
     [Symbol.dispose]() { this.dispose(); }
 
-    get disposed() { return false; }
+    get isDisposed() { return false; }
 
     get extendedFeaturesEnabled() { return false; }
 }
