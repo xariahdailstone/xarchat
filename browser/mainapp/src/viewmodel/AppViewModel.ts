@@ -25,6 +25,7 @@ import { PromptOptions, PromptViewModel } from "./dialogs/PromptViewModel.js";
 import { SettingsDialogViewModel } from "./dialogs/SettingsDialogViewModel.js";
 import { ContextMenuPopupViewModel } from "./popups/ContextMenuPopupViewModel.js";
 import { PopupViewModel } from "./popups/PopupViewModel.js";
+import { UIZoomNotifyPopupViewModel } from "./popups/UIZoomNotifyPopupViewModel.js";
 
 export class AppViewModel extends ObservableBase {
     constructor(configBlock: ConfigBlock) {
@@ -104,6 +105,21 @@ export class AppViewModel extends ObservableBase {
 
     @observableProperty
     initialized: boolean = false;
+
+    zoomNotifyPopup: UIZoomNotifyPopupViewModel | null = null;
+
+    get interfaceZoom(): number { return +(this.configBlock.get("uiZoom") ?? 1); }
+    set interfaceZoom(value: number) {
+        if (value != this.interfaceZoom) {
+            this.configBlock.set("uiZoom", value);
+
+            if (this.zoomNotifyPopup == null) {
+                this.zoomNotifyPopup = new UIZoomNotifyPopupViewModel(this);    
+                this.zoomNotifyPopup.show();
+            }
+            this.zoomNotifyPopup.message = `Zoom level changed to ${Math.round(value * 100)}%`;
+        }
+    }
 
     readonly configBlock: ConfigBlock;
 

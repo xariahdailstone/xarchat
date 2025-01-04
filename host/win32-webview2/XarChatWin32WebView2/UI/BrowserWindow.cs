@@ -498,6 +498,12 @@ namespace MinimalWin32Test.UI
                 _webView.ContextMenuRequested += _webView_ContextMenuRequested;
                 _webView.Settings.IsGeneralAutofillEnabled = false;
                 _webView.Settings.IsPasswordAutosaveEnabled = false;
+                _webView.Settings.IsZoomControlEnabled = false;
+                _webView.Settings.IsPinchZoomEnabled = false;
+                _webView.Settings.IsPasswordAutosaveEnabled = false;
+                _webView.Settings.IsGeneralAutofillEnabled = false;
+                _webView.Settings.IsReputationCheckingRequired = false;
+                _webView.Settings.IsSwipeNavigationEnabled = false;
 				_webView.NewWindowRequested += _webView_NewWindowRequested;
 
                 WriteToStartupLog("BrowserWindow.OnHandleCreated - Creating WebViewMemoryUsageManager");
