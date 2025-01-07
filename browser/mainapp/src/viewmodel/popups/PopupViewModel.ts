@@ -14,7 +14,6 @@ export abstract class PopupViewModel extends ObservableBase {
     private _dismissalWaiters: SnapshottableSet<PromiseSource<void>> = new SnapshottableSet();
 
     dismissed() { 
-        this.appViewModel.popups.remove(this);
         if (!this._dismissed) {
             this._dismissed = true;
             this._dismissalWaiters.forEachValueSnapshotted(w => {
@@ -22,6 +21,7 @@ export abstract class PopupViewModel extends ObservableBase {
                 catch { }
             });
         }
+        this.appViewModel.popups.remove(this);
     }
 
     waitForDismissalAsync(): Promise<void> {

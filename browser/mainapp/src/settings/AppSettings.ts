@@ -55,11 +55,13 @@ interface RawSavedChatStateJoinedChannel {
     name: string;
     title: string;
     order: number;
+    filters?: string[];
 }
 
 interface RawSavedChatStatePMConvo {
     character: string;
     lastInteraction: number;
+    filters?: string[];
 }
 
 
@@ -690,11 +692,13 @@ export class SavedChatStateJoinedChannel {
         this._name = item ? ChannelName.create(item.name) : ChannelName.create("");
         this._title = item?.title ?? this._name.value;
         this._order = item?.order ?? 0;
+        this._filters = item?.filters ?? null;
     }
 
     private _name: ChannelName;
     private _title: string;
     private _order: number;
+    private _filters: string[] | null;
 
     get name() { return this._name; }
     set name(value) {
@@ -720,6 +724,14 @@ export class SavedChatStateJoinedChannel {
         }
     }
 
+    get filters(): string[] | null { return this._filters; }
+    set filters(value) {
+        if (value != this._filters) {
+            this._filters = value;
+            this.updated();
+        }
+    }
+
     updated() {
         if (this.parent) {
             this.parent.updated();
@@ -730,7 +742,8 @@ export class SavedChatStateJoinedChannel {
         const result: RawSavedChatStateJoinedChannel = {
             name: this._name.value,
             title: this._title,
-            order: this._order
+            order: this._order,
+            filters: this._filters ?? undefined
         };
         return result;
     }
@@ -738,16 +751,20 @@ export class SavedChatStateJoinedChannel {
 
 export class SavedChatStatePMConvo {
     constructor(
+        parent: PMConvosSet | null,
         item?: RawSavedChatStatePMConvo) {
 
+        this.parent = parent;
         this._character = item ? CharacterName.create(item.character) : CharacterName.create("");
         this._lastInteraction = item?.lastInteraction ?? 0;
+        this._filters = item?.filters ?? null;
     }
 
     parent: PMConvosSet | null = null;
 
     private _character: CharacterName;
     private _lastInteraction: number;
+    private _filters: string[] | null;
 
     get character() { return this._character; }
     set character(value) {
@@ -765,6 +782,14 @@ export class SavedChatStatePMConvo {
         }
     }
 
+    get filters(): string[] | null { return this._filters; }
+    set filters(value) {
+        if (value != this._filters) {
+            this._filters = value;
+            this.updated();
+        }
+    }
+
     updated() {
         if (this.parent) {
             this.parent.updated();
@@ -774,7 +799,8 @@ export class SavedChatStatePMConvo {
     toJSON() {
         const result: RawSavedChatStatePMConvo = {
             character: this._character.value,
-            lastInteraction: this._lastInteraction
+            lastInteraction: this._lastInteraction,
+            filters: this._filters ?? undefined
         };
         return result;
     }
@@ -816,7 +842,7 @@ export class PMConvosSet extends Collection<SavedChatStatePMConvo> {
 
         super();
         for (let x of items) {
-            const item = new SavedChatStatePMConvo(x);
+            const item = new SavedChatStatePMConvo(this, x);
             this.push(item);
         }
 

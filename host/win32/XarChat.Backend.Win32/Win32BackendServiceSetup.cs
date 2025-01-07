@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using XarChat.Backend.Features.AppDataFolder;
 using XarChat.Backend.Features.AppSettings;
+using XarChat.Backend.Features.CrashLogWriter;
 using XarChat.Backend.Features.FileChooser;
 using XarChat.Backend.Features.IdleDetection;
 using XarChat.Backend.Features.MemoryHinter;
@@ -13,6 +14,7 @@ using XarChat.Backend.Features.NotificationBadge;
 using XarChat.Backend.Features.UpdateChecker;
 using XarChat.Backend.Features.WindowControl;
 using XarChat.Backend.Win32.AppDataFolder;
+using XarChat.Backend.Win32.CrashLogWriterCallback;
 using XarChat.Backend.Win32.DataProtection;
 using XarChat.Backend.Win32.FileChooser;
 using XarChat.Backend.Win32.IdleDetection;
@@ -43,6 +45,7 @@ namespace XarChat.Backend.Win32
             services.AddSingleton<IAppSettingsDataProtectionManager, Win32AppSettingsDataProtectionManager>();
             services.AddSingleton<IMemoryHinter, Win32MemoryHinter>();
             services.AddSingleton<IFileChooser, Win32FileChooser>();
+            services.AddSingleton<ICrashLogWriterCallback, Win32CrashLogWriterCallback>();
 
             services.AddHostedService<StyleUpdateWatcher>();
         }

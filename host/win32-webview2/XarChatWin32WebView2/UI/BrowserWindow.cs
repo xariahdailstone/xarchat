@@ -24,6 +24,7 @@ using XarChat.Backend.Features.AppConfiguration;
 using Windows.ApplicationModel.DataTransfer;
 using XarChat.Backend.Features.CommandableWindows;
 using System.Text.Json.Nodes;
+using XarChat.Backend.Features.CrashLogWriter;
 
 namespace MinimalWin32Test.UI
 {
@@ -158,114 +159,126 @@ namespace MinimalWin32Test.UI
 
         protected override nint WndProc(WindowHandle windowHandle, uint msg, nuint wParam, nint lParam)
         {
-            switch (msg)
+            try
             {
-                case User32.StandardWindowMessages.WM_DESTROY:
-                case User32.StandardWindowMessages.WM_CLOSE:
-                    _destroyed = true;
-                    _app.Breakout();
-                    //User32.PostQuitMessage(0);
-                    break;
-                //case User32.StandardWindowMessages.WM_SIZING:
-                //    var targetRect = Marshal.PtrToStructure<RECT>(lParam);
-                //    if (_webViewController != null)
-                //    {
-                //        _webViewController.Bounds = targetRect.ToRectangle();
-                //    }
-                //    break;
-                case User32.StandardWindowMessages.WM_NCCALCSIZE:
-                    {
-                        var bCalcValidRects = wParam;
-                        var p = Marshal.PtrToStructure<NCCALCSIZE_PARAMS>(lParam);
-                        var bt = IsHandleCreated ? NormalizedPixelsToSystemPixels(BORDER_THICKNESS) : BORDER_THICKNESS;
-                        p.rgrc[0].Left += bt;
-                        //p.rgrc[0].Top += BORDER_THICKNESS;
-                        p.rgrc[0].Right -= bt;
-                        p.rgrc[0].Bottom -= bt;
-                        Marshal.StructureToPtr(p, lParam, false);
-                        return 0;
-                    }
-                //case User32.StandardWindowMessages.WM_SIZING:
-                //    {
-                //        if (_obm == null)
-                //        {
-                //            _obm = new OversizeBrowserManager(_app, this, _webViewController!);
-                //        }
+                switch (msg)
+                {
+                    case User32.StandardWindowMessages.WM_DESTROY:
+                    case User32.StandardWindowMessages.WM_CLOSE:
+                        _destroyed = true;
+                        _app.Breakout();
+                        //User32.PostQuitMessage(0);
+                        break;
+                    //case User32.StandardWindowMessages.WM_SIZING:
+                    //    var targetRect = Marshal.PtrToStructure<RECT>(lParam);
+                    //    if (_webViewController != null)
+                    //    {
+                    //        _webViewController.Bounds = targetRect.ToRectangle();
+                    //    }
+                    //    break;
+                    case User32.StandardWindowMessages.WM_NCCALCSIZE:
+                        {
+                            var bCalcValidRects = wParam;
+                            var p = Marshal.PtrToStructure<NCCALCSIZE_PARAMS>(lParam);
+                            var bt = IsHandleCreated ? NormalizedPixelsToSystemPixels(BORDER_THICKNESS) : BORDER_THICKNESS;
+                            p.rgrc[0].Left += bt;
+                            //p.rgrc[0].Top += BORDER_THICKNESS;
+                            p.rgrc[0].Right -= bt;
+                            p.rgrc[0].Bottom -= bt;
+                            Marshal.StructureToPtr(p, lParam, false);
+                            return 0;
+                        }
+                    //case User32.StandardWindowMessages.WM_SIZING:
+                    //    {
+                    //        if (_obm == null)
+                    //        {
+                    //            _obm = new OversizeBrowserManager(_app, this, _webViewController!);
+                    //        }
 
-                //        var r = Marshal.PtrToStructure<RECT>(lParam);
-                //        var width = r.Width - (NormalizedPixelsToSystemPixels(BORDER_THICKNESS) * 2);
-                //        var height = r.Height - (NormalizedPixelsToSystemPixels(BORDER_THICKNESS));
-                //        _obm.OnWindowResize(width, height);
-                //        _webView!.PostWebMessageAsJson($"{{ \"type\": \"clientresize\", \"bounds\": [{width + 1},{height - NormalizedPixelsToSystemPixels(TOP_BORDER_THICKNESS) + 1}] }}");
-                //    }
-                //    break;
-                case User32.StandardWindowMessages.WM_SIZE:
-                    if (!_destroyed)
-                    {
-                        MaybeUpdateWindowState();
-                        MaybeUpdateWindowSize();
-                    }
-                    break;
-                case User32.StandardWindowMessages.WM_MOVE:
-                    if (_webViewController != null && !_destroyed)
-                    {
-                        _webViewController.NotifyParentWindowPositionChanged();
-                    }
-                    break;
-                case User32.StandardWindowMessages.WM_MOUSEMOVE:
-                    {
-                        int y = User32.GET_Y_LPARAM(lParam);
-                        int x = User32.GET_X_LPARAM(lParam);
-                        if (y < NormalizedPixelsToSystemPixels(BrowserWindow.TOP_BORDER_THICKNESS))
+                    //        var r = Marshal.PtrToStructure<RECT>(lParam);
+                    //        var width = r.Width - (NormalizedPixelsToSystemPixels(BORDER_THICKNESS) * 2);
+                    //        var height = r.Height - (NormalizedPixelsToSystemPixels(BORDER_THICKNESS));
+                    //        _obm.OnWindowResize(width, height);
+                    //        _webView!.PostWebMessageAsJson($"{{ \"type\": \"clientresize\", \"bounds\": [{width + 1},{height - NormalizedPixelsToSystemPixels(TOP_BORDER_THICKNESS) + 1}] }}");
+                    //    }
+                    //    break;
+                    case User32.StandardWindowMessages.WM_SIZE:
+                        if (!_destroyed)
                         {
-                            User32.SetCursor(Cursor.SizeNS.HCursor);
+                            MaybeUpdateWindowState();
+                            MaybeUpdateWindowSize();
                         }
-                    }
-                    break;
-                case User32.StandardWindowMessages.WM_LBUTTONDOWN:
-                    {
-                        int y = User32.GET_Y_LPARAM(lParam);
-                        int x = User32.GET_X_LPARAM(lParam);
-                        if (y < NormalizedPixelsToSystemPixels(BrowserWindow.TOP_BORDER_THICKNESS))
+                        break;
+                    case User32.StandardWindowMessages.WM_MOVE:
+                        if (_webViewController != null && !_destroyed)
                         {
-                            User32.PostMessage(windowHandle.Handle, User32.StandardWindowMessages.WM_NCLBUTTONDOWN, (UIntPtr)User32.HT.TOP, 0);
+                            _webViewController.NotifyParentWindowPositionChanged();
                         }
-                        return 0;
-                    }
-                    break;
-                case User32.StandardWindowMessages.WM_SHOWWINDOW:
-                    {
-                        MaybeUpdateWindowState();
-                    }
-                    break;
-                case User32.StandardWindowMessages.WM_SYSCOMMAND:
-                    {
-                        var result = User32.DefWindowProc(windowHandle.Handle, msg, wParam, lParam);
-                        MaybeUpdateWindowState();
-                        MaybeUpdateWindowSize();
-                        return result;
-                    }
-                case User32.StandardWindowMessages.WM_ACTIVATE:
-                    {
-                        switch ((User32.WA)(int)wParam)
+                        break;
+                    case User32.StandardWindowMessages.WM_MOUSEMOVE:
                         {
-                            case User32.WA.INACTIVE:
-                                OnWindowDeactivated();
-                                break;
-                            default:
-                                OnWindowActivated();
-                                return 0;
+                            int y = User32.GET_Y_LPARAM(lParam);
+                            int x = User32.GET_X_LPARAM(lParam);
+                            if (y < NormalizedPixelsToSystemPixels(BrowserWindow.TOP_BORDER_THICKNESS))
+                            {
+                                User32.SetCursor(Cursor.SizeNS.HCursor);
+                            }
                         }
-                    }
-                    break;
-                case User32.StandardWindowMessages.WM_ERASEBKGND:
-                    {
-                        if (OnEraseBackground(windowHandle, msg, wParam, lParam) > 0)
+                        break;
+                    case User32.StandardWindowMessages.WM_LBUTTONDOWN:
                         {
-                            return 1;
+                            int y = User32.GET_Y_LPARAM(lParam);
+                            int x = User32.GET_X_LPARAM(lParam);
+                            if (y < NormalizedPixelsToSystemPixels(BrowserWindow.TOP_BORDER_THICKNESS))
+                            {
+                                User32.PostMessage(windowHandle.Handle, User32.StandardWindowMessages.WM_NCLBUTTONDOWN, (UIntPtr)User32.HT.TOP, 0);
+                            }
+                            return 0;
                         }
-                    }
-                    break;
+                        break;
+                    case User32.StandardWindowMessages.WM_SHOWWINDOW:
+                        {
+                            MaybeUpdateWindowState();
+                        }
+                        break;
+                    case User32.StandardWindowMessages.WM_SYSCOMMAND:
+                        {
+                            var result = User32.DefWindowProc(windowHandle.Handle, msg, wParam, lParam);
+                            MaybeUpdateWindowState();
+                            MaybeUpdateWindowSize();
+                            return result;
+                        }
+                    case User32.StandardWindowMessages.WM_ACTIVATE:
+                        {
+                            switch ((User32.WA)(int)wParam)
+                            {
+                                case User32.WA.INACTIVE:
+                                    OnWindowDeactivated();
+                                    break;
+                                default:
+                                    OnWindowActivated();
+                                    return 0;
+                            }
+                        }
+                        break;
+                    case User32.StandardWindowMessages.WM_ERASEBKGND:
+                        {
+                            if (OnEraseBackground(windowHandle, msg, wParam, lParam) > 0)
+                            {
+                                return 1;
+                            }
+                        }
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                var sp = _backend.GetServiceProviderAsync().Result;
+                var clw = sp.GetService<ICrashLogWriter>();
+                if (clw is not null)
+                {
+                    clw.WriteCrashLog("BrowserWindow WndProc failure\n\n" + ex.ToString(), false);
+                }
             }
             return User32.DefWindowProc(windowHandle.Handle, msg, wParam, lParam);
         }

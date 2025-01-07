@@ -19,6 +19,7 @@ using XarChat.Backend.Features.AppFileServer;
 using XarChat.Backend.Features.ChatLogging;
 using XarChat.Backend.Features.CommandableWindows;
 using XarChat.Backend.Features.EIconIndexing;
+using XarChat.Backend.Features.EIconLoader;
 using XarChat.Backend.Features.IdleDetection;
 using XarChat.Backend.Features.NewAppSettings;
 using XarChat.Backend.Features.NotificationBadge;
@@ -27,6 +28,7 @@ using XarChat.Backend.Features.WindowControl;
 using XarChat.Backend.UrlHandlers.XCHostFunctions.SessionAdapters;
 using XarChat.Backend.UrlHandlers.XCHostFunctions.SessionAdapters.OldNewAppSettings;
 using XarChat.Backend.UrlHandlers.XCHostFunctions.SessionNamespaces;
+using XarChat.Backend.UrlHandlers.XCHostFunctions.SessionNamespaces.EIconData;
 using XarChat.Backend.UrlHandlers.XCHostFunctions.SessionNamespaces.LogSearch;
 using XarChat.Backend.UrlHandlers.XCHostFunctions.SessionNamespaces.WindowCommand;
 using SplitWriteFunc = System.Func<string, string?, System.Threading.CancellationToken, System.Threading.Tasks.Task>;
@@ -102,6 +104,11 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions
             {
                 var cwr = sp.GetRequiredService<ICommandableWindowRegistry>();
                 return new WindowCommandSessionNamespace(cwr, w);
+            });
+            this.AddSessionNamespace("eiconloader", w =>
+            {
+                var el = sp.GetRequiredService<IEIconLoader>();
+                return new EIconDataSessionNamespace(el, w);
             });
         }
 

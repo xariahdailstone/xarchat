@@ -11,6 +11,7 @@ import { ChatChannelMessageMode, ChatChannelViewModel } from "../viewmodel/ChatC
 import { ConsoleChannelViewModel } from "../viewmodel/ConsoleChannelViewModel.js";
 import { PMConvoChannelViewModel } from "../viewmodel/PMConvoChannelViewModel.js";
 import { ChannelDescriptionPopupViewModel } from "../viewmodel/popups/ChannelDescriptionPopupViewModel.js";
+import { ChannelHeaderFilter } from "./ChannelHeaderFilter.js";
 import { ComponentBase, componentElement } from "./ComponentBase.js";
 import { StatusDotLightweight } from "./StatusDot.js";
 
@@ -35,6 +36,9 @@ export class ChannelHeader extends ComponentBase<ChannelViewModel> {
                 </button>
             </div>
 
+            <x-channelheaderfilter id="elFilter"></x-channelheaderfilter>
+
+            <!--
             <div id="elFilter">
                 <x-iconimage id="elFilterIcon" src="assets/ui/filter-icon.svg"></x-iconimage>
                 <x-bindingselect id="elFilterDropdown" tabindex="-1" modelpath="filterMode2">
@@ -43,6 +47,7 @@ export class ChannelHeader extends ComponentBase<ChannelViewModel> {
                     <option value="both">Both</option>
                 </x-bindingselect>
             </div>
+            -->
 
             <div id="elConfigIconContainer">
                 <x-iconimage id="elConfigIcon" src="assets/ui/config-button.svg"></x-iconimage>
@@ -52,7 +57,7 @@ export class ChannelHeader extends ComponentBase<ChannelViewModel> {
         const elIcon = this.$("elIcon") as HTMLImageElement;
         const elTitle = this.$("elTitle") as HTMLDivElement;
         const elOnlineStatusContainer = this.$("elOnlineStatusContainer") as HTMLDivElement;
-        const elFilter = this.$("elFilter") as HTMLDivElement;
+        const elFilter = this.$("elFilter") as ChannelHeaderFilter;
         const elFilterDropdown = this.$("elFilterDropdown") as HTMLSelectElement;
         const elConfigIconContainer = this.$("elConfigIconContainer") as HTMLDivElement;
         const elDescriptionArea = this.$("elDescriptionArea") as HTMLDivElement;
@@ -89,6 +94,10 @@ export class ChannelHeader extends ComponentBase<ChannelViewModel> {
                     break;
             }
             elFilter.setAttribute("data-messagemode", mode);
+        });
+
+        this.watchExpr(vm => vm.filterOptions, fo => {
+            elFilter.viewModel = fo ?? null;
         });
 
         let pastDescription: IDisposable | null = null;

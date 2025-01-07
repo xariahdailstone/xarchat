@@ -1,5 +1,5 @@
 import { ChannelName } from "../shared/ChannelName.js";
-import { AddMessageOptions, ChannelMessageType, ChannelMessageViewModel, ChannelMessageViewModelOrderedDictionary, ChannelViewModel, PendingMessageSendViewModel, PendingMessageType, SingleSelectChannelFilterOptionItem, SingleSelectChannelFilterOptions } from "./ChannelViewModel.js";
+import { AddMessageOptions, ChannelMessageType, ChannelMessageViewModel, ChannelMessageViewModelOrderedDictionary, ChannelViewModel, MultiSelectChannelFilterOptionItem, MultiSelectChannelFilterOptions, PendingMessageSendViewModel, PendingMessageType, SingleSelectChannelFilterOptionItem, SingleSelectChannelFilterOptions } from "./ChannelViewModel.js";
 import { ActiveLoginViewModel, CharactersEventListener, ChatConnectionState } from "./ActiveLoginViewModel.js";
 import { Collection, CollectionChangeType, ObservableCollection, ReadOnlyObservableCollection } from "../util/ObservableCollection.js";
 import { CharacterName } from "../shared/CharacterName.js";
@@ -8,7 +8,7 @@ import { OnlineStatus } from "../shared/OnlineStatus.js";
 import { ObservableKeyExtractedOrderedDictionary, ObservableOrderedDictionary, ObservableOrderedDictionaryImpl } from "../util/ObservableKeyedLinkedList.js";
 import { IDisposable, asDisposable } from "../util/Disposable.js";
 import { HostInterop, LogMessageType } from "../util/HostInterop.js";
-import { SavedChatStateJoinedChannel } from "../settings/AppSettings.js";
+import { SavedChatState, SavedChatStateJoinedChannel } from "../settings/AppSettings.js";
 import { SendQueue } from "../util/SendQueue.js";
 import { TaskUtils } from "../util/TaskUtils.js";
 import { AppNotifyEventType } from "./AppViewModel.js";
@@ -75,7 +75,7 @@ export class ChatChannelViewModel extends ChannelViewModel {
         this.title = title;
         this.showConfigButton = true;
 
-        this.mainMessages = this._bothMessages;
+        this.filterMode = ChatChannelMessageMode.BOTH;
 
         this.prefixMessages.add(
             ChannelMessageViewModel.createLogNavMessage(this, "Click here to see earlier messages in the Log Viewer", () => {
@@ -104,25 +104,30 @@ export class ChatChannelViewModel extends ChannelViewModel {
 
         const existingSCC = IterableUtils.asQueryable(parent.savedChatState.joinedChannels).where(x => x.name == name).firstOrNull();
         if (!existingSCC) {
-            parent.savedChatState.joinedChannels.push(new SavedChatStateJoinedChannel(
+            this._scc = new SavedChatStateJoinedChannel(
                 parent.savedChatState.joinedChannels,
-                { name: name.value, title: title ?? name.value, order: this.order }));
+                { name: name.value, title: title ?? name.value, order: this.order });
+            parent.savedChatState.joinedChannels.push(this._scc);
         }
         else {
+            this._scc = existingSCC;
             this._order = existingSCC.order;
         }
 
+        if (existingSCC && existingSCC.filters) {
+            this.showFilterClasses = existingSCC.filters
+        }
         this.updateFilterOptions();
     }
 
-    override dispose(): void {
-        for (let m of [...this._bothMessages.values(), ...this._adMessages.values(), ...this._chatMessages.values()]) {
-            m.dispose();
+    private _scc?: SavedChatStateJoinedChannel;
+    
+    override get showFilterClasses() { return super.showFilterClasses; }
+    override set showFilterClasses(value: string[]) {
+        super.showFilterClasses = value;
+        if (this._scc) {
+            this._scc.filters = value;
         }
-        this._bothMessages.clear();
-        this._adMessages.clear();
-        this._chatMessages.clear();
-        super.dispose();
     }
 
     private _name: ChannelName = ChannelName.create("");
@@ -246,10 +251,6 @@ export class ChatChannelViewModel extends ChannelViewModel {
         }
     }
 
-    private _chatMessages: ChannelMessageViewModelOrderedDictionary = new ChannelMessageViewModelOrderedDictionary();
-    private _adMessages: ChannelMessageViewModelOrderedDictionary = new ChannelMessageViewModelOrderedDictionary();
-    private _bothMessages: ChannelMessageViewModelOrderedDictionary = new ChannelMessageViewModelOrderedDictionary();
-
     private _messageMode: ChatChannelMessageMode = ChatChannelMessageMode.BOTH;
     @observableProperty
     get messageMode() { return this._messageMode; }
@@ -261,16 +262,37 @@ export class ChatChannelViewModel extends ChannelViewModel {
     }
 
     private updateFilterOptions() {
-        if (this._messageMode == ChatChannelMessageMode.BOTH) {
-            const fo = new SingleSelectChannelFilterOptions();
-            fo.items.push(new SingleSelectChannelFilterOptionItem("ads", "Ads Only", () => { this.filterMode2 = "ads"; }));
-            fo.items.push(new SingleSelectChannelFilterOptionItem("chat", "Chat Only", () => { this.filterMode2 = "chat"; }));
-            fo.items.push(new SingleSelectChannelFilterOptionItem("both", "Both", () => { this.filterMode2 = "both"; }));
+        //if (this._messageMode == ChatChannelMessageMode.BOTH) {
+            const filterSelectOptions: MultiSelectChannelFilterOptionItem[] = [];
+            filterSelectOptions.push(
+                new MultiSelectChannelFilterOptionItem("chattext", "Chat (Text)"),
+                new MultiSelectChannelFilterOptionItem("chatemote", "Chat (Emote)"),
+                new MultiSelectChannelFilterOptionItem("ad", "Ads"),
+                new MultiSelectChannelFilterOptionItem("roll", "Dice Rolls"),
+                new MultiSelectChannelFilterOptionItem("spin", "Bottle Spins"),
+                new MultiSelectChannelFilterOptionItem("system", "System Messages")
+            );
+            for (let i of filterSelectOptions) {
+                if (this.showFilterClasses) {
+                    i.isSelected = this.showFilterClasses.indexOf(i.value) != -1;
+                }
+                else {
+                    i.isSelected = true;
+                }
+            }
+            const fo = new MultiSelectChannelFilterOptions(this, (selectedValues) => {
+                for (let i of filterSelectOptions) {
+                    i.isSelected = (selectedValues.indexOf(i.value) != -1);
+                }
+                this.showFilterClasses = selectedValues;
+            });
+            fo.items.push(...filterSelectOptions);
+            
             this.filterOptions = fo;
-        }
-        else {
-            this.filterOptions = null;
-        }
+        //}
+        //else {
+        //    this.filterOptions = null;
+        //}
     }
 
     private _usersModerators: ObservableKeyExtractedOrderedDictionary<CharacterName, ChatChannelUserViewModel> = new ObservableOrderedDictionaryImpl<CharacterName, ChatChannelUserViewModel>(x => x.character, CharacterName.compare);
@@ -446,7 +468,7 @@ export class ChatChannelViewModel extends ChannelViewModel {
         }
     }
 
-    private _filterMode: ChatChannelMessageMode = ChatChannelMessageMode.BOTH;
+    private _filterMode: ChatChannelMessageMode = ChatChannelMessageMode.ADS_ONLY; // reset in constructor
 
     @observableProperty
     get filterMode(): ChatChannelMessageMode { return this._filterMode; }
@@ -456,15 +478,16 @@ export class ChatChannelViewModel extends ChannelViewModel {
             this._filterMode = value;
             switch (value) {
                 case ChatChannelMessageMode.ADS_ONLY:
-                    this.mainMessages = this._adMessages;
+                    this.showFilterClasses = [ "ad", "roll", "spin", "system" ];
                     break;
                 case ChatChannelMessageMode.CHAT_ONLY:
-                    this.mainMessages = this._chatMessages;
+                    this.showFilterClasses = [ "chattext", "chatemote", "roll", "spin", "system" ];
                     break;
                 case ChatChannelMessageMode.BOTH:
-                    this.mainMessages = this._bothMessages;
+                    this.showFilterClasses = [ "chattext", "chatemote", "ad", "roll", "spin", "system" ];
                     break;
             }
+            this.updateFilterOptions();
         }
     }
 
@@ -777,8 +800,6 @@ export class ChatChannelViewModel extends ChannelViewModel {
     }
 
     override addMessage(message: ChannelMessageViewModel, options?: AddMessageOptions): void {
-        let addToChat = true;
-        let addToAds = true;
         let logMessageType: LogMessageType | null = null;
         
         switch (message.type) {
@@ -794,90 +815,14 @@ export class ChatChannelViewModel extends ChannelViewModel {
             case ChannelMessageType.SPIN:
                 logMessageType = LogMessageType.SPIN;
         }
-        switch (message.type) {
-            case ChannelMessageType.ROLL:
-            case ChannelMessageType.CHAT:
-            case ChannelMessageType.SPIN:
-                addToAds = false;
-                break;
-            case ChannelMessageType.AD:
-                addToChat = false;
-                break;
-            default:
-        }
+
+        super.addMessage(message, options);
 
         if (logMessageType != null && !(options?.fromReplay ?? false)) {
             HostInterop.logChannelMessage(this.activeLoginViewModel.characterName, this.name, this.title, 
                 message.characterStatus.characterName, message.characterStatus.gender, message.characterStatus.status,
                 logMessageType, message.text);
         }
-
-        if (this.parent.ignoredChars.has(message.characterStatus.characterName)) { return; }
-
-        if (addToAds || addToChat) {
-            this._bothMessages.add(message);
-            //this._bothMessages.push(message);
-            while (this._bothMessages.size >= this.messageLimit) {
-                //this._bothMessages.shift();
-                this._bothMessages.delete(this._bothMessages.minKey()!);
-            }
-        }
-        if (addToAds) {
-            this._adMessages.add(message);
-            //this._adMessages.push(message);
-            while (this._adMessages.size >= this.messageLimit) {
-                //this._adMessages.shift();
-                this._adMessages.delete(this._adMessages.minKey()!);
-            }
-            if (this.filterMode == ChatChannelMessageMode.ADS_ONLY || this.filterMode == ChatChannelMessageMode.BOTH) {
-                if (!(options?.seen ?? false)) {
-                    if (message.type == ChannelMessageType.CHAT ||
-                        message.type == ChannelMessageType.AD ||
-                        message.type == ChannelMessageType.ROLL ||
-                        message.type == ChannelMessageType.SPIN) {
-
-                        this.pingIfNecessary(message);
-                        if (!(options?.bypassUnseenCount ?? false)) {
-                            this.increaseUnseenCountIfNecessary();
-                        }
-                    }
-                }
-                if (this.scrolledTo != null) {
-                    this.newMessagesBelowNotify = true;
-                }
-            }
-        }
-        if (addToChat) {
-            this._chatMessages.add(message);
-            //this._chatMessages.push(message);
-            while (this._chatMessages.size >= this.messageLimit) {
-                //this._chatMessages.shift();
-                this._chatMessages.delete(this._chatMessages.minKey()!);
-            }
-            if (this.filterMode == ChatChannelMessageMode.CHAT_ONLY || this.filterMode == ChatChannelMessageMode.BOTH) {
-                if (!(options?.seen ?? false)) {
-                    if (message.type == ChannelMessageType.CHAT ||
-                        message.type == ChannelMessageType.AD ||
-                        message.type == ChannelMessageType.ROLL ||
-                        message.type == ChannelMessageType.SPIN) {
-
-                        this.pingIfNecessary(message);
-                        if (!(options?.bypassUnseenCount ?? false)) {
-                            this.increaseUnseenCountIfNecessary();
-                        }
-                    }
-                }
-                if (this.scrolledTo != null) {
-                    this.newMessagesBelowNotify = true;
-                }
-            }
-        }
-    }
-
-    clearMessages() {
-        this.mainMessages.clear();
-        this._chatMessages.clear();
-        this._adMessages.clear();
     }
 
     @observableProperty

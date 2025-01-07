@@ -98,11 +98,13 @@
     margin-left: 20px;
 }
 
+/*
 #elFilter[data-messagemode='ads'],
 #elFilter[data-messagemode='chat'],
 #elFilter[data-messagemode='none'] { display: none; }
 
 #elFilter[data-messagemode='both'] { display: flex; }
+*/
 
 #elFilterIcon {
     width: 20px;

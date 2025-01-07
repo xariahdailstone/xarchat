@@ -12,6 +12,7 @@ import { CancellationToken, CancellationTokenSource } from "./CancellationTokenS
 import { SnapshottableMap } from "./collections/SnapshottableMap";
 import { IDisposable, EmptyDisposable, asDisposable } from "./Disposable";
 import { EventListenerUtil } from "./EventListenerUtil";
+import { XarHost2HostInteropEIconLoader } from "./HostInteropEIconLoader";
 import { DateAnchor, HostInteropLogSearch, LogSearchKind, LogSearchResult, LogSearchResultChannelMessage, LogSearchResultPMConvoMessage, XarHost2InteropLogSearch, XarHost2InteropSession, XarHost2InteropWindowCommand } from "./HostInteropLogSearch";
 import { IdleDetectionScreenState, IdleDetectionUserState } from "./IdleDetection";
 import { Logger, Logging } from "./Logger";
@@ -19,6 +20,7 @@ import { PromiseSource } from "./PromiseSource";
 import { StringUtils } from "./StringUtils";
 import { TaskUtils } from "./TaskUtils";
 import { UpdateCheckerState } from "./UpdateCheckerClient";
+import { URLUtils } from "./URLUtils";
 // import { SqliteConnection } from "./sqlite/SqliteConnection";
 // import { XarHost2SqliteConnection } from "./sqlite/xarhost2/XarHost2SqliteConnection";
 
@@ -97,6 +99,8 @@ export interface IHostInterop {
     getLocalFileUrl(fn: string): string;
 
     performWindowCommandAsync(windowId: number | null, args: object): Promise<object>;
+
+    getEIconDataBlob(name: string, cancellationToken: CancellationToken): Promise<Blob>;
 }
 
 export interface IXarHost2HostInterop extends IHostInterop {
@@ -170,9 +174,11 @@ class XarHost2Interop implements IXarHost2HostInterop {
         this.doClientResize(window.innerWidth, window.innerHeight, true);
 
         this._windowCommandSession = new XarHost2InteropWindowCommand();
+        this._hostInteropEIconLoader = new XarHost2HostInteropEIconLoader();
 
         this.sessions = [
-            this._windowCommandSession
+            this._windowCommandSession,
+            this._hostInteropEIconLoader
         ];
         for (let sess of this.sessions) {
             sess.writeMessage = (msg) => this.writeToXCHostSocket(sess.prefix + msg);
@@ -185,6 +191,7 @@ class XarHost2Interop implements IXarHost2HostInterop {
 
     readonly sessions: XarHost2InteropSession[];
     private _windowCommandSession: XarHost2InteropWindowCommand;
+    private _hostInteropEIconLoader: XarHost2HostInteropEIconLoader;
 
     private _nextEIconSearchId: number = 0;
     private _pendingEIconSearches: Set<(results: any) => boolean> = new Set();
@@ -1015,6 +1022,29 @@ class XarHost2Interop implements IXarHost2HostInterop {
 
         const respObj = await this._windowCommandSession.performWindowCommand(windowId, args, CancellationToken.NONE);
         return respObj;
+    }
+
+    async getEIconDataBlob(name: string, cancellationToken: CancellationToken): Promise<Blob> {
+        const resp = await this._hostInteropEIconLoader.getEIconAsync(name, cancellationToken);
+        if (resp.statusCode >= 400) {
+            throw new Error(`failed to fetch eicon, status code ${resp.statusCode}`);
+        }
+
+        const dataUrl = `data:${resp.contentType};base64,${resp.data}`;
+        const blob = await (await fetch(dataUrl)).blob();
+        return blob;
+    }
+
+    async getEIconDataBlob2(name: string, cancellationToken: CancellationToken): Promise<Blob> {
+        const eiconUrl = URLUtils.getEIconUrl(name);
+        const fetchResp = await fetch(eiconUrl, {
+            signal: cancellationToken.signal
+        });
+        if (fetchResp.status >= 400) {
+            throw new Error(`failed to fetch eicon, status code ${fetchResp.status}`);
+        }
+        const blob = await fetchResp.blob();
+        return blob;
     }
 }
 

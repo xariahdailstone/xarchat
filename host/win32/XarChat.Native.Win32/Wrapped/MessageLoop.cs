@@ -203,8 +203,14 @@ namespace XarChat.Native.Win32.Wrapped
 
                 var restoreSyncContext = SynchronizationContext.Current;
                 SynchronizationContext.SetSynchronizationContext(this);
-                try { func(); }
-                catch { }
+                try 
+                { 
+                    func(); 
+                }
+                catch (Exception ex)
+                {
+                    OnLogTaskFailure?.Invoke(this, new LogTaskFailureEventArgs(ex.ToString(), false));
+                }
                 SynchronizationContext.SetSynchronizationContext(restoreSyncContext);
 
                 System.Diagnostics.Debug.WriteLine("handled WM_RUNTASK");
@@ -214,6 +220,8 @@ namespace XarChat.Native.Win32.Wrapped
                 System.Diagnostics.Debug.WriteLine("null WM_RUNTASK");
             }
         }
+
+        public EventHandler<LogTaskFailureEventArgs>? OnLogTaskFailure;
 
         //private bool HandleTaskMessage(ref MSG msg)
         //{
@@ -245,5 +253,18 @@ namespace XarChat.Native.Win32.Wrapped
         //        return false;
         //    }
         //}
+    }
+
+    public class LogTaskFailureEventArgs : EventArgs
+    {
+        public LogTaskFailureEventArgs(string content, bool fatal)
+        {
+            this.Content = content;
+            this.Fatal = fatal;
+        }
+
+        public string Content { get; }
+
+        public bool Fatal { get; }
     }
 }

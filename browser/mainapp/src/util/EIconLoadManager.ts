@@ -1,5 +1,6 @@
 import { CancellationToken, CancellationTokenSource } from "./CancellationTokenSource";
 import { IDisposable } from "./Disposable";
+import { HostInterop } from "./HostInterop";
 import { PromiseSource } from "./PromiseSource";
 import { BlobObjectURL, URLUtils } from "./URLUtils";
 
@@ -113,15 +114,7 @@ class LoadedEIconImpl implements LoadedEIcon {
     }
 
     private async performActualRetrieval(actualRetrievalCTS: CancellationTokenSource) {
-        const cancellationToken = actualRetrievalCTS.token;
-        const eiconUrl = URLUtils.getEIconUrl(this.eiconName);
-        const fetchResp = await fetch(eiconUrl, {
-            signal: cancellationToken.signal
-        });
-        if (fetchResp.status >= 400) {
-            throw new Error(`failed to fetch eicon, status code ${fetchResp.status}`);
-        }
-        const blob = await fetchResp.blob();
+        const blob = await HostInterop.getEIconDataBlob(this.eiconName, actualRetrievalCTS.token);
 
         this._blob = blob;
         const iw = [...this._issuanceWaiters];

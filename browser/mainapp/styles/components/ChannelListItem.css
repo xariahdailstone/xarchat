@@ -85,6 +85,8 @@
     max-height: 0.6em;
     width: 0.6em;
     height: 0.6em;
+    --iconimage-max-width: 0.6em;
+    --iconimage-max-height: 0.6em;
     color: var(--ping-icon-fill);
     vertical-align: baseline;
     display: inline-block;

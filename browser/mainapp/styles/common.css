@@ -127,5 +127,10 @@
     color: var(--fg-main-textbox-btn-hover);
 }
 
+.theme-select.theme-select-smaller {
+    font-size: 80%;
+    padding: 0.12em 0.6em;
+}
+
 .character-link { cursor: pointer; }
 .hidden { display: none !important; }

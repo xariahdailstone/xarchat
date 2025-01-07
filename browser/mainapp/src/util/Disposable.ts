@@ -12,12 +12,16 @@ export const EmptyDisposable: (IDisposable & Disposable) = {
 };
 
 function isIDisposable(obj: any) {
-    return (typeof obj == "object"
-         && typeof obj.dispose == "function");
+    return (
+        obj != null 
+        && typeof obj == "object"
+        && typeof obj.dispose == "function");
 }
 
 export function isDisposable(obj: any) {
-    return (typeof obj == "object"
+    return (
+        obj != null
+        && typeof obj == "object"
         && typeof obj[Symbol.dispose] == "function");
 }
 

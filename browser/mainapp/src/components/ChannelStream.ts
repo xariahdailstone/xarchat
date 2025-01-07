@@ -404,6 +404,8 @@ export class ChannelMessageCollectionView extends CollectionViewLightweight<KeyV
     }
 
     private createTypingStatusElement(vm: ChannelMessageViewModel): [HTMLElement, IDisposable] {
+        const resultDisposables: IDisposable[] = [];
+
         let elMain = document.createElement("div");
         elMain.classList.add("messageitem");
         elMain.classList.add("typingstatusindicator");
@@ -416,10 +418,12 @@ export class ChannelMessageCollectionView extends CollectionViewLightweight<KeyV
             emptySpan = document.createElement("span");
             HTMLUtils.assignStaticHTMLFragment(emptySpan, "&nbsp;");
         }
+        vm.incrementParsedTextUsage();
+        resultDisposables.push(asDisposable(() => vm.decrementParsedTextUsage()));
         elMessageText.appendChild(vm.text != "" ? vm.parsedText : emptySpan!);
         elMain.appendChild(elMessageText);
 
-        return [elMain, asDisposable()];
+        return [elMain, asDisposable(...resultDisposables)];
     }
 
     private createStandardUserElement(vm: ChannelMessageViewModel): [HTMLElement, IDisposable] {
@@ -547,6 +551,8 @@ export class ChannelMessageCollectionView extends CollectionViewLightweight<KeyV
 
         const elMessageText = document.createElement("span");
         elMessageText.classList.add("messagetext");
+        vm.incrementParsedTextUsage();
+        resultDisposables.push(asDisposable(() => vm.decrementParsedTextUsage()));
         elMessageText.appendChild(vm.parsedText);
         elMain.appendChild(elMessageText);
 
@@ -589,6 +595,8 @@ export class ChannelMessageCollectionView extends CollectionViewLightweight<KeyV
 
         const elMessageText = document.createElement("div");
         elMessageText.classList.add("lognavtext");
+        vm.incrementParsedTextUsage();
+        resultDisposables.push(asDisposable(() => vm.decrementParsedTextUsage()));
         elMessageText.appendChild(vm.parsedText);
         elMessageText.addEventListener("click", () => {
             if (vm.onClick) {

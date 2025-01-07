@@ -5,7 +5,7 @@ import { HostInterop } from "../util/HostInterop.js";
 import { HTMLUtils } from "../util/HTMLUtils.js";
 import { runInAnimationFrame } from "../util/RequestAnimationFrameHook.js";
 import { createStylesheet, setStylesheetAdoption } from "../util/StyleSheetPolyfill.js";
-import { ComponentBase, componentElement } from "./ComponentBase.js";
+import { ComponentBase, componentElement, StyleLoader } from "./ComponentBase.js";
 
 const imageCache = new Map<string, WeakRef<CachedImageInfo>>();
 const freg = new FinalizationRegistry<CachedImageInfoInner>((heldValue) => {
@@ -137,25 +137,25 @@ class CachedImageInfo {
     }
 }
 
-const iconImage2Stylesheet = createStylesheet();
-iconImage2Stylesheet.replaceSync(`
-:host {
-    display: block;
-    contain: paint;
-    /*display: block;
-    position: relative;
-    overflow: hidden;*/
-}
-.main { display: contents; --fgcolor: currentColor; max-width: inherit; max-height: inherit; }
-.main > * { 
-    display: block; 
-    max-width: var(--iconimage-max-width); 
-    max-height: var(--iconimage-max-height); 
-    width: inherit;
-    height: inherit;
-    fill: var(--fgcolor);
-}
-`);
+// const iconImage2Stylesheet = createStylesheet();
+// iconImage2Stylesheet.replaceSync(`
+// :host {
+//     display: block;
+//     contain: paint;
+//     /*display: block;
+//     position: relative;
+//     overflow: hidden;*/
+// }
+// .main { display: contents; --fgcolor: currentColor; max-width: inherit; max-height: inherit; }
+// .main > * { 
+//     display: block; 
+//     max-width: var(--iconimage-max-width); 
+//     max-height: var(--iconimage-max-height); 
+//     width: inherit;
+//     height: inherit;
+//     fill: var(--fgcolor);
+// }
+// `);
 
 @componentElement("x-iconimage")
 export class IconImage extends HTMLElement {
@@ -166,7 +166,14 @@ export class IconImage extends HTMLElement {
         this._sroot = this.attachShadow({ mode: 'closed' });
         HTMLUtils.assignStaticHTMLFragment(this._sroot,
             `<div id="elMain" class="main"></div>`);
-        setStylesheetAdoption(this._sroot, [ iconImage2Stylesheet ]);
+
+        const _styleLoader = new StyleLoader(ss => {
+            setStylesheetAdoption(this._sroot, ss);
+            //(this._sroot as any).adoptedStyleSheets = [...ss];
+        });
+        _styleLoader.addLoad("styles/components/IconImage.css");
+
+        //setStylesheetAdoption(this._sroot, [ iconImage2Stylesheet ]);
     }
 
     private readonly _sroot: ShadowRoot;
