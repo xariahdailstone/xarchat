@@ -25,6 +25,7 @@ using Windows.ApplicationModel.DataTransfer;
 using XarChat.Backend.Features.CommandableWindows;
 using System.Text.Json.Nodes;
 using XarChat.Backend.Features.CrashLogWriter;
+using System.Text.Json;
 
 namespace MinimalWin32Test.UI
 {
@@ -517,6 +518,11 @@ namespace MinimalWin32Test.UI
                 _webView.Settings.IsGeneralAutofillEnabled = false;
                 _webView.Settings.IsReputationCheckingRequired = false;
                 _webView.Settings.IsSwipeNavigationEnabled = false;
+                _webView.DownloadStarting += (o, e) =>
+                {
+                    HandleDownloadOperation(e.DownloadOperation);
+                    e.Handled = true;
+                };
 				_webView.NewWindowRequested += _webView_NewWindowRequested;
 
                 WriteToStartupLog("BrowserWindow.OnHandleCreated - Creating WebViewMemoryUsageManager");
@@ -560,6 +566,82 @@ namespace MinimalWin32Test.UI
                 WriteToStartupLog("BrowserWindow.OnHandleCreated - done");
                 _fullyCreated = true;
             });
+        }
+
+        private void HandleDownloadOperation(CoreWebView2DownloadOperation downloadOperation)
+        {
+            EventHandler<object>? stateChanged = null;
+            var downloadGuid = Guid.NewGuid();
+
+            stateChanged = (o, e) =>
+            {
+                switch (downloadOperation.State)
+                {
+                    case CoreWebView2DownloadState.InProgress:
+                        {
+                            try
+                            {
+                                var jobj = new JsonObject();
+                                jobj["type"] = "downloadStatusUpdate";
+                                jobj["guid"] = downloadGuid.ToString();
+                                jobj["uri"] = downloadOperation.Uri;
+                                jobj["state"] = "InProgress";
+                                jobj["totalBytesToReceive"] = downloadOperation.TotalBytesToReceive;
+                                jobj["bytesReceived"] = downloadOperation.BytesReceived;
+                                jobj["estimatedSecRemaining"] =
+                                    (long)Math.Round((DateTime.Now - downloadOperation.EstimatedEndTime).TotalSeconds);
+                                _webView!.PostWebMessageAsJson(
+                                    JsonSerializer.Serialize(jobj, PublicSourceGenerationContext.Default.JsonObject));
+                            }
+                            catch 
+                            {
+                            }
+                        }
+                        break;
+                    case CoreWebView2DownloadState.Interrupted:
+                        {
+                            try
+                            {
+                                var jobj = new JsonObject();
+                                jobj["type"] = "downloadStatusUpdate";
+                                jobj["guid"] = downloadGuid.ToString();
+                                jobj["uri"] = downloadOperation.Uri;
+                                jobj["state"] = "Interrupted";
+                                jobj["interruptReason"] = downloadOperation.InterruptReason.ToString();
+                                _webView!.PostWebMessageAsJson(
+                                    JsonSerializer.Serialize(jobj, PublicSourceGenerationContext.Default.JsonObject));
+                            }
+                            catch
+                            {
+                            }
+                        }
+                        downloadOperation.StateChanged -= stateChanged;
+                        break;
+                    case CoreWebView2DownloadState.Completed:
+                        {
+                            try
+                            {
+                                var jobj = new JsonObject();
+                                jobj["type"] = "downloadStatusUpdate";
+                                jobj["guid"] = downloadGuid.ToString();
+                                jobj["uri"] = downloadOperation.Uri;
+                                jobj["state"] = "Completed";
+                                _webView!.PostWebMessageAsJson(
+                                    JsonSerializer.Serialize(jobj, PublicSourceGenerationContext.Default.JsonObject));
+                            }
+                            catch
+                            {
+                            }
+                        }
+                        downloadOperation.StateChanged -= stateChanged;
+                        break;
+                }
+            };
+
+
+            downloadOperation.StateChanged += stateChanged;
+            downloadOperation.BytesReceivedChanged += stateChanged;
+            downloadOperation.EstimatedEndTimeChanged += stateChanged;
         }
 
         private bool _fullyCreated = false;

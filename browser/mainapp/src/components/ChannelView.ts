@@ -36,6 +36,12 @@ export class ChannelView extends StageViewComponent<ChannelViewModel> {
                 elTextBox.focusTextBox();
             }    
         });
+
+        this.watchExpr(vm => vm, vm => {
+            this.elMain.classList.toggle("is-channel", (vm instanceof ChatChannelViewModel));
+            this.elMain.classList.toggle("is-pmconvo", (vm instanceof PMConvoChannelViewModel));
+            this.elMain.classList.toggle("is-console", (vm instanceof ConsoleChannelViewModel));
+        });
     }
 
     override viewActivated(): void {

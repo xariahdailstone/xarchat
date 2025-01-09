@@ -29,6 +29,7 @@ export class ChannelStream extends ComponentBase<ChannelViewModel> {
         super();
 
         HTMLUtils.assignStaticHTMLFragment(this.elMain, `
+            <x-channelfiltersbar class="filtersbar"></x-channelfiltersbar>
             <div class="messagecontainerouter">
                 <x-channelmessagecollectionview modelpath="messages" id="elCollectionView">
                     <div class="messagecontainer" id="elMessageContainer">

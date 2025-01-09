@@ -11,10 +11,10 @@
 
     display: grid;
     grid-template-rows: 6px auto;
-    grid-template-columns: auto auto auto 1fr auto auto auto;
+    grid-template-columns: auto auto auto 1fr auto auto auto auto;
     grid-template-areas: 
-        "topsizer topsizer topsizer topsizer topsizer topsizer topsizer"
-        "title brandtag update-notice . minimize maximize close";
+        "topsizer topsizer topsizer topsizer topsizer topsizer topsizer topsizer"
+        "title brandtag update-notice . status-message minimize maximize close";
 
     background: var(--bg-level-2);
     color: var(--fg-level-2);
@@ -58,6 +58,22 @@
     margin-left: 20px;
     cursor: pointer;
     -webkit-app-region: no-drag;
+}
+
+.status-message {
+    grid-area: status-message; 
+    margin-right: 10px;
+    font-size: 90%;
+    white-space: nowrap;
+    overflow: hidden;
+}
+#elMain.status-message-shown .status-message {
+    opacity: 1;
+    transition: opacity 0.2s;
+}
+#elMain:not(.status-message-shown) .status-message {
+    opacity: 0;
+    transition: opacity 0.5s;
 }
 
 #elMinimize {

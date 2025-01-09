@@ -106,6 +106,9 @@ export class AppViewModel extends ObservableBase {
     @observableProperty
     initialized: boolean = false;
 
+    @observableProperty
+    statusMessage: string | null = "Test Status Message";
+
     zoomNotifyPopup: UIZoomNotifyPopupViewModel | null = null;
 
     get interfaceZoom(): number { return +(this.configBlock.get("uiZoom") ?? 1); }

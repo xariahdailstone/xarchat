@@ -121,7 +121,7 @@ export class ChatChannelViewModel extends ChannelViewModel {
     }
 
     private _scc?: SavedChatStateJoinedChannel;
-    
+
     override get showFilterClasses() { return super.showFilterClasses; }
     override set showFilterClasses(value: string[]) {
         super.showFilterClasses = value;
@@ -541,7 +541,7 @@ export class ChatChannelViewModel extends ChannelViewModel {
                 }
             ),
             new SlashCommandViewModel(
-                ["desc", "description"],
+                ["desc", "description", "setdescription"],
                 "Update Channel Description",
                 "Updates the description of this channel to the specified text (requires channel op status).",
                 ["text"],
