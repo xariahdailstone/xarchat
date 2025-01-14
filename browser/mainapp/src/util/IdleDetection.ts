@@ -25,14 +25,20 @@ export class IdleDetection implements IDisposable {
     get userState() { return this._userState; }
     get screenState() { return this._screenState; }
 
+    private _disposed: boolean = false;
     dispose() {
-        if (this._hostObject) {
-            this._hostObject.dispose();
-            this._hostObject = null;
+        if (!this._disposed) {
+            this._disposed = true;
+            if (this._hostObject) {
+                this._hostObject.dispose();
+                this._hostObject = null;
+            }
         }
     }
 
     [Symbol.dispose]() { this.dispose(); }
+
+    get isDisposed() { return this._disposed; }
 
     private setHostObject(obj: IDisposable) {
         this._hostObject = obj;

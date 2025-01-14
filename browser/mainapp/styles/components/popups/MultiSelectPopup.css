@@ -1,0 +1,21 @@
+.item {
+    display: flex;
+    flex-direction: row;
+    padding-top: 6px;
+    padding-bottom: 6px;
+    cursor: pointer;
+
+    color: var(--fg-level-3);
+    background-color: var(--bg-level-3);
+}
+.item:hover {
+    color: var(--fg-level-3-highlight);
+    background-color: var(--bg-level-3-highlight);
+}
+.item-checkbox {
+    margin-left: 8px;
+    margin-right: 8px;
+}
+.item-text {
+    margin-right: 8px;
+}

@@ -45,6 +45,8 @@ export class UpdateCheckerClient implements IDisposable {
 
     [Symbol.dispose]() { this.dispose(); }
 
+    get isDisposed() { return this._disposed; }
+
     private setHostObject(obj: IDisposable) {
         this._hostObject = obj;
     }

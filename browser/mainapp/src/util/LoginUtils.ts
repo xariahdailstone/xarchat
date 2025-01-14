@@ -96,7 +96,7 @@ export class LoginUtils {
             }
 
             for (let chp of savedChatState.joinedChannels) {
-                if (cc.disposed) {
+                if (cc.isDisposed) {
                     throw new Error("Disconnected during connect");
                 }
 
@@ -110,7 +110,7 @@ export class LoginUtils {
                         await cc.joinChannelAsync(channelName, chp.title);
                     }
                     catch (e) {
-                        if (!cc.disposed) {
+                        if (!cc.isDisposed) {
                             const ch = ns.getOrCreateChannel(channelName, channelTitle);
                             if (ch) {
                                 ch.presenceState = ChatChannelPresenceState.NOT_IN_CHANNEL;
@@ -177,7 +177,7 @@ export class LoginUtils {
         // Reconnect pending channels
         logger.logDebug("reconnectAsync: reconnecting pending channels...");
         for (let ch of [...activeLoginViewModel.pinnedChannels, ...activeLoginViewModel.unpinnedChannels]) {
-            if (cc.disposed) {
+            if (cc.isDisposed) {
                 throw new Error("Disconnected during reconnect");
             }
 
@@ -187,7 +187,7 @@ export class LoginUtils {
                     await cc.joinChannelAsync(ch.name, ch.title);
                 }
                 catch (e) {
-                    if (!cc.disposed) {
+                    if (!cc.isDisposed) {
                         logger.logDebug("reconnectAsync: failed to join channel...", ch.name, ch.title);
                         ch.presenceState = ChatChannelPresenceState.NOT_IN_CHANNEL;
                         ch.addSystemMessage(new Date(), `Could not reconnect to this channel: ${CatchUtils.getMessage(e)}`);

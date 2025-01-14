@@ -1,5 +1,5 @@
 import { CharacterName } from "../shared/CharacterName.js";
-import { AddMessageOptions, ChannelMessageType, ChannelMessageViewModel, ChannelViewModel, PendingMessageSendViewModel, PendingMessageType } from "./ChannelViewModel.js";
+import { AddMessageOptions, ChannelMessageType, ChannelMessageViewModel, ChannelViewModel, MultiSelectChannelFilterOptionItem, MultiSelectChannelFilterOptions, PendingMessageSendViewModel, PendingMessageType, SingleSelectChannelFilterOptions } from "./ChannelViewModel.js";
 import { ActiveLoginViewModel } from "./ActiveLoginViewModel.js";
 import { CharacterSet } from "../shared/CharacterSet.js";
 import { observableProperty } from "../util/ObservableBase.js";
@@ -14,6 +14,9 @@ import { TypingStatus } from "../shared/TypingStatus.js";
 import { SavedChatStatePMConvo } from "../settings/AppSettings.js";
 import { DateAnchor } from "../util/HostInteropLogSearch.js";
 import { IDisposable } from "../util/Disposable.js";
+import { IterableUtils } from "../util/IterableUtils.js";
+import { ChannelFiltersViewModel } from "./ChannelFiltersViewModel.js";
+import { ObservableExpression } from "../util/ObservableExpression.js";
 
 
 export class PMConvoChannelViewModelSortKey { 
@@ -58,25 +61,86 @@ export class PMConvoChannelViewModel extends ChannelViewModel {
                 }
             }));
 
-        const filteredSCC = parent.savedChatState.pmConvos.filter(x => x.character.equals(character));
-        if (filteredSCC.length == 0) {
-            this._scc = new SavedChatStatePMConvo({ character: character.value, lastInteraction: this.lastInteractionAt });
+        this.channelFilters = new ChannelFiltersViewModel(this);
+        this.channelFilters.addCategory("chattext", "Chat (Text)", "Normal chat messages.");
+        this.channelFilters.addCategory("chatemote", "Chat (Emote)", "Chat emote messages.");
+        this.channelFilters.addCategory("roll", "Dice Rolls", "Dice Rolls");
+        this.channelFilters.addCategory("system", "System Messages", "System Messages");
+        const setupDefaultFilters = () => {
+            const nfAll = this.channelFilters!.addNamedFilter("All", [ "chattext", "chatemote", "roll", "system" ]);
+            this.channelFilters!.selectedFilter = nfAll;
+        };
+
+        const filteredSCC = IterableUtils.asQueryable(parent.savedChatState.pmConvos.filter(x => x.character.equals(character))).firstOrNull();
+        if (!filteredSCC) {
+            this._scc = new SavedChatStatePMConvo(null, { character: character.value, lastInteraction: this.lastInteractionAt });
             //parent.savedChatState.pmConvos.push(this._scc);
+            setupDefaultFilters();
         }
         else {
-            this._scc = filteredSCC[0];
+            this._scc = filteredSCC;
             this.lastInteractionAt = this._scc.lastInteraction;
+            this.channelFilters.loadFromSCC(this._scc.namedFilters, () => setupDefaultFilters());
         }
+
+        const ee = new ObservableExpression(() => this.channelFilters!.sccData,
+            (v) => { this._scc!.namedFilters = v ?? null; },
+            (err) => { });
 
         this._characterStatusListener = this.activeLoginViewModel.characterSet.addStatusListener(character, (cs) => {
             this.contrapartyTypingStatusUpdated(cs.typingStatus);
         });
+
+        
+        // if (filteredSCC && filteredSCC.filters) {
+        //     this.showFilterClasses = filteredSCC.filters;
+        // }
+        this.updateFilterOptions();
+    }
+
+    override dispose(): void {
+        this._characterStatusListener.dispose();
+    }
+
+    private updateFilterOptions() {
+        const filterSelectOptions: MultiSelectChannelFilterOptionItem[] = [];
+        filterSelectOptions.push(
+            new MultiSelectChannelFilterOptionItem("chattext", "Chat (Text)"),
+            new MultiSelectChannelFilterOptionItem("chatemote", "Chat (Emote)"),
+            new MultiSelectChannelFilterOptionItem("roll", "Dice Rolls"),
+            new MultiSelectChannelFilterOptionItem("system", "System Messages")
+        );
+        for (let i of filterSelectOptions) {
+            if (this.showFilterClasses) {
+                i.isSelected = this.showFilterClasses.indexOf(i.value) != -1;
+            }
+            else {
+                i.isSelected = true;
+            }
+        }
+        const fo = new MultiSelectChannelFilterOptions(this, (selectedValues) => {
+            for (let i of filterSelectOptions) {
+                i.isSelected = (selectedValues.indexOf(i.value) != -1);
+            }
+            this.showFilterClasses = selectedValues;
+        });
+        fo.items.push(...filterSelectOptions);
+        
+        this.filterOptions = fo;
     }
 
     private readonly _characterStatusListener: IDisposable;
 
     private _scc: SavedChatStatePMConvo;
     get savedChatStatePMConvo() { return this._scc; }
+
+    override get showFilterClasses() { return super.showFilterClasses; }
+    override set showFilterClasses(value: string[]) {
+        super.showFilterClasses = value;
+        // if (this._scc) {
+        //     this._scc.filters = value;
+        // }
+    }
 
     @observableProperty
     readonly character: CharacterName;

@@ -620,10 +620,11 @@ export class ChatViewModelSink implements ChatConnectionSink {
 
     charactersStatusUpdated(statuses: Partial<CharacterStatus>[], isInitial: boolean, isOnlineOffline: boolean): void {
         const ns = this.viewModel;
+        const asOf = new Date();
         for (let s of statuses) {
             if (s.characterName) {
                 const previousStatus = ns.characterSet.getCharacterStatus(s.characterName!);
-                const newStatus = ns.characterSet.setCharacterStatus(s.characterName!, s);
+                const newStatus = ns.characterSet.setCharacterStatus(s.characterName!, s, isInitial ? "login" : asOf);
 
                 const skipNotification = newStatus.equals(previousStatus) ||
                     newStatus.status == OnlineStatus.OFFLINE ||

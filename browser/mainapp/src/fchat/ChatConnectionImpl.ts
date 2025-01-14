@@ -364,7 +364,7 @@ export class ChatConnectionImpl implements ChatConnection {
 
     [Symbol.dispose]() { this.dispose(); }
 
-    get disposed() { return this._disposed; }
+    get isDisposed() { return this._disposed; }
 
     ondisposed: ((() => void)  | null) = null;
 

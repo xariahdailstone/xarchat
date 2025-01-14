@@ -343,7 +343,7 @@
 .kink-list-item-arrow {
     color: var(--kink-arrow-color);
     opacity: var(--kink-arrow-opacity);
-    width: 1lh;
+    width: 1.2em;
     text-align: center;
 }
 .kink-list-item.kink-list-iscustom .kink-list-item-name {
@@ -352,13 +352,14 @@
 }
 
 .kink-list-item .collapsearrow {
-    max-height: 0.8lh;
-    max-width: 0.8lh;
-    margin: 0.1lh;
+    max-height: 0.95em;
+    max-width: 0.95em;
+    margin: 0.15em;
+    border-radius: 0.6em;
+
     transition: transform 0.25s;
     background-color: var(--custom-kink-color);
     color: black;
-    border-radius: 0.5lh;
 }
 .kink-list-item .collapsearrow.collapsed {
     transform: rotate(-90deg);

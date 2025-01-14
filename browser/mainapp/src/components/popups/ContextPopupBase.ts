@@ -159,9 +159,13 @@ export abstract class ContextPopupBase<TViewModel extends ContextPopupViewModel>
     }
 
     protected getPositionStrategies() { return POSITION_STRATEGIES; }
+    protected freezePosition: boolean = false;
+    private positionFrozen: boolean = false;
 
     private _positionWCM = new WhenChangeManager();
     private positionPopup() {
+        if (this.positionFrozen) { return; }
+        
         const popFromElement = this.viewModel?.contextElement;
         const isConnected = this.isComponentConnected;
 
@@ -200,6 +204,9 @@ export abstract class ContextPopupBase<TViewModel extends ContextPopupViewModel>
 
                     this.style.top = `${displayRect?.y ?? 0}px`;
                     this.style.left = `${displayRect?.x ?? 0}px`;
+                    if (this.freezePosition) {
+                        this.positionFrozen = true;
+                    }
                     //this.style.maxWidth = `${displayRect?.width ?? vpSize.width}px`;
                     //this.style.maxHeight = `${displayRect?.height ?? vpSize.height}px`;
                 }

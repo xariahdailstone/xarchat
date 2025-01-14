@@ -9,14 +9,14 @@ import { ActiveLoginViewModel } from "../viewmodel/ActiveLoginViewModel";
 import { AddChannelsItemViewModel, AddChannelsViewModel } from "../viewmodel/AddChannelsViewModel";
 import { CollectionViewLightweight } from "./CollectionViewLightweight";
 import { ComponentBase, componentElement } from "./ComponentBase";
-import { stageViewFor } from "./Stage";
+import { StageViewComponent, stageViewFor } from "./Stage";
 
 const UP_ARROW = "&#x25B4;";
 const DOWN_ARROW = "&#x25BE;";
 
 @componentElement("x-addchannelsview")
 @stageViewFor(AddChannelsViewModel)
-export class AddChannelsView extends ComponentBase<AddChannelsViewModel> {
+export class AddChannelsView extends StageViewComponent<AddChannelsViewModel> {
     constructor() {
         super();
 

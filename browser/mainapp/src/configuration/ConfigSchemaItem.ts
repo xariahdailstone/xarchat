@@ -527,7 +527,10 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     description: "A character was promoted or demoted to/from F-Chat server operator status by the chat administrators.",
                     type: "notifroutes",
                     defaultValue: "console,*currenttab,pmconvo",
-                    configBlockKey: getFullRoutedNotificationConfigName("serverOpAddRemove")
+                    configBlockKey: getFullRoutedNotificationConfigName("serverOpAddRemove"),
+                    notifRouteOptions: {
+                        hasCharacterContext: true
+                    }
                 },
                 {
                     scope: getScopeArray(["global", "char"]),
@@ -545,7 +548,10 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     description: "A friend updated their character status.",
                     type: "notifroutes",
                     defaultValue: "console,currenttab,pmconvo",
-                    configBlockKey: getFullRoutedNotificationConfigName("friendStatusUpdate")
+                    configBlockKey: getFullRoutedNotificationConfigName("friendStatusUpdate"),
+                    notifRouteOptions: {
+                        hasCharacterContext: true
+                    }
                 },
                 {
                     scope: getScopeArray(["global", "char"]),
@@ -554,7 +560,10 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     description: "A bookmark updated their character status.",
                     type: "notifroutes",
                     defaultValue: "console,currenttab,pmconvo",
-                    configBlockKey: getFullRoutedNotificationConfigName("bookmarkStatusUpdate")
+                    configBlockKey: getFullRoutedNotificationConfigName("bookmarkStatusUpdate"),
+                    notifRouteOptions: {
+                        hasCharacterContext: true
+                    }
                 },
                 {
                     scope: getScopeArray(["global", "char"]),
@@ -563,7 +572,10 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     description: "An interest updated their character status.",
                     type: "notifroutes",
                     defaultValue: "console,currenttab,pmconvo",
-                    configBlockKey: getFullRoutedNotificationConfigName("interestStatusUpdate")
+                    configBlockKey: getFullRoutedNotificationConfigName("interestStatusUpdate"),
+                    notifRouteOptions: {
+                        hasCharacterContext: true
+                    }
                 },
                 {
                     scope: getScopeArray(["global", "char"]),
@@ -572,7 +584,10 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     description: "A friend came online or went offline.",
                     type: "notifroutes",
                     defaultValue: "console,currenttab,pmconvo",
-                    configBlockKey: getFullRoutedNotificationConfigName("friendOnlineChange")
+                    configBlockKey: getFullRoutedNotificationConfigName("friendOnlineChange"),
+                    notifRouteOptions: {
+                        hasCharacterContext: true
+                    }
                 },
                 {
                     scope: getScopeArray(["global", "char"]),
@@ -581,7 +596,10 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     description: "A bookmark came online or went offline.",
                     type: "notifroutes",
                     defaultValue: "console,currenttab,pmconvo",
-                    configBlockKey: getFullRoutedNotificationConfigName("bookmarkOnlineChange")
+                    configBlockKey: getFullRoutedNotificationConfigName("bookmarkOnlineChange"),
+                    notifRouteOptions: {
+                        hasCharacterContext: true
+                    }
                 },
                 {
                     scope: getScopeArray(["global", "char"]),
@@ -590,7 +608,22 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     description: "An interest came online or went offline.",
                     type: "notifroutes",
                     defaultValue: "console,currenttab,pmconvo",
-                    configBlockKey: getFullRoutedNotificationConfigName("interestOnlineChange")
+                    configBlockKey: getFullRoutedNotificationConfigName("interestOnlineChange"),
+                    notifRouteOptions: {
+                        hasCharacterContext: true
+                    }
+                },
+                {
+                    scope: getScopeArray(["global", "char"]),
+                    id: getFullRoutedNotificationConfigName("interestOnlineChange"),
+                    title: "Anyone Else Online/Offline",
+                    description: "Someone who is not a friend, bookmark, or interest came online or went offline.",
+                    type: "notifroutes",
+                    defaultValue: "pmconvo",
+                    configBlockKey: getFullRoutedNotificationConfigName("interestOnlineChange"),
+                    notifRouteOptions: {
+                        hasCharacterContext: true
+                    }
                 },
                 {
                     scope: getScopeArray(["global", "char"]),
@@ -613,6 +646,7 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     defaultValue: "targetchannel",
                     configBlockKey: getFullRoutedNotificationConfigName("otherKicked"),
                     notifRouteOptions: {
+                        hasCharacterContext: true,
                         hasChannelContext: true
                     }
                 },

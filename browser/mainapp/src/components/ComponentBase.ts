@@ -122,7 +122,7 @@ export abstract class ComponentBase<TViewModel> extends HTMLElement {
 
         const elMain = document.createElement("div");
         elMain.id = "elMain";
-        elMain.style.display = "none";
+        elMain.style.opacity = "0";
         this._sroot.appendChild(elMain);
 
         this.elMain = elMain;
@@ -135,7 +135,7 @@ export abstract class ComponentBase<TViewModel> extends HTMLElement {
         let commonLoaded = false;
         let compLoaded = false;
         this.addMultipleStyleSheetsAsync(this.requiredStylesheets).then(() => {
-            this.elMain.style.removeProperty("display");
+            this.elMain.style.removeProperty("opacity");
         });
 
         this.uniqueId = ComponentBase._nextUniqueId++;
@@ -732,6 +732,8 @@ export class ComponentCharacterStatusListener implements IDisposable {
     }
 
     [Symbol.dispose]() { this.dispose(); }
+
+    get isDisposed() { return this._disposed; }
 
     private _characterName: CharacterName | null = null;
 

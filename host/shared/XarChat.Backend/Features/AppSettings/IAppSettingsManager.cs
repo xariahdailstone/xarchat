@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 using static XarChat.Backend.UrlHandlers.AppSettings.AppSettingsExtensions;
 
@@ -11,7 +12,9 @@ namespace XarChat.Backend.Features.AppSettings
     {
         AppSettingsData GetAppSettingsData();
 
-        Task UpdateAppSettingsData(AppSettingsData appSettingsData, CancellationToken cancellationToken);
+        JsonObject GetAppSettingsDataRaw();
+
+        Task UpdateAppSettingsData(JsonObject jsonObject, CancellationToken cancellationToken);
     }
 
     public interface IAppSettingsDataProtectionManager

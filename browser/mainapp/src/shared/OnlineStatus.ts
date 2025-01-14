@@ -1,4 +1,6 @@
+import { StringUtils } from "../util/StringUtils";
 import { CharacterGender } from "./CharacterGender";
+import { StatusLastChangeInfo } from "./CharacterSet";
 
 export enum OnlineStatus {
     OFFLINE,
@@ -78,6 +80,18 @@ export class OnlineStatusConvert {
                 return "Crown";
             default:
                 return null;
+        }
+    }
+
+    static toStringWithFor(status: OnlineStatus, statusLastChanged?: StatusLastChangeInfo) {
+        if (statusLastChanged === undefined || statusLastChanged === null || statusLastChanged == "login") {
+            return OnlineStatusConvert.toString(status);
+        }
+        else {
+            const baseStr = OnlineStatusConvert.toString(status);
+            const elapsedMs = (new Date()).getTime() - statusLastChanged.getTime();
+            const vss = StringUtils.msToVeryShortString(elapsedMs, "for %", "just now");
+            return `${baseStr} ${vss}`;
         }
     }
 }

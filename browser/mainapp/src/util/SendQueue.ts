@@ -12,11 +12,17 @@ export class SendQueue implements IDisposable {
     readonly _cts: CancellationTokenSource;
     readonly _taskQueue: (SendQueueTask & WithPromiseSource)[] = [];
 
+    private _disposed: boolean = false;
     dispose() {
-        this._cts.cancel();
+        if (!this._disposed) {
+            this._disposed = true;
+            this._cts.cancel();
+        }
     }
 
     [Symbol.dispose]() { this.dispose(); }
+
+    get isDisposed() { return this._disposed; }
 
     executeAsync(task: SendQueueTask): Promise<void> {
         if (this._cts.isCancellationRequested) {
