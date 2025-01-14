@@ -11,7 +11,7 @@ import { ChatChannelMessageMode, ChatChannelViewModel } from "../viewmodel/ChatC
 import { ConsoleChannelViewModel } from "../viewmodel/ConsoleChannelViewModel.js";
 import { PMConvoChannelViewModel } from "../viewmodel/PMConvoChannelViewModel.js";
 import { ChannelDescriptionPopupViewModel } from "../viewmodel/popups/ChannelDescriptionPopupViewModel.js";
-import { ChannelHeaderFilter } from "./ChannelHeaderFilter.js";
+//import { ChannelHeaderFilter } from "./ChannelHeaderFilter.js";
 import { ComponentBase, componentElement } from "./ComponentBase.js";
 import { StatusDotLightweight } from "./StatusDot.js";
 
@@ -36,7 +36,9 @@ export class ChannelHeader extends ComponentBase<ChannelViewModel> {
                 </button>
             </div>
 
+            <!--
             <x-channelheaderfilter id="elFilter"></x-channelheaderfilter>
+            -->
 
             <!--
             <div id="elFilter">
@@ -57,7 +59,7 @@ export class ChannelHeader extends ComponentBase<ChannelViewModel> {
         const elIcon = this.$("elIcon") as HTMLImageElement;
         const elTitle = this.$("elTitle") as HTMLDivElement;
         const elOnlineStatusContainer = this.$("elOnlineStatusContainer") as HTMLDivElement;
-        const elFilter = this.$("elFilter") as ChannelHeaderFilter;
+        //const elFilter = this.$("elFilter") as ChannelHeaderFilter;
         const elFilterDropdown = this.$("elFilterDropdown") as HTMLSelectElement;
         const elConfigIconContainer = this.$("elConfigIconContainer") as HTMLDivElement;
         const elDescriptionArea = this.$("elDescriptionArea") as HTMLDivElement;
@@ -93,12 +95,12 @@ export class ChannelHeader extends ComponentBase<ChannelViewModel> {
                     mode = "none";
                     break;
             }
-            elFilter.setAttribute("data-messagemode", mode);
+            //elFilter.setAttribute("data-messagemode", mode);
         });
 
-        this.watchExpr(vm => vm.filterOptions, fo => {
-            elFilter.viewModel = fo ?? null;
-        });
+        // this.watchExpr(vm => vm.filterOptions, fo => {
+        //     elFilter.viewModel = fo ?? null;
+        // });
 
         let pastDescription: IDisposable | null = null;
         const setDescription = (rawDescStr: string) => {

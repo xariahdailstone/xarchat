@@ -12,8 +12,15 @@ import { TypingStatus } from "./TypingStatus.js";
 
 export class CharacterSet {
 
-    static emptyStatus(name: CharacterName, ignoreSet?: CharacterNameSet, lingeringGender?: (CharacterGender | null)) {
-        return new CharacterStatusImpl(name, OnlineStatus.OFFLINE, "", TypingStatus.NONE, lingeringGender != null ? lingeringGender : CharacterGender.NONE, 
+    static emptyStatus(name: CharacterName, ignoreSet?: CharacterNameSet, lingeringGender?: (LingeringCharacterGender | null)) {
+        return new CharacterStatusImpl(
+            name, 
+            OnlineStatus.OFFLINE,
+            lingeringGender != null ? lingeringGender.wentOfflineAt : null,
+            "", 
+            null,
+            TypingStatus.NONE, 
+            lingeringGender != null ? lingeringGender.gender : CharacterGender.NONE, 
             ignoreSet ? ignoreSet.has(name) : false);
     }
 
@@ -41,13 +48,19 @@ export class CharacterSet {
     private readonly _size: ObservableValue<number> = new ObservableValue<number>(0);
     get size(): number { return this._size.value; }
 
-    setCharacterStatus(characterName: CharacterName, status: Partial<CharacterStatus>): CharacterStatus {
+    setCharacterStatus(characterName: CharacterName, status: Partial<CharacterStatus>, asOf?: StatusLastChangeInfo): CharacterStatus {
         const existingStatus = this.getCharacterStatus(characterName);
+
+        if (asOf === undefined) {
+            asOf = new Date();
+        }
 
         const newStatus = new CharacterStatusImpl(
             characterName,
             (status.status != null) ? status.status : existingStatus.status,
+            (status.status != null && status.status != existingStatus.status && asOf != null) ? (asOf ?? null) : existingStatus.statusLastChanged,
             (status.statusMessage != null) ? status.statusMessage : existingStatus.statusMessage,
+            (status.statusMessage != null && status.statusMessage != existingStatus.statusMessage && asOf != null) ? (asOf ?? null) : existingStatus.statusMessageLastChanged,
             (status.typingStatus != null) ? status.typingStatus : existingStatus.typingStatus,
             (status.gender != null) ? status.gender : existingStatus.gender,
             (status.ignored != null) ? status.ignored : existingStatus.ignored
@@ -75,7 +88,7 @@ export class CharacterSet {
         return newStatus;
     }
 
-    getCharacterStatus(characterName: CharacterName): CharacterStatus {
+    getCharacterStatus(characterName: CharacterName): CharacterStatusWithLastChangedInfo {
         const result = this._statuses.get(characterName);
         if (result) {
             Observable.publishNamedRead(`cs-${characterName.canonicalValue}`, result);
@@ -118,7 +131,7 @@ export class CharacterSet {
             });
     }
 
-    private characterStatusUpdated(newStatus: CharacterStatus, previousStatus: CharacterStatus) {
+    private characterStatusUpdated(newStatus: CharacterStatusWithLastChangedInfo, previousStatus: CharacterStatus) {
         const characterName = newStatus.characterName;
         const listeners = this._statusListeners.get(characterName);
         if (listeners) {
@@ -144,6 +157,7 @@ export class CharacterSet {
 interface LingeringCharacterGender {
     readonly characterName: CharacterName;
     readonly gender: CharacterGender;
+    readonly wentOfflineAt: Date;
     readonly expiresAt: number;
 }
 
@@ -158,11 +172,20 @@ export interface CharacterStatus {
     equals(cs: CharacterStatus | null): boolean;
 }
 
-class CharacterStatusImpl implements CharacterStatus {
+export type StatusLastChangeInfo = null | Date | "login";
+
+export interface CharacterStatusWithLastChangedInfo extends CharacterStatus {
+    readonly statusLastChanged: StatusLastChangeInfo;
+    readonly statusMessageLastChanged: StatusLastChangeInfo;
+}
+
+class CharacterStatusImpl implements CharacterStatusWithLastChangedInfo {
     constructor(
         public readonly characterName: CharacterName,
         public readonly status: OnlineStatus,
+        public readonly statusLastChanged: StatusLastChangeInfo,
         public readonly statusMessage: string,
+        public readonly statusMessageLastChanged: StatusLastChangeInfo,
         public readonly typingStatus: TypingStatus,
         public readonly gender: CharacterGender,
         public readonly ignored: boolean)
@@ -181,10 +204,10 @@ class CharacterStatusImpl implements CharacterStatus {
     }
 }
 
-export type CharacterStatusChangeHandler = (newStatus: CharacterStatus, previousStatus: CharacterStatus) => void;
+export type CharacterStatusChangeHandler = (newStatus: CharacterStatusWithLastChangedInfo, previousStatus: CharacterStatus) => void;
 
 class LingeringGenderSet {
-    private static readonly RETAIN_FOR_MS = 1000 * 5;
+    private static readonly RETAIN_FOR_MS = 1000 * 60 * 5;
 
     constructor() {
     }
@@ -193,9 +216,9 @@ class LingeringGenderSet {
     private _nextExpireAt: number | null = null;
     private _nextExpireTimeoutHandle: number | null = null;
 
-    tryGet(name: CharacterName): CharacterGender | null {
+    tryGet(name: CharacterName): LingeringCharacterGender | null {
         const res = this._lingeringGenders.get(name);
-        return res ? res.gender : null;
+        return res ?? null;
     }
 
     set(name: CharacterName, gender: CharacterGender) {
@@ -203,6 +226,7 @@ class LingeringGenderSet {
         this._lingeringGenders.set(name, {
             characterName: name,
             expiresAt: myExpiresAt,
+            wentOfflineAt: new Date(),
             gender: gender
         });
         this.setNextExpireAt(myExpiresAt);

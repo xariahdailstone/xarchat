@@ -15,6 +15,8 @@ import { SavedChatStatePMConvo } from "../settings/AppSettings.js";
 import { DateAnchor } from "../util/HostInteropLogSearch.js";
 import { IDisposable } from "../util/Disposable.js";
 import { IterableUtils } from "../util/IterableUtils.js";
+import { ChannelFiltersViewModel } from "./ChannelFiltersViewModel.js";
+import { ObservableExpression } from "../util/ObservableExpression.js";
 
 
 export class PMConvoChannelViewModelSortKey { 
@@ -59,26 +61,40 @@ export class PMConvoChannelViewModel extends ChannelViewModel {
                 }
             }));
 
-        this.showFilterClasses = [ "chattext", "chatemote", "roll", "system" ];
+        this.channelFilters = new ChannelFiltersViewModel(this);
+        this.channelFilters.addCategory("chattext", "Chat (Text)", "Normal chat messages.");
+        this.channelFilters.addCategory("chatemote", "Chat (Emote)", "Chat emote messages.");
+        this.channelFilters.addCategory("roll", "Dice Rolls", "Dice Rolls");
+        this.channelFilters.addCategory("system", "System Messages", "System Messages");
+        const setupDefaultFilters = () => {
+            const nfAll = this.channelFilters!.addNamedFilter("All", [ "chattext", "chatemote", "roll", "system" ]);
+            this.channelFilters!.selectedFilter = nfAll;
+        };
 
         const filteredSCC = IterableUtils.asQueryable(parent.savedChatState.pmConvos.filter(x => x.character.equals(character))).firstOrNull();
         if (!filteredSCC) {
             this._scc = new SavedChatStatePMConvo(null, { character: character.value, lastInteraction: this.lastInteractionAt });
             //parent.savedChatState.pmConvos.push(this._scc);
+            setupDefaultFilters();
         }
         else {
             this._scc = filteredSCC;
             this.lastInteractionAt = this._scc.lastInteraction;
+            this.channelFilters.loadFromSCC(this._scc.namedFilters, () => setupDefaultFilters());
         }
+
+        const ee = new ObservableExpression(() => this.channelFilters!.sccData,
+            (v) => { this._scc!.namedFilters = v ?? null; },
+            (err) => { });
 
         this._characterStatusListener = this.activeLoginViewModel.characterSet.addStatusListener(character, (cs) => {
             this.contrapartyTypingStatusUpdated(cs.typingStatus);
         });
 
         
-        if (filteredSCC && filteredSCC.filters) {
-            this.showFilterClasses = filteredSCC.filters;
-        }
+        // if (filteredSCC && filteredSCC.filters) {
+        //     this.showFilterClasses = filteredSCC.filters;
+        // }
         this.updateFilterOptions();
     }
 
@@ -121,9 +137,9 @@ export class PMConvoChannelViewModel extends ChannelViewModel {
     override get showFilterClasses() { return super.showFilterClasses; }
     override set showFilterClasses(value: string[]) {
         super.showFilterClasses = value;
-        if (this._scc) {
-            this._scc.filters = value;
-        }
+        // if (this._scc) {
+        //     this._scc.filters = value;
+        // }
     }
 
     @observableProperty

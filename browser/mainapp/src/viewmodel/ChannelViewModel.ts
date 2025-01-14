@@ -23,6 +23,7 @@ import { ObservableKeyExtractedOrderedDictionary, ObservableOrderedDictionary, O
 import { StringUtils } from "../util/StringUtils.js";
 import { ActiveLoginViewModel } from "./ActiveLoginViewModel.js";
 import { AppNotifyEventType, AppViewModel } from "./AppViewModel.js";
+import { ChannelFiltersViewModel } from "./ChannelFiltersViewModel.js";
 import { MultiSelectPopupViewModel } from "./popups/MultiSelectPopupViewModel.js";
 import { SlashCommandViewModel } from "./SlashCommandViewModel.js";
 
@@ -249,6 +250,9 @@ export abstract class ChannelViewModel extends ObservableBase implements IDispos
 
     @observableProperty
     textBoxToolbarShown: boolean = false;
+
+    @observableProperty
+    channelFilters: ChannelFiltersViewModel | null = null;
 
     private readonly _filterClassesToShow: Set<string> = new Set(["all"]);
 

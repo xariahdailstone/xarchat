@@ -8,7 +8,7 @@ import { OnlineStatus } from "../shared/OnlineStatus.js";
 import { ObservableKeyExtractedOrderedDictionary, ObservableOrderedDictionary, ObservableOrderedDictionaryImpl } from "../util/ObservableKeyedLinkedList.js";
 import { IDisposable, asDisposable } from "../util/Disposable.js";
 import { HostInterop, LogMessageType } from "../util/HostInterop.js";
-import { SavedChatState, SavedChatStateJoinedChannel } from "../settings/AppSettings.js";
+import { RawSavedChatStateNamedFilterEntry, RawSavedChatStateNamedFilterMap, SavedChatState, SavedChatStateJoinedChannel } from "../settings/AppSettings.js";
 import { SendQueue } from "../util/SendQueue.js";
 import { TaskUtils } from "../util/TaskUtils.js";
 import { AppNotifyEventType } from "./AppViewModel.js";
@@ -19,6 +19,8 @@ import { DialogButtonStyle } from "./dialogs/DialogViewModel.js";
 import { KeyCodes } from "../util/KeyCodes.js";
 import { SlashCommandViewModel } from "./SlashCommandViewModel.js";
 import { IterableUtils } from "../util/IterableUtils.js";
+import { ChannelFiltersViewModel } from "./ChannelFiltersViewModel.js";
+import { ObservableExpression } from "../util/ObservableExpression.js";
 
 export class ChatChannelUserViewModel extends ObservableBase implements IDisposable {
     constructor(
@@ -102,22 +104,43 @@ export class ChatChannelViewModel extends ChannelViewModel {
                 }
             }));
 
+        this.channelFilters = new ChannelFiltersViewModel(this);
+        this.channelFilters.addCategory("chattext", "Chat (Text)", "Normal chat messages.");
+        this.channelFilters.addCategory("chatemote", "Chat (Emote)", "Chat emote messages.");
+        this.channelFilters.addCategory("ad", "Ads", "Roleplay Advertisements");
+        this.channelFilters.addCategory("roll", "Dice Rolls", "Dice Rolls");
+        this.channelFilters.addCategory("spin", "Bottle Spins", "Bottle Spins");
+        this.channelFilters.addCategory("system", "System Messages", "System Messages");
+        const setupDefaultFilters = () => {
+            const nfAll = this.channelFilters!.addNamedFilter("All", [ "chattext", "chatemote", "ad", "roll", "spin", "system" ]);
+            this.channelFilters!.addNamedFilter("Chat", [ "chattext", "chatemote", "roll", "spin", "system" ]);
+            this.channelFilters!.addNamedFilter("Ads", [ "ad", "system" ]);
+            this.channelFilters!.selectedFilter = nfAll;
+        };
+    
         const existingSCC = IterableUtils.asQueryable(parent.savedChatState.joinedChannels).where(x => x.name == name).firstOrNull();
         if (!existingSCC) {
             this._scc = new SavedChatStateJoinedChannel(
                 parent.savedChatState.joinedChannels,
                 { name: name.value, title: title ?? name.value, order: this.order });
             parent.savedChatState.joinedChannels.push(this._scc);
+            setupDefaultFilters();
         }
         else {
             this._scc = existingSCC;
             this._order = existingSCC.order;
+            this.channelFilters.loadFromSCC(existingSCC.namedFilters, () => setupDefaultFilters());
         }
 
-        if (existingSCC && existingSCC.filters) {
-            this.showFilterClasses = existingSCC.filters
-        }
+        const ee = new ObservableExpression(() => this.channelFilters!.sccData,
+            (v) => { this._scc!.namedFilters = v ?? null; },
+            (err) => { });
+
+        // if (existingSCC && existingSCC.filters) {
+        //     this.showFilterClasses = existingSCC.filters
+        // }
         this.updateFilterOptions();
+
     }
 
     private _scc?: SavedChatStateJoinedChannel;
@@ -125,9 +148,9 @@ export class ChatChannelViewModel extends ChannelViewModel {
     override get showFilterClasses() { return super.showFilterClasses; }
     override set showFilterClasses(value: string[]) {
         super.showFilterClasses = value;
-        if (this._scc) {
-            this._scc.filters = value;
-        }
+        // if (this._scc) {
+        //     this._scc.filters = value;
+        // }
     }
 
     private _name: ChannelName = ChannelName.create("");

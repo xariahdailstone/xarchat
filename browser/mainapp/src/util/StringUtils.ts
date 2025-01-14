@@ -129,6 +129,28 @@ export class StringUtils {
         const result = canonicalizedTitle.replace(/ /g, "").replace(/[^A-Za-z0-9]/g, "").toLowerCase();
         return result + "!!" + title;
     }
+
+    public static msToVeryShortString(elapsedMs: number, forFormat: string, justNowString: string) {
+        if (elapsedMs < 2000) {
+            return justNowString;
+        }
+        else if (elapsedMs < (60 * 1000)) {
+            const sec = Math.round(elapsedMs / (1000));
+            return forFormat.replace("%", `${sec}s`);
+        }
+        else if (elapsedMs < (60 * 60 * 1000)) {
+            const min = Math.round(elapsedMs / (60 * 1000));
+            return forFormat.replace("%", `${min}m`);
+        }
+        else if (elapsedMs < (24 * 60 * 60 * 1000)) {
+            const hr = Math.round(elapsedMs / (60 * 60 * 1000));
+            return forFormat.replace("%", `${hr}h`);
+        }
+        else {
+            const days = Math.round(elapsedMs / (24 * 60 * 60 * 1000));
+            return forFormat.replace("%", `${days}d`);
+        }
+    }
 }
 
 (async function () {

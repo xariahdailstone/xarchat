@@ -107,7 +107,7 @@ export class AppViewModel extends ObservableBase {
     initialized: boolean = false;
 
     @observableProperty
-    statusMessage: string | null = "Test Status Message";
+    statusMessage: string | null = null;
 
     zoomNotifyPopup: UIZoomNotifyPopupViewModel | null = null;
 

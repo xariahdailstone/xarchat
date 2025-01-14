@@ -2,11 +2,12 @@
 #elMain {
     display: grid;
     grid-template-columns: auto 1fr auto;
-    grid-template-rows: 1fr 1fr auto auto auto auto auto auto;
+    grid-template-rows: 1fr 1fr auto auto auto auto auto auto auto;
     grid-template-areas:
         "icon name ics"
         "icon onlinestatus ics"
         "statusmessage statusmessage statusmessage"
+        "statusmessagefor statusmessagefor statusmessagefor"
         "alsoin alsoin alsoin"
         "buttonbar buttonbar buttonbar"
         "chanopbuttonbar chanopbuttonbar chanopbuttonbar"
@@ -22,6 +23,7 @@
 .character-settings { grid-area: ics; align-self: center; padding-right: 5px; cursor: pointer; }
 .character-onlinestatus { grid-area: onlinestatus; align-self: start; }
 .character-statusmessage { grid-area: statusmessage; }
+.character-statusmessage-for { grid-area: statusmessagefor; }
 .character-alsoinchannels { grid-area: alsoin; }
 .character-buttonbar { grid-area: buttonbar; }
 
@@ -150,3 +152,23 @@
 .character-button-chanmod { grid-area: chanmod; }
 .character-button-chandemod { grid-area: chandemod; }
 .character-button-chanmakeowner { grid-area: chanmakeowner; }
+
+#elMain:not(.has-statusmessage) .character-statusmessage {
+    display: none;
+}
+#elMain:not(.has-statusmessage) .character-statusmessage-for {
+    display: none;
+}
+
+#elMain.has-statusmessage .character-statusmessage {
+    background-color: var(--bg-level-2);
+    color: var(--fg-level-2);
+    margin-left: -4px;
+    margin-right: -4px;
+    padding: 4px 4px;
+    margin-top: 4px;
+}
+#elMain.has-statusmessage .character-statusmessage-for {
+    font-size: 75%;
+    margin-bottom: 4px;
+}

@@ -1,4 +1,4 @@
-import { CharacterStatus } from "../../shared/CharacterSet";
+import { CharacterStatus, CharacterStatusWithLastChangedInfo } from "../../shared/CharacterSet";
 import { OnlineStatusConvert } from "../../shared/OnlineStatus";
 import { ChatBBCodeParser } from "../../util/bbcode/BBCode";
 import { IDisposable, asDisposable } from "../../util/Disposable";
@@ -14,6 +14,7 @@ import { CollectionViewLightweight } from "../CollectionViewLightweight";
 import { DialogButtonStyle } from "../../viewmodel/dialogs/DialogViewModel";
 import { ChatChannelViewModel } from "../../viewmodel/ChatChannelViewModel";
 import { HTMLUtils } from "../../util/HTMLUtils";
+import { StringUtils } from "../../util/StringUtils";
 
 @componentArea("popups")
 @componentElement("x-characterdetailpopup")
@@ -35,6 +36,7 @@ export class CharacterDetailPopup extends ContextPopupBase<CharacterDetailPopupV
             </div>
 
             <div class="character-statusmessage" id="elCharacterStatusMessage"></div>
+            <div class="character-statusmessage-for" id="elCharacterStatusMessageFor"></div>
 
             <div class="character-alsoinchannels" id="elCharacterAlsoInChannels">
                 <div class="character-alsoinchannels-title">Mutual Channels:</div>
@@ -70,6 +72,7 @@ export class CharacterDetailPopup extends ContextPopupBase<CharacterDetailPopupV
         const elConfigIconContainer = this.$("elConfigIconContainer") as HTMLDivElement;
         const elCharacterOnlineStatus = this.$("elCharacterOnlineStatus") as HTMLDivElement;
         const elCharacterStatusMessage = this.$("elCharacterStatusMessage") as HTMLDivElement;
+        const elCharacterStatusMessageFor = this.$("elCharacterStatusMessageFor") as HTMLDivElement;
         const elCharacterAlsoInChannels = this.$("elCharacterAlsoInChannels") as HTMLDivElement;
         const elStatusDotContainer = this.$("elStatusDotContainer") as HTMLDivElement;
         const elStatusText = this.$("elStatusText") as HTMLDivElement;
@@ -98,20 +101,31 @@ export class CharacterDetailPopup extends ContextPopupBase<CharacterDetailPopupV
             const reportContext = vm?.session?.selectedChannel;
             wcm.assign({ vm, character, charSet, isConnected, reportContext }, () => {
                 if (vm && character && charSet && isConnected) {
-                    const updateInner = (cs: CharacterStatus) => {
+                    const updateInner = (cs: CharacterStatusWithLastChangedInfo) => {
                         elCharacterIcon.src = URLUtils.getAvatarImageUrl(character);
                         elCharacterName.innerText = character.value;
                         elCharacterName.classList.forEach(v => { if (v.startsWith("gender-")) { elCharacterName.classList.remove(v); }});
                         elCharacterName.classList.add(`gender-${CharacterGenderConvert.toString(cs.gender).toLowerCase()}`);
                         statusDot!.status = cs.status;
-                        elStatusText.innerText = OnlineStatusConvert.toString(cs.status);
+                        elStatusText.innerText = OnlineStatusConvert.toStringWithFor(cs.status, cs.statusLastChanged);
                         elIgnore.innerText = cs.ignored ? "Unignore" : "Ignore";
 
                         this.elMain.classList.toggle("is-chanop", (vm.channelViewModel?.isEffectiveOp(vm.session.characterName)) ?? false);
                         this.elMain.classList.toggle("is-chanowner", (vm.channelViewModel?.isEffectiveOwner(vm.session.characterName)) ?? false);
                         this.elMain.classList.toggle("is-serverop", (vm.session.isServerOp(vm.session.characterName)) ?? false);
 
-                        wcmDesc.assign({ bbcode: cs.statusMessage }, () => {
+                        const hasStatusMessage = cs.statusMessage.trim() != "";
+
+                        if (hasStatusMessage && cs.statusMessageLastChanged != null && cs.statusMessageLastChanged != "login") {
+                            const effectiveMs = (new Date()).getTime() - cs.statusMessageLastChanged.getTime();
+                            const effChgMsg = StringUtils.msToVeryShortString(effectiveMs, "% ago", "just now");
+                            elCharacterStatusMessageFor.innerText = `(Last changed ${effChgMsg})`;
+                        }
+                        else {
+                            elCharacterStatusMessageFor.innerText = "";
+                        }
+                        wcmDesc.assign({ bbcode: hasStatusMessage ? cs.statusMessage : "" }, () => {
+                            this.elMain.classList.toggle("has-statusmessage", hasStatusMessage);
                             const parseResult = ChatBBCodeParser.parse(cs.statusMessage, {
                                 sink: vm!.session!.bbcodeSink
                             });
