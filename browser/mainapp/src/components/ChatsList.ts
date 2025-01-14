@@ -4,7 +4,7 @@ import { TypingStatus } from "../shared/TypingStatus.js";
 import { Fragment, jsx, VNode } from "../snabbdom/index.js";
 import { AnimationFrameUtils } from "../util/AnimationFrameUtils.js";
 import { addCharacterGenderListenerLightweight, addCharacterOnlineStatusListenerLightweight } from "../util/CharacterOnlineStatusListenerLightweight.js";
-import { IDisposable, asDisposable } from "../util/Disposable.js";
+import { IDisposable, asDisposable, disposeWithThis } from "../util/Disposable.js";
 import { EL } from "../util/EL.js";
 import { EventListenerUtil, MouseButton } from "../util/EventListenerUtil.js";
 import { HTMLUtils } from "../util/HTMLUtils.js";
@@ -470,11 +470,12 @@ export class ChannelListItemLightweight extends LightweightComponentBase<ChatCha
             elMain.classList.toggle("pmconvo", (vm instanceof PMConvoChannelViewModel));
         });
 
-        const wcm = new WhenChangeManager();
+        this.wcm = new WhenChangeManager();
+        //this.addOnDispose(() => wcm.dispose());
         this.watchExpr(() => this.viewModel instanceof PMConvoChannelViewModel ? this.viewModel.character : null, ch => {
             const characterSet = this.viewModel?.activeLoginViewModel.characterSet;
             const charName = ch as (CharacterName | null);
-            wcm.assign({ charName, characterSet }, () => {
+            this.wcm.assign({ charName, characterSet }, () => {
                 if (charName && characterSet) {
                     const csl = addCharacterGenderListenerLightweight(characterSet, charName, elTitle, true);
 
@@ -549,7 +550,7 @@ export class ChannelListItemLightweight extends LightweightComponentBase<ChatCha
         let clickSuppressed = false;
         const suppressThisClickAsSelection = () => {
             clickSuppressed = true;
-            window.requestIdleCallback(() => clickSuppressed = false);
+            //window.requestIdleCallback(() => clickSuppressed = false);
         };
 
         this.watchExpr(() => this.viewModel?.canPin, cp => {
@@ -582,6 +583,7 @@ export class ChannelListItemLightweight extends LightweightComponentBase<ChatCha
             if (cc) {
                 const btn = document.createElement("button");
                 btn.classList.add("close-icon");
+                //const clickListener = EventListenerUtil.addDisposableEventListener(btn, "click", () => {
                 btn.addEventListener("click", () => {
                     suppressThisClickAsSelection();
                     const vm = this.viewModel;
@@ -595,6 +597,7 @@ export class ChannelListItemLightweight extends LightweightComponentBase<ChatCha
                 elCloseContainer.appendChild(btn);
 
                 return asDisposable(() => {
+                    //clickListener.dispose();
                     btn.remove();
                 });
             }
@@ -620,6 +623,9 @@ export class ChannelListItemLightweight extends LightweightComponentBase<ChatCha
                     }
                     catch { }
                 }
+            }
+            else {
+                clickSuppressed = false;
             }
         });
         elMain.addEventListener("contextmenu", (e) => {
@@ -669,6 +675,9 @@ export class ChannelListItemLightweight extends LightweightComponentBase<ChatCha
             }
         });
     }
+
+    @disposeWithThis
+    private readonly wcm: WhenChangeManager;
 }
 
 let currentChannelDragData: { [DragDataChannelName]: ChannelName, [DragDataChannelTitle]: string, [DragDataOwnerId]: number } | null = null;

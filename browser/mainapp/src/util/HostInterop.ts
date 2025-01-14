@@ -12,6 +12,7 @@ import { CancellationToken, CancellationTokenSource } from "./CancellationTokenS
 import { SnapshottableMap } from "./collections/SnapshottableMap";
 import { IDisposable, EmptyDisposable, asDisposable } from "./Disposable";
 import { EventListenerUtil } from "./EventListenerUtil";
+import { XarHost2HostInteropEIconLoader } from "./HostInteropEIconLoader";
 import { DateAnchor, HostInteropLogSearch, LogSearchKind, LogSearchResult, LogSearchResultChannelMessage, LogSearchResultPMConvoMessage, XarHost2InteropLogSearch, XarHost2InteropSession, XarHost2InteropWindowCommand } from "./HostInteropLogSearch";
 import { IdleDetectionScreenState, IdleDetectionUserState } from "./IdleDetection";
 import { Logger, Logging } from "./Logger";
@@ -19,6 +20,7 @@ import { PromiseSource } from "./PromiseSource";
 import { StringUtils } from "./StringUtils";
 import { TaskUtils } from "./TaskUtils";
 import { UpdateCheckerState } from "./UpdateCheckerClient";
+import { URLUtils } from "./URLUtils";
 // import { SqliteConnection } from "./sqlite/SqliteConnection";
 // import { XarHost2SqliteConnection } from "./sqlite/xarhost2/XarHost2SqliteConnection";
 
@@ -97,6 +99,8 @@ export interface IHostInterop {
     getLocalFileUrl(fn: string): string;
 
     performWindowCommandAsync(windowId: number | null, args: object): Promise<object>;
+
+    getEIconDataBlob(name: string, cancellationToken: CancellationToken): Promise<Blob>;
 }
 
 export interface IXarHost2HostInterop extends IHostInterop {
@@ -151,6 +155,9 @@ class XarHost2Interop implements IXarHost2HostInterop {
             else if (data.type == "windowBoundsChange") {
                 this.doWindowBoundsChange(data.desktopMetrics, data.windowBounds);
             }
+            else if (data.type == "downloadStatusUpdate") {
+                this.doDownloadStatusUpdate(data);
+            }
         };
 
         if ((window as any).chrome?.webview) {
@@ -170,13 +177,90 @@ class XarHost2Interop implements IXarHost2HostInterop {
         this.doClientResize(window.innerWidth, window.innerHeight, true);
 
         this._windowCommandSession = new XarHost2InteropWindowCommand();
+        this._hostInteropEIconLoader = new XarHost2HostInteropEIconLoader();
 
         this.sessions = [
-            this._windowCommandSession
+            this._windowCommandSession,
+            this._hostInteropEIconLoader
         ];
         for (let sess of this.sessions) {
             sess.writeMessage = (msg) => this.writeToXCHostSocket(sess.prefix + msg);
         }
+    }
+
+    doDownloadStatusUpdate(data: any) {
+        if ((window as any)["__vm"]) {
+            const appViewModel = (window as any)["__vm"];
+            switch (data.state) {
+                case "InProgress":
+                    const msgBuilder: string[] = [];
+                    msgBuilder.push(`Downloading ${this.getUrlFilename(data.uri)}`);
+                    if (data.bytesReceived != null && data.totalBytesToReceive != null) {
+                        const pctComplete = Math.round((data.bytesReceived / data.totalBytesToReceive) * 100);
+                        if (data.estimatedSecRemaining != null) {
+                            const timeRemaining = this.secondsToTimeDisplay(data.estimatedSecRemaining);
+                            msgBuilder.push(` (${pctComplete}%, ${timeRemaining} remaining)`)
+                        }
+                        else {
+                            msgBuilder.push(` (${pctComplete}%)`);
+                        }
+                    }
+                    else if (data.bytesReceived != null) {
+                        msgBuilder.push(` (downloaded ${data.bytesReceived} bytes)`);
+                    }
+                    msgBuilder.push("...");
+
+                    appViewModel.statusMessage = msgBuilder.join("");
+                    break;
+                case "Interrupted":
+                    appViewModel.statusMessage = "Download failed.";
+                    window.setTimeout(() => {
+                        if (appViewModel.statusMessage == "Download failed.") {
+                            appViewModel.statusMessage = null;
+                        }
+                    }, 6000);
+                    break;
+                case "Completed":
+                    appViewModel.statusMessage = "Download complete.";
+                    window.setTimeout(() => {
+                        if (appViewModel.statusMessage == "Download complete.") {
+                            appViewModel.statusMessage = null;
+                        }
+                    }, 2000);
+                    break;
+            }
+        }
+    }
+
+    secondsToTimeDisplay(estimatedSecRemaining: any) {
+        const timeParts: string[] = [];
+
+        if (estimatedSecRemaining > 60) {
+            let minRemaining = Math.floor(estimatedSecRemaining / 60);
+            if (minRemaining > 60) {
+                const hrsRemaining = Math.floor(minRemaining / 60);
+                minRemaining -= (hrsRemaining * 60);
+                timeParts.push(`${hrsRemaining} hr`);
+            }
+            estimatedSecRemaining -= (minRemaining * 60);
+            timeParts.push(`${minRemaining} min`);
+        }
+        timeParts.push(`${estimatedSecRemaining} sec`);
+        
+        return timeParts.join(", ");
+    }
+
+    getUrlFilename(uri: string) {
+        let fnPart = uri.substring(uri.lastIndexOf("/") + 1);
+        const qPos = fnPart.indexOf("?");
+        const hPos = fnPart.indexOf("#");
+        if (qPos != -1) {
+            fnPart = fnPart.substring(0, qPos);
+        }
+        else if (hPos != -1) {
+            fnPart = fnPart.substring(0, hPos);
+        }
+        return fnPart;
     }
 
     readonly logger: Logger;
@@ -185,6 +269,7 @@ class XarHost2Interop implements IXarHost2HostInterop {
 
     readonly sessions: XarHost2InteropSession[];
     private _windowCommandSession: XarHost2InteropWindowCommand;
+    private _hostInteropEIconLoader: XarHost2HostInteropEIconLoader;
 
     private _nextEIconSearchId: number = 0;
     private _pendingEIconSearches: Set<(results: any) => boolean> = new Set();
@@ -1015,6 +1100,29 @@ class XarHost2Interop implements IXarHost2HostInterop {
 
         const respObj = await this._windowCommandSession.performWindowCommand(windowId, args, CancellationToken.NONE);
         return respObj;
+    }
+
+    async getEIconDataBlob(name: string, cancellationToken: CancellationToken): Promise<Blob> {
+        const resp = await this._hostInteropEIconLoader.getEIconAsync(name, cancellationToken);
+        if (resp.statusCode >= 400) {
+            throw new Error(`failed to fetch eicon, status code ${resp.statusCode}`);
+        }
+
+        const dataUrl = `data:${resp.contentType};base64,${resp.data}`;
+        const blob = await (await fetch(dataUrl)).blob();
+        return blob;
+    }
+
+    async getEIconDataBlob2(name: string, cancellationToken: CancellationToken): Promise<Blob> {
+        const eiconUrl = URLUtils.getEIconUrl(name);
+        const fetchResp = await fetch(eiconUrl, {
+            signal: cancellationToken.signal
+        });
+        if (fetchResp.status >= 400) {
+            throw new Error(`failed to fetch eicon, status code ${fetchResp.status}`);
+        }
+        const blob = await fetchResp.blob();
+        return blob;
     }
 }
 

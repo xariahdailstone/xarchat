@@ -53,6 +53,9 @@ using XarChat.Backend.Features.MemoryHinter.Impl;
 using XarChat.Backend.Features.StartupTasks;
 using XarChat.Backend.Features.ChatLogging.Sqlite.Search;
 using XarChat.Backend.UrlHandlers.FileChooser;
+using XarChat.Backend.Features.EIconLoader;
+using XarChat.Backend.Features.CrashLogWriter;
+using XarChat.Backend.Features.CrashLogWriter.Impl;
 
 namespace XarChat.Backend
 {
@@ -133,7 +136,7 @@ namespace XarChat.Backend
                 {
                     configure.UseHttps(sscert);
                     configure.Protocols =
-                        Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http1AndHttp2AndHttp3;
+                        Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http1AndHttp2;
                 });
             });
 
@@ -250,6 +253,10 @@ namespace XarChat.Backend
             services.AddSingleton<DataUpdateSubmitter>();
             services.AddHostedService(sp => sp.GetRequiredService<DataUpdateSubmitter>());
             services.AddSingleton<IDataUpdateSubmitter>(sp => sp.GetRequiredService<DataUpdateSubmitter>());
+
+            services.AddSingleton<IEIconLoader, EIconLoaderImpl>();
+
+            services.AddSingleton<ICrashLogWriter, CrashLogWriterImpl>();
 
             services.AddSingleton<FListApiImpl>();
             services.AddSingleton<IFListApi>(sp =>

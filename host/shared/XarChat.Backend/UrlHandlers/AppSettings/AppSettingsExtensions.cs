@@ -7,6 +7,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using XarChat.Backend.Common;
@@ -26,8 +27,8 @@ namespace XarChat.Backend.UrlHandlers.AppSettings
             [FromServices] IAppSettingsManager appSettingsManager,
             CancellationToken cancellationToken)
         {
-            var settings = appSettingsManager.GetAppSettingsData();
-            return CustomResults.NewtonsoftJsonResult(settings, SourceGenerationContext.Default.AppSettingsData);
+            var settings = appSettingsManager.GetAppSettingsDataRaw();
+            return CustomResults.NewtonsoftJsonResult(settings, SourceGenerationContext.Default.JsonObject);
         }
 
         private static async Task<IResult> PutAppSettingsAsync(
@@ -38,8 +39,8 @@ namespace XarChat.Backend.UrlHandlers.AppSettings
             using var bodyReader = new StreamReader(request.Body);
             var bodyJson = await bodyReader.ReadToEndAsync();
 
-            var newSettingsObj = JsonUtilities.Deserialize<AppSettingsData>(bodyJson, SourceGenerationContext.Default.AppSettingsData)!;
-            await appSettingsManager.UpdateAppSettingsData(newSettingsObj, cancellationToken);
+            var jsonObject = JsonUtilities.Deserialize<JsonObject>(bodyJson, SourceGenerationContext.Default.JsonObject)!;
+            await appSettingsManager.UpdateAppSettingsData(jsonObject, cancellationToken);
 
             return Results.Ok();
         }

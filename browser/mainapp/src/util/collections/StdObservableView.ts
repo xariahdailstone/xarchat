@@ -480,6 +480,8 @@ export class StdObservableMappedView<TOuter extends object, TInner extends objec
 
     [Symbol.dispose]() { this.dispose(); }
 
+    get isDisposed() { return this._disposed; }
+
     private innerCollectionChange(entries: StdObservableCollectionChange<TInner>[]) {
         const resultEntries: StdObservableCollectionChange<TOuter>[] = [];
 
@@ -599,6 +601,8 @@ export class StdObservableFilteredView<T extends object> implements ReadOnlyStdO
     }
 
     [Symbol.dispose]() { this.dispose(); }
+
+    get isDisposed() { return this._disposed; }
 
     get length(): number { return this._btree.size; }
 

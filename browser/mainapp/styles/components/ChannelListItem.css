@@ -81,14 +81,16 @@
     display: block;
 }
 .sectionitems-item-titleicon-image {
-    max-width: 0.6lh;
-    max-height: 0.6lh;
-    width: 0.6lh;
-    height: 0.6lh;
+    max-width: 0.6em;
+    max-height: 0.6em;
+    width: 0.6em;
+    height: 0.6em;
+    --iconimage-max-width: 0.6em;
+    --iconimage-max-height: 0.6em;
     color: var(--ping-icon-fill);
     vertical-align: baseline;
     display: inline-block;
-    margin-right: 0.2lh;
+    margin-right: 0.2em;
 }
 
 .sectionitems-item-name { 

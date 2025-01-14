@@ -282,7 +282,7 @@ export class Collection<T> implements ObservableCollection<T>, Observable {
         return idx;
     }
 
-    contains(value: T): boolean {
+    contains(value: any): boolean {
         const idx = this._items.indexOf(value);
         return (idx != -1);
     }

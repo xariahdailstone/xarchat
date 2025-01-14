@@ -1,0 +1,21 @@
+
+:root {
+    display: contents;
+}
+
+* { box-sizing: border-box; }
+
+#elMain {
+    display: contents;
+}
+
+#elFilterIcon {
+    max-width: 1.2em;
+    max-height: 1.2em;
+    margin-right: 0.3em;
+}
+
+select {
+    height: 2.0em;
+    font-size: 90% !important;
+}

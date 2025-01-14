@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 using XarChat.Backend.Common;
 using XarChat.Backend.Features.AppDataFolder;
@@ -14,7 +15,7 @@ namespace XarChat.Backend.Features.AppSettings.AppDataFile
     internal class AppDataAppSettingsManager : IAppSettingsManager, IDisposable
     {
         private readonly IAppDataFolder _appDataFolder;
-        private readonly IAppSettingsDataProtectionManager? _dataProtectionManager;
+        private readonly IAppSettingsDataProtectionManager _dataProtectionManager;
 
         private SemaphoreSlim _writeLock = new SemaphoreSlim(1);
         private int _lastWriteId = 0;
@@ -23,7 +24,7 @@ namespace XarChat.Backend.Features.AppSettings.AppDataFile
 
         public AppDataAppSettingsManager(
             IAppDataFolder appDataFolder,
-            IAppSettingsDataProtectionManager? dataProtectionManager)
+            IAppSettingsDataProtectionManager dataProtectionManager)
         {
             _appDataFolder = appDataFolder;
             _dataProtectionManager = dataProtectionManager;
@@ -49,9 +50,16 @@ namespace XarChat.Backend.Features.AppSettings.AppDataFile
             return result;
         }
 
-        private AppSettingsData GetAppSettings()
+        public AppSettingsData GetAppSettings()
         {
-            AppSettingsData? settings = null;
+            var raw = GetAppSettingsDataRaw();
+            var result = JsonSerializer.Deserialize<AppSettingsData>(raw)!;
+            return result;
+        }
+
+        public JsonObject GetAppSettingsDataRaw()
+        {
+            JsonObject? settings = null;
             var needWrite = false;
 
             var settingsFn = GetSettingsFileName();
@@ -89,7 +97,10 @@ namespace XarChat.Backend.Features.AppSettings.AppDataFile
 
             if (settings == null)
             {
-                settings = new AppSettingsData();
+                settings =
+                    JsonSerializer.Deserialize<JsonObject>(
+                        JsonSerializer.Serialize(new AppSettingsData(), SourceGenerationContext.Default.AppSettingsData),
+                        SourceGenerationContext.Default.JsonObject)!;
                 needWrite = true;
             }
 
@@ -104,31 +115,129 @@ namespace XarChat.Backend.Features.AppSettings.AppDataFile
             return settings!;
         }
 
-        private AppSettingsData? DeserializeAppSettings(string? json)
+        private JsonObject? DeserializeAppSettings(string? json)
         {
             if (String.IsNullOrWhiteSpace(json)) return null;
 
-            var result = JsonUtilities.Deserialize<AppSettingsData>(json, 
-                new SourceGenerationContextProtected(_dataProtectionManager).AppSettingsData);
+            var result = JsonUtilities.Deserialize<JsonObject>(json, SourceGenerationContext.Default.JsonObject);
+            UnprotectStringsRecursive(result);
             return result;
         }
 
-        private string SerializeAppSettings(AppSettingsData appSettingsData)
+        private string SerializeAppSettings(JsonObject jsonObject)
         {
-            string serializedObj;
-            using (var ms = new MemoryStream())
-            using (var tw = new Utf8JsonWriter(ms, new JsonWriterOptions() { Indented = true }))
+            var copiedSettings = (JsonObject)jsonObject.DeepClone()!;
+            ProtectStringsRecursive(copiedSettings);
+            var result = JsonUtilities.Serialize<JsonObject>(copiedSettings, SourceGenerationContext.Default.JsonObject);
+            return result;
+        }
+
+        private void ProtectStringsRecursive(JsonObject jobj)
+        {
+            foreach (var kvp in jobj.ToArray())
             {
-                JsonUtilities.Serialize(tw, appSettingsData,
-                    new SourceGenerationContextProtected(_dataProtectionManager).AppSettingsData);
-                tw.Flush();
-                ms.Position = 0;
-                using (var tr = new StreamReader(ms))
+                var v = kvp.Value;
+                if (v is JsonObject vobj)
                 {
-                    serializedObj = tr.ReadToEnd();
+                    ProtectStringsRecursive(vobj);
+                }
+                else if (v is JsonArray varr)
+                {
+                    for (var i = 0; i < varr.Count; i++)
+                    {
+                        if (varr[i] is JsonObject varrObj)
+                        {
+                            ProtectStringsRecursive(varrObj);
+                        }
+                        else
+                        {
+                            MaybeProtectJsonString(null, varr[i],
+                                p => varr[i] = p);
+                        }
+                    }
+                }
+                else
+                {
+                    MaybeProtectJsonString(kvp.Key, v,
+                            p => jobj[kvp.Key] = p);
                 }
             }
-            return serializedObj;
+        }
+
+        private void MaybeProtectJsonString(string? propertyName, JsonNode? v, Action<string?> onProtect)
+        {
+            if (v?.GetValueKind() == JsonValueKind.String)
+            {
+                var str = v.ToString();
+                if (str.StartsWith("unprotected::"))
+                {
+                    str = "protected::" + ProtectString(str.Substring("unprotected::".Length));
+                }
+                else if (propertyName == "password")
+                {
+                    str = ProtectString(str);
+                }
+                onProtect(str);
+            }
+        }
+
+        private void UnprotectStringsRecursive(JsonObject result)
+        {
+            foreach (var kvp in result.ToArray())
+            {
+                var v = kvp.Value;
+                if (v is JsonObject vobj)
+                {
+                    UnprotectStringsRecursive(vobj);
+                }
+                if (v is JsonArray varr)
+                {
+                    for (var i = 0; i < varr.Count; i++)
+                    {
+                        if (varr[i] is JsonObject varrobj)
+                        {
+                            UnprotectStringsRecursive(varrobj);
+                        }
+                        else
+                        {
+                            MaybeUnprotectJsonString(null, varr[i],
+                                unprotected => varr[i] = unprotected);
+                        }
+                    }
+                }
+                else
+                {
+                    MaybeUnprotectJsonString(kvp.Key, v,
+                        unproected => result[kvp.Key] = unproected);
+                }
+            }
+        }
+
+        private void MaybeUnprotectJsonString(string? propertyName, JsonNode? v, Action<string?> onUnprotect)
+        {
+            if (v?.GetValueKind() == JsonValueKind.String)
+            {
+                var str = v.ToString();
+                if (str.StartsWith("protected::"))
+                {
+                    str = "unprotected::" + UnprotectString(str.Substring("protected::".Length));
+                }
+                else if (propertyName == "password")
+                {
+                    str = UnprotectString(str);
+                }
+                onUnprotect(str);
+            }
+        }
+
+        private string? UnprotectString(string? str)
+        {
+            return _dataProtectionManager!.Decode(str);
+        }
+
+        private string? ProtectString(string? str)
+        {
+            return _dataProtectionManager.Encode(str);
         }
 
         private object? _latestSerialize = null;
@@ -137,7 +246,7 @@ namespace XarChat.Backend.Features.AppSettings.AppDataFile
         private int _pendingSaveCount = 0;
         private ManualResetEventSlim _pendingSaveEvent = new ManualResetEventSlim(true);
 
-        private async Task SaveAppSettings(AppSettingsData appSettingsData)
+        private async Task SaveAppSettings(JsonObject jsonObject)
         {
             var mySerializeKey = new object();
             _latestSerialize = mySerializeKey;
@@ -157,7 +266,7 @@ namespace XarChat.Backend.Features.AppSettings.AppDataFile
                         if (Object.ReferenceEquals(_latestSerialize, mySerializeKey))
                         {
                             System.Diagnostics.Debug.WriteLine("Writing AppSettings");
-                            await SaveAppSettingsInternal(appSettingsData);
+                            await SaveAppSettingsInternal(jsonObject);
                             return true;
                         }
                         else
@@ -181,7 +290,7 @@ namespace XarChat.Backend.Features.AppSettings.AppDataFile
             });
         }
 
-        private async Task SaveAppSettingsInternal(AppSettingsData appSettingsData)
+        private async Task SaveAppSettingsInternal(JsonObject jsonObject)
         {
             var myWriteId = Interlocked.Increment(ref _lastWriteId);
             await _writeLock.WaitAsync();
@@ -199,7 +308,7 @@ namespace XarChat.Backend.Features.AppSettings.AppDataFile
                 using var writer = File.CreateText(sfn + ".tmp");
 
                 //await writer.WriteAsync(JsonConvert.SerializeObject(appSettingsData, Formatting.Indented));
-                await writer.WriteAsync(SerializeAppSettings(appSettingsData));
+                await writer.WriteAsync(SerializeAppSettings(jsonObject));
                 await writer.FlushAsync();
                 await writer.DisposeAsync();
 
@@ -229,9 +338,9 @@ namespace XarChat.Backend.Features.AppSettings.AppDataFile
             return result;
         }
 
-        public async Task UpdateAppSettingsData(AppSettingsData appSettingsData, CancellationToken cancellationToken)
+        public async Task UpdateAppSettingsData(JsonObject jsonObject, CancellationToken cancellationToken)
         {
-            await this.SaveAppSettings(appSettingsData);
+            await this.SaveAppSettings(jsonObject);
         }
     }
 

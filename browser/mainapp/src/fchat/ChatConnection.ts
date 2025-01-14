@@ -8,7 +8,7 @@ import { ChatChannelMessageMode } from "../viewmodel/ChatChannelViewModel";
 
 
 export interface ChatConnection extends IDisposable {
-    readonly disposed: boolean;
+    readonly isDisposed: boolean;
 
     readonly extendedFeaturesEnabled: boolean;
     

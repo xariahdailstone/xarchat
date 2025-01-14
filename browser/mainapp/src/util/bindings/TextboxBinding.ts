@@ -89,12 +89,18 @@ export class TextboxBinding implements IDisposable {
     private readonly _sentinelSym: symbol = Symbol();
     private readonly _disposables: Set<IDisposable> = new Set();
 
+    private _disposed = false;
     dispose() {
-        for (let d of this._disposables.values()) {
-            try { d.dispose(); }
-            catch { }
+        if (!this._disposed) {
+            this._disposed = true;
+            for (let d of this._disposables.values()) {
+                try { d.dispose(); }
+                catch { }
+            }
         }
     }
 
     [Symbol.dispose]() { this.dispose(); }
+
+    get isDisposed() { return this._disposed; }
 }

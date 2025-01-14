@@ -3,14 +3,19 @@
     display: block;
     position: relative;
     contain: strict;
+
+    margin-left: calc(0px - var(--chatui-splitterhandle-width));
+    width: calc(100% + 8px) !important;
 }
 
 #elMain {
-    width: 100%;
+    width: calc(100% - 8px);
     height: 100%;
     max-width: 100%;
     max-height: 100%;
     overflow: hidden;
+
+    padding-left: var(--chatui-splitterhandle-width);
 
     background-color: var(--bg-level-4);
     color: var(--fg-level-4);
@@ -28,7 +33,7 @@
     contain: layout paint;
 }
 
-.header { grid-area: header; contain: strict; }
+.header { grid-area: header; contain: strict; margin-left: calc(0px - var(--chatui-splitterhandle-width));  }
 .contentarea { grid-area: main; contain: strict;  }
 .tbsplitterhandle { grid-area: splitter; contain: strict;  }
 .textbox { grid-area: textbox; contain: strict;  }
@@ -43,13 +48,30 @@
         
     overflow: hidden;
     contain: paint;
+    
+    margin-left: calc(0px - var(--chatui-splitterhandle-width));
+
+    background: var(--bg-level-3); 
     /* background: inherit; */
+}
+
+#elMain.is-channel .contentarea {
+    grid-template-columns: 1fr 6px auto;
+    grid-template-rows: 1fr;
+    grid-template-areas:
+        "stream splitter userlist";
+}
+#elMain.is-pmconvo .contentarea,
+#elMain.is-console .contentarea {
+    grid-template-columns: 1fr 6px;
+    grid-template-rows: 1fr;
+    grid-template-areas:
+        "stream .";
 }
 
 .stream { grid-area: stream; }
 .casplitterhandle { grid-area: splitter; }
 .userlist { grid-area: userlist; }
-
 
 .userlist {
     overflow: hidden;

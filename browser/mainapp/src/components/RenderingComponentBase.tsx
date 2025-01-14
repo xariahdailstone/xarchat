@@ -173,15 +173,21 @@ class DependencySet implements IDisposable {
 
     private readonly _deps: Map<any, Map<string, IDisposable>> = new Map();
 
+    private _disposed: boolean = false;
     dispose() {
-        for (let depsForVm of this._deps.values()) {
-            for (let depForProp of depsForVm.values()) {
-                depForProp.dispose();
+        if (!this._disposed) {
+            this._disposed = true;
+            for (let depsForVm of this._deps.values()) {
+                for (let depForProp of depsForVm.values()) {
+                    depForProp.dispose();
+                }
             }
         }
     }
 
     [Symbol.dispose]() { this.dispose(); }
+
+    get isDisposed() { return this._disposed; }
 
     maybeAddDependency(vm: any, propertyName: string, setupFunc: () => IDisposable) {
         let depsForVm = this._deps.get(vm);

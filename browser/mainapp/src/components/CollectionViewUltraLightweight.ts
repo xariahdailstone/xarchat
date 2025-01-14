@@ -18,6 +18,8 @@ export abstract class CollectionViewUltraLightweight<TViewModel> implements IDis
 
     [Symbol.dispose]() { this.dispose(); }
 
+    get isDisposed() { return this._disposed; }
+
     *entries(): Iterator<[TViewModel, HTMLElement]> {
         let tchild = this.containerElement.firstElementChild;
         while (tchild) {

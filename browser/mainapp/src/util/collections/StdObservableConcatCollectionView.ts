@@ -124,6 +124,8 @@ export class StdObservableConcatCollectionView<TItem> implements ReadOnlyStdObse
 
     [Symbol.dispose]() { this.dispose(); }
 
+    get isDisposed() { return this._disposed; }
+
     private readonly _observers: SnapshottableSet<StdObservableCollectionObserver<TItem>> = new SnapshottableSet();
 
     addCollectionObserver(observer: StdObservableCollectionObserver<TItem>): IDisposable {
