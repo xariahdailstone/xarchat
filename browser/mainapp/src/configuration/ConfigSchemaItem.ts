@@ -116,10 +116,19 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     configBlockKey: "restoreStatusMessageOnLogin"
                 },
                 {
+                    id: "pingCharName",
+                    scope: getScopeArray(["global", "char", "chan"]),
+                    title: "Ping On Your Character Name",
+                    description: "Highlight and generate a ping sound effect when a message when seen in chat contains your character name.",
+                    type: "boolean",
+                    defaultValue: true,
+                    configBlockKey: "pingCharName"
+                },
+                {
                     id: "pingWords",
                     scope: getScopeArray(["global", "char", "chan"]),
-                    title: "Ping Words",
-                    description: "Words that will cause a message to get highlighted and generate a ping sound effect when seen in chat.",
+                    title: "Other Ping Words",
+                    description: "Other words that will cause a message to get highlighted and generate a ping sound effect when seen in chat.",
                     type: "text[]",
                     defaultValue: [],
                     configBlockKey: "pingWords"

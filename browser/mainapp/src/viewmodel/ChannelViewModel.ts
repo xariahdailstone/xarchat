@@ -905,9 +905,10 @@ export class ChannelMessageViewModel extends ObservableBase implements IDisposab
             return false;
         }
 
+        const selfPingWord = this.activeLoginViewModel.getConfigSettingById("pingCharName", this.parent) ? [ this.parent!.activeLoginViewModel.characterName.value ] : [];
         const cfgPingWords = this.activeLoginViewModel.getConfigSettingById("pingWords", this.parent) as string[];
         const oldPingWords = this.activeLoginViewModel.pingWords;
-        const allPingWords = IterableUtils.asQueryable(cfgPingWords).concat(oldPingWords).select(x => x.toLowerCase());
+        const allPingWords = IterableUtils.asQueryable(cfgPingWords).concat(oldPingWords).concat(selfPingWord).select(x => x.toLowerCase());
 
         let needPing = false;
         const msgText = this.text.toLowerCase();
