@@ -20,6 +20,7 @@ using XarChat.Backend.Features.ChatLogging;
 using XarChat.Backend.Features.CommandableWindows;
 using XarChat.Backend.Features.EIconIndexing;
 using XarChat.Backend.Features.EIconLoader;
+using XarChat.Backend.Features.EIconUpdateSubmitter;
 using XarChat.Backend.Features.IdleDetection;
 using XarChat.Backend.Features.NewAppSettings;
 using XarChat.Backend.Features.NotificationBadge;
@@ -68,6 +69,7 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions
                 { "getconfig", (sess, arg, ct) => sess.HandleGetConfig(arg, ct) },
                 { "setconfig", (sess, arg, ct) => sess.HandleSetConfig(arg, ct) },
                 { "getallcss", (sess, arg, ct) => sess.HandleGetAllCss(arg, ct) },
+                { "submiteiconmetadata", (sess, arg, ct) => sess.HandleSubmitEIconMetadata(arg, ct) },
             };
         }
 
@@ -567,6 +569,13 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions
             await this.GetAllCssAsync(parsedArgs.MessageId, cancellationToken);
         }
 
+        private async Task HandleSubmitEIconMetadata(string arg, CancellationToken cancellationToken)
+        {
+            var cs = _sp.GetRequiredService<IDataUpdateSubmitter>();
+            var parsedArgs = JsonUtilities.Deserialize<SubmitEIconMetadataArgs>(arg, SourceGenerationContext.Default.SubmitEIconMetadataArgs)!;
+            await cs.SubmitHardLoadedEIconInfoAsync(parsedArgs.Name, parsedArgs.ETag, parsedArgs.ContentLength, cancellationToken);
+        }
+
         private async Task ProcessCommandAsync(string str, CancellationToken stoppingToken)
         {
             var cmd = str.IndexOf(' ') == -1 ? str : str.Substring(0, str.IndexOf(' '));
@@ -1007,6 +1016,18 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions
 
             [JsonPropertyName("filenames")]
             public List<string> Filenames { get; set; }
+        }
+
+        public class SubmitEIconMetadataArgs
+        {
+            [JsonPropertyName("name")]
+            public required string Name { get; set; }
+
+            [JsonPropertyName("contentLength")]
+            public required long ContentLength { get; set; }
+
+            [JsonPropertyName("etag")]
+            public required string ETag { get; set; }
         }
     }
 

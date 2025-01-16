@@ -49,8 +49,8 @@ export class URLUtils {
     }
 
     static getEIconUrlInternal(name: string, addUniqueTag: (string | null) = null): string {
-        const url = `/api/eicon/${encodeURIComponent(name.toLowerCase())}`;
-        //const url = `https://static.f-list.net/images/eicon/${encodeURIComponent(name.toLowerCase())}.gif`;
+        //const url = `/api/eicon/${encodeURIComponent(name.toLowerCase())}`;
+        const url = `https://static.f-list.net/images/eicon/${encodeURIComponent(name.toLowerCase())}.gif`;
         if (addUniqueTag) {
             if (url.indexOf("?") != -1) {
                 return `${url}&_uniq=${addUniqueTag}`;
