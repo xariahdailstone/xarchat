@@ -101,6 +101,7 @@ export interface IHostInterop {
     performWindowCommandAsync(windowId: number | null, args: object): Promise<object>;
 
     getEIconDataBlob(name: string, cancellationToken: CancellationToken): Promise<Blob>;
+    submitEIconMetadata(name: string, contentLength: number, etag: string): Promise<void>;
 }
 
 export interface IXarHost2HostInterop extends IHostInterop {
@@ -1113,17 +1114,25 @@ class XarHost2Interop implements IXarHost2HostInterop {
         return blob;
     }
 
-    async getEIconDataBlob2(name: string, cancellationToken: CancellationToken): Promise<Blob> {
-        const eiconUrl = URLUtils.getEIconUrl(name);
-        const fetchResp = await fetch(eiconUrl, {
-            signal: cancellationToken.signal
-        });
-        if (fetchResp.status >= 400) {
-            throw new Error(`failed to fetch eicon, status code ${fetchResp.status}`);
-        }
-        const blob = await fetchResp.blob();
-        return blob;
+    async submitEIconMetadata(name: string, contentLength: number, etag: string): Promise<void> {
+        this.writeToXCHostSocket("submiteiconmetadata " + JSON.stringify({
+            name: name,
+            contentLength: contentLength,
+            etag: etag
+        }));
     }
+
+    // async getEIconDataBlob2(name: string, cancellationToken: CancellationToken): Promise<Blob> {
+    //     const eiconUrl = URLUtils.getEIconUrl(name);
+    //     const fetchResp = await fetch(eiconUrl, {
+    //         signal: cancellationToken.signal
+    //     });
+    //     if (fetchResp.status >= 400) {
+    //         throw new Error(`failed to fetch eicon, status code ${fetchResp.status}`);
+    //     }
+    //     const blob = await fetchResp.blob();
+    //     return blob;
+    // }
 }
 
 export type ChooseLocalFileOptions = {

@@ -486,6 +486,7 @@ namespace MinimalWin32Test.UI
                 {
                     "--enable-features=msWebView2EnableDraggableRegions",
                     "--autoplay-policy=no-user-gesture-required",
+                    "--disable-web-security"
                 };
                 if (clOpts.DisableGpuAcceleration)
                 {

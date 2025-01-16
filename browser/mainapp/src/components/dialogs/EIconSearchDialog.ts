@@ -7,6 +7,8 @@ import { KeyCodes } from "../../util/KeyCodes";
 import { setupTooltipHandling } from "../../viewmodel/popups/TooltipPopupViewModel";
 import { SnapshottableSet } from "../../util/collections/SnapshottableSet";
 import { HTMLUtils } from "../../util/HTMLUtils";
+import { HostInterop } from "../../util/HostInterop";
+import { EIconUtils } from "../../util/EIconUtils";
 
 @componentArea("dialogs")
 @componentElement("x-eiconsearchdialog")
@@ -364,6 +366,7 @@ export class EIconSetView extends ComponentBase<EIconSearchDialogViewModel> {
                 element.classList.add("bbcode-eicon-loading");
                 element.addEventListener("load", () => {
                     element.classList.remove("bbcode-eicon-loading");
+                    EIconUtils.getAndSubmitEIconMetadata(eiconName);
                 });
                 element.addEventListener("error", () => {
                     element.classList.remove("bbcode-eicon-loading");

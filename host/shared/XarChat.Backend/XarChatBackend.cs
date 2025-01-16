@@ -56,6 +56,7 @@ using XarChat.Backend.UrlHandlers.FileChooser;
 using XarChat.Backend.Features.EIconLoader;
 using XarChat.Backend.Features.CrashLogWriter;
 using XarChat.Backend.Features.CrashLogWriter.Impl;
+using XarChat.Backend.Features.EIconLoader.Impl;
 
 namespace XarChat.Backend
 {
