@@ -14,6 +14,7 @@ import { HostInterop } from "./util/HostInterop.js";
 import { KeyCodes } from "./util/KeyCodes.js";
 import { ObservableBase } from "./util/ObservableBase.js";
 import { polyfillRequestIdleCallback } from "./util/RequestIdleCallbackPolyfill.js";
+import { setStylesheetAdoption } from "./util/StyleSheetPolyfill.js";
 import { ActiveLoginViewModel } from "./viewmodel/ActiveLoginViewModel.js";
 import { AppViewModel } from "./viewmodel/AppViewModel.js";
 import { ChannelMessageViewModel, ChannelViewModel } from "./viewmodel/ChannelViewModel.js";
@@ -118,6 +119,16 @@ onReady(async () => {
     for (let f of allCssFiles) {
         await StyleLoader.loadAsync(f);
     }
+    loadDarkThemeCss();
+
+    const p = new URLSearchParams(document.location.search);
+    if (p.get("nogpu") == "1") {
+        document.body.classList.add("nogpu");
+    }
+
+    window.addEventListener("dragenter", (e) => { e.preventDefault(); e.dataTransfer!.dropEffect = "none"; return false; });
+    window.addEventListener("dragover", (e) => { e.preventDefault(); e.dataTransfer!.dropEffect = "none"; return false; });
+    window.addEventListener("drop", (e) => { e.preventDefault(); return false; });
 
     let vm = new AppViewModel(cb);
     (window as any)["__vm"] = vm;
@@ -138,10 +149,24 @@ onReady(async () => {
 });
 
 document.addEventListener("keydown", (e) => {
-    if (e.ctrlKey) {
-        if (e.keyCode == KeyCodes.KEY_R) {
+    if (e.keyCode == KeyCodes.KEY_R) {
+        if (e.ctrlKey) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+    }
+    else if (e.keyCode == KeyCodes.KEY_G) {
+        if (e.ctrlKey && e.shiftKey) {
+            HostInterop.performWindowCommandAsync(null, { cmd: "restartgpu" });
             e.preventDefault();
             e.stopPropagation();
         }
     }
 });
+
+async function loadDarkThemeCss() {
+    var sss = await StyleLoader.loadAsync("styles/dark-theme.css");
+    setStylesheetAdoption(document, [sss]);
+    document.getElementById("elLinkDarkTheme")?.remove();
+    //throw new Error("Function not implemented.");
+}

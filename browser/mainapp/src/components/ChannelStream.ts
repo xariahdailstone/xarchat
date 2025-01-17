@@ -1,4 +1,5 @@
 import { CharacterGenderConvert } from "../shared/CharacterGender.js";
+import { CharacterName } from "../shared/CharacterName.js";
 import { OnlineStatusConvert } from "../shared/OnlineStatus.js";
 import { BBCodeParser, ChatBBCodeParser } from "../util/bbcode/BBCode.js";
 import { CharacterLinkUtils } from "../util/CharacterLinkUtils.js";
@@ -28,6 +29,7 @@ export class ChannelStream extends ComponentBase<ChannelViewModel> {
         super();
 
         HTMLUtils.assignStaticHTMLFragment(this.elMain, `
+            <x-channelfiltersbar class="filtersbar"></x-channelfiltersbar>
             <div class="messagecontainerouter">
                 <x-channelmessagecollectionview modelpath="messages" id="elCollectionView">
                     <div class="messagecontainer" id="elMessageContainer">
@@ -124,6 +126,10 @@ export class ChannelStream extends ComponentBase<ChannelViewModel> {
         this.watch("pendingSendsCount", len => {
             len = len ?? 0;
             elSending.classList.toggle("shown", (len > 0));
+        });
+
+        this.watchExpr(vm => vm.getConfigSettingById("highlightMyMessages"), hmm => {
+            elMessageContainer.classList.toggle("highlight-from-me", !!hmm);
         });
     }
 
@@ -399,6 +405,8 @@ export class ChannelMessageCollectionView extends CollectionViewLightweight<KeyV
     }
 
     private createTypingStatusElement(vm: ChannelMessageViewModel): [HTMLElement, IDisposable] {
+        const resultDisposables: IDisposable[] = [];
+
         let elMain = document.createElement("div");
         elMain.classList.add("messageitem");
         elMain.classList.add("typingstatusindicator");
@@ -411,14 +419,17 @@ export class ChannelMessageCollectionView extends CollectionViewLightweight<KeyV
             emptySpan = document.createElement("span");
             HTMLUtils.assignStaticHTMLFragment(emptySpan, "&nbsp;");
         }
+        vm.incrementParsedTextUsage();
+        resultDisposables.push(asDisposable(() => vm.decrementParsedTextUsage()));
         elMessageText.appendChild(vm.text != "" ? vm.parsedText : emptySpan!);
         elMain.appendChild(elMessageText);
 
-        return [elMain, asDisposable(() => {})];
+        return [elMain, asDisposable(...resultDisposables)];
     }
 
     private createStandardUserElement(vm: ChannelMessageViewModel): [HTMLElement, IDisposable] {
-        let resultDisposable: IDisposable = EmptyDisposable;
+        const resultDisposables: IDisposable[] = [];
+        //let resultDisposable: IDisposable = EmptyDisposable;
 
         let elMain = document.createElement("div");
         elMain.classList.add("messageitem");
@@ -481,7 +492,7 @@ export class ChannelMessageCollectionView extends CollectionViewLightweight<KeyV
             sdLightweight.element.classList.add("character-status");
             sdLightweight.element.setAttribute("data-copycontent", "");
             elMain.appendChild(sdLightweight.element);
-            resultDisposable = sdLightweight;
+            resultDisposables.push(sdLightweight);
 
             // const elUsernameStatus = document.createElement("x-statusdot");
             // elUsernameStatus.classList.add("character-status");
@@ -541,6 +552,8 @@ export class ChannelMessageCollectionView extends CollectionViewLightweight<KeyV
 
         const elMessageText = document.createElement("span");
         elMessageText.classList.add("messagetext");
+        vm.incrementParsedTextUsage();
+        resultDisposables.push(asDisposable(() => vm.decrementParsedTextUsage()));
         elMessageText.appendChild(vm.parsedText);
         elMain.appendChild(elMessageText);
 
@@ -549,6 +562,7 @@ export class ChannelMessageCollectionView extends CollectionViewLightweight<KeyV
         elMain.classList.toggle("system", isSystemMessage);
         elMain.classList.toggle("important", (vm.type == ChannelMessageType.SYSTEM_IMPORTANT));
         elMain.classList.toggle("has-ping", vm.containsPing);
+        elMain.classList.toggle("from-me", CharacterName.equals(vm.characterStatus.characterName, vm.activeLoginViewModel.characterName));
 
         const collapseAds = vm.type == ChannelMessageType.AD && vm.appViewModel.collapseAds;
         if (collapseAds) {
@@ -559,7 +573,7 @@ export class ChannelMessageCollectionView extends CollectionViewLightweight<KeyV
             outerEl.setAttribute("data-copyinline", "true");
             outerEl.appendChild(elMain);
             AdCollapseManager.add(vm, outerEl, elMain);
-            return [outerEl, asDisposable(resultDisposable, () => {
+            return [outerEl, asDisposable(...resultDisposables, () => {
                 AdCollapseManager.remove(outerEl);
             })];
         }
@@ -569,7 +583,7 @@ export class ChannelMessageCollectionView extends CollectionViewLightweight<KeyV
             outerEl.classList.add("collapse-host");
             outerEl.setAttribute("data-copyinline", "true");
             outerEl.appendChild(elMain);
-            return [outerEl, resultDisposable];
+            return [outerEl, asDisposable(...resultDisposables)];
         }
     }
 
@@ -582,6 +596,8 @@ export class ChannelMessageCollectionView extends CollectionViewLightweight<KeyV
 
         const elMessageText = document.createElement("div");
         elMessageText.classList.add("lognavtext");
+        vm.incrementParsedTextUsage();
+        resultDisposables.push(asDisposable(() => vm.decrementParsedTextUsage()));
         elMessageText.appendChild(vm.parsedText);
         elMessageText.addEventListener("click", () => {
             if (vm.onClick) {
@@ -624,6 +640,7 @@ export class NullStreamScrollManager implements StreamScrollManager {
 
     dispose(): void { }
     [Symbol.dispose](): void { }
+    get isDisposed(): boolean { return true; }
     setNextUpdateIsSmooth(): void { }
     scrolledTo: any;
     resetScroll(): void { }
@@ -646,14 +663,20 @@ export class DefaultStreamScrollManager implements StreamScrollManager {
     private _suppressionCount: number = 0;
     private _knownSize: { width: number, cheight: number, sheight: number } = { width: 0, cheight: 0, sheight: 0 };
 
+    private _disposed: boolean = false;
     dispose() {
-        for (let d of this._disposables) {
-            d.dispose();
+        if (!this._disposed) {
+            this._disposed = true;
+            for (let d of this._disposables) {
+                d.dispose();
+            }
+            this._disposables = [];
         }
-        this._disposables = [];
     }
 
     [Symbol.dispose]() { this.dispose(); }
+
+    get isDisposed() { return this._disposed; }
 
     private _scrollAnchorTo: ScrollAnchorTo = ScrollAnchorTo.TOP;
     get scrollAnchorTo(): ScrollAnchorTo { return this._scrollAnchorTo; }
@@ -681,18 +704,15 @@ export class DefaultStreamScrollManager implements StreamScrollManager {
         let msRemaining = 1000;
         let lastTimestamp = performance.now();
 
-        //console.log(`resumeScrollRecordingWhenTop start targetTop=${targetTop}`);
         const tick = (msElapsed: number) => {
             const curScrollTop = this.containerElement.scrollTop;
             msRemaining -= (msElapsed - lastTimestamp);
             lastTimestamp = msElapsed;
 
-            //console.log(`resumeScrollRecordingWhenTop curtop=${curScrollTop} targettop=${targetTop} msremain=${msRemaining}`);
             if (this.containerElement.scrollTop != targetTop && msRemaining > 0) {
                 window.requestAnimationFrame(tick);
             }
             else {
-                //console.log("resumeScrollRecordingWhenTop done");
                 this.resumeScrollRecording();
             }
         };
@@ -816,7 +836,6 @@ export class DefaultStreamScrollManager implements StreamScrollManager {
             }
         }
         else {
-            //console.log("skipped unnecessary scroll");
         }
         return isScrolledToMaximum;
     }

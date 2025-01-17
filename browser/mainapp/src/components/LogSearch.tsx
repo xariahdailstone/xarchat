@@ -4,7 +4,7 @@ import { ComponentBase, componentElement } from "./ComponentBase";
 import { RenderingComponentBase } from "./RenderingComponentBase";
 import { Fragment, jsx, VNode } from "../snabbdom/index.js";
 import { IDisposable, asDisposable } from "../util/Disposable.js";
-import { stageViewFor } from "./Stage";
+import { RenderingStageViewComponent, stageViewFor } from "./Stage";
 import { DateAnchor, LogSearchKind } from "../util/HostInteropLogSearch";
 import { CollectionViewLightweight } from "./CollectionViewLightweight";
 import { EL } from "../util/EL";
@@ -16,7 +16,7 @@ import { CharacterName } from "../shared/CharacterName";
 
 @componentElement("x-logsearch")
 @stageViewFor(LogSearchViewModel)
-export class LogSearch extends RenderingComponentBase<LogSearchViewModel> {
+export class LogSearch extends RenderingStageViewComponent<LogSearchViewModel> {
     constructor() {
         super();
 
@@ -35,7 +35,7 @@ export class LogSearch extends RenderingComponentBase<LogSearchViewModel> {
         this.watchExpr(vm => vm.updatingElements, ue => {
             const elCollectionView = this.$("elCollectionView") as (LogSearchResultItemCollectionView | null);
             if (elCollectionView) {
-                console.log("LogSearch updatingElements", ue);
+                this.logger.logInfo("LogSearch updatingElements", ue);
                 elCollectionView.updatingElements = ue ?? false;
             }
         });
@@ -70,7 +70,7 @@ export class LogSearch extends RenderingComponentBase<LogSearchViewModel> {
                     }
                     if (el) {
                         const sblock = stc.scrollTo == "top" ? "start" : "end";
-                        console.log("el.scrollIntoView", el, `block=${sblock}`);
+                        this.logger.logInfo("el.scrollIntoView", el, `block=${sblock}`);
                         el.scrollIntoView({
                             behavior: stc.behavior,
                             block: sblock
@@ -187,7 +187,7 @@ class LogSearchResultItemCollectionView extends CollectionViewLightweight<LogSea
         let savedScrollPos: number | null = null
 
         const completeElementUpdate = () => {
-            if (this.updatingElements) { console.log("early exit, updatingElements"); return; }
+            if (this.updatingElements) { this.logger.logDebug("early exit, updatingElements"); return; }
 
             const ssp = savedScrollPos;
             const sat = this.scrollAnchorTo;
@@ -197,11 +197,11 @@ class LogSearchResultItemCollectionView extends CollectionViewLightweight<LogSea
                     switch (sat) {
                         case ScrollAnchorTo.BOTTOM:
                             // const scrollHandler = (e: Event) => { 
-                                 console.log("restoring scroll (ssp)...", ssp);
-                                 console.log("restoring scrolltop scrollTop...", containerElement.scrollTop);
-                                 console.log("restoring scrolltop scrollheight...", containerElement.scrollHeight);
+                                this.logger.logDebug("restoring scroll (ssp)...", ssp);
+                                this.logger.logDebug("restoring scrolltop scrollTop...", containerElement.scrollTop);
+                                this.logger.logDebug("restoring scrolltop scrollheight...", containerElement.scrollHeight);
                                 const newScrollTop = containerElement.scrollHeight - ssp;
-                                console.log("restoring scrolltop newScrollTop...", newScrollTop);
+                                this.logger.logDebug("restoring scrolltop newScrollTop...", newScrollTop);
                                 containerElement.scroll(0, newScrollTop);
                             // };
                             // containerElement.addEventListener("scroll", scrollHandler);
@@ -219,7 +219,7 @@ class LogSearchResultItemCollectionView extends CollectionViewLightweight<LogSea
         };
 
         this.addEventListener("updatingelements", () => {
-            console.log("updating elements...");
+            this.logger.logDebug("updating elements...");
 
             if (savedScrollPos != null) { return; }
 
@@ -228,9 +228,9 @@ class LogSearchResultItemCollectionView extends CollectionViewLightweight<LogSea
                 switch (this.scrollAnchorTo) {
                     case ScrollAnchorTo.BOTTOM:
                         savedScrollPos = containerElement.scrollHeight - containerElement.scrollTop;
-                        console.log("saving containerElement.scrollTop", containerElement.scrollTop);
-                        console.log("saving containerElement.scrollHeight", containerElement.scrollHeight);
-                        console.log("saving savedScrollPos (pos from bottom)", savedScrollPos);
+                        this.logger.logDebug("saving containerElement.scrollTop", containerElement.scrollTop);
+                        this.logger.logDebug("saving containerElement.scrollHeight", containerElement.scrollHeight);
+                        this.logger.logDebug("saving savedScrollPos (pos from bottom)", savedScrollPos);
                         break;
                     case ScrollAnchorTo.TOP:
                     default:
@@ -242,8 +242,8 @@ class LogSearchResultItemCollectionView extends CollectionViewLightweight<LogSea
                 savedScrollPos = null;
             }
         });
-        this.addEventListener("updatedelements", () => { console.log("updated elements..."); completeElementUpdate(); });
-        this._onUpdatedElements = () => { console.log("onupdatedelements...", this.updatingElements); completeElementUpdate(); };
+        this.addEventListener("updatedelements", () => { this.logger.logDebug("updated elements..."); completeElementUpdate(); });
+        this._onUpdatedElements = () => { this.logger.logDebug("onupdatedelements...", this.updatingElements); completeElementUpdate(); };
     }
 
     private _onUpdatedElements: () => void;

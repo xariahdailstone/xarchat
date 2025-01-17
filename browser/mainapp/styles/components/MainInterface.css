@@ -52,9 +52,11 @@
 
     background: var(--bg-level-4);
 
+    --chatui-splitterhandle-width: 8px;
+
     display: grid;
     grid-template-rows: 100%;
-    grid-template-columns: auto 8px 1fr;
+    grid-template-columns: auto var(--chatui-splitterhandle-width) 1fr;
     grid-template-areas:
         "leftbar splitterhandle stage";
 
@@ -75,6 +77,10 @@
     filter: blur(6px) opacity(0.3);
     /*opacity: 0.3;*/
 }
+#elMain.nogpu.has-unclosed-dialogs .chatui {
+    filter: opacity(0.3);
+}
+
 #elMain.has-dialogs .dialogstack {
     display: block;
     position: absolute;
@@ -129,6 +135,9 @@
 .dialogstack > .inactive {
     filter: blur(6px) brightness(0.5);
 }
+.nogpu .dialogstack > .inactive {
+    filter: brightness(0.5);
+}
 
 .dialogframe.new {
     transform: scale(1.25);
@@ -137,4 +146,9 @@
 .dialogframe.closed {
     transform: scale(0.75);
     opacity: 0;
+}
+
+.splitterhandle {
+    position: relative;
+    z-index: 3;
 }

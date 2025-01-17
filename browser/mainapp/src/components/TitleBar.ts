@@ -15,6 +15,7 @@ export class TitleBar extends ComponentBase<AppViewModel> {
             <div id="elTitle" class="title"></div>
             <div id="elBrandTag" class="brandtag"></div>
             <div id="elUpdateNotice" class="update-notice">Update Available</div>
+            <div id="elStatusMessage" class="status-message"></div>
             <button id="elMinimize" class="titlebarbutton" tabindex="-1"><x-iconimage src="assets/ui/iconify-window-minimize.svg"></x-iconimage></button>
             <button id="elMaximize" class="titlebarbutton" tabindex="-1"><x-iconimage id="elMaximizeIcon" src="assets/ui/iconify-window-maximize.svg"></x-iconimage></button>
             <button id="elClose" class="titlebarbutton" tabindex="-1"><x-iconimage src="assets/ui/iconify-window-close.svg"></x-iconimage></button>
@@ -26,6 +27,7 @@ export class TitleBar extends ComponentBase<AppViewModel> {
         const elTitle = this.$("elTitle") as HTMLDivElement;
         const elBrandTag = this.$("elBrandTag") as HTMLDivElement;
         const elUpdateNotice = this.$("elUpdateNotice") as HTMLDivElement;
+        const elStatusMessage = this.$("elStatusMessage") as HTMLDivElement;
         const elMinimize = this.$("elMinimize") as HTMLButtonElement;
         const elMaximize = this.$("elMaximize") as HTMLButtonElement;
         const elClose = this.$("elClose") as HTMLButtonElement;
@@ -45,6 +47,15 @@ export class TitleBar extends ComponentBase<AppViewModel> {
         this.watchExpr(vm => vm.updateCheckerState, ucs => {
             const hasUpdate = (ucs == UpdateCheckerState.UpdateAvailable || ucs == UpdateCheckerState.UpdateAvailableRequired);
             elUpdateNotice.classList.toggle("shown", hasUpdate);
+        });
+        this.watchExpr(vm => vm.statusMessage, sm => {
+            if (sm != null) {
+                this.elMain.classList.add("status-message-shown");
+                elStatusMessage.innerText = sm;
+            }
+            else {
+                this.elMain.classList.remove("status-message-shown");
+            }
         });
 
         if (HostInterop.devMode) {

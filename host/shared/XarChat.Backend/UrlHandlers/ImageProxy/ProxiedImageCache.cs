@@ -177,7 +177,7 @@ namespace XarChat.Backend.UrlHandlers.ImageProxy
                 var fs = File.OpenRead(cei.Filename);
                 return new FindResult(cei.Headers, fs);
             }
-            catch
+            catch when (!cancellationToken.IsCancellationRequested)
             {
                 goto TRYAGAIN;
             }

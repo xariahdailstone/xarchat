@@ -15,6 +15,8 @@ export class WhenChangeManager implements IDisposable {
 
     [Symbol.dispose]() { this.dispose(); }
 
+    get isDisposed() { return this._disposed; }
+
     private _currentAssignValues: (object | null) = null;
     private _currentSetupDispose: (IDisposable | null) = null;
 

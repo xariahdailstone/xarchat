@@ -7,13 +7,13 @@ import { PMConvoChannelViewModel } from "../viewmodel/PMConvoChannelViewModel.js
 import { ChannelStream } from "./ChannelStream.js";
 import { ChannelTextBox } from "./ChannelTextBox.js";
 import { ComponentBase, componentElement } from "./ComponentBase.js";
-import { stageViewFor } from "./Stage.js";
+import { StageViewComponent, stageViewFor } from "./Stage.js";
 
 @componentElement("x-channelview")
 @stageViewFor(ChatChannelViewModel)
 @stageViewFor(PMConvoChannelViewModel)
 @stageViewFor(ConsoleChannelViewModel)
-export class ChannelView extends ComponentBase<ChannelViewModel> {
+export class ChannelView extends StageViewComponent<ChannelViewModel> {
     constructor() {
         super();
 
@@ -36,6 +36,17 @@ export class ChannelView extends ComponentBase<ChannelViewModel> {
                 elTextBox.focusTextBox();
             }    
         });
+
+        this.watchExpr(vm => vm, vm => {
+            this.elMain.classList.toggle("is-channel", (vm instanceof ChatChannelViewModel));
+            this.elMain.classList.toggle("is-pmconvo", (vm instanceof PMConvoChannelViewModel));
+            this.elMain.classList.toggle("is-console", (vm instanceof ConsoleChannelViewModel));
+        });
+    }
+
+    override viewActivated(): void {
+        const elTextBox = this.$("elTextBox") as ChannelTextBox;
+        elTextBox.focusTextBox();
     }
 
     protected override viewModelChanged(): void {

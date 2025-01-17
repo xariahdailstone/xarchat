@@ -1,5 +1,5 @@
 import { ChannelName } from "../shared/ChannelName.js";
-import { AddMessageOptions, ChannelMessageType, ChannelMessageViewModel, ChannelMessageViewModelOrderedDictionary, ChannelViewModel, PendingMessageSendViewModel, PendingMessageType } from "./ChannelViewModel.js";
+import { AddMessageOptions, ChannelMessageType, ChannelMessageViewModel, ChannelMessageViewModelOrderedDictionary, ChannelViewModel, MultiSelectChannelFilterOptionItem, MultiSelectChannelFilterOptions, PendingMessageSendViewModel, PendingMessageType, SingleSelectChannelFilterOptionItem, SingleSelectChannelFilterOptions } from "./ChannelViewModel.js";
 import { ActiveLoginViewModel, CharactersEventListener, ChatConnectionState } from "./ActiveLoginViewModel.js";
 import { Collection, CollectionChangeType, ObservableCollection, ReadOnlyObservableCollection } from "../util/ObservableCollection.js";
 import { CharacterName } from "../shared/CharacterName.js";
@@ -8,7 +8,7 @@ import { OnlineStatus } from "../shared/OnlineStatus.js";
 import { ObservableKeyExtractedOrderedDictionary, ObservableOrderedDictionary, ObservableOrderedDictionaryImpl } from "../util/ObservableKeyedLinkedList.js";
 import { IDisposable, asDisposable } from "../util/Disposable.js";
 import { HostInterop, LogMessageType } from "../util/HostInterop.js";
-import { SavedChatStateJoinedChannel } from "../settings/AppSettings.js";
+import { RawSavedChatStateNamedFilterEntry, RawSavedChatStateNamedFilterMap, SavedChatState, SavedChatStateJoinedChannel } from "../settings/AppSettings.js";
 import { SendQueue } from "../util/SendQueue.js";
 import { TaskUtils } from "../util/TaskUtils.js";
 import { AppNotifyEventType } from "./AppViewModel.js";
@@ -19,6 +19,8 @@ import { DialogButtonStyle } from "./dialogs/DialogViewModel.js";
 import { KeyCodes } from "../util/KeyCodes.js";
 import { SlashCommandViewModel } from "./SlashCommandViewModel.js";
 import { IterableUtils } from "../util/IterableUtils.js";
+import { ChannelFiltersViewModel } from "./ChannelFiltersViewModel.js";
+import { ObservableExpression } from "../util/ObservableExpression.js";
 
 export class ChatChannelUserViewModel extends ObservableBase implements IDisposable {
     constructor(
@@ -36,11 +38,15 @@ export class ChatChannelUserViewModel extends ObservableBase implements IDisposa
 
     private readonly _statusListener: IDisposable;
 
-    dispose() {
-        this._statusListener.dispose();
-    }
-
+    private _disposed: boolean = false;
     [Symbol.dispose]() { this.dispose(); }
+    dispose() {
+        if (!this._disposed) {
+            this._disposed = true;
+            this._statusListener.dispose();
+        }
+    }
+    get isDisposed() { return this._disposed; }
 
     get characterSet() { return this.parent.parent.characterSet; }
 }
@@ -71,7 +77,7 @@ export class ChatChannelViewModel extends ChannelViewModel {
         this.title = title;
         this.showConfigButton = true;
 
-        this.mainMessages = this._bothMessages;
+        this.filterMode = ChatChannelMessageMode.BOTH;
 
         this.prefixMessages.add(
             ChannelMessageViewModel.createLogNavMessage(this, "Click here to see earlier messages in the Log Viewer", () => {
@@ -98,15 +104,53 @@ export class ChatChannelViewModel extends ChannelViewModel {
                 }
             }));
 
+        this.channelFilters = new ChannelFiltersViewModel(this);
+        this.channelFilters.addCategory("chattext", "Chat (Text)", "Normal chat messages.");
+        this.channelFilters.addCategory("chatemote", "Chat (Emote)", "Chat emote messages.");
+        this.channelFilters.addCategory("ad", "Ads", "Roleplay Advertisements");
+        this.channelFilters.addCategory("roll", "Dice Rolls", "Dice Rolls");
+        this.channelFilters.addCategory("spin", "Bottle Spins", "Bottle Spins");
+        this.channelFilters.addCategory("system", "System Messages", "System Messages");
+        const setupDefaultFilters = () => {
+            const nfAll = this.channelFilters!.addNamedFilter("All", [ "chattext", "chatemote", "ad", "roll", "spin", "system" ]);
+            this.channelFilters!.addNamedFilter("Chat", [ "chattext", "chatemote", "roll", "spin", "system" ]);
+            this.channelFilters!.addNamedFilter("Ads", [ "ad", "system" ]);
+            this.channelFilters!.selectedFilter = nfAll;
+        };
+    
         const existingSCC = IterableUtils.asQueryable(parent.savedChatState.joinedChannels).where(x => x.name == name).firstOrNull();
         if (!existingSCC) {
-            parent.savedChatState.joinedChannels.push(new SavedChatStateJoinedChannel(
+            this._scc = new SavedChatStateJoinedChannel(
                 parent.savedChatState.joinedChannels,
-                { name: name.value, title: title ?? name.value, order: this.order }));
+                { name: name.value, title: title ?? name.value, order: this.order });
+            parent.savedChatState.joinedChannels.push(this._scc);
+            setupDefaultFilters();
         }
         else {
+            this._scc = existingSCC;
             this._order = existingSCC.order;
+            this.channelFilters.loadFromSCC(existingSCC.namedFilters, () => setupDefaultFilters());
         }
+
+        const ee = new ObservableExpression(() => this.channelFilters!.sccData,
+            (v) => { this._scc!.namedFilters = v ?? null; },
+            (err) => { });
+
+        // if (existingSCC && existingSCC.filters) {
+        //     this.showFilterClasses = existingSCC.filters
+        // }
+        this.updateFilterOptions();
+
+    }
+
+    private _scc?: SavedChatStateJoinedChannel;
+
+    override get showFilterClasses() { return super.showFilterClasses; }
+    override set showFilterClasses(value: string[]) {
+        super.showFilterClasses = value;
+        // if (this._scc) {
+        //     this._scc.filters = value;
+        // }
     }
 
     private _name: ChannelName = ChannelName.create("");
@@ -230,12 +274,49 @@ export class ChatChannelViewModel extends ChannelViewModel {
         }
     }
 
-    private _chatMessages: ChannelMessageViewModelOrderedDictionary = new ChannelMessageViewModelOrderedDictionary();
-    private _adMessages: ChannelMessageViewModelOrderedDictionary = new ChannelMessageViewModelOrderedDictionary();
-    private _bothMessages: ChannelMessageViewModelOrderedDictionary = new ChannelMessageViewModelOrderedDictionary();
-
+    private _messageMode: ChatChannelMessageMode = ChatChannelMessageMode.BOTH;
     @observableProperty
-    messageMode: ChatChannelMessageMode = ChatChannelMessageMode.BOTH;
+    get messageMode() { return this._messageMode; }
+    set messageMode(value: ChatChannelMessageMode) {
+        if (value != this._messageMode) {
+            this._messageMode = value;
+            this.updateFilterOptions();
+        }
+    }
+
+    private updateFilterOptions() {
+        //if (this._messageMode == ChatChannelMessageMode.BOTH) {
+            const filterSelectOptions: MultiSelectChannelFilterOptionItem[] = [];
+            filterSelectOptions.push(
+                new MultiSelectChannelFilterOptionItem("chattext", "Chat (Text)"),
+                new MultiSelectChannelFilterOptionItem("chatemote", "Chat (Emote)"),
+                new MultiSelectChannelFilterOptionItem("ad", "Ads"),
+                new MultiSelectChannelFilterOptionItem("roll", "Dice Rolls"),
+                new MultiSelectChannelFilterOptionItem("spin", "Bottle Spins"),
+                new MultiSelectChannelFilterOptionItem("system", "System Messages")
+            );
+            for (let i of filterSelectOptions) {
+                if (this.showFilterClasses) {
+                    i.isSelected = this.showFilterClasses.indexOf(i.value) != -1;
+                }
+                else {
+                    i.isSelected = true;
+                }
+            }
+            const fo = new MultiSelectChannelFilterOptions(this, (selectedValues) => {
+                for (let i of filterSelectOptions) {
+                    i.isSelected = (selectedValues.indexOf(i.value) != -1);
+                }
+                this.showFilterClasses = selectedValues;
+            });
+            fo.items.push(...filterSelectOptions);
+            
+            this.filterOptions = fo;
+        //}
+        //else {
+        //    this.filterOptions = null;
+        //}
+    }
 
     private _usersModerators: ObservableKeyExtractedOrderedDictionary<CharacterName, ChatChannelUserViewModel> = new ObservableOrderedDictionaryImpl<CharacterName, ChatChannelUserViewModel>(x => x.character, CharacterName.compare);
     private _usersWatched: ObservableKeyExtractedOrderedDictionary<CharacterName, ChatChannelUserViewModel> = new ObservableOrderedDictionaryImpl<CharacterName, ChatChannelUserViewModel>(x => x.character, CharacterName.compare);
@@ -410,7 +491,7 @@ export class ChatChannelViewModel extends ChannelViewModel {
         }
     }
 
-    private _filterMode: ChatChannelMessageMode = ChatChannelMessageMode.BOTH;
+    private _filterMode: ChatChannelMessageMode = ChatChannelMessageMode.ADS_ONLY; // reset in constructor
 
     @observableProperty
     get filterMode(): ChatChannelMessageMode { return this._filterMode; }
@@ -420,15 +501,16 @@ export class ChatChannelViewModel extends ChannelViewModel {
             this._filterMode = value;
             switch (value) {
                 case ChatChannelMessageMode.ADS_ONLY:
-                    this.mainMessages = this._adMessages;
+                    this.showFilterClasses = [ "ad", "roll", "spin", "system" ];
                     break;
                 case ChatChannelMessageMode.CHAT_ONLY:
-                    this.mainMessages = this._chatMessages;
+                    this.showFilterClasses = [ "chattext", "chatemote", "roll", "spin", "system" ];
                     break;
                 case ChatChannelMessageMode.BOTH:
-                    this.mainMessages = this._bothMessages;
+                    this.showFilterClasses = [ "chattext", "chatemote", "ad", "roll", "spin", "system" ];
                     break;
             }
+            this.updateFilterOptions();
         }
     }
 
@@ -482,7 +564,7 @@ export class ChatChannelViewModel extends ChannelViewModel {
                 }
             ),
             new SlashCommandViewModel(
-                ["desc", "description"],
+                ["desc", "description", "setdescription"],
                 "Update Channel Description",
                 "Updates the description of this channel to the specified text (requires channel op status).",
                 ["text"],
@@ -741,8 +823,6 @@ export class ChatChannelViewModel extends ChannelViewModel {
     }
 
     override addMessage(message: ChannelMessageViewModel, options?: AddMessageOptions): void {
-        let addToChat = true;
-        let addToAds = true;
         let logMessageType: LogMessageType | null = null;
         
         switch (message.type) {
@@ -758,90 +838,14 @@ export class ChatChannelViewModel extends ChannelViewModel {
             case ChannelMessageType.SPIN:
                 logMessageType = LogMessageType.SPIN;
         }
-        switch (message.type) {
-            case ChannelMessageType.ROLL:
-            case ChannelMessageType.CHAT:
-            case ChannelMessageType.SPIN:
-                addToAds = false;
-                break;
-            case ChannelMessageType.AD:
-                addToChat = false;
-                break;
-            default:
-        }
+
+        super.addMessage(message, options);
 
         if (logMessageType != null && !(options?.fromReplay ?? false)) {
             HostInterop.logChannelMessage(this.activeLoginViewModel.characterName, this.name, this.title, 
                 message.characterStatus.characterName, message.characterStatus.gender, message.characterStatus.status,
                 logMessageType, message.text);
         }
-
-        if (this.parent.ignoredChars.has(message.characterStatus.characterName)) { return; }
-
-        if (addToAds || addToChat) {
-            this._bothMessages.add(message);
-            //this._bothMessages.push(message);
-            while (this._bothMessages.size >= this.messageLimit) {
-                //this._bothMessages.shift();
-                this._bothMessages.delete(this._bothMessages.minKey()!);
-            }
-        }
-        if (addToAds) {
-            this._adMessages.add(message);
-            //this._adMessages.push(message);
-            while (this._adMessages.size >= this.messageLimit) {
-                //this._adMessages.shift();
-                this._adMessages.delete(this._adMessages.minKey()!);
-            }
-            if (this.filterMode == ChatChannelMessageMode.ADS_ONLY || this.filterMode == ChatChannelMessageMode.BOTH) {
-                if (!(options?.seen ?? false)) {
-                    if (message.type == ChannelMessageType.CHAT ||
-                        message.type == ChannelMessageType.AD ||
-                        message.type == ChannelMessageType.ROLL ||
-                        message.type == ChannelMessageType.SPIN) {
-
-                        this.pingIfNecessary(message);
-                        if (!(options?.bypassUnseenCount ?? false)) {
-                            this.increaseUnseenCountIfNecessary();
-                        }
-                    }
-                }
-                if (this.scrolledTo != null) {
-                    this.newMessagesBelowNotify = true;
-                }
-            }
-        }
-        if (addToChat) {
-            this._chatMessages.add(message);
-            //this._chatMessages.push(message);
-            while (this._chatMessages.size >= this.messageLimit) {
-                //this._chatMessages.shift();
-                this._chatMessages.delete(this._chatMessages.minKey()!);
-            }
-            if (this.filterMode == ChatChannelMessageMode.CHAT_ONLY || this.filterMode == ChatChannelMessageMode.BOTH) {
-                if (!(options?.seen ?? false)) {
-                    if (message.type == ChannelMessageType.CHAT ||
-                        message.type == ChannelMessageType.AD ||
-                        message.type == ChannelMessageType.ROLL ||
-                        message.type == ChannelMessageType.SPIN) {
-
-                        this.pingIfNecessary(message);
-                        if (!(options?.bypassUnseenCount ?? false)) {
-                            this.increaseUnseenCountIfNecessary();
-                        }
-                    }
-                }
-                if (this.scrolledTo != null) {
-                    this.newMessagesBelowNotify = true;
-                }
-            }
-        }
-    }
-
-    clearMessages() {
-        this.mainMessages.clear();
-        this._chatMessages.clear();
-        this._adMessages.clear();
     }
 
     @observableProperty

@@ -9,6 +9,7 @@ using System.Diagnostics.Eventing.Reader;
 using System.Linq;
 using System.Net.WebSockets;
 using System.Text;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
@@ -16,7 +17,10 @@ using XarChat.Backend.Common;
 using XarChat.Backend.Features.AppConfiguration;
 using XarChat.Backend.Features.AppFileServer;
 using XarChat.Backend.Features.ChatLogging;
+using XarChat.Backend.Features.CommandableWindows;
 using XarChat.Backend.Features.EIconIndexing;
+using XarChat.Backend.Features.EIconLoader;
+using XarChat.Backend.Features.EIconUpdateSubmitter;
 using XarChat.Backend.Features.IdleDetection;
 using XarChat.Backend.Features.NewAppSettings;
 using XarChat.Backend.Features.NotificationBadge;
@@ -25,14 +29,50 @@ using XarChat.Backend.Features.WindowControl;
 using XarChat.Backend.UrlHandlers.XCHostFunctions.SessionAdapters;
 using XarChat.Backend.UrlHandlers.XCHostFunctions.SessionAdapters.OldNewAppSettings;
 using XarChat.Backend.UrlHandlers.XCHostFunctions.SessionNamespaces;
+using XarChat.Backend.UrlHandlers.XCHostFunctions.SessionNamespaces.EIconData;
 using XarChat.Backend.UrlHandlers.XCHostFunctions.SessionNamespaces.LogSearch;
-
+using XarChat.Backend.UrlHandlers.XCHostFunctions.SessionNamespaces.WindowCommand;
 using SplitWriteFunc = System.Func<string, string?, System.Threading.CancellationToken, System.Threading.Tasks.Task>;
 
 namespace XarChat.Backend.UrlHandlers.XCHostFunctions
 {
     public class WebSocketXCHostSession : XCHostSessionBase
     {
+        private static Dictionary<string, Func<WebSocketXCHostSession, string, CancellationToken, Task>> _commandHandlers;
+
+        static WebSocketXCHostSession()
+        {
+            _commandHandlers = new(StringComparer.OrdinalIgnoreCase)
+            {
+                { "request", (sess, arg, ct) => sess.HandleRequest(arg, ct) },
+                { "cancel", (sess, arg, ct) => sess.HandleCancel(arg, ct) },
+                { "appReady", (sess, arg, ct) => sess.HandleAppReady(arg, ct) },
+                { "showDevTools", (sess, arg, ct) => sess.HandleShowDevTools(arg, ct) },
+                { "win.minimize", (sess, arg, ct) => sess.HandleWinMinimize(arg, ct) },
+                { "win.maximize", (sess, arg, ct) => sess.HandleWinMaximize(arg, ct) },
+                { "win.restore", (sess, arg, ct) => sess.HandleWinRestore(arg, ct) },
+                { "win.close", (sess, arg, ct) => sess.HandleWinClose(arg, ct) },
+                { "log.ChannelMessage", (sess, arg, ct) => sess.HandleLogChannelMessage(arg, ct) },
+                { "log.PMConvoMessage", (sess, arg, ct) => sess.HandleLogPMConvoMessage(arg, ct) },
+                { "endCharacterSession", (sess, arg, ct) => sess.HandleEndCharacterSession(arg, ct) },
+                { "updateAppBadge", (sess, arg, ct) => sess.HandleUpdateAppBadge(arg, ct) },
+                { "addIdleMonitorRegistration", (sess, arg, ct) => sess.HandleAddIdleMonitorRegistration(arg, ct) },
+                { "removeIdleMonitorRegistration", (sess, arg, ct) => sess.HandleRemoveIdleMonitorRegistration(arg, ct) },
+                { "addUpdateCheckerMonitorRegistration", (sess, arg, ct) => sess.HandleAddUpdateCheckerMonitorRegistration(arg, ct) },
+                { "removeUpdateCheckerMonitorRegistration", (sess, arg, ct) => sess.HandleRemoveUpdateCheckerMonitorRegistration(arg, ct) },
+                { "relaunchToApplyUpdate", (sess, arg, ct) => sess.HandleRelaunchToApplyUpdate(arg, ct) },
+                { "loginsuccess", (sess, arg, ct) => sess.HandleLoginSuccess(arg, ct) },
+                { "eiconSearch", (sess, arg, ct) => sess.HandleEIconSearchCommand(arg, ct) },
+                { "eiconSearchClear", (sess, arg, ct) => sess.HandleEIconSearchClearCommand(arg, ct) },
+                { "getcssdata", (sess, arg, ct) => sess.HandleGetCssData(arg, ct) },
+                { "getsvgdata", (sess, arg, ct) => sess.HandleGetSvgData(arg, ct) },
+                { "getconfig", (sess, arg, ct) => sess.HandleGetConfig(arg, ct) },
+                { "setconfig", (sess, arg, ct) => sess.HandleSetConfig(arg, ct) },
+                { "getallcss", (sess, arg, ct) => sess.HandleGetAllCss(arg, ct) },
+                { "submiteiconmetadata", (sess, arg, ct) => sess.HandleSubmitEIconMetadata(arg, ct) },
+            };
+        }
+
         private readonly IServiceProvider _sp;
         private readonly WebSocket _ws;
         private readonly CancellationTokenSource _disposeCTS = new CancellationTokenSource();
@@ -61,6 +101,16 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions
                 var clw = sp.GetRequiredService<IChatLogWriter>();
                 var cls = sp.GetRequiredService<IChatLogSearch>();
                 return new LogSearchSessionNamespace(clw, cls, w);
+            });
+            this.AddSessionNamespace("windowcommand", w =>
+            {
+                var cwr = sp.GetRequiredService<ICommandableWindowRegistry>();
+                return new WindowCommandSessionNamespace(cwr, w);
+            });
+            this.AddSessionNamespace("eiconloader", w =>
+            {
+                var el = sp.GetRequiredService<IEIconLoader>();
+                return new EIconDataSessionNamespace(el, w);
             });
         }
 
@@ -199,6 +249,7 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions
         private readonly Dictionary<string, Func<IServiceProvider, ISessionAdapter>> _replyableCommandAdapters
             = new Dictionary<string, Func<IServiceProvider, ISessionAdapter>>(StringComparer.OrdinalIgnoreCase);
 
+
         private async Task ProcessReplyableCommandAsync(long msgId, JsonObject dataObj)
         {
             var pri = new PendingRequestInfo() { MessageId = msgId };
@@ -275,6 +326,256 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions
             }
         }
 
+
+        private async Task HandleRequest(string arg, CancellationToken cancellationToken)
+        {
+            var argObj = JsonUtilities.Deserialize(arg, SourceGenerationContext.Default.JsonObject);
+            var msgId = ((long)argObj["_msgid"]!);
+            _ = ProcessReplyableCommandAsync(msgId, (JsonObject)argObj["data"]!);
+        }
+
+        private async Task HandleCancel(string arg, CancellationToken cancellationToken)
+        {
+            var argObj = JsonUtilities.Deserialize(arg, SourceGenerationContext.Default.JsonObject);
+            var msgId = ((long)argObj["_msgid"]!);
+            lock (_pendingRequests)
+            {
+                if (_pendingRequests.TryGetValue(msgId, out var pri))
+                {
+                    pri.CancellationTokenSource.Cancel();
+                }
+            }
+        }
+
+        private async Task HandleAppReady(string arg, CancellationToken cancellationToken)
+        {
+            var wc = _sp.GetRequiredService<IWindowControl>();
+            wc.ApplicationReady();
+        }
+
+        private async Task HandleShowDevTools(string arg, CancellationToken cancellationToken)
+        {
+            var appConfig = _sp.GetRequiredService<IAppConfiguration>();
+            if (appConfig.EnableDevTools)
+            {
+                var wc = _sp.GetRequiredService<IWindowControl>();
+                wc.ShowDevTools();
+            }
+        }
+
+        private async Task HandleWinMinimize(string arg, CancellationToken cancellationToken)
+        {
+            var wc = _sp.GetRequiredService<IWindowControl>();
+            wc.Minimize();
+        }
+
+        private async Task HandleWinMaximize(string arg, CancellationToken cancellationToken)
+        {
+            var wc = _sp.GetRequiredService<IWindowControl>();
+            wc.Maximize();
+        }
+
+        private async Task HandleWinRestore(string arg, CancellationToken cancellationToken)
+        {
+            var wc = _sp.GetRequiredService<IWindowControl>();
+            wc.Restore();
+        }
+
+        private async Task HandleWinClose(string arg, CancellationToken cancellationToken)
+        {
+            var wc = _sp.GetRequiredService<IWindowControl>();
+            wc.Close();
+        }
+
+        private async Task HandleLogChannelMessage(string arg, CancellationToken cancellationToken)
+        {
+            var parsedArgs = JsonUtilities.Deserialize<LogChannelMessageArgs>(arg, SourceGenerationContext.Default.LogChannelMessageArgs)!;
+            var clw = _sp.GetRequiredService<IChatLogWriter>();
+            await clw.LogChannelMessageAsync(
+                parsedArgs.MyCharacterName,
+                parsedArgs.ChannelName, parsedArgs.ChannelTitle,
+                parsedArgs.SpeakingCharacter, parsedArgs.CharacterGender, parsedArgs.CharacterStatus,
+                parsedArgs.MessageType, parsedArgs.MessageText, cancellationToken);
+        }
+
+        private async Task HandleLogPMConvoMessage(string arg, CancellationToken cancellationToken)
+        {
+            var parsedArgs = JsonUtilities.Deserialize<LogPMConvoMessageArgs>(arg, SourceGenerationContext.Default.LogPMConvoMessageArgs)!;
+            var clw = _sp.GetRequiredService<IChatLogWriter>();
+            await clw.LogPMConvoMessageAsync(
+                parsedArgs.MyCharacterName,
+                parsedArgs.Interlocutor,
+                parsedArgs.SpeakingCharacter, parsedArgs.CharacterGender, parsedArgs.CharacterStatus,
+                parsedArgs.MessageType, parsedArgs.MessageText, cancellationToken);
+        }
+
+        private async Task HandleEndCharacterSession(string arg, CancellationToken cancellationToken)
+        {
+            var clw = _sp.GetRequiredService<IChatLogWriter>();
+            clw.EndLogSource(arg);
+        }
+
+        private async Task HandleUpdateAppBadge(string arg, CancellationToken cancellationToken)
+        {
+            Console.WriteLine("updateappbadge");
+            var parsedArgs = JsonUtilities.Deserialize<UpdateAppBadgeArgs>(arg, SourceGenerationContext.Default.UpdateAppBadgeArgs)!;
+            Console.WriteLine("parsedArgs.HasPings =" + parsedArgs.HasPings);
+            Console.WriteLine("parsedArgs.HasUnseen =" + parsedArgs.HasUnseen);
+            var nbt = parsedArgs.HasPings ? NotificationBadgeType.PingsWithCount(1) :
+                parsedArgs.HasUnseen ? NotificationBadgeType.Mentions :
+                NotificationBadgeType.None;
+            SetNotificationBadge(nbt);
+        }
+
+        private async Task HandleAddIdleMonitorRegistration(string arg, CancellationToken cancellationToken)
+        {
+            var parsedArgs = JsonUtilities.Deserialize<AddIdleMonitorRegistrationArgs>(arg, SourceGenerationContext.Default.AddIdleMonitorRegistrationArgs)!;
+            var im = _sp.GetRequiredService<IIdleDetectionManager>();
+            var registration = im.RegisterDisposableCallback(TimeSpan.FromMilliseconds(parsedArgs.IdleAfterMs), (userState, screenState) =>
+            {
+                _ = WriteAsync($"idlemonitorupdate {{ \"monitorName\": \"{parsedArgs.MonitorName}\", \"userState\": \"{userState}\", \"screenState\": \"{screenState}\" }}");
+            });
+            _idleMonitorRegistrations.Add(parsedArgs.MonitorName, registration);
+        }
+
+        private async Task HandleRemoveIdleMonitorRegistration(string arg, CancellationToken cancellationToken)
+        {
+            var parsedArgs = JsonUtilities.Deserialize<RemoveIdleMonitorRegistrationArgs>(arg, SourceGenerationContext.Default.RemoveIdleMonitorRegistrationArgs)!;
+            var im = _sp.GetRequiredService<IIdleDetectionManager>();
+            if (_idleMonitorRegistrations.TryGetValue(parsedArgs.MonitorName, out var registration))
+            {
+                registration.Dispose();
+                _idleMonitorRegistrations.Remove(parsedArgs.MonitorName);
+            }
+        }
+
+        private async Task HandleAddUpdateCheckerMonitorRegistration(string arg, CancellationToken cancellationToken)
+        {
+            var parsedArgs = JsonUtilities.Deserialize<AddUpdateCheckerMonitorRegistrationArgs>(arg, SourceGenerationContext.Default.AddUpdateCheckerMonitorRegistrationArgs)!;
+            var uc = _sp.GetRequiredService<IUpdateChecker>();
+            var reg = new UpdateCheckerMonitorRegistration(this, uc, parsedArgs.MonitorName);
+            _constituents.Add(reg);
+        }
+
+        private async Task HandleRemoveUpdateCheckerMonitorRegistration(string arg, CancellationToken cancellationToken)
+        {
+            var parsedArgs = JsonUtilities.Deserialize<RemoveUpdateCheckerMonitorRegistrationArgs>(arg, SourceGenerationContext.Default.RemoveUpdateCheckerMonitorRegistrationArgs)!;
+            var maybeReg = _constituents.OfType<UpdateCheckerMonitorRegistration>()
+                .Where(x => String.Equals(x.MonitorName, parsedArgs.MonitorName))
+                .FirstOrDefault();
+            if (maybeReg != null)
+            {
+                _constituents.Remove(maybeReg);
+                maybeReg.Dispose();
+            }
+        }
+
+        private async Task HandleRelaunchToApplyUpdate(string arg, CancellationToken cancellationToken)
+        {
+            var uc = _sp.GetRequiredService<IUpdateChecker>();
+            uc.IndicateRelaunchOnExit();
+            await this.WriteAsync("relaunchconfirmed");
+        }
+
+        private async Task HandleLoginSuccess(string arg, CancellationToken cancellationToken)
+        {
+            var uc = _sp.GetRequiredService<IUpdateChecker>();
+            uc.IndicateSuccessfulLogin();
+        }
+
+        private async Task HandleEIconSearchCommand(string arg, CancellationToken cancellationToken)
+        {
+            var parsedArgs = JsonUtilities.Deserialize<EIconSearchArgs>(arg, SourceGenerationContext.Default.EIconSearchArgs)!;
+            ThreadPool.QueueUserWorkItem(delegate
+            {
+                _ = HandleEIconSearch(parsedArgs, cancellationToken);
+            });
+        }
+
+        private async Task HandleEIconSearchClearCommand(string arg, CancellationToken cancellationToken)
+        {
+            //var sw = Stopwatch.StartNew();
+            RecycleEIconSearch(null);
+            //sw.Stop();
+            //await this.WriteAsync($"eiconSearchClearDone {{ \"took\": {sw.ElapsedMilliseconds} }}");
+        }
+
+        private async Task HandleGetCssData(string arg, CancellationToken cancellationToken)
+        {
+            var parsedArgs = JsonUtilities.Deserialize<GetCssDataArgs>(arg, SourceGenerationContext.Default.GetCssDataArgs)!;
+            string data;
+            try
+            {
+                data = await GetCssDataAsync(parsedArgs.Url, cancellationToken);
+            }
+            catch
+            {
+                data = "";
+            }
+            await this.WriteAsync("gotcssdata " +
+                JsonUtilities.Serialize(new GotCssDataResult()
+                {
+                    MessageId = parsedArgs.MessageId,
+                    Data = data
+                }, SourceGenerationContext.Default.GotCssDataResult));
+        }
+
+        private async Task HandleGetSvgData(string arg, CancellationToken cancellationToken)
+        {
+            var parsedArgs = JsonUtilities.Deserialize<GetCssDataArgs>(arg, SourceGenerationContext.Default.GetCssDataArgs)!;
+            string data;
+            try
+            {
+                data = await GetCssDataAsync(parsedArgs.Url, cancellationToken);
+            }
+            catch
+            {
+                data = "";
+            }
+            await this.WriteAsync("gotsvgdata " +
+                JsonUtilities.Serialize(new GotCssDataResult()
+                {
+                    MessageId = parsedArgs.MessageId,
+                    Data = data
+                }, SourceGenerationContext.Default.GotCssDataResult));
+        }
+
+        private async Task HandleGetConfig(string arg, CancellationToken cancellationToken)
+        {
+            var parsedArgs = JsonUtilities.Deserialize<GetConfigDataArgs>(arg, SourceGenerationContext.Default.GetConfigDataArgs)!;
+            GotConfigDataResult res;
+            try
+            {
+                res = await GetConfigDataAsync(parsedArgs.MessageId, cancellationToken);
+            }
+            catch
+            {
+                res = new GotConfigDataResult() { MessageId = parsedArgs.MessageId, Data = new List<ConfigKeyValue>() };
+            }
+
+            await this.WriteAsync("gotconfig " +
+                JsonUtilities.Serialize(res, SourceGenerationContext.Default.GotConfigDataResult));
+        }
+
+        private async Task HandleSetConfig(string arg, CancellationToken cancellationToken)
+        {
+            var parsedArgs = JsonUtilities.Deserialize<ConfigKeyValue>(arg, SourceGenerationContext.Default.ConfigKeyValue)!;
+            await this.SetConfigDataAsync(parsedArgs.Key, parsedArgs.Value, cancellationToken);
+        }
+
+        private async Task HandleGetAllCss(string arg, CancellationToken cancellationToken)
+        {
+            var parsedArgs = JsonUtilities.Deserialize<GetAllCssArgs>(arg, SourceGenerationContext.Default.GetAllCssArgs)!;
+            await this.GetAllCssAsync(parsedArgs.MessageId, cancellationToken);
+        }
+
+        private async Task HandleSubmitEIconMetadata(string arg, CancellationToken cancellationToken)
+        {
+            var cs = _sp.GetRequiredService<IDataUpdateSubmitter>();
+            var parsedArgs = JsonUtilities.Deserialize<SubmitEIconMetadataArgs>(arg, SourceGenerationContext.Default.SubmitEIconMetadataArgs)!;
+            await cs.SubmitHardLoadedEIconInfoAsync(parsedArgs.Name, parsedArgs.ETag, parsedArgs.ContentLength, cancellationToken);
+        }
+
         private async Task ProcessCommandAsync(string str, CancellationToken stoppingToken)
         {
             var cmd = str.IndexOf(' ') == -1 ? str : str.Substring(0, str.IndexOf(' '));
@@ -296,252 +597,11 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions
 
             if (!handled)
             {
-                switch (cmd)
+                if (_commandHandlers.TryGetValue(cmd, out var handler))
                 {
-                    case var _ when String.Equals(cmd, "request", StringComparison.OrdinalIgnoreCase):
-                        {
-                            var argObj = JsonUtilities.Deserialize(arg, SourceGenerationContext.Default.JsonObject);
-                            var msgId = ((long)argObj["_msgid"]!);
-                            _ = ProcessReplyableCommandAsync(msgId, (JsonObject)argObj["data"]!);
-                        }
-                        break;
-                    case var _ when String.Equals(cmd, "cancel", StringComparison.OrdinalIgnoreCase):
-                        {
-                            var argObj = JsonUtilities.Deserialize(arg, SourceGenerationContext.Default.JsonObject);
-                            var msgId = ((long)argObj["_msgid"]!);
-                            lock (_pendingRequests)
-                            {
-                                if (_pendingRequests.TryGetValue(msgId, out var pri))
-                                {
-                                    pri.CancellationTokenSource.Cancel();
-                                }
-                            }
-                        }
-                        break;
-
-                    case var _ when String.Equals(cmd, "closeSqlConnection", StringComparison.OrdinalIgnoreCase):
-                        {
-                            throw new NotImplementedException();
-                        }
-                        break;
-
-                    case var _ when String.Equals(cmd, "appReady", StringComparison.OrdinalIgnoreCase):
-                        {
-                            var wc = _sp.GetRequiredService<IWindowControl>();
-                            wc.ApplicationReady();
-                        }
-                        break;
-                    case var _ when String.Equals(cmd, "showDevTools", StringComparison.OrdinalIgnoreCase):
-                        {
-                            var appConfig = _sp.GetRequiredService<IAppConfiguration>();
-                            if (appConfig.EnableDevTools)
-                            {
-                                var wc = _sp.GetRequiredService<IWindowControl>();
-                                wc.ShowDevTools();
-                            }
-                        }
-                        break;
-
-                    case var _ when String.Equals(cmd, "win.minimize", StringComparison.OrdinalIgnoreCase):
-                        {
-                            var wc = _sp.GetRequiredService<IWindowControl>();
-                            wc.Minimize();
-                        }
-                        break;
-                    case var _ when String.Equals(cmd, "win.maximize", StringComparison.OrdinalIgnoreCase):
-                        {
-                            var wc = _sp.GetRequiredService<IWindowControl>();
-                            wc.Maximize();
-                        }
-                        break;
-                    case var _ when String.Equals(cmd, "win.restore", StringComparison.OrdinalIgnoreCase):
-                        {
-                            var wc = _sp.GetRequiredService<IWindowControl>();
-                            wc.Restore();
-                        }
-                        break;
-                    case var _ when String.Equals(cmd, "win.close", StringComparison.OrdinalIgnoreCase):
-                        {
-                            var wc = _sp.GetRequiredService<IWindowControl>();
-                            wc.Close();
-                        }
-                        break;
-
-                    case var _ when String.Equals(cmd, "log.ChannelMessage", StringComparison.OrdinalIgnoreCase):
-                        {
-                            var parsedArgs = JsonUtilities.Deserialize<LogChannelMessageArgs>(arg, SourceGenerationContext.Default.LogChannelMessageArgs)!;
-                            var clw = _sp.GetRequiredService<IChatLogWriter>();
-                            await clw.LogChannelMessageAsync(
-                                parsedArgs.MyCharacterName,
-                                parsedArgs.ChannelName, parsedArgs.ChannelTitle,
-                                parsedArgs.SpeakingCharacter, parsedArgs.CharacterGender, parsedArgs.CharacterStatus,
-                                parsedArgs.MessageType, parsedArgs.MessageText, stoppingToken);
-                        }
-                        break;
-                    case var _ when String.Equals(cmd, "log.PMConvoMessage", StringComparison.OrdinalIgnoreCase):
-                        {
-                            var parsedArgs = JsonUtilities.Deserialize<LogPMConvoMessageArgs>(arg, SourceGenerationContext.Default.LogPMConvoMessageArgs)!;
-                            var clw = _sp.GetRequiredService<IChatLogWriter>();
-                            await clw.LogPMConvoMessageAsync(
-                                parsedArgs.MyCharacterName,
-                                parsedArgs.Interlocutor,
-                                parsedArgs.SpeakingCharacter, parsedArgs.CharacterGender, parsedArgs.CharacterStatus,
-                                parsedArgs.MessageType, parsedArgs.MessageText, stoppingToken);
-                        }
-                        break;
-                    case var _ when String.Equals(cmd, "endCharacterSession", StringComparison.OrdinalIgnoreCase):
-                        {
-                            var clw = _sp.GetRequiredService<IChatLogWriter>();
-                            clw.EndLogSource(arg);
-                        }
-                        break;
-
-                    case var _ when String.Equals(cmd, "updateAppBadge", StringComparison.OrdinalIgnoreCase):
-                        {
-                            Console.WriteLine("updateappbadge");
-                            var parsedArgs = JsonUtilities.Deserialize<UpdateAppBadgeArgs>(arg, SourceGenerationContext.Default.UpdateAppBadgeArgs)!;
-                            Console.WriteLine("parsedArgs.HasPings =" + parsedArgs.HasPings);
-                            Console.WriteLine("parsedArgs.HasUnseen =" + parsedArgs.HasUnseen);
-                            var nbt = parsedArgs.HasPings ? NotificationBadgeType.PingsWithCount(1) :
-                                parsedArgs.HasUnseen ? NotificationBadgeType.Mentions :
-                                NotificationBadgeType.None;
-                            SetNotificationBadge(nbt);
-                        }
-                        break;
-
-                    case var _ when String.Equals(cmd, "addIdleMonitorRegistration", StringComparison.OrdinalIgnoreCase):
-                        {
-                            var parsedArgs = JsonUtilities.Deserialize<AddIdleMonitorRegistrationArgs>(arg, SourceGenerationContext.Default.AddIdleMonitorRegistrationArgs)!;
-                            var im = _sp.GetRequiredService<IIdleDetectionManager>();
-                            var registration = im.RegisterDisposableCallback(TimeSpan.FromMilliseconds(parsedArgs.IdleAfterMs), (userState, screenState) =>
-                            {
-                                _ = WriteAsync($"idlemonitorupdate {{ \"monitorName\": \"{parsedArgs.MonitorName}\", \"userState\": \"{userState}\", \"screenState\": \"{screenState}\" }}");
-                            });
-                            _idleMonitorRegistrations.Add(parsedArgs.MonitorName, registration);
-                        }
-                        break;
-                    case var _ when String.Equals(cmd, "removeIdleMonitorRegistration", StringComparison.OrdinalIgnoreCase):
-                        {
-                            var parsedArgs = JsonUtilities.Deserialize<RemoveIdleMonitorRegistrationArgs>(arg, SourceGenerationContext.Default.RemoveIdleMonitorRegistrationArgs)!;
-                            var im = _sp.GetRequiredService<IIdleDetectionManager>();
-                            if (_idleMonitorRegistrations.TryGetValue(parsedArgs.MonitorName, out var registration))
-                            {
-                                registration.Dispose();
-                                _idleMonitorRegistrations.Remove(parsedArgs.MonitorName);
-                            }
-                        }
-                        break;
-
-                    case var _ when String.Equals(cmd, "addUpdateCheckerMonitorRegistration", StringComparison.OrdinalIgnoreCase):
-                        {
-                            var parsedArgs = JsonUtilities.Deserialize<AddUpdateCheckerMonitorRegistrationArgs>(arg, SourceGenerationContext.Default.AddUpdateCheckerMonitorRegistrationArgs)!;
-                            var uc = _sp.GetRequiredService<IUpdateChecker>();
-                            var reg = new UpdateCheckerMonitorRegistration(this, uc, parsedArgs.MonitorName);
-                            _constituents.Add(reg);
-                        }
-                        break;
-                    case var _ when String.Equals(cmd, "removeUpdateCheckerMonitorRegistration", StringComparison.OrdinalIgnoreCase):
-                        {
-                            var parsedArgs = JsonUtilities.Deserialize<RemoveUpdateCheckerMonitorRegistrationArgs>(arg, SourceGenerationContext.Default.RemoveUpdateCheckerMonitorRegistrationArgs)!;
-                            var maybeReg = _constituents.OfType<UpdateCheckerMonitorRegistration>()
-                                .Where(x => String.Equals(x.MonitorName, parsedArgs.MonitorName))
-                                .FirstOrDefault();
-                            if (maybeReg != null)
-                            {
-                                _constituents.Remove(maybeReg);
-                                maybeReg.Dispose();
-                            }
-                        }
-                        break;
-                    case var _ when String.Equals(cmd, "relaunchToApplyUpdate", StringComparison.OrdinalIgnoreCase):
-                        {
-                            var uc = _sp.GetRequiredService<IUpdateChecker>();
-                            uc.IndicateRelaunchOnExit();
-                            await this.WriteAsync("relaunchconfirmed");
-                        }
-                        break;
-                    case var _ when String.Equals(cmd, "loginsuccess", StringComparison.OrdinalIgnoreCase):
-                        {
-                            var uc = _sp.GetRequiredService<IUpdateChecker>();
-                            uc.IndicateSuccessfulLogin();
-                        }
-                        break;
-
-                    case var _ when String.Equals(cmd, "eiconSearch", StringComparison.OrdinalIgnoreCase):
-                        {
-                            var parsedArgs = JsonUtilities.Deserialize<EIconSearchArgs>(arg, SourceGenerationContext.Default.EIconSearchArgs)!;
-                            ThreadPool.QueueUserWorkItem(delegate
-                            {
-								_ = HandleEIconSearch(parsedArgs, stoppingToken);
-							});
-                        }
-                        break;
-
-                    case var _ when String.Equals(cmd, "eiconSearchClear", StringComparison.OrdinalIgnoreCase):
-                        {
-                            //var sw = Stopwatch.StartNew();
-                            RecycleEIconSearch(null);
-                            //sw.Stop();
-							//await this.WriteAsync($"eiconSearchClearDone {{ \"took\": {sw.ElapsedMilliseconds} }}");
-						}
-                        break;
-
-                    case var _ when String.Equals(cmd, "getcssdata", StringComparison.OrdinalIgnoreCase):
-                        {
-                            var parsedArgs = JsonUtilities.Deserialize<GetCssDataArgs>(arg, SourceGenerationContext.Default.GetCssDataArgs)!;
-                            string data;
-                            try
-                            {
-                                data = await GetCssDataAsync(parsedArgs.Url, stoppingToken);
-                            }
-                            catch
-                            {
-                                data = "";
-                            }
-                            await this.WriteAsync("gotcssdata " +
-                                JsonUtilities.Serialize(new GotCssDataResult()
-                                {
-                                    MessageId = parsedArgs.MessageId,
-                                    Data = data
-                                }, SourceGenerationContext.Default.GotCssDataResult));
-                        }
-                        break;
-
-                    case var _ when String.Equals(cmd, "getconfig", StringComparison.OrdinalIgnoreCase):
-                        {
-                            var parsedArgs = JsonUtilities.Deserialize<GetConfigDataArgs>(arg, SourceGenerationContext.Default.GetConfigDataArgs)!;
-                            GotConfigDataResult res;
-                            try
-                            {
-                                res = await GetConfigDataAsync(parsedArgs.MessageId, stoppingToken);
-                            }
-                            catch
-                            {
-                                res = new GotConfigDataResult() { MessageId = parsedArgs.MessageId, Data = new List<ConfigKeyValue>() };
-                            }
-
-                            await this.WriteAsync("gotconfig " +
-                                JsonUtilities.Serialize(res, SourceGenerationContext.Default.GotConfigDataResult));
-                        }
-                        break;
-                    case var _ when String.Equals(cmd, "setconfig", StringComparison.OrdinalIgnoreCase):
-                        {
-                            var parsedArgs = JsonUtilities.Deserialize<ConfigKeyValue>(arg, SourceGenerationContext.Default.ConfigKeyValue)!;
-                            await this.SetConfigDataAsync(parsedArgs.Key, parsedArgs.Value, stoppingToken);
-                        }
-                        break;
-
-                    case var _ when String.Equals(cmd, "getallcss", StringComparison.OrdinalIgnoreCase):
-                        {
-                            var parsedArgs = JsonUtilities.Deserialize<GetAllCssArgs>(arg, SourceGenerationContext.Default.GetAllCssArgs)!;
-                            await this.GetAllCssAsync(parsedArgs.MessageId, stoppingToken);
-                        }
-                        break;
+                    await handler(this, arg, stoppingToken);
                 }
             }
-
-            //pcsw.Stop();
-			//await WriteAsync($"recvack2 {{ \"cmd\": \"{cmd}\", \"took\": {pcsw.ElapsedMilliseconds} }}");
 		}
 
         private async Task<string> GetCssDataAsync(string url, CancellationToken cancellationToken)
@@ -724,12 +784,23 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions
             mgr.SetNotificationBadge(type);
         }
 
+        private string _lastWrittenWindowState = "";
+
+        private void MaybeWriteWindowState(string winState)
+        {
+            if (winState != _lastWrittenWindowState)
+            {
+                _lastWrittenWindowState = winState;
+                _ = this.WriteAsync(winState);
+            }
+        }
+
         public override void WindowRestored()
         {
             try
             {
                 base.WindowRestored();
-                _ = this.WriteAsync("win.restored");
+                MaybeWriteWindowState("win.restored");
             }
             catch { }
         }
@@ -739,7 +810,7 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions
             try
             {
                 base.WindowMinimized();
-                _ = this.WriteAsync("win.minimized");
+                MaybeWriteWindowState("win.minimized");
             }
             catch { }
         }
@@ -749,7 +820,26 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions
             try
             {
                 base.WindowMaximized();
-                _ = this.WriteAsync("win.maximized");
+                MaybeWriteWindowState("win.maximized");
+            }
+            catch { }
+        }
+
+        public override void CssFileUpdated(string filename)
+        {
+            try
+            {
+                Task.Run(async () =>
+                {
+                    try
+                    {
+                        var jo = new JsonObject();
+                        jo["filename"] = filename;
+                        await this.WriteAsync("cssfileupdated " +
+                            JsonSerializer.Serialize(jo, SourceGenerationContext.Default.JsonObject));
+                    }
+                    catch { }
+                });
             }
             catch { }
         }
@@ -926,6 +1016,18 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions
 
             [JsonPropertyName("filenames")]
             public List<string> Filenames { get; set; }
+        }
+
+        public class SubmitEIconMetadataArgs
+        {
+            [JsonPropertyName("name")]
+            public required string Name { get; set; }
+
+            [JsonPropertyName("contentLength")]
+            public required long ContentLength { get; set; }
+
+            [JsonPropertyName("etag")]
+            public required string ETag { get; set; }
         }
     }
 

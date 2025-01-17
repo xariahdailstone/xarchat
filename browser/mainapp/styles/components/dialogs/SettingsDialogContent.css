@@ -182,3 +182,57 @@
 .setting-entry-radio-option label button {
     margin-right: 5px;
 }
+
+.setting-item:has(.setting-entry-notifroute) {
+    display: grid;
+    grid-template-columns: 100%;
+    grid-template-rows: auto auto auto auto;
+    grid-template-areas:
+        "title"
+        "description"
+        "inheritprompt"
+        "input";
+}
+.setting-entry-notifroute {
+    font-size: 80%;
+    margin-top: 5px;
+    display: grid;
+    width: 80%;
+    grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
+    gap: 12px;
+}
+.setting-entry-notifroute .notifroute-button-container {
+    background: var(--bg-main-textbox-btn);
+    border-radius: 6px;
+    padding: 3px 9px;
+    text-align: center;
+}
+.setting-entry-notifroute .notifroute-button-container:has(.notifroute-button) {
+    cursor: pointer;
+}
+.setting-entry-notifroute .notifroute-button-no .notifroute-button-text::before {
+    content: '\274C';
+    margin-right: 3px;
+}
+.setting-entry-notifroute .notifroute-button-no .notifroute-button-text {
+    color: red;
+}
+.setting-entry-notifroute .notifroute-button-yes .notifroute-button-text::before {
+    content: '\2705';
+    margin-right: 3px;
+}
+.setting-entry-notifroute .notifroute-button-yes .notifroute-button-text {
+    color: lime;
+}
+.setting-entry-notifroute .notifroute-button-container:has(.notifroute-button-important) {
+    background: red;
+    color: white;
+}
+.setting-entry-notifroute .notifroute-button-important .notifroute-button-text::before {
+    content: '\2705';
+    margin-right: 3px;
+}
+.setting-entry-notifroute .notifroute-button-important .notifroute-button-text {
+    color: white;
+    background: red;
+}

@@ -1,0 +1,88 @@
+
+#elMain {
+    width: 400px;
+    height: 275px;
+
+    display: grid;
+    grid-template-columns: 100%;
+    grid-template-rows: auto 1fr 1fr;
+    grid-template-areas:
+        "onlinestatus"
+        "statusmessage"
+        "preview";
+
+    gap: 8px;
+    overflow: hidden;
+}
+.online-status-container { grid-area: onlinestatus; }
+.status-message-editor-container { grid-area: statusmessage; }
+.status-preview-container { grid-area: preview; }
+
+.online-status-container {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-items: center;
+    gap: 8px;
+}
+
+.online-status-select {
+    margin-left: 8px;
+    align-self: center;
+
+    border: none;
+    outline: none;
+    background: var(--bg-main-textbox-btn);
+    color: var(--fg-main-textbox-btn);
+    padding: 6px;
+    border-radius: 8px;
+}
+
+.status-message-editor-container {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-rows: 1fr auto;
+    grid-template-areas:
+        "textedit textedit"
+        ". charcount";
+    gap: 4px;
+}
+.status-message-editor { grid-area: textedit; }
+.status-message-editor-charcount { grid-area: charcount; }
+
+.status-message-editor { 
+    outline: none;
+    border: none;
+    background: var(--bg-level-2);
+    color: var(--fg-level-2);
+    font: var(--chat-font);
+    padding: 4px 4px;
+    border-radius: 4px;
+    resize: none;
+}
+
+.status-message-editor-charcount {
+    font-size: 80%;
+}
+
+.status-preview-container {
+    display: grid;
+    grid-template-rows: auto 1fr;
+    grid-template-columns: 100%;
+    grid-template-areas: 
+        "title"
+        "preview";
+}
+.status-preview-title { grid-area: title; }
+.status-preview { grid-area: preview; }
+
+.status-preview-title {
+    font-size: 90%;
+    font-weight: bold;
+}
+.status-preview {
+    background: var(--bg-level-3);
+    color: var(--fg-level-3);
+    font: var(--chat-font);
+    margin-top: 6px;
+}

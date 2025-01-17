@@ -4,10 +4,31 @@
 }
 
 #elMain {
-    display: contents;
+    max-width: 100%;
+    overflow: hidden;
+
+    display: grid;
+    grid-template-columns: 100%;
+    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-areas:
+        "filtersbar"
+        "messagecontainer";
+
+    background: var(--bg-level-4); 
+}
+
+.filtersbar {
+    /* display: none; */
+    grid-area: filtersbar;
+    height: 30px;
+    max-width: 100%;
+
+    background: var(--bg-level-3);
 }
 
 .messagecontainerouter {
+    grid-area: messagecontainer;
+
     display: flex;
     flex-direction: column;
     justify-content: flex-end;
@@ -15,6 +36,8 @@
     height: 100%;
     user-select: text;
     overflow: hidden;
+
+    margin-left: var(--chatui-splitterhandle-width);
 
     position: relative;
 
@@ -31,13 +54,17 @@
 }
 
 
+.highlight-from-me .from-me {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
 
 
 .typingstatusindicator { user-select: none; }
 .messageitem.typingstatusindicator {
     padding: 3px 0px; 
     border-bottom: 1px solid transparent;
-    min-height: 1lh;
+    min-height: 1em;
 }
 
 .messageitem.typingstatusindicator .messagetext {

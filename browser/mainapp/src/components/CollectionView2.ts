@@ -136,13 +136,13 @@ export class CollectionView2<T> extends ComponentBase<ObservableCollection<any>>
     }
 
     private initializeAllItems() {
-        //console.log("initializing all items...");
+        //this.logger.logDebug("initializing all items...");
         const elItemContainer = this.elItemContainer;
 
         this.teardownAllItems();
 
         if (elItemContainer) {
-            //console.log("initializing all items 2...");
+            //this.logger.logDebug("initializing all items 2...");
             this.dispatchEvent(new Event("updatingelements"));
             for (let item of this.viewModel!) {
                 const el = this.createElement(item);
@@ -153,10 +153,10 @@ export class CollectionView2<T> extends ComponentBase<ObservableCollection<any>>
     }
 
     private teardownAllItems() {
-        //console.log("teardown all items...");
+        //this.logger.logDebug("teardown all items...");
         const elItemContainer = this.elItemContainer;
         if (elItemContainer) {
-            //console.log("teardown all items 2...");
+            //this.logger.logDebug("teardown all items 2...");
             this.dispatchEvent(new Event("updatingelements"));
             while (elItemContainer.firstElementChild) {
                 this.teardownElement(elItemContainer.firstElementChild as HTMLElement);
@@ -166,14 +166,14 @@ export class CollectionView2<T> extends ComponentBase<ObservableCollection<any>>
     }
 
     private createElement(vm: any): HTMLElement {
-        //console.log("creating element");
+        //this.logger.logDebug("creating element");
         const el = document.createElement("x-collectionview2item") as CollectionView2Item;
 
-        //console.log("creating element 2");
+        //this.logger.logDebug("creating element 2");
         (vm as any)[this.SYM_ELEMENT] = el;
         (el as any)[this.SYM_VIEWMODEL] = vm;
 
-        //console.log("creating element 3");
+        //this.logger.logDebug("creating element 3");
         el.viewModel = vm;
 
         if (this.oncreateelementcontent) {
@@ -194,7 +194,7 @@ export class CollectionView2<T> extends ComponentBase<ObservableCollection<any>>
             catch { }
         }
 
-        //console.log("createdElement", el);
+        //this.logger.logDebug("createdElement", el);
         return el;
     }
 

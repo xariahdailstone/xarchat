@@ -94,6 +94,8 @@ export class CancellationTokenSource implements IDisposable {
 
     [Symbol.dispose]() { this.dispose(); }
 
+    get isDisposed() { return this._disposed; }
+
     cancel() {
         if (!this._disposed) {
             this._disposed = true;

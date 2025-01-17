@@ -22,9 +22,9 @@ export class BBCodeDisplay extends ComponentBase<BBCodeParseResult | string> {
                 if (parserObj && parseOptions) {
                     const parseResult = parserObj?.parse(vm, parseOptions);
                     this.elMain.appendChild(parseResult.element);
-                    console.log("bbcode assigned");
+                    this.logger.logDebug("bbcode assigned");
                     return asDisposable(() => {
-                        console.log("bbcode cleanedup");
+                        this.logger.logDebug("bbcode cleanedup");
                         this.elMain.removeChild(parseResult.element);
                         parseResult.dispose();
                     });    

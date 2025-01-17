@@ -55,5 +55,9 @@
         {
             _hostWindowState = HostWindowState.Restored;
         }
+
+        public virtual void CssFileUpdated(string filename)
+        {
+        }
     }
 }

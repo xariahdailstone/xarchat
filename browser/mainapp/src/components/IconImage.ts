@@ -1,9 +1,11 @@
+import { CancellationToken } from "../util/CancellationTokenSource.js";
 import { IDisposable } from "../util/Disposable.js";
 import { EL } from "../util/EL.js";
+import { HostInterop } from "../util/HostInterop.js";
 import { HTMLUtils } from "../util/HTMLUtils.js";
 import { runInAnimationFrame } from "../util/RequestAnimationFrameHook.js";
 import { createStylesheet, setStylesheetAdoption } from "../util/StyleSheetPolyfill.js";
-import { ComponentBase, componentElement } from "./ComponentBase.js";
+import { ComponentBase, componentElement, StyleLoader } from "./ComponentBase.js";
 
 const imageCache = new Map<string, WeakRef<CachedImageInfo>>();
 const freg = new FinalizationRegistry<CachedImageInfoInner>((heldValue) => {
@@ -19,6 +21,7 @@ class CachedImageInfoInner implements IDisposable {
 
     private _url: (string | null) = null;
 
+    private _disposed: boolean = false;
     dispose() {
         if (this._url) {
             URL.revokeObjectURL(this._url);
@@ -27,6 +30,8 @@ class CachedImageInfoInner implements IDisposable {
     }
 
     [Symbol.dispose]() { this.dispose(); }
+
+    get isDisposed() { return this._disposed; }
 
     setBlobUrl(url: string) {
         this._url = url;
@@ -82,19 +87,26 @@ class CachedImageInfo {
             return resultEl;
         }
         else {
-            const resp = await fetch(this._src);
             if (this._src.endsWith(".svg")) {
-                const text = await resp.text();
-                return text;
+                const p = HostInterop.getSvgDataAsync(this._src, CancellationToken.NONE);
+                return p;
             }
             else {
-                const blob = await resp.blob();
-                const objectUrl = URL.createObjectURL(blob);
-                this._innerInfo.setBlobUrl(objectUrl);
-                return objectUrl;
+                const resp = await fetch(this._src);
+                if (this._src.endsWith(".svg")) {
+                    const text = await resp.text();
+                    return text;
+                }
+                else {
+                    const blob = await resp.blob();
+                    const objectUrl = URL.createObjectURL(blob);
+                    this._innerInfo.setBlobUrl(objectUrl);
+                    return objectUrl;
+                }
             }
         }
     }
+
 
     private _getTemplateAsync: Promise<HTMLTemplateElement> | null = null;
 
@@ -125,27 +137,25 @@ class CachedImageInfo {
     }
 }
 
-const iconImage2Stylesheet = createStylesheet();
-iconImage2Stylesheet.replaceSync(`
-:host {
-    display: block;
-    contain: paint;
-    /*display: block;
-    position: relative;
-    overflow: hidden;*/
-}
-.lh-monitor-container { display: inline; position: absolute; opacity: 0; top: 0; left: 0; width: 1px; height: 1px; user-select: none; pointer-events: none; }
-.lh-monitor { display: inline; position: absolute; opacity: 0; user-select: none; pointer-events: none; }
-.main { display: contents; --fgcolor: currentColor; max-width: inherit; max-height: inherit; }
-.main > * { 
-    display: block; 
-    max-width: var(--converted-max-width); 
-    max-height: var(--converted-max-height); 
-    width: inherit;
-    height: inherit;
-    fill: var(--fgcolor);
-}
-`);
+// const iconImage2Stylesheet = createStylesheet();
+// iconImage2Stylesheet.replaceSync(`
+// :host {
+//     display: block;
+//     contain: paint;
+//     /*display: block;
+//     position: relative;
+//     overflow: hidden;*/
+// }
+// .main { display: contents; --fgcolor: currentColor; max-width: inherit; max-height: inherit; }
+// .main > * { 
+//     display: block; 
+//     max-width: var(--iconimage-max-width); 
+//     max-height: var(--iconimage-max-height); 
+//     width: inherit;
+//     height: inherit;
+//     fill: var(--fgcolor);
+// }
+// `);
 
 @componentElement("x-iconimage")
 export class IconImage extends HTMLElement {
@@ -155,12 +165,18 @@ export class IconImage extends HTMLElement {
         super();
         this._sroot = this.attachShadow({ mode: 'closed' });
         HTMLUtils.assignStaticHTMLFragment(this._sroot,
-            `<div class="lh-monitor-container"><div id="elLineHeightMonitor" class="lh-monitor">A</div></div><div id="elMain" class="main"></div>`);
-        setStylesheetAdoption(this._sroot, [ iconImage2Stylesheet ]);
+            `<div id="elMain" class="main"></div>`);
+
+        const _styleLoader = new StyleLoader(ss => {
+            setStylesheetAdoption(this._sroot, ss);
+            //(this._sroot as any).adoptedStyleSheets = [...ss];
+        });
+        _styleLoader.addLoad("styles/components/IconImage.css");
+
+        //setStylesheetAdoption(this._sroot, [ iconImage2Stylesheet ]);
     }
 
     private readonly _sroot: ShadowRoot;
-    private _ro: ResizeObserver | null = null;
 
     protected attributeChangedCallback(name: string, oldValue?: string | undefined, newValue?: string | undefined): void {
         if (name == "src") {
@@ -169,40 +185,9 @@ export class IconImage extends HTMLElement {
     }
 
     protected connectedCallback() {
-        const elLineHeightMonitor = this._sroot.getElementById("elLineHeightMonitor") as HTMLDivElement;
-
-        this._ro = new ResizeObserver(entries => {
-            for (let entry of entries) {
-                this.recalculateDimensions(entry.contentRect.height);
-            }
-        });
-        this._ro.observe(elLineHeightMonitor);
-        // window.requestAnimationFrame(() => {
-        //     this.recalculateDimensions();
-        // });
     }
 
     protected disconnectedCallback() {
-        if (this._ro) {
-            this._ro.disconnect();
-            this._ro = null;
-        }
-    }
-
-    private getCurrentLineHeight() {
-        const elLineHeightMonitor = this._sroot.getElementById("elLineHeightMonitor") as HTMLDivElement;
-        return elLineHeightMonitor.clientHeight;
-    }
-
-    private getLhUnits(str: string) {
-        const re = new RegExp(/^([\d\.]+)lh$/, "i");
-        const xr = re.exec(str);
-        if (xr) {
-            return +xr[1];
-        }
-        else {
-            return null;
-        }
     }
 
     private nullIf(value: string, ...nullIfValues: string[]) {
@@ -212,39 +197,6 @@ export class IconImage extends HTMLElement {
             }
         }
         return value;
-    }
-
-    private recalculateDimensions(lineHeight: number) {
-        const elLineHeightMonitor = this._sroot.getElementById("elLineHeightMonitor") as HTMLDivElement;
-        const elMain = this._sroot.getElementById("elMain") as HTMLDivElement;
-
-        //const lineHeight = this.getCurrentLineHeight();
-        const cs = window.getComputedStyle(this);
-
-        const strMaxWidth = 
-            this.nullIf(cs.getPropertyValue("--iconimage-max-width"), "", "none")
-            ?? this.nullIf(cs.maxWidth, "", "none")
-            ?? cs.width;
-        const strMaxHeight = 
-            this.nullIf(cs.getPropertyValue("--iconimage-max-height"), "", "none")
-            ?? this.nullIf(cs.maxHeight, "", "none")
-            ?? cs.height;
-
-        const maxWidthUnits = this.getLhUnits(strMaxWidth);
-        const maxHeightUnits = this.getLhUnits(strMaxHeight);
-
-        if (maxWidthUnits != null) {
-            elMain.style.setProperty("--converted-max-width", (lineHeight * maxWidthUnits) + "px");
-        }
-        else {
-            elMain.style.setProperty("--converted-max-width", strMaxWidth);
-        }
-        if (maxHeightUnits != null) {
-            elMain.style.setProperty("--converted-max-height", (lineHeight * maxHeightUnits) + "px");
-        }
-        else {
-            elMain.style.setProperty("--converted-max-height", strMaxHeight);
-        }
     }
 
     private _src: (string | null) = null;
@@ -319,6 +271,8 @@ export class IconImageLightweight implements IDisposable {
     }
 
     [Symbol.dispose]() { this.dispose(); }
+
+    get isDisposed() { return this._disposed; }
 
     private _src: (string | null) = "";
     get src() { return this._src; }

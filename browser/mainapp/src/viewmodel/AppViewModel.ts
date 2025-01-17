@@ -25,6 +25,7 @@ import { PromptOptions, PromptViewModel } from "./dialogs/PromptViewModel.js";
 import { SettingsDialogViewModel } from "./dialogs/SettingsDialogViewModel.js";
 import { ContextMenuPopupViewModel } from "./popups/ContextMenuPopupViewModel.js";
 import { PopupViewModel } from "./popups/PopupViewModel.js";
+import { UIZoomNotifyPopupViewModel } from "./popups/UIZoomNotifyPopupViewModel.js";
 
 export class AppViewModel extends ObservableBase {
     constructor(configBlock: ConfigBlock) {
@@ -105,6 +106,24 @@ export class AppViewModel extends ObservableBase {
     @observableProperty
     initialized: boolean = false;
 
+    @observableProperty
+    statusMessage: string | null = null;
+
+    zoomNotifyPopup: UIZoomNotifyPopupViewModel | null = null;
+
+    get interfaceZoom(): number { return +(this.configBlock.get("uiZoom") ?? 1); }
+    set interfaceZoom(value: number) {
+        if (value != this.interfaceZoom) {
+            this.configBlock.set("uiZoom", value);
+
+            if (this.zoomNotifyPopup == null) {
+                this.zoomNotifyPopup = new UIZoomNotifyPopupViewModel(this);    
+                this.zoomNotifyPopup.show();
+            }
+            this.zoomNotifyPopup.message = `Zoom level changed to ${Math.round(value * 100)}%`;
+        }
+    }
+
     readonly configBlock: ConfigBlock;
 
     flistApi: FListApi;
@@ -164,7 +183,7 @@ export class AppViewModel extends ObservableBase {
     get isWindowActive() { return this._isWindowActive.value; }
     set isWindowActive(value) {
         if (value !== this._isWindowActive.value) {
-            //console.log("isWindowActive", value);
+            //this.logger.logDebug("isWindowActive", value);
             this._isWindowActive.value = value;
             if (this.currentlySelectedSession) {
                 this.currentlySelectedSession.isActiveSession = this.isWindowActive;
@@ -206,6 +225,12 @@ export class AppViewModel extends ObservableBase {
             await HostInterop.launchUrl(this, url, forceExternal ?? false);
         }
         catch { }
+    }
+
+    @observableProperty
+    get noGpuMode() {
+        const p = new URLSearchParams(document.location.search);
+        return (p.get("nogpu") == "1");
     }
 
     async launchUpdateUrlAsync(): Promise<void> {
@@ -272,7 +297,7 @@ export class AppViewModel extends ObservableBase {
                 (async () => {
                     const id = await IdleDetection.createAsync(value, (userState, screenState) => {
                         if (this._idleAfterAssign == thisIdleAssign) {
-                            console.log("idledetect", userState, screenState);
+                            this.logger.logDebug("idledetect", userState, screenState);
                             this.userState = userState;
                             this.screenState = screenState;
                         }    

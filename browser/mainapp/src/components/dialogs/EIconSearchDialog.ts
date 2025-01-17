@@ -7,6 +7,8 @@ import { KeyCodes } from "../../util/KeyCodes";
 import { setupTooltipHandling } from "../../viewmodel/popups/TooltipPopupViewModel";
 import { SnapshottableSet } from "../../util/collections/SnapshottableSet";
 import { HTMLUtils } from "../../util/HTMLUtils";
+import { HostInterop } from "../../util/HostInterop";
+import { EIconUtils } from "../../util/EIconUtils";
 
 @componentArea("dialogs")
 @componentElement("x-eiconsearchdialog")
@@ -94,23 +96,23 @@ export class EIconSearchDialog extends DialogComponentBase<EIconSearchDialogView
         elKeyboardNavTextbox.addEventListener("keydown", (e) => {
             if (this.viewModel) {
                 if (e.keyCode == KeyCodes.UP_ARROW) {
-                    //console.log("up");
+                    //this.logger.logDebug("up");
                     elSetView.moveKeyboardSelectionUp();
                 }
                 else if (e.keyCode == KeyCodes.LEFT_ARROW) {
-                    //console.log("left");
+                    //this.logger.logDebug("left");
                     elSetView.moveKeyboardSelectionLeft();
                 }
                 else if (e.keyCode == KeyCodes.RIGHT_ARROW) {
-                    //console.log("right");
+                    //this.logger.logDebug("right");
                     elSetView.moveKeyboardSelectionRight();
                 }
                 else if (e.keyCode == KeyCodes.DOWN_ARROW) {
-                    //console.log("down");
+                    //this.logger.logDebug("down");
                     elSetView.moveKeyboardSelectionDown();
                 }
                 else if (e.keyCode == KeyCodes.RETURN) {
-                    //console.log("return");
+                    //this.logger.logDebug("return");
                     elSetView.confirmKeyboardSelection();
                 }
             }
@@ -134,7 +136,7 @@ export class EIconSearchDialog extends DialogComponentBase<EIconSearchDialogView
     override get dialogBorderType(): DialogBorderType { return DialogBorderType.RIGHTPANE; }
 
     override onShown(): void {
-        //console.log("trying to focus textbox");
+        //this.logger.logDebug("trying to focus textbox");
         const elTextbox = this.$("elTextbox");
         if (elTextbox) {
             elTextbox.focus();
@@ -167,7 +169,7 @@ export class EIconSetView extends ComponentBase<EIconSearchDialogViewModel> {
         });
 
         this.elMain.addEventListener("scroll", () => {
-            //console.log("ev elMain scroll fired");
+            //this.logger.logDebug("ev elMain scroll fired");
             this.recalculateDisplay(false);
         });
 
@@ -180,10 +182,10 @@ export class EIconSetView extends ComponentBase<EIconSearchDialogViewModel> {
     private _intersectionObserver: IntersectionObserver | null = null;
 
     protected override connectedToDocument(): void {
-        this._resizeObserver = new ResizeObserver(entries => { /* console.log("ev ro fired"); */ this.recalculateDisplay(false); });
+        this._resizeObserver = new ResizeObserver(entries => { /* this.logger.logDebug("ev ro fired"); */ this.recalculateDisplay(false); });
         this._resizeObserver.observe(this);
 
-        this._intersectionObserver = new IntersectionObserver(entries => { /* console.log("ev io fired"); */ this.recalculateDisplay(false); }, {
+        this._intersectionObserver = new IntersectionObserver(entries => { /* this.logger.logDebug("ev io fired"); */ this.recalculateDisplay(false); }, {
             threshold: [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
         });
         this._intersectionObserver.observe(this.$("elBeforeSentinel") as HTMLDivElement);
@@ -244,7 +246,7 @@ export class EIconSetView extends ComponentBase<EIconSearchDialogViewModel> {
             elVisibleIconsContainer.style.height = `${displayMetrics.neededYHeight}px`;
 
             const vicBoundingRect = elVisibleIconsContainer.getBoundingClientRect();
-            //console.log("vicBoundingRect", vicBoundingRect);
+            //this.logger.logDebug("vicBoundingRect", vicBoundingRect);
             const startAtYPixel = 0 - Math.min(0, vicBoundingRect.top);
             const endAtYPixel = Math.min(vicBoundingRect.bottom, window.innerHeight) - vicBoundingRect.top;
 
@@ -264,7 +266,7 @@ export class EIconSetView extends ComponentBase<EIconSearchDialogViewModel> {
             const effectiveStartAtRow = Math.max(0, rawStartAtRow - actuallyVisibleRowCount);
             const effectiveEndAtRow = Math.min(displayMetrics.rowCount, rawEndAtRow + actuallyVisibleRowCount);
 
-            //console.log(`eicons visible on rows ${effectiveStartAtRow} to ${effectiveEndAtRow}`);
+            //this.logger.logDebug(`eicons visible on rows ${effectiveStartAtRow} to ${effectiveEndAtRow}`);
 
             this.setVisibleEIcons(displayMetrics, (effectiveStartAtRow * displayMetrics.iconsPerRow), ((effectiveEndAtRow + 1) * displayMetrics.iconsPerRow));
         }
@@ -364,6 +366,7 @@ export class EIconSetView extends ComponentBase<EIconSearchDialogViewModel> {
                 element.classList.add("bbcode-eicon-loading");
                 element.addEventListener("load", () => {
                     element.classList.remove("bbcode-eicon-loading");
+                    EIconUtils.getAndSubmitEIconMetadata(eiconName);
                 });
                 element.addEventListener("error", () => {
                     element.classList.remove("bbcode-eicon-loading");
@@ -448,7 +451,7 @@ export class EIconSetView extends ComponentBase<EIconSearchDialogViewModel> {
             neededYHeight: (eiconRowCount * EICON_HEIGHT) + (Math.max(0, eiconRowCount - 1) * EICON_GAP),
             rowCount: eiconRowCount
         };
-        //console.log("displayMetrics", result);
+        //this.logger.logDebug("displayMetrics", result);
         return result;
     }
 
@@ -459,7 +462,7 @@ export class EIconSetView extends ComponentBase<EIconSearchDialogViewModel> {
         if (index != this._keyboardSelectionIndex) {
             this._keyboardSelectionIndex = index;
             this._scrollToKeyboardSelection = true;
-            //console.log("keyboardSelectionIndex", index);
+            //this.logger.logDebug("keyboardSelectionIndex", index);
             this.recalculateDisplay(true);
         }
     }

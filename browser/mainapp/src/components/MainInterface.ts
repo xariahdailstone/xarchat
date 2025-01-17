@@ -123,6 +123,25 @@ export class MainInterface extends ComponentBase<AppViewModel> {
             this.updateWindowState();
         });
 
+        window.addEventListener("wheel", (e) => {
+            if (e.ctrlKey) {
+                if (this.viewModel) {
+                    if (e.deltaY > 0) {
+                        this.viewModel.interfaceZoom = Math.max(0.5, this.viewModel.interfaceZoom - 0.02);
+                    }
+                    else {
+                        this.viewModel.interfaceZoom = Math.min(3.0, this.viewModel.interfaceZoom + 0.02);
+                    }
+                }
+                e.preventDefault();
+            }
+        }, { passive: false });
+        this.watchExpr(vm => vm.interfaceZoom, izoom => {
+            if (izoom != null) {
+                this.elMain.style.zoom = izoom.toString();
+            }
+        });
+
         this.watch("showTitlebar", v => {
             if (!!v) {
                 elTitleBar.classList.remove("hidden");
@@ -188,9 +207,9 @@ export class MainInterface extends ComponentBase<AppViewModel> {
         let anyDialogsCount = elDialogStack.children.length;
         let unclosedDialogsCount = 0;
 
+        let lastDialog: DialogViewModel<any> | null = null;
         if (this.viewModel) {
             const inactiveDialogs: Set<DialogViewModel<any>> = new Set();
-            let lastDialog: DialogViewModel<any> | null = null;
             for (let d of this.viewModel.dialogs) {
                 if (!d.closed) {
                     lastDialog = d;
@@ -219,13 +238,20 @@ export class MainInterface extends ComponentBase<AppViewModel> {
             }
         }
         
-        console.log(`anyDialogsCount=${anyDialogsCount}  unclosedDialogsCount=${unclosedDialogsCount}`);
+        this.logger.logDebug(`anyDialogsCount=${anyDialogsCount}  unclosedDialogsCount=${unclosedDialogsCount}`);
         const hasDialogs = (anyDialogsCount > 0);
         this.elMain.classList.toggle("has-dialogs", hasDialogs);
 
         const hasUnclosedDialogs = (unclosedDialogsCount > 0);
         this.elMain.classList.toggle("has-unclosed-dialogs", hasUnclosedDialogs);
+        this.elMain.classList.toggle("nogpu", this.viewModel?.noGpuMode ?? false);
         elChatUi.inert = hasUnclosedDialogs;
+        if (lastDialog) {
+            const el = elDialogCollectionView.getElementForViewModel(lastDialog);
+            if (el && typeof (el as DialogFrame).setActiveDialog == "function") {
+                (el as DialogFrame).setActiveDialog();
+            }
+        }
     }
 
     private _windowFocused: boolean = true;

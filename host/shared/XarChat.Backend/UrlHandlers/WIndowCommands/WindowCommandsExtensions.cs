@@ -17,7 +17,7 @@ namespace XarChat.Backend.UrlHandlers.WIndowCommands
 	{
 		public static void UseWindowCommands(this WebApplication app)
 		{
-			app.MapMethods("/windowcommand/{id}", ["OPTIONS"], async (HttpContext context) =>
+			app.MapMethods("/api/windowcommand/{id}", ["OPTIONS"], async (HttpContext context) =>
 			{
 				context.Response.Headers.Append("Access-Control-Allow-Methods", "POST, OPTIONS");
 				context.Response.Headers.Append("Access-Control-Allow-Origin", "*");
@@ -26,7 +26,7 @@ namespace XarChat.Backend.UrlHandlers.WIndowCommands
 				await context.Response.CompleteAsync();
 				return Results.Empty;
 			});
-			app.MapPost("/windowcommand/{id}", PerformWindowCommandAsync);
+			app.MapPost("/api/windowcommand/{id}", PerformWindowCommandAsync);
 		}
 
 		private static async Task<IResult> PerformWindowCommandAsync(

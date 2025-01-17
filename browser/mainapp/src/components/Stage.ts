@@ -1,9 +1,10 @@
 import { asDisposable } from "../util/Disposable.js";
 import { HTMLUtils } from "../util/HTMLUtils.js";
-import { SelectedChannel } from "../viewmodel/ActiveLoginViewModel.js";
+import { SelectableTab, SelectedChannel } from "../viewmodel/ActiveLoginViewModel.js";
 import { AddChannelsViewModel } from "../viewmodel/AddChannelsViewModel.js";
 import { ChannelViewModel } from "../viewmodel/ChannelViewModel.js";
 import { ComponentBase, componentElement } from "./ComponentBase.js";
+import { RenderingComponentBase } from "./RenderingComponentBase.js";
 
 @componentElement("x-stage")
 export class Stage extends ComponentBase<SelectedChannel> {
@@ -30,6 +31,9 @@ export class Stage extends ComponentBase<SelectedChannel> {
                 createdEl.classList.add("actor");
                 createdEl.setAttribute("modelpath", "selectedTab");
                 this.elMain.appendChild(createdEl);
+                if (typeof (createdEl as any).viewActivated == "function") {
+                    (createdEl as any).viewActivated();
+                }
                 return asDisposable(() => {
                     createdEl!.remove();
                 });
@@ -66,5 +70,19 @@ interface ConstructorOf<T> {
 export function stageViewFor<TAbstractViewModel, TViewModel extends TAbstractViewModel>(vm: ConstructorOf<TViewModel>) {
     return function(target: ConstructorOf<ComponentBase<TAbstractViewModel>>) {
         StageViews.registerStageComponentType(vm, target);
+    }
+}
+
+interface IStageViewComponent {
+    viewActivated(): void;
+}
+
+export class StageViewComponent<T> extends ComponentBase<T> implements IStageViewComponent {
+    viewActivated(): void {
+    }
+}
+
+export abstract class RenderingStageViewComponent<T> extends RenderingComponentBase<T> implements IStageViewComponent {
+    viewActivated(): void {
     }
 }

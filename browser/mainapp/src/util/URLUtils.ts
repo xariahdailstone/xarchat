@@ -1,6 +1,7 @@
 import { ImageInfo, InlineInfo } from "../fchat/api/FListApi";
 import { CharacterName } from "../shared/CharacterName";
 import { CancellationToken } from "./CancellationTokenSource";
+import { IDisposable } from "./Disposable";
 import { HostInterop } from "./HostInterop";
 
 export class URLUtils {
@@ -42,8 +43,14 @@ export class URLUtils {
     }
 
     static getEIconUrl(name: string, addUniqueTag: (string | null) = null): string {
-        const url = `/api/eicon/${encodeURIComponent(name.toLowerCase())}`;
-        //const url = `https://static.f-list.net/images/eicon/${encodeURIComponent(name.toLowerCase())}.gif`;
+        const rawUrl = this.getEIconUrlInternal(name, addUniqueTag);
+        const canonicalUrl = `https://static.f-list.net/images/eicon/${encodeURIComponent(name.toLowerCase())}.gif`;
+        return `${rawUrl}#canonicalUrl=${encodeURIComponent(canonicalUrl)}`;
+    }
+
+    static getEIconUrlInternal(name: string, addUniqueTag: (string | null) = null): string {
+        //const url = `/api/eicon/${encodeURIComponent(name.toLowerCase())}`;
+        const url = `https://static.f-list.net/images/eicon/${encodeURIComponent(name.toLowerCase())}.gif`;
         if (addUniqueTag) {
             if (url.indexOf("?") != -1) {
                 return `${url}&_uniq=${addUniqueTag}`;
@@ -78,7 +85,7 @@ export class URLUtils {
             const u = new URL(imageUrl);
             const pathParts = u.pathname.split('/');
             const lastPathPart = pathParts[pathParts.length - 1];
-            return `/api/proxyImageUrl/${encodeURIComponent(lastPathPart)}?url=${encodeURIComponent(imageUrl)}&loadAs=${loadAs}`;
+            return `/api/proxyImageUrl/${encodeURIComponent(lastPathPart)}?url=${encodeURIComponent(imageUrl)}&loadAs=${loadAs}#canonicalUrl=${encodeURIComponent(imageUrl)}`;
         }
         else {
             return null;
@@ -114,4 +121,38 @@ export class URLUtils {
     static getEmptyImageUrl() {
         return "";
     }
+
+    static createObjectURL(blob: Blob): BlobObjectURL {
+        return new BlobObjectURL(blob);
+    }
+}
+
+const _blobObjectUrlFR = new FinalizationRegistry<{ url: string, disposed: boolean }>(url => {
+    if (!url.disposed) {
+        url.disposed = true;
+        console.log("URL.revokeObjectUrl", url.url);
+        URL.revokeObjectURL(url.url);
+    }
+});
+export class BlobObjectURL implements IDisposable {
+    constructor(blob: Blob) {
+        const url = URL.createObjectURL(blob);
+        console.log("URL.createObjectUrl", url);
+        this._frInfo = { url: url, disposed: false };
+        _blobObjectUrlFR.register(this, this._frInfo);
+    }
+
+    private _frInfo: { url: string, disposed: boolean };
+
+    get url(): string { return this._frInfo.url; }
+
+    [Symbol.dispose]() { this.dispose(); }
+    dispose() {
+        if (!this._frInfo.disposed) {
+            this._frInfo.disposed = true;
+            console.log("URL.revokeObjectUrl", this._frInfo.url);
+            URL.revokeObjectURL(this._frInfo.url);
+        }
+    }
+    get isDisposed() { return this._frInfo.disposed; }
 }

@@ -129,13 +129,19 @@ class UserItemMetadata implements IDisposable {
 
     private readonly _wcm: WhenChangeManager = new WhenChangeManager();
 
+    private _disposed: boolean = false;
     dispose() {
-        this._effectiveNameWatcher.dispose();
-        this._statusListener.dispose();
-        this._wcm.dispose();
+        if (!this._disposed) {
+            this._disposed = true;
+            this._effectiveNameWatcher.dispose();
+            this._statusListener.dispose();
+            this._wcm.dispose();
+        }
     }
 
     [Symbol.dispose]() { this.dispose(); }
+
+    get isDisposed() { return this._disposed; }
 }
 
 @componentElement("x-channelusersublist")

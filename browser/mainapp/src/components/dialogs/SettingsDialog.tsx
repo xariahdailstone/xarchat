@@ -10,6 +10,7 @@ import { ConfigSchemaItemDefinitionItem } from "../../configuration/ConfigSchema
 import { ColorHSSelectPopup } from "../popups/ColorHSSelectPopup";
 import { ColorHSSelectPopupViewModel } from "../../viewmodel/popups/ColorHSSelectPopupViewModel";
 import { HostInterop } from "../../util/HostInterop";
+import { NotificationRouting, NotificationRoutingTargetSetting } from "../../configuration/NotificationRouting";
 
 @componentArea("dialogs")
 @componentElement("x-settingsdialog")
@@ -93,6 +94,9 @@ export class SettingsDialogContent extends RenderingComponentBase<SettingsDialog
                 case "timespan":
                     inner = this.renderSettingTimespan(setting.schema);
                     break;
+                case "notifroutes":
+                    inner = this.renderSettingNotifRoute(setting);
+                    break;
             }
         }
         else {
@@ -145,7 +149,7 @@ export class SettingsDialogContent extends RenderingComponentBase<SettingsDialog
         const schema = setting.schema;
         return <x-themetoggle classList={["setting-entry", "setting-entry-boolean"]} 
             props={{ "value": !!setting.value }}
-            on={{ "change": (e) => { console.log('on change', (e.target as any).value, setting); setting.value = (e.target as any).value; } }}></x-themetoggle>
+            on={{ "change": (e) => { this.logger.logDebug('on change', (e.target as any).value, setting); setting.value = (e.target as any).value; } }}></x-themetoggle>
     }
 
     private renderSettingColor(setting: SettingsDialogItemViewModel): VNode {
@@ -201,7 +205,7 @@ export class SettingsDialogContent extends RenderingComponentBase<SettingsDialog
                     isChecked = (curValue == opts.value);
                     isEnabled = true;
                     handleSelected = () => {
-                        console.log("assigning", opts.value);
+                        this.logger.logDebug("assigning", opts.value);
                         setting.value = opts.value;
                     };
                     break;
@@ -219,7 +223,7 @@ export class SettingsDialogContent extends RenderingComponentBase<SettingsDialog
 
                         handleSelected = () => {
                             const assignValue = `file:${curFileName}`;
-                            console.log("assigning", assignValue);
+                            this.logger.logDebug("assigning", assignValue);
                             setting.value = assignValue;
                         };
                         const chooseFile = async () => {
@@ -306,6 +310,49 @@ export class SettingsDialogContent extends RenderingComponentBase<SettingsDialog
         // return <div classList={["setting-entry", "setting-entry-timespan"]}>
         //     <input attr-type="text"></input>
         // </div>
+        return <></>;
+    }
+
+    private renderSettingNotifRoute(setting: SettingsDialogItemViewModel): VNode {
+        const settingId = this.getOrCreateSettingId(setting.schema);
+        const nr = new NotificationRouting(setting.value as string);
+
+        const makeButton = (title: string, value: NotificationRoutingTargetSetting, id: keyof NotificationRouting) => {
+            const nextValue = value == "no" ? "yes"
+                : value == "yes" ? "important"
+                : "no";
+
+            return <div classList={[ "notifroute-button", `notifroute-button-${value}` ]} on={{
+                    "click": () => { 
+                        (nr as any)[id] = nextValue;
+                        setting.value = nr.toString()
+                    }
+                }}><span classList={[ "notifroute-button-text" ]}>{title}</span></div>;
+        };
+        const makeSelect = (title: string, id: keyof NotificationRouting, tooltip: string) => {
+            const selId = `sel${settingId}-${id}`;
+            const curValue = nr[id] as NotificationRoutingTargetSetting;
+
+            let showButton = true;
+            if (!(setting.schema.notifRouteOptions?.hasChannelContext ?? false) && id == "targetChannel") {
+                showButton = false;
+            }
+            if (!(setting.schema.notifRouteOptions?.hasCharacterContext ?? false) && id == "pmConvo") {
+                showButton = false;
+            }
+
+            return <div classList={["notifroute-button-container"]} attr-title={showButton ? tooltip : ""}>
+                { showButton ? makeButton(title, curValue, id) : <></> }
+            </div>;
+        };
+
+        return <div classList={["setting-entry", "setting-entry-notifroute"]}>
+            { makeSelect("Console", "console", "Send notifications of this type to the console.") }
+            { makeSelect("Current", "currentTab", "Send notifications of this type to the currently active tab.") }
+            { makeSelect("Character", "pmConvo", "Send notifications of this type to the PM conversation tab for the related character (if one exists).") }
+            { makeSelect("Channel", "targetChannel", "Send notifications of this type to the channel tab for the related channel (if one exists).") }
+            { makeSelect("All", "everywhere", "Send notifications of this type to every open tab.") }
+        </div>
         return <></>;
     }
 }

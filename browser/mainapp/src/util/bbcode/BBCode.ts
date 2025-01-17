@@ -8,7 +8,7 @@ import { AppViewModel } from "../../viewmodel/AppViewModel";
 import { ChannelViewModel } from "../../viewmodel/ChannelViewModel";
 import { ImagePreviewPopupViewModel } from "../../viewmodel/popups/ImagePreviewPopupViewModel";
 import { CancellationTokenSource } from "../CancellationTokenSource";
-import { IDisposable } from "../Disposable";
+import { asDisposable, ConvertibleToDisposable, IDisposable } from "../Disposable";
 import { EL } from "../EL";
 import { EventListenerUtil } from "../EventListenerUtil";
 import { getRoot } from "../GetRoot";
@@ -76,6 +76,7 @@ export interface BBCodeParseOptions {
 export interface BBCodeParseContext {
     parseOptions: BBCodeParseOptions;
     disposables: IDisposable[];
+    addDisposable(d: ConvertibleToDisposable): any;
 }
 
 export interface BBCodeTagContent {
@@ -117,9 +118,18 @@ export class BBCodeParser {
         };
         xoptions.sink = options?.sink ?? { userClick: ()=>{}, sessionClick: ()=>{}, webpageClick: ()=>{} };
 
-        const parseContext: BBCodeParseContext = {
+        const parseContext = {
             parseOptions: xoptions,
-            disposables: []
+            disposables: [] as IDisposable[],
+            isDisposed: false,
+            addDisposable(d: IDisposable) {
+                if (!this.isDisposed) {
+                    this.disposables.push(asDisposable(d));
+                }
+                else {
+                    d.dispose();
+                }
+            }
         };
 
         const serStack: SerStackEntry[] = [];
@@ -251,6 +261,7 @@ export class BBCodeParser {
                 return child;
             },
             dispose: () => {
+                parseContext.isDisposed = true;
                 for (let x of parseContext.disposables) {
                     try { x.dispose(); }
                     catch { }
@@ -258,8 +269,12 @@ export class BBCodeParser {
             },
             [Symbol.dispose]() {
                 this.dispose();
+            },
+            get isDisposed() { 
+                return parseContext.isDisposed;
             }
         };
+        
         return result;
     }
 

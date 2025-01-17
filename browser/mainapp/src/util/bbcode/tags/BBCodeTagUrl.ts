@@ -7,26 +7,26 @@ import { URLUtils } from "../../URLUtils";
 import { BBCodeParseContext, BBCodeParser, getContentText } from "../BBCode";
 import { BBCodeTag } from "../BBCodeTag";
 
-function createTwitterPreviewTooltip(context: BBCodeParseContext, el: HTMLElement, u: URL) {
-    const pathParts = u.pathname.split('/');
-    const tweetId = (pathParts[pathParts.length - 2] != "photo") ? pathParts[pathParts.length - 1] : pathParts[pathParts.length - 3];
+// function createTwitterPreviewTooltip(context: BBCodeParseContext, el: HTMLElement, u: URL) {
+//     const pathParts = u.pathname.split('/');
+//     const tweetId = (pathParts[pathParts.length - 2] != "photo") ? pathParts[pathParts.length - 1] : pathParts[pathParts.length - 3];
 
-    const appViewModel = context.parseOptions.appViewModel!;
-    let popupViewModel: (TweetPreviewPopupViewModel | null) = null;
+//     const appViewModel = context.parseOptions.appViewModel!;
+//     let popupViewModel: (TweetPreviewPopupViewModel | null) = null;
 
-    el.addEventListener("mouseover", async () => {
-        const myPopupViewModel = new TweetPreviewPopupViewModel(appViewModel);
-        popupViewModel = myPopupViewModel;
-        myPopupViewModel.tweetId = tweetId;
-    });
-    el.addEventListener("mouseout", () => {
-        if (popupViewModel) {
-            popupViewModel.tweetId = null;
-            popupViewModel.dismissed();
-            popupViewModel = null;
-        }
-    });
-}
+//     el.addEventListener("mouseover", async () => {
+//         const myPopupViewModel = new TweetPreviewPopupViewModel(appViewModel);
+//         popupViewModel = myPopupViewModel;
+//         myPopupViewModel.tweetId = tweetId;
+//     });
+//     el.addEventListener("mouseout", () => {
+//         if (popupViewModel) {
+//             popupViewModel.tweetId = null;
+//             popupViewModel.dismissed();
+//             popupViewModel = null;
+//         }
+//     });
+// }
 
 function createImageLoadPreviewTooltip(context: BBCodeParseContext, el: HTMLElement, linkUrl: string, previewUrl: string) {
     const appViewModel = context.parseOptions.appViewModel!;
@@ -69,10 +69,10 @@ async function prepareLinkHintPopupAsync(context: BBCodeParseContext, el: HTMLEl
 async function preparePreviewTooltipAsync(context: BBCodeParseContext, el: HTMLElement, linkUrl: string) {
     const u = new URL(linkUrl);
 
-    if (u.host.endsWith("twitter.com")) {
-        createTwitterPreviewTooltip(context, el, u);
-        return;
-    }
+    // if (u.host.endsWith("twitter.com")) {
+    //     createTwitterPreviewTooltip(context, el, u);
+    //     return;
+    // }
 
     const previewImageUrl = await URLUtils.getLinkedImagePreviewUrlAsync(linkUrl);
     if (previewImageUrl != null) {

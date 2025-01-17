@@ -4,7 +4,7 @@ import { TypingStatus } from "../shared/TypingStatus.js";
 import { Fragment, jsx, VNode } from "../snabbdom/index.js";
 import { AnimationFrameUtils } from "../util/AnimationFrameUtils.js";
 import { addCharacterGenderListenerLightweight, addCharacterOnlineStatusListenerLightweight } from "../util/CharacterOnlineStatusListenerLightweight.js";
-import { IDisposable, asDisposable } from "../util/Disposable.js";
+import { IDisposable, asDisposable, disposeWithThis } from "../util/Disposable.js";
 import { EL } from "../util/EL.js";
 import { EventListenerUtil, MouseButton } from "../util/EventListenerUtil.js";
 import { HTMLUtils } from "../util/HTMLUtils.js";
@@ -208,42 +208,8 @@ export class ChatsList extends ComponentBase<ActiveLoginViewModel> {
         });
 
         this.whenConnected(() => {
-            // this._intersectionObserver = new IntersectionObserver(ioentries => {
-            //     for (let ioentry of ioentries) {
-            //         //console.log("io entry", ioentry);
-            //         if (this._elementsWithAlerts.has(ioentry.target as HTMLElement)) {
-            //             const vis = ioentry.intersectionRatio == 1;
-            //             if (!vis) {
-            //                 if (ioentry.boundingClientRect.y - (ioentry.rootBounds?.y ?? 0) < 0) {
-            //                     this._elementsWithAlertsNotVisibleAbove.add(ioentry.target as HTMLElement);
-            //                 }
-            //                 else {
-            //                     this._elementsWithAlertsNotVisibleBelow.add(ioentry.target as HTMLElement);
-            //                 }
-                            
-            //             }
-            //             else {
-            //                 this._elementsWithAlertsNotVisibleAbove.delete(ioentry.target as HTMLElement);
-            //                 this._elementsWithAlertsNotVisibleBelow.delete(ioentry.target as HTMLElement);
-            //             }
-            //         }
-            //     }
-            // }, { root: this.elMain, threshold: 0.8 });
-            // for (let x of this._elementsWithAlerts) {
-            //     this._intersectionObserver.observe(x);
-            //     //console.log("observing", x);
-            // }
-
             const scroller = this.$("scroller") as HTMLElement;
-            // let hadElsAbove: (boolean | null) = null;
-            // let hadElsBelow: (boolean | null) = null;
 
-            // let cachedScrollerScrollTop = scroller.scrollTop;
-            // const scrollListener = EventListenerUtil.addDisposableEventListener(scroller, "scroll", (e: Event) => {
-            //     cachedScrollerScrollTop = scroller.scrollTop;
-            // });
-
-            // let cachedScrollerClientHeight = scroller.clientHeight;
             const ro = new ResizeObserver((entries) => {
                 resetIntersectionObserver();
             });
@@ -406,13 +372,13 @@ export class ChatsList extends ComponentBase<ActiveLoginViewModel> {
                 for (let pair of cvEl.values()) {
                     const el = pair[0];
                     const vm = pair[1];
-                    if (vm.hasPing) {
+                    if (vm && vm.hasPing) {
                         elsToWatch.add(el);
                     }
                 }
             }
             catch (e) {
-                console.log("cvEl.values() fail", cvEl, cvEl.constructor);
+                this.logger.logError("cvEl.values() fail", e, cvEl, cvEl.constructor);
             }
         }
         
@@ -504,11 +470,12 @@ export class ChannelListItemLightweight extends LightweightComponentBase<ChatCha
             elMain.classList.toggle("pmconvo", (vm instanceof PMConvoChannelViewModel));
         });
 
-        const wcm = new WhenChangeManager();
+        this.wcm = new WhenChangeManager();
+        //this.addOnDispose(() => wcm.dispose());
         this.watchExpr(() => this.viewModel instanceof PMConvoChannelViewModel ? this.viewModel.character : null, ch => {
             const characterSet = this.viewModel?.activeLoginViewModel.characterSet;
             const charName = ch as (CharacterName | null);
-            wcm.assign({ charName, characterSet }, () => {
+            this.wcm.assign({ charName, characterSet }, () => {
                 if (charName && characterSet) {
                     const csl = addCharacterGenderListenerLightweight(characterSet, charName, elTitle, true);
 
@@ -583,7 +550,7 @@ export class ChannelListItemLightweight extends LightweightComponentBase<ChatCha
         let clickSuppressed = false;
         const suppressThisClickAsSelection = () => {
             clickSuppressed = true;
-            window.requestIdleCallback(() => clickSuppressed = false);
+            //window.requestIdleCallback(() => clickSuppressed = false);
         };
 
         this.watchExpr(() => this.viewModel?.canPin, cp => {
@@ -616,6 +583,7 @@ export class ChannelListItemLightweight extends LightweightComponentBase<ChatCha
             if (cc) {
                 const btn = document.createElement("button");
                 btn.classList.add("close-icon");
+                //const clickListener = EventListenerUtil.addDisposableEventListener(btn, "click", () => {
                 btn.addEventListener("click", () => {
                     suppressThisClickAsSelection();
                     const vm = this.viewModel;
@@ -629,6 +597,7 @@ export class ChannelListItemLightweight extends LightweightComponentBase<ChatCha
                 elCloseContainer.appendChild(btn);
 
                 return asDisposable(() => {
+                    //clickListener.dispose();
                     btn.remove();
                 });
             }
@@ -655,6 +624,9 @@ export class ChannelListItemLightweight extends LightweightComponentBase<ChatCha
                     catch { }
                 }
             }
+            else {
+                clickSuppressed = false;
+            }
         });
         elMain.addEventListener("contextmenu", (e) => {
             const vm = this.viewModel;
@@ -670,7 +642,7 @@ export class ChannelListItemLightweight extends LightweightComponentBase<ChatCha
         elMain.addEventListener("dragstart", (e) => {
             const vm = this.viewModel;
             if (vm && vm instanceof ChatChannelViewModel && owner.supportsDragDrop) {
-                console.log("dragstart");
+                this.logger.logDebug("dragstart");
                 //e.dataTransfer?.setDragImage(this.element, 0, 0);
                 const dt = e.dataTransfer!;
                 dt.effectAllowed = "move";
@@ -686,7 +658,7 @@ export class ChannelListItemLightweight extends LightweightComponentBase<ChatCha
             }
         });
         elMain.addEventListener("dragend", (e) => {
-            console.log("dragend");
+            this.logger.logDebug("dragend");
         });
 
         this.watchExpr(() => this.viewModel instanceof PMConvoChannelViewModel ? this.viewModel : null, vm => {
@@ -703,6 +675,9 @@ export class ChannelListItemLightweight extends LightweightComponentBase<ChatCha
             }
         });
     }
+
+    @disposeWithThis
+    private readonly wcm: WhenChangeManager;
 }
 
 let currentChannelDragData: { [DragDataChannelName]: ChannelName, [DragDataChannelTitle]: string, [DragDataOwnerId]: number } | null = null;
@@ -793,7 +768,7 @@ export class SortedChannelCollectionView extends CollectionViewLightweight<Chann
             const xEl = x[0];
             const xRect = xEl.getBoundingClientRect();
             if (xRect.top <= y && xRect.bottom > y) {
-                console.log("e.clientY", y, idx);
+                this.logger.logDebug("e.clientY", y, idx);
                 const containerRect = this.containerElement!.getBoundingClientRect();
                 if ((xRect.top + (xRect.height / 2)) > y) {
                     // in top half
@@ -807,7 +782,7 @@ export class SortedChannelCollectionView extends CollectionViewLightweight<Chann
             }
             idx++;
         }
-        console.log("e.clientY", y, "none");
+        this.logger.logDebug("e.clientY", y, "none");
         return null;
     }
 
@@ -820,7 +795,7 @@ export class SortedChannelCollectionView extends CollectionViewLightweight<Chann
             const dt = e.dataTransfer!;
             const dragDataOwner = currentChannelDragData![DragDataOwnerId];
             const dragDataChannelName = currentChannelDragData![DragDataChannelName];
-            console.log("dragenter", dragDataOwner, dragDataChannelName);
+            this.logger.logDebug("dragenter", dragDataOwner, dragDataChannelName);
             if (this.supportsDragDrop && dragDataOwner == ObjectUniqueId.get(this)) {
                 // TODO: show drag highlight
                 const dragIdx = this.findDragIndex(e);
@@ -828,12 +803,13 @@ export class SortedChannelCollectionView extends CollectionViewLightweight<Chann
                     this.createDragCSS(dragIdx[0]);
                 }
                 dt.dropEffect = "move";
-                console.log("dragenter", dragDataChannelName);
+                this.logger.logDebug("dragenter", dragDataChannelName);
                 e.preventDefault();
             }
+            e.stopPropagation();
         }));
         disposables.push(EventListenerUtil.addDisposableEventListener(this.containerElement!, "dragover", (e: DragEvent) => {
-            //console.log("dragover");
+            //this.logger.logDebug("dragover");
             const dt = e.dataTransfer!;
             const dragDataOwner = currentChannelDragData![DragDataOwnerId];
             const dragDataChannelName = currentChannelDragData![DragDataChannelName];
@@ -844,23 +820,25 @@ export class SortedChannelCollectionView extends CollectionViewLightweight<Chann
                     this.createDragCSS(dragIdx[0]);
                 }
                 dt.dropEffect = "move";
-                //console.log("dragover!", dragDataChannelName);
+                //this.logger.logDebug("dragover!", dragDataChannelName);
                 e.preventDefault();
             }
+            e.stopPropagation();
         }));
         disposables.push(EventListenerUtil.addDisposableEventListener(this.containerElement!, "dragleave", (e: DragEvent) => {
-            console.log("dragleave");
+            this.logger.logDebug("dragleave");
             const dt = e.dataTransfer!;
             const dragDataOwner = currentChannelDragData![DragDataOwnerId];
             const dragDataChannelName = currentChannelDragData![DragDataChannelName];
             if (this.supportsDragDrop && dragDataOwner == ObjectUniqueId.get(this)) {
                 // TODO: remove drag highlight
                 this.removeDragCSS();
-                console.log("dragleave", dragDataChannelName);
+                this.logger.logDebug("dragleave", dragDataChannelName);
             }
+            e.stopPropagation();
         }));
         disposables.push(EventListenerUtil.addDisposableEventListener(this.containerElement!, "drop", (e: DragEvent) => {
-            console.log("drop");
+            this.logger.logDebug("drop");
             const dt = e.dataTransfer!;
             const dragDataOwner = currentChannelDragData![DragDataOwnerId];
             const dragDataChannelName = currentChannelDragData![DragDataChannelName];
@@ -873,9 +851,10 @@ export class SortedChannelCollectionView extends CollectionViewLightweight<Chann
                     dragIdx[2].activeLoginViewModel.reorderChannel(dragDataChannelName, dragIdx[1], dragIdx[2]);
                 }
 
-                console.log("drop!", dragDataChannelName);
+                this.logger.logDebug("drop!", dragDataChannelName);
                 e.preventDefault();
             }
+            e.stopPropagation();
         }));
         this._connectedDisposables = asDisposable(...disposables);
     }

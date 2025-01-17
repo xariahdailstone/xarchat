@@ -4,7 +4,7 @@ import { ChannelName } from "../shared/ChannelName.js";
 import { CharacterName } from "../shared/CharacterName.js";
 import { CharacterSet } from "../shared/CharacterSet.js";
 import { BBCodeClickContext, BBCodeParseSink } from "../util/bbcode/BBCode.js";
-import { IDisposable } from "../util/Disposable.js";
+import { tryDispose, IDisposable, addOnDispose } from "../util/Disposable.js";
 import { HostInterop } from "../util/HostInterop.js";
 import { Observable, ObservableValue, PropertyChangeEvent } from "../util/Observable.js";
 import { ObservableBase, observableProperty, observablePropertyExt } from "../util/ObservableBase.js";
@@ -40,6 +40,8 @@ import { SlashCommandViewModel } from "./SlashCommandViewModel.js";
 import { IdleDetection } from "../util/IdleDetection.js";
 import { StringUtils } from "../util/StringUtils.js";
 import { ObservableExpression } from "../util/ObservableExpression.js";
+import { InAppToastViewModel } from "./InAppToastViewModel.js";
+import { InAppToastManagerViewModel } from "./InAppToastManagerViewModel.js";
 import { LogSearch2ViewModel } from "./LogSearch2ViewModel.js";
 
 declare const XCHost: any;
@@ -57,6 +59,8 @@ export class ActiveLoginViewModel extends ObservableBase {
         this._viewModelId = nextViewModelId++;
         this._logger = Logging.createLogger("ActiveLoginViewModel");
         this._logger.enterScope(`id#${this._viewModelId}`);
+
+        this.toastManager = new InAppToastManagerViewModel(this);
 
         this.console = new ConsoleChannelViewModel(this);
         this.miscTabs.push(new MiscTabViewModel(this, "Console", this.console));
@@ -490,6 +494,7 @@ export class ActiveLoginViewModel extends ObservableBase {
             this.openChannels.remove(chan);
             this.removeFromSelectedChannelHistory(chan, true);
             this.chatConnectionConnected?.closeChannelTab(channel);
+            this.maybeDisposeChannel(channel);
         }
     }
 
@@ -629,6 +634,7 @@ export class ActiveLoginViewModel extends ObservableBase {
             value = this.console;
         }
         if (value !== this._selectedTab) {
+            const prevSelectedTab = this._selectedTab;
             if (this._selectedTab){
                 if (this._selectedTab instanceof ChannelViewModel) {
                     this._selectedTab.isTabActive = false;
@@ -648,6 +654,19 @@ export class ActiveLoginViewModel extends ObservableBase {
                 else if (this._selectedTab instanceof ConsoleChannelViewModel) {
                     this.chatConnectionConnected?.markConsoleSeen();
                 }
+            }
+            this.maybeDisposeChannel(prevSelectedTab);
+        }
+    }
+
+    private maybeDisposeChannel(chan: any) {
+        if (chan instanceof ChannelViewModel) {
+            if (!this._pmConversations2.contains(chan) &&
+                !this._pinnedChannels2.contains(chan) &&
+                !this._unpinnedChannels2.contains(chan) &&
+                this.selectedTab != chan) {
+
+                chan.dispose();
             }
         }
     }
@@ -946,6 +965,8 @@ export class ActiveLoginViewModel extends ObservableBase {
     getFirstConfigEntryHierarchical(keys: string[], channel?: ChannelViewModel | null): (unknown | null) {
         return this.appViewModel.getFirstConfigEntryHierarchical(keys, this, channel);
     }
+
+    readonly toastManager: InAppToastManagerViewModel;
 }
 
 export type SelectedChannel = ChannelViewModel | AddChannelsViewModel | LogSearchViewModel | LogSearch2ViewModel;

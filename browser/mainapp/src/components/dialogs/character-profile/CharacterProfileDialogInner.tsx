@@ -85,7 +85,7 @@ export class CharacterProfileDialogInner extends RenderingComponentBase<Characte
                 const el = <div classList={{ "profile-tabstrip-tab": true, "selected": (this.selectedTab == tabId) }}
                     on={{
                         "click": () => {
-                            this.log("tab click", tabId);
+                            this.logInfo("tab click", tabId);
                             this.selectedTab = tabId;
                         }
                     }}>

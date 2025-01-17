@@ -140,7 +140,7 @@ export class CharacterStatusListener extends ComponentBase<CharacterSet> {
         this._assignClassWC.assign({ ace, gclass }, () => {
             if (ace) {
                 if (this.extraLogging) {
-                    this.log(`class -> ${gclass}`);
+                    this.logInfo(`class -> ${gclass}`);
                 }
                 ace.classList.add(gclass);
                 return asDisposable(() => { ace.classList.remove(gclass); });

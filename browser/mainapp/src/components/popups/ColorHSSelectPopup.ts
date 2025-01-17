@@ -86,7 +86,7 @@ export class ColorHSSelectPopup extends ContextPopupBase<ColorHSSelectPopupViewM
 
         const hue = 360 - Math.floor(thetapct * 360);
         const sat = rho / radius;
-        console.log(`thetarad = ${thetarad}, thetapct = ${thetapct}, hue = ${hue}, rho = ${rho}`);
+        this.logger.logDebug(`thetarad = ${thetarad}, thetapct = ${thetapct}, hue = ${hue}, rho = ${rho}`);
         return { hue: hue, sat: sat };
     }
 }

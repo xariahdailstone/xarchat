@@ -267,7 +267,7 @@ namespace XarChat.Backend.Features.FListApi.Impl
             {
                 _owner = owner;
                 this._password = null!;
-                this._cachedResult = null!;
+                this._cachedResult = null;
                 this.Account = account;
                 this.Password = password;
             }
@@ -275,7 +275,7 @@ namespace XarChat.Backend.Features.FListApi.Impl
             private readonly FListApiImpl _owner;
             private SemaphoreSlim _stateLock = new SemaphoreSlim(1);
             private string _password;
-            private Task<ApiTicket> _cachedResult;
+            private Task<ApiTicket>? _cachedResult;
             private DateTimeOffset _cachedResultExpiresAt;
 
             public string Account { get; }
@@ -314,7 +314,7 @@ namespace XarChat.Backend.Features.FListApi.Impl
                             _cachedResultExpiresAt = DateTimeOffset.UtcNow + TimeSpan.FromMinutes(28);
                             _cachedResult = AcquireApiTicketAsync(this.Account, this.Password, CancellationToken.None);
                         }
-                        return _cachedResult;
+                        return _cachedResult!;
                     }
                     finally
                     {
@@ -328,12 +328,12 @@ namespace XarChat.Backend.Features.FListApi.Impl
                 await _stateLock.WaitAsync();
                 try
                 {
-                    if (_cachedResult.IsCompleted)
+                    if (_cachedResult != null && _cachedResult.IsCompleted)
                     {
                         var t = _cachedResult.Result;
                         if (t.Ticket == ifTicket)
                         {
-                            _cachedResult = null!;
+                            _cachedResult = null;
                             _cachedResultExpiresAt = DateTimeOffset.UtcNow - TimeSpan.FromSeconds(1);
                         }
                     }
@@ -350,7 +350,7 @@ namespace XarChat.Backend.Features.FListApi.Impl
                 await _stateLock.WaitAsync();
                 try
                 {
-                    if (_cachedResult.IsCompleted)
+                    if (_cachedResult != null && _cachedResult.IsCompleted)
                     {
                         var t = _cachedResult.Result;
                         t.Ticket = t.Ticket.Substring(0, t.Ticket.Length - 1) + "z";

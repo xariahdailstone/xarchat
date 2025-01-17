@@ -159,7 +159,7 @@ export abstract class SettingsDialogTabViewModel extends SettingsDialogSettingVi
     get tabInstructions(): string { return this.scope.scopeDescription; }
 
     select() {
-        console.log("selecting tab", this.tabTitle);
+        this.logger.logInfo("selecting tab", this.tabTitle);
         this.parent.selectedTab = this;
     }
 }
@@ -290,7 +290,7 @@ export class SettingsDialogItemViewModel extends SettingsDialogSettingViewModel 
 
     set value(value: any) {
         if (!this._reverted) {
-            console.log("set value start");
+            this.logger.logDebug("set value start");
             const k = this.getAppConfigKey();
             if (value === undefined || value === null) {
                 this.scope.appViewModel.configBlock.set(k, null);
@@ -309,16 +309,17 @@ export class SettingsDialogItemViewModel extends SettingsDialogSettingViewModel 
                         break;
                     case "text":
                     case "radio":
+                    case "notifroutes":
                         this.assignStringValue(value);
                         break;
                     default:
-                        console.log(`don't know how to assign ${this.schema.type}`);
+                        this.logger.logError(`don't know how to assign ${this.schema.type}`);
                 }
             }
-            console.log("set value end");
+            this.logger.logDebug("set value end");
         }
         else {
-            console.log("set value skipped");
+            this.logger.logDebug("set value skipped");
         }
     }
 
@@ -352,11 +353,11 @@ export class SettingsDialogItemViewModel extends SettingsDialogSettingViewModel 
 
     private _reverted: boolean = false;
     override revertToInherited() {
-        console.log("revertToInherited start");
+        this.logger.logDebug("revertToInherited start");
         this._reverted = true;
         window.setTimeout(() => this._reverted = false, 50);
         this.useInheritedValue = true;
-        console.log("revertToInherited end");
+        this.logger.logDebug("revertToInherited end");
     }
 }
 

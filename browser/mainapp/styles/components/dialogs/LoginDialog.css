@@ -144,8 +144,8 @@
     pointer-events: none;
 }
 .username-dropdown-btn-icon {
-    max-width: 1lh;
-    max-height: 1lh;
+    max-width: 1.1em;
+    max-height: 1.1em;
     --svgicon-max-width: 1em;
     --svgicon-max-height: 1em;
 }

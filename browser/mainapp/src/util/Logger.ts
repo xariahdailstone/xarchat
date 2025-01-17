@@ -9,10 +9,11 @@ export interface Logger {
     enterScope(name: string): void;
     leaveScope(): void;
 
-    logDebug(...args: any[]): void;
-    logInfo(...args: any[]): void;
-    logWarn(...args: any[]): void;
-    logError(...args: any[]): void;
+    log(logLevel: LogLevel, message: string, ...args: any[]): void;
+    logDebug(message: string, ...args: any[]): void;
+    logInfo(message: string, ...args: any[]): void;
+    logWarn(message: string, ...args: any[]): void;
+    logError(message: string, ...args: any[]): void;
 }
 
 class ConsoleLogger implements Logger {
@@ -29,6 +30,25 @@ class ConsoleLogger implements Logger {
         this._scopes.pop();
     }
 
+    log(logLevel: LogLevel, message: string, ...args: any[]): void {
+        switch (logLevel) {
+            case LogLevel.VERBOSE:
+            case LogLevel.DEBUG:
+                this.logDebug(message, ...args);
+                break;
+            case LogLevel.INFO:
+                this.logInfo(message, ...args);
+                break;
+            case LogLevel.WARN:
+                this.logWarn(message, ...args);
+                break;
+            default:
+            case LogLevel.ERROR:
+            case LogLevel.CATASTROPHIC:
+                this.logError(message, ...args);
+                break;
+        }
+    }
     logDebug(...args: any[]): void {
         console.debug(`[${this.source}]`, ...this._scopes, ...args);
     }
@@ -41,4 +61,13 @@ class ConsoleLogger implements Logger {
     logError(...args: any[]): void {
         console.error(`[${this.source}]`, ...this._scopes, ...args);
     }
+}
+
+export enum LogLevel {
+    VERBOSE = 0,
+    DEBUG = 1,
+    INFO = 2,
+    WARN = 3,
+    ERROR = 4,
+    CATASTROPHIC = 5
 }

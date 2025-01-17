@@ -9,6 +9,7 @@ using XarChat.AutoUpdate;
 using XarChat.Backend;
 using XarChat.Backend.Features.AppConfiguration.Impl;
 using XarChat.Backend.Features.CommandLine.Impl;
+using XarChat.Backend.Features.CrashLogWriter;
 using XarChat.Backend.Features.SingleInstanceManager.ProfileLockFile;
 using XarChat.Backend.Features.StartupTasks;
 using XarChat.Backend.Features.UpdateChecker.Null;
@@ -25,7 +26,7 @@ namespace MinimalWin32Test
         [STAThread]
         static int Main(string[] args)
         {
-            var pid = Process.GetCurrentProcess().Id;
+            var pid = Environment.ProcessId;
             var startupLogFile = Path.Combine(Path.GetTempPath(), $"XarChat.startup-{DateTime.Now.ToString("yyyyMMhddHHmmss")}-{pid}.log");
             if (File.Exists(startupLogFile))
             {
@@ -118,6 +119,25 @@ namespace MinimalWin32Test
                 });
 
                 WaitForStartupTasks(app, backend);
+
+                app.OnLogTaskFailure += (o, e) =>
+                {
+                    var sp = backend.GetServiceProviderAsync().Result;
+                    var clw = sp.GetService<ICrashLogWriter>();
+                    if (clw is not null)
+                    {
+                        clw.WriteCrashLog("MessageLop LogTaskFailure\n\n" + e.Content, e.Fatal);
+                    }
+                };
+                AppDomain.CurrentDomain.UnhandledException += (o, e) =>
+                {
+                    var sp = backend.GetServiceProviderAsync().Result;
+                    var clw = sp.GetService<ICrashLogWriter>();
+                    if (clw is not null)
+                    {
+                        clw.WriteCrashLog("AppDomain Unhandled Exception\n\n" + e.ExceptionObject.ToString(), false);
+                    }
+                };
 
                 writeStartupLog("creating BrowserWindow");
                 var win = new BrowserWindow(app, backend, wc, clArgs);

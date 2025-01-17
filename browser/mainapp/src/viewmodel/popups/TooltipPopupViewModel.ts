@@ -1,5 +1,6 @@
 import { IDisposable, asDisposable } from "../../util/Disposable";
 import { EventListenerUtil } from "../../util/EventListenerUtil";
+import { Logger, Logging } from "../../util/Logger";
 import { observableProperty } from "../../util/ObservableBase";
 import { AppViewModel } from "../AppViewModel";
 import { ContextPopupViewModel, PopupViewModel } from "./PopupViewModel";
@@ -19,6 +20,7 @@ export class TooltipPopupViewModel extends ContextPopupViewModel {
     mousePoint: { x: number, y: number } = { x: 0, y: 0 };
 }
 
+const setupTooltipHandlingLogger: Logger = Logging.createLogger("setupTooltipHandling");
 export function setupTooltipHandling(root: ShadowRoot, appViewModel: AppViewModel): IDisposable {
 
     let openPopupCleanup: (IDisposable | null) = null;
@@ -48,12 +50,12 @@ export function setupTooltipHandling(root: ShadowRoot, appViewModel: AppViewMode
                 appViewModel.popups.push(vm);
 
                 const egw = elementGoneWatcher(containingTooltipElement, () => {
-                    console.log("tooltip element gone");
+                    setupTooltipHandlingLogger.logDebug("tooltip element gone");
                     cleanup.dispose();
                 });
 
                 const cleanup = asDisposable(() => {
-                    console.log("tooltip cleanup");
+                    setupTooltipHandlingLogger.logDebug("tooltip cleanup");
                     mouseOutHandler.dispose();
                     moveHandler.dispose();
                     egw.dispose();
@@ -63,11 +65,11 @@ export function setupTooltipHandling(root: ShadowRoot, appViewModel: AppViewMode
                 });
 
                 const mouseOutHandler = EventListenerUtil.addDisposableEventListener(containingTooltipElement, "mouseleave", (ev2: MouseEvent) => {
-                    console.log("tooltip element mouseleave");
+                    setupTooltipHandlingLogger.logDebug("tooltip element mouseleave");
                     cleanup.dispose();
                 });
 
-                console.log("tooltip element opened", containingTooltipElement);
+                setupTooltipHandlingLogger.logDebug("tooltip element opened", containingTooltipElement);
                 openPopupCleanup = cleanup;
                 curPopupElement = containingTooltipElement;
             }

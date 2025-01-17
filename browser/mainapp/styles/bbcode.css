@@ -87,10 +87,10 @@
 
 .bbcode-status .bbcode-eicon,
 .bbcode-status .bbcode-icon img {
-    width: 1lh;
-    height: 1lh;
-    max-width: 1lh;
-    max-height: 1lh;
+    width: 1em;
+    height: 1em;
+    max-width: 1em;
+    max-height: 1em;
     vertical-align: bottom;
 }
 
@@ -185,8 +185,8 @@
     mask: url(assets/ui/user-icon.svg);
     -webkit-mask-size: contain;
     mask-size: contain;
-    width: 0.8lh;
-    height: 0.8lh;
+    width: 1.1em;
+    height: 1.1em;
     background-color: currentColor;
     margin-right: 2px;
 }
@@ -197,8 +197,8 @@
     mask: url(assets/ui/link-icon.svg);
     -webkit-mask-size: contain;
     mask-size: contain;
-    width: 0.95lh;
-    height: 0.95lh;
+    width: 1.1em;
+    height: 1.1em;
     background-color: currentColor;
     margin-right: 2px;
 }
@@ -209,8 +209,8 @@
     mask: url(assets/ui/chatchannel-icon.svg);
     -webkit-mask-size: contain;
     mask-size: contain;
-    width: 1lh;
-    height: 1lh;
+    width: 1.2em;
+    height: 1.2em;
     background-color: currentColor;
     margin-right: 2px;
 }

@@ -8,12 +8,14 @@ import { TypingStatus } from "../shared/TypingStatus.js";
 import { BBCodeParseResult, BBCodeParser, ChatBBCodeParser } from "../util/bbcode/BBCode.js";
 import { CatchUtils } from "../util/CatchUtils.js";
 import { KeyValuePair } from "../util/collections/KeyValuePair.js";
-import { ReadOnlyStdObservableCollection } from "../util/collections/ReadOnlyStdObservableCollection.js";
+import { ReadOnlyStdObservableCollection, StdObservableCollectionChangeType } from "../util/collections/ReadOnlyStdObservableCollection.js";
 import { StdObservableConcatCollectionView } from "../util/collections/StdObservableConcatCollectionView.js";
 import { StdObservableList } from "../util/collections/StdObservableView.js";
-import { asDisposable, IDisposable } from "../util/Disposable.js";
+import { asDisposable, tryDispose as maybeDispose, IDisposable, isDisposable } from "../util/Disposable.js";
+import { HeldCacheManager } from "../util/HeldCacheManager.js";
 import { LoggedMessage, LogMessageType } from "../util/HostInterop.js";
 import { IterableUtils } from "../util/IterableUtils.js";
+import { ObjectUniqueId } from "../util/ObjectUniqueId.js";
 import { Observable, ObservableValue } from "../util/Observable.js";
 import { ObservableBase, observableProperty } from "../util/ObservableBase.js";
 import { Collection, ObservableCollection } from "../util/ObservableCollection.js";
@@ -21,11 +23,13 @@ import { ObservableKeyExtractedOrderedDictionary, ObservableOrderedDictionary, O
 import { StringUtils } from "../util/StringUtils.js";
 import { ActiveLoginViewModel } from "./ActiveLoginViewModel.js";
 import { AppNotifyEventType, AppViewModel } from "./AppViewModel.js";
+import { ChannelFiltersViewModel } from "./ChannelFiltersViewModel.js";
+import { MultiSelectPopupViewModel } from "./popups/MultiSelectPopupViewModel.js";
 import { SlashCommandViewModel } from "./SlashCommandViewModel.js";
 
 
 
-export abstract class ChannelViewModel extends ObservableBase {
+export abstract class ChannelViewModel extends ObservableBase implements IDisposable {
     constructor(parent: ActiveLoginViewModel, title: string) {
         super();
 
@@ -34,6 +38,26 @@ export abstract class ChannelViewModel extends ObservableBase {
 
         this.mainMessages = new ChannelMessageViewModelOrderedDictionary();
     }
+
+    private _disposed: boolean = false;
+    [Symbol.dispose]() { this.dispose(); }
+    dispose() {
+        if (!this._disposed) {
+            this._disposed = true;
+
+            this.clearMessages();
+            for (let m of this.prefixMessages.values()) {
+                m.dispose();
+            }
+            for (let m of this.suffixMessages.values()) {
+                m.dispose();
+            }
+            this.prefixMessages.clear();
+            this.suffixMessages.clear();
+            this.recalculateMessagesToShow();
+        }
+    }
+    get isDisposed() { return this._disposed; }
 
     @observableProperty
     readonly parent: ActiveLoginViewModel;
@@ -66,6 +90,9 @@ export abstract class ChannelViewModel extends ObservableBase {
 
     @observableProperty
     userListWidth: number = 245;
+
+    @observableProperty
+    filterOptions: ChannelFilterOptions | null = null;
 
     @observableProperty
     textBoxHeight: number = 90;
@@ -224,6 +251,82 @@ export abstract class ChannelViewModel extends ObservableBase {
     @observableProperty
     textBoxToolbarShown: boolean = false;
 
+    @observableProperty
+    channelFilters: ChannelFiltersViewModel | null = null;
+
+    private readonly _filterClassesToShow: Set<string> = new Set(["all"]);
+
+    get showFilterClasses(): string[] { return [...this._filterClassesToShow.values()]; }
+    set showFilterClasses(value: string[]) {
+        this._filterClassesToShow.clear();
+        for (let c of value) {
+            this._filterClassesToShow.add(c);
+        }
+        this.recalculateMessagesToShow();
+    }
+
+    private readonly _messagesByFilterClass: Map<string, ChannelMessageViewModel[]> = new Map();
+
+    private addMessageWithFilterClasses(message: ChannelMessageViewModel, filterClasses: string[]) {
+        const removedMessages = new Set<ChannelMessageViewModel>();
+
+        for (let fc of filterClasses) {
+            let arr = this._messagesByFilterClass.get(fc) ?? [];
+            const newArr = [...arr, message];
+            newArr.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+            while (newArr.length > this.messageLimit) {
+                const rm = newArr.shift()!;
+                removedMessages.add(rm);
+            }
+            this._messagesByFilterClass.set(fc, newArr);
+        }
+
+        for (let maybeDisposeMessage of removedMessages.values()) {
+            let messageStillPresent = false;
+            for (let fc of this._messagesByFilterClass.values()) {
+                if (fc.includes(maybeDisposeMessage)) {
+                    messageStillPresent = true;
+                    break;
+                }
+            }
+            if (!messageStillPresent) {
+                maybeDisposeMessage.dispose();
+            }
+        }
+
+        this.recalculateMessagesToShow();
+    }
+
+    private recalculateMessagesToShow() {
+        const mset = new Set<ChannelMessageViewModel>();
+        for (let mc of this._filterClassesToShow.values()) {
+            const arr = this._messagesByFilterClass.get(mc);
+            if (arr) {
+                for (let m of arr) {
+                    mset.add(m);
+                }
+            }
+        }
+        const resMsg = [...mset.values()];
+        resMsg.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+        while (resMsg.length > this.messageLimit) {
+            resMsg.shift();
+        }
+
+        const resMsgSet = new Set(resMsg);
+
+        for (let curDispMsg of [...this._mainMessages.values()]) {
+            if (!resMsgSet.has(curDispMsg)) {
+                this._mainMessages.delete(curDispMsg);
+            }
+        }
+        for (let dispMsg of resMsg) {
+            if (!this._mainMessages.has(dispMsg)) {
+                this._mainMessages.add(dispMsg);
+            }
+        }
+    }
+
     protected readonly prefixMessages: ChannelMessageViewModelOrderedDictionary = new ChannelMessageViewModelOrderedDictionary();
     private _mainMessages: ChannelMessageViewModelOrderedDictionary = null!;
     protected readonly suffixMessages: ChannelMessageViewModelOrderedDictionary = new ChannelMessageViewModelOrderedDictionary();
@@ -263,6 +366,43 @@ export abstract class ChannelViewModel extends ObservableBase {
         return false;
     }
 
+    getMessageFilterClasses(message: ChannelMessageViewModel): string[] {
+        let result: string[];
+        switch (message.type) {
+            case ChannelMessageType.CHAT:
+                if (message.text.startsWith("/me ") || message.text.startsWith("/me's ")) {
+                    result = [ "chat", "chatemote" ];
+                }
+                else {
+                    result = [ "chat", "chattext" ];
+                }
+                break;
+            case ChannelMessageType.AD:
+                result = [ "ad" ];
+                break;
+            case ChannelMessageType.ROLL:
+                result = [ "chat", "roll" ];
+                break;
+            case ChannelMessageType.SPIN:
+                result = [ "chat", "spin" ];
+                break;
+            case ChannelMessageType.SYSTEM:
+                result = [ "system" ];
+                break;
+            case ChannelMessageType.SYSTEM_IMPORTANT:
+                result = [ "system", "systemimportant" ];
+                break;
+            default:
+                result = [ "system" ];
+                break;
+        }
+        if (message.containsPing && !message.suppressPing) {
+            result.push("ping");
+        }
+        result.push("all");
+        return result;
+    }
+
     addMessage(message: ChannelMessageViewModel, options?: AddMessageOptions) {
         if ((options?.fromReplay ?? false) == true) {
             // Clear the window when receiving historical messages from extended connection
@@ -270,11 +410,16 @@ export abstract class ChannelViewModel extends ObservableBase {
         }
         if (!this.parent.ignoredChars.has(message.characterStatus.characterName)) {
 
-            this.mainMessages.add(message);
+            const filterClasses = this.getMessageFilterClasses(message);
+            this.addMessageWithFilterClasses(message, filterClasses);
 
-            while (this.mainMessages.size >= this.messageLimit) {
-                this.mainMessages.delete(this.mainMessages.minKey()!);
-            }
+            // this.mainMessages.add(message);
+
+            // while (this.mainMessages.size >= this.messageLimit) {
+            //     const messageBeingRemoved = this.mainMessages.minKey()!;
+            //     this.mainMessages.delete(messageBeingRemoved);
+            //     messageBeingRemoved.dispose();
+            // }
 
             if (!(options?.seen ?? false)) {
                 this.pingIfNecessary(message);
@@ -388,7 +533,18 @@ export abstract class ChannelViewModel extends ObservableBase {
     }
     
     clearMessages() {
-        this.mainMessages.clear();
+        const toDispose = new Set<ChannelMessageViewModel>();
+        for (let fc of this._messagesByFilterClass.values()) {
+            for (let m of fc) {
+                toDispose.add(m);
+            }
+        }
+        this._messagesByFilterClass.clear();
+        for (let m of toDispose.values()) {
+            m.dispose();
+        }
+
+        this.recalculateMessagesToShow();
     }
 
     abstract get iconUrl(): string;
@@ -508,6 +664,7 @@ export function ChannelMessageViewModelComparer(a: ChannelMessageViewModel, b: C
 }
 
 const cleanupRegistry = new FinalizationRegistry<IDisposable>(hv => {
+    console.log("cleanupdispose", hv);
     try { hv.dispose(); }
     catch { }
 });
@@ -516,7 +673,7 @@ function registerCleanupDispose(cmvm: ChannelMessageViewModel, disposable: IDisp
 }
 
 let nextUniqueMessageId: number = 1;
-export class ChannelMessageViewModel extends ObservableBase {
+export class ChannelMessageViewModel extends ObservableBase implements IDisposable {
     static createChatMessage(parent: ChannelViewModel, timestamp: Date, character: CharacterName, text: string,
         gender?: CharacterGender | null, onlineStatus?: OnlineStatus | null): ChannelMessageViewModel {
 
@@ -645,7 +802,7 @@ export class ChannelMessageViewModel extends ObservableBase {
 
 
     private constructor(
-        public readonly parent: ChannelViewModel | null,
+        parent: ChannelViewModel | null,
         public readonly activeLoginViewModel: ActiveLoginViewModel,
         public readonly appViewModel: AppViewModel,
         public readonly timestamp: Date,
@@ -656,9 +813,25 @@ export class ChannelMessageViewModel extends ObservableBase {
         public readonly onClick?: () => any
     ) {
         super();
+        this._weakParent = parent ? new WeakRef<ChannelViewModel>(parent) : null;
         this.uniqueMessageId = nextUniqueMessageId++;
         this.containsPing = this.checkForPing();
     }
+
+    private _disposed: boolean = false;
+    [Symbol.dispose]() { this.dispose(); }
+    dispose() {
+        if (!this._disposed) {
+            this._disposed = true;
+            maybeDispose(this._parsedText);
+            this._parsedText = null;
+        }
+    }
+    get isDisposed() { return this._disposed; }
+
+    private readonly _weakParent: WeakRef<ChannelViewModel> | null;
+
+    get parent() { return this._weakParent?.deref() ?? null; }
 
     get channelViewModel() { return this.parent; }
     //get activeLoginViewModel() { return this.parent.activeLoginViewModel; }
@@ -667,6 +840,36 @@ export class ChannelMessageViewModel extends ObservableBase {
     public readonly uniqueMessageId: number;
 
     private _parsedText: BBCodeParseResult | null = null;
+    private _parsedTextInUse: number = 0;
+    private _parsedTextReleaseTimer: IDisposable | null = null;
+
+    incrementParsedTextUsage() {
+        this._parsedTextInUse++;
+        console.log("incrementParsedTextUsage", ObjectUniqueId.get(this), this._parsedTextInUse);
+        this.cancelParsedTextReleaseTimer();
+    }
+    decrementParsedTextUsage() {
+        this._parsedTextInUse = Math.max(0, this._parsedTextInUse - 1);
+        console.log("decrementParsedTextUsage", ObjectUniqueId.get(this), this._parsedTextInUse);
+        if (this._parsedTextInUse == 0) {
+            this.cancelParsedTextReleaseTimer();
+            this._parsedTextReleaseTimer = HeldCacheManager.addReleasableItem(() => {
+                this._parsedTextReleaseTimer = null;
+                if (this._parsedText != null) {
+                    console.log("releasing parsedText");
+                    this._parsedText.dispose();
+                    this._parsedText = null;
+                }
+            }, 1000 * 60 * 2);
+        }
+    }
+
+    private cancelParsedTextReleaseTimer() {
+        if (this._parsedTextReleaseTimer != null) {
+            this._parsedTextReleaseTimer.dispose();
+            this._parsedTextReleaseTimer = null;
+        }
+    }
 
     get parsedText() {
         if (this._parsedText == null) {
@@ -689,7 +892,7 @@ export class ChannelMessageViewModel extends ObservableBase {
                 imagePreviewPopups: true,
                 eiconsUniqueLoadTag: "bbcodemsg#"
             });
-            registerCleanupDispose(this, parseResult);
+            //registerCleanupDispose(this, parseResult);
             this._parsedText = parseResult;
         }
         return this._parsedText.element;
@@ -702,9 +905,10 @@ export class ChannelMessageViewModel extends ObservableBase {
             return false;
         }
 
+        const selfPingWord = this.activeLoginViewModel.getConfigSettingById("pingCharName", this.parent) ? [ this.parent!.activeLoginViewModel.characterName.value ] : [];
         const cfgPingWords = this.activeLoginViewModel.getConfigSettingById("pingWords", this.parent) as string[];
         const oldPingWords = this.activeLoginViewModel.pingWords;
-        const allPingWords = IterableUtils.asQueryable(cfgPingWords).concat(oldPingWords).select(x => x.toLowerCase());
+        const allPingWords = IterableUtils.asQueryable(cfgPingWords).concat(oldPingWords).concat(selfPingWord).select(x => x.toLowerCase());
 
         let needPing = false;
         const msgText = this.text.toLowerCase();
@@ -851,4 +1055,113 @@ export enum PendingMessageSendState {
     NOTYETSENT,
     SENDING,
     FAILED
+}
+
+
+export interface ChannelFilterOptions {
+}
+
+export class SingleSelectChannelFilterOptions extends ObservableBase implements ChannelFilterOptions {
+    @observableProperty
+    items: Collection<SingleSelectChannelFilterOptionItem> = new Collection();
+
+    addItem(value: string, title: string, onSelect: () => any): SingleSelectChannelFilterOptionItem {
+        const opt = new SingleSelectChannelFilterOptionItem(this, value, title, onSelect);
+        this.items.push(opt);
+        return opt;
+    }
+}
+
+export class SingleSelectChannelFilterOptionItem {
+    constructor(
+        private readonly owner: SingleSelectChannelFilterOptions,
+        public readonly value: string,
+        public readonly title: string,
+        private readonly onSelect: () => any) {
+    }
+
+    private _isSelected: ObservableValue<boolean> = new ObservableValue(false);
+    get isSelected() { return this._isSelected.value; }
+    set isSelected(value: boolean) {
+        if (value != this._isSelected.value) {
+            if (value) {
+                for (let i of this.owner.items) {
+                    if (i != this) {
+                        i.isSelected = false;
+                    }
+                }
+            }
+            this._isSelected.value = value;
+
+            if (value) {
+                this.onSelect();
+            }
+        }
+    }
+}
+
+export class MultiSelectChannelFilterOptions extends ObservableBase implements ChannelFilterOptions {
+    constructor(
+        public readonly channel: ChannelViewModel,
+        private readonly onSelect: (selectedValues: string[]) => any) {
+
+        super();
+        this.items.addCollectionObserver(entries => {
+            for (let entry of entries) {
+                switch (entry.changeType) {
+                    case StdObservableCollectionChangeType.ITEM_ADDED:
+                        entry.item.owner = this;
+                        break;
+                    case StdObservableCollectionChangeType.ITEM_REMOVED:
+                        entry.item.owner = null;
+                        break;
+                }
+            }
+            this.selectionChanged();
+        });
+    }
+
+    @observableProperty
+    items: Collection<MultiSelectChannelFilterOptionItem> = new Collection();
+
+    addItem(value: string, title: string): MultiSelectChannelFilterOptionItem {
+        const i = new MultiSelectChannelFilterOptionItem(title, value);
+        this.items.add(i);
+        return i;
+    }
+
+    private _previousSelectionValue: Set<string> = new Set();
+    selectionChanged() {
+        const selectedItems: Set<string> = new Set();
+        for (let i of this.items) {
+            if (i.isSelected) {
+                selectedItems.add(i.value);
+            }
+        }
+
+        if (selectedItems.symmetricDifference(this._previousSelectionValue).size > 0) {
+            this._previousSelectionValue = selectedItems;
+            this.onSelect([...selectedItems.values()]);
+        }
+    }
+}
+
+export class MultiSelectChannelFilterOptionItem {
+    constructor(
+        public readonly value: string,
+        public readonly title: string) {
+    }
+
+    owner: MultiSelectChannelFilterOptions | null = null;
+
+    private _isSelected: ObservableValue<boolean> = new ObservableValue(false);
+    get isSelected() { return this._isSelected.value; }
+    set isSelected(value: boolean) { 
+        if (value != this._isSelected.value) {
+            this._isSelected.value = value; 
+            if (this.owner) {
+                this.owner.selectionChanged();
+            }
+        }
+    }
 }

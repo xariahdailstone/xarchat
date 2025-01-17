@@ -51,7 +51,7 @@
     color: var(--fg-main-textbox-btn);
     font: inherit;
     border-radius: 6px;
-    padding: 0.4lh 1.25lh;
+    padding: 0.4em 1.25em;
     border: none;
     outline: none;
     border: 1px solid transparent;
@@ -93,14 +93,14 @@
 
 .theme-button.theme-button-smaller {
     font-size: 80%;
-    padding: 0.12lh 0.6lh;
+    padding: 0.12em 0.6em;
 }
 
 .theme-textbox {
     background: var(--bg-main-textbox);
     color: var(--fg-main-textbox);
     font: inherit;
-    padding: 0.1lh 0.2lh;
+    padding: 0.1em 0.2em;
     border: none;
     border-bottom: 1px solid transparent;
     outline: none;
@@ -117,7 +117,7 @@
     color: var(--fg-main-textbox-btn);
     font: inherit;
     border-radius: 6px;
-    padding: 0.4lh 0.25lh;
+    padding: 0.4em 0.25em;
     border: 1px solid transparent;
     outline: none;
 }
@@ -127,6 +127,11 @@
 .theme-select:hover {
     background: var(--bg-main-textbox-btn-hover);
     color: var(--fg-main-textbox-btn-hover);
+}
+
+.theme-select.theme-select-smaller {
+    font-size: 80%;
+    padding: 0.12em 0.6em;
 }
 
 .character-link { cursor: pointer; }

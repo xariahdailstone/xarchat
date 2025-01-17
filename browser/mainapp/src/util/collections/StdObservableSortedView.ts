@@ -63,6 +63,8 @@ export class StdObservableSortedView<TItem extends object, TSortKey> implements 
 
     [Symbol.dispose]() { this.dispose(); }
 
+    get isDisposed() { return this._disposed; }
+
     private readonly _skitem: symbol = Symbol("StdObservableSortedView tracking item");
 
     private _disposed = false;
