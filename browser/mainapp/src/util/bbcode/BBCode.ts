@@ -32,7 +32,7 @@ import { BBCodeTagNoParse } from "./tags/BBCodeTagNoParse";
 import { BBCodeTagQuote } from "./tags/BBCodeTagQuote";
 import { BBCodeTagRight } from "./tags/BBCodeTagRight";
 import { BBCodeTagS } from "./tags/BBCodeTagS";
-import { BBCodeTagSession } from "./tags/BBCodeTagSession";
+import { BBCodeTagChannel, BBCodeTagSession } from "./tags/BBCodeTagSession";
 import { BBCodeTagSmall } from "./tags/BBCodeTagSmall";
 import { BBCodeTagSpoiler } from "./tags/BBCodeTagSpoiler";
 import { BBCodeTagSub } from "./tags/BBCodeTagSub";
@@ -521,6 +521,7 @@ const chatTags: BBCodeTag[] = [
     BBCodeTagUrl,
     BBCodeTagColor,
     BBCodeTagSession,
+    BBCodeTagChannel,
     BBCodeTagUser,
     BBCodeTagNoParse
 ];
