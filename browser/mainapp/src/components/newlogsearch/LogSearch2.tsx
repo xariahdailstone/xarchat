@@ -1,13 +1,14 @@
-import { jsx, Fragment, VNode } from "../snabbdom/index";
-import { asDisposable, IDisposable, isDisposable, maybeDispose } from "../util/Disposable";
-import { HTMLUtils } from "../util/HTMLUtils";
-import { observableProperty } from "../util/ObservableBase";
-import { LogSearch2ViewModel, VirtualScrollViewModel, VirtualScrollBarViewModel, LogSearch2ResultItemViewModel, CurrentDisplayItems } from "../viewmodel/LogSearch2ViewModel";
-import { ComponentBase, componentElement } from "./ComponentBase";
-import { RenderingComponentBase } from "./RenderingComponentBase";
-import { stageViewFor } from "./Stage";
+import { jsx, Fragment, VNode } from "../../snabbdom/index";
+import { asDisposable, IDisposable, isDisposable, maybeDispose } from "../../util/Disposable";
+import { HTMLUtils } from "../../util/HTMLUtils";
+import { observableProperty } from "../../util/ObservableBase";
+import { LogSearch2ViewModel, VirtualScrollViewModel, VirtualScrollBarViewModel, CurrentDisplayItems } from "../../viewmodel/newlogsearch/LogSearch2ViewModel";
+import { componentArea, ComponentBase, componentElement } from "../ComponentBase";
+import { RenderingComponentBase } from "../RenderingComponentBase";
+import { stageViewFor } from "../Stage";
 
 @stageViewFor(LogSearch2ViewModel)
+@componentArea("newlogsearch")
 @componentElement("x-logsearch2")
 export class LogSearch2 extends RenderingComponentBase<LogSearch2ViewModel> {
     constructor() {
@@ -26,6 +27,7 @@ export class LogSearch2 extends RenderingComponentBase<LogSearch2ViewModel> {
     }
 }
 
+@componentArea("newlogsearch")
 @componentElement("x-vscrollarea")
 export class VirtualScrollArea<TItem> extends ComponentBase<VirtualScrollViewModel<TItem>> {
     constructor() {
@@ -247,6 +249,7 @@ export class VirtualScrollArea<TItem> extends ComponentBase<VirtualScrollViewMod
     }
 }
 
+@componentArea("newlogsearch")
 @componentElement("x-virtualscrollbar")
 export class VirtualScrollBar extends ComponentBase<VirtualScrollBarViewModel> {
     constructor() {
@@ -409,30 +412,3 @@ export function logSearch2ItemViewFor<TAbstractViewModel, TViewModel extends TAb
 
 
 
-@logSearch2ItemViewFor(LogSearch2ResultItemViewModel)
-@componentElement("x-lv2sampleitem")
-export class SampleItem extends ComponentBase<LogSearch2ResultItemViewModel> {
-    constructor() {
-        super();
-
-        this.watchExpr(vm => vm, vm => {
-            if (vm) {
-                this.elMain.innerHTML = `
-                    <div>
-                        <div>${vm.text} Line 1</div>
-                        <div>${vm.text} Line 2</div>
-                        <div>${vm.text} Line 3</div>
-                        <div>${vm.text} Line 4</div>
-                        <div>${vm.text} Line 5</div>
-                        <div>${vm.text} Line 6</div>
-                        <div>${vm.text} Line 7</div>
-                    </div>
-                    `;
-                (this.elMain as any).__vm = vm;
-            }
-            else {
-                this.elMain.innerHTML = "";
-            }
-        });
-    }
-}

@@ -42,7 +42,7 @@ import { StringUtils } from "../util/StringUtils.js";
 import { ObservableExpression } from "../util/ObservableExpression.js";
 import { InAppToastViewModel } from "./InAppToastViewModel.js";
 import { InAppToastManagerViewModel } from "./InAppToastManagerViewModel.js";
-import { LogSearch2ViewModel } from "./LogSearch2ViewModel.js";
+import { LogSearch2ViewModel } from "./newlogsearch/LogSearch2ViewModel.js";
 
 declare const XCHost: any;
 

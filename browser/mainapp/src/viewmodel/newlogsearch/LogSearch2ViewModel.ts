@@ -1,11 +1,12 @@
-import { CharacterName } from "../shared/CharacterName";
-import { CancellationToken, CancellationTokenSource } from "../util/CancellationTokenSource";
-import { IterableUtils } from "../util/IterableUtils";
-import { ObservableBase, observableProperty } from "../util/ObservableBase";
-import { OperationCancelledError } from "../util/PromiseSource";
-import { TaskUtils } from "../util/TaskUtils";
-import { ActiveLoginViewModel } from "./ActiveLoginViewModel";
-import { AppViewModel } from "./AppViewModel";
+import { CharacterName } from "../../shared/CharacterName";
+import { CancellationToken, CancellationTokenSource } from "../../util/CancellationTokenSource";
+import { IterableUtils } from "../../util/IterableUtils";
+import { ObservableBase, observableProperty } from "../../util/ObservableBase";
+import { OperationCancelledError } from "../../util/PromiseSource";
+import { TaskUtils } from "../../util/TaskUtils";
+import { ActiveLoginViewModel } from "../ActiveLoginViewModel";
+import { AppViewModel } from "../AppViewModel";
+import { LogSearch2ResultItemViewModel } from "./LogSearch2ResultItemViewModel";
 
 export class LogSearch2ViewModel extends ObservableBase {
     constructor(
@@ -15,7 +16,7 @@ export class LogSearch2ViewModel extends ObservableBase {
 
         super();
 
-        this.assignResultSet(new LogSearch2DynamicResultSet(3000));
+        this.assignResultSet(new LogSearch2DynamicResultSet(this, 3000));
     }
 
     private assignResultSet(rs: LogSearch2DynamicResultSet | null) {
@@ -45,19 +46,9 @@ export class LogSearch2ViewModel extends ObservableBase {
     currentResultSet: LogSearch2DynamicResultSet | null = null;
 }
 
-export class LogSearch2ResultItemViewModel extends ObservableBase {
-    constructor(
-        public readonly timestamp: Date,
-        public readonly speakingCharacter: CharacterName,
-        public readonly messageType: number,
-        public readonly text: string) {
-
-        super();
-    }
-}
-
 class LogSearch2DynamicResultSet {
     constructor(
+        public readonly parent: LogSearch2ViewModel,
         public readonly totalCount: number) {
     }
 
@@ -104,7 +95,7 @@ class LogSearch2DynamicResultSet {
         for (let i = actualStartAt; i < actualStartAt + actualCount; i++) {
             const text = `this is a test message ${i}`;
             buildingResults.set(i, new LogSearch2ResultItemViewModel(
-                new Date(), CharacterName.create("System"), 0, text));
+                this.parent, new Date(), CharacterName.create("System"), 0, text));
         }
 
         // TODO: for testing
