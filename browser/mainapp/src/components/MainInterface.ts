@@ -207,9 +207,9 @@ export class MainInterface extends ComponentBase<AppViewModel> {
         let anyDialogsCount = elDialogStack.children.length;
         let unclosedDialogsCount = 0;
 
+        let lastDialog: DialogViewModel<any> | null = null;
         if (this.viewModel) {
             const inactiveDialogs: Set<DialogViewModel<any>> = new Set();
-            let lastDialog: DialogViewModel<any> | null = null;
             for (let d of this.viewModel.dialogs) {
                 if (!d.closed) {
                     lastDialog = d;
@@ -246,6 +246,12 @@ export class MainInterface extends ComponentBase<AppViewModel> {
         this.elMain.classList.toggle("has-unclosed-dialogs", hasUnclosedDialogs);
         this.elMain.classList.toggle("nogpu", this.viewModel?.noGpuMode ?? false);
         elChatUi.inert = hasUnclosedDialogs;
+        if (lastDialog) {
+            const el = elDialogCollectionView.getElementForViewModel(lastDialog);
+            if (el && typeof (el as DialogFrame).setActiveDialog == "function") {
+                (el as DialogFrame).setActiveDialog();
+            }
+        }
     }
 
     private _windowFocused: boolean = true;
