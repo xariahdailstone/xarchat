@@ -51,7 +51,8 @@ let nextChatConnId = 1;
 export class ChatConnectionImpl implements ChatConnection {
     constructor(
         sink: Partial<ChatConnectionSink>,
-        private readonly onOutgoingData: (data: string) => (Promise<void> | void)) {
+        private readonly onOutgoingData: (data: string) => (Promise<void> | void),
+        private readonly disconnectConnection: () => void) {
 
         this.logger = Logging.createLogger(`ChatConnectionImpl#${ObjectUniqueId.get(this)}`);
 
@@ -122,6 +123,9 @@ export class ChatConnectionImpl implements ChatConnection {
         if (this._incomingDataLoopEnded) {
             this.sink.disconnectedFromServer(ChatDisconnectReason.REQUESTED_DISCONNECT);
         }
+        else {
+            this.disconnectConnection();
+        }
         this.dispose();
     }
 
@@ -132,6 +136,7 @@ export class ChatConnectionImpl implements ChatConnection {
                 await this.bracketedSendAsync({ code: "MSG", body: { message: ".dc" }}, ERRAsFailure);
             }
             catch { }
+            this.disconnectConnection();
         }
         else {
             await this.disconnect();
@@ -409,6 +414,7 @@ export class ChatConnectionImpl implements ChatConnection {
         }
         catch (e) {
             this.handleDisconnect();
+            this.disconnectConnection();
 
             if (!this._disposeCTS.isCancellationRequested) {
                 throw e;

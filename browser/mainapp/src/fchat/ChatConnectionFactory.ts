@@ -72,13 +72,17 @@ export class ChatConnectionFactoryImpl {
                 const ws = new WebSocket(url.href);
                 zws = ws;
                 const cci = new ChatConnectionImpl(sink, data => { 
-                    if (socketSendFailure == null) {
-                        ws.send(data); 
-                    }
-                    else {
-                        throw new Error(`Cannot send: ${socketSendFailure}`);
-                    }
-                });
+                        if (socketSendFailure == null) {
+                            ws.send(data); 
+                        }
+                        else {
+                            throw new Error(`Cannot send: ${socketSendFailure}`);
+                        }
+                    },
+                    () => {
+                        try { ws.close(); }
+                        catch { }
+                    });
                 zcci = cci;
                 this._openWebSockets.add(ws);
                 const testDisconnectKey = {};
