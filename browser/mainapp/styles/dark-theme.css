@@ -21,6 +21,8 @@ body {
     --bg-level-3-highlight: hsl(var(--bg-base-hue), var(--bg-base-sat), 27%); /* #404249; */
     --fg-level-3-highlight: white;
 
+    --border-level-2: hsl(var(--bg-base-hue), var(--fg-base-sat), 25%); /* #b5bac1; */
+
     --dark-border-level-4:  hsl(var(--bg-base-hue), var(--bg-base-sat), 15%); /* #232428; */
 
     --fg-gender-male: #6699FF;

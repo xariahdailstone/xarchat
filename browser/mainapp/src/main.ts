@@ -14,6 +14,7 @@ import { HostInterop } from "./util/HostInterop.js";
 import { KeyCodes } from "./util/KeyCodes.js";
 import { ObservableBase } from "./util/ObservableBase.js";
 import { polyfillRequestIdleCallback } from "./util/RequestIdleCallbackPolyfill.js";
+import { setStylesheetAdoption } from "./util/StyleSheetPolyfill.js";
 import { ActiveLoginViewModel } from "./viewmodel/ActiveLoginViewModel.js";
 import { AppViewModel } from "./viewmodel/AppViewModel.js";
 import { ChannelMessageViewModel, ChannelViewModel } from "./viewmodel/ChannelViewModel.js";
@@ -118,6 +119,7 @@ onReady(async () => {
     for (let f of allCssFiles) {
         await StyleLoader.loadAsync(f);
     }
+    loadDarkThemeCss();
 
     const p = new URLSearchParams(document.location.search);
     if (p.get("nogpu") == "1") {
@@ -161,3 +163,10 @@ document.addEventListener("keydown", (e) => {
         }
     }
 });
+
+async function loadDarkThemeCss() {
+    var sss = await StyleLoader.loadAsync("styles/dark-theme.css");
+    setStylesheetAdoption(document, [sss]);
+    document.getElementById("elLinkDarkTheme")?.remove();
+    //throw new Error("Function not implemented.");
+}
