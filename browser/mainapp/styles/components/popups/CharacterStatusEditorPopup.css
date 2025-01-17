@@ -9,7 +9,7 @@
 
 #elMain {
     width: 300px;
-    height: 200px;
+    height: auto;
 
     display: grid;
     grid-template-columns: auto 1fr;
@@ -26,8 +26,7 @@
 .status-dot-container { grid-area: avatar; }
 .character-name { grid-area: name; }
 .online-status-container { grid-area: onlinestatus; }
-.status-message { grid-area: statusmessage; }
-.status-message-size { grid-area: charsused; }
+.current-status-message-container { grid-area: statusmessage; }
 
 .avatar-image {
     width: 48px;
@@ -75,18 +74,34 @@
     border-radius: 8px;
 }
 
-.status-message {
-    resize: none;
-    background: rgba(255, 255, 255, 0.1);
-    color: var(--fg-level-4);
+.current-status-message-container {
+
+    display: grid;
+    grid-template-rows: 1fr auto;
+    grid-template-columns: 100%;
+    grid-template-areas:
+        "statustext"
+        "editbutton";
+}
+.current-status-message { grid-area: statustext; }
+.current-status-message-container > button { grid-area: editbutton; }
+
+.current-status-message { 
+    display: none;
+    
+    background: var(--bg-level-1);
+    color: var(--fg-level-1);
     font: var(--chat-font);
     border-radius: 8px;
     border: none;
     outline: none;
-    padding: 6px 6px;
+    padding: 8px 8px;
+    margin-left: -8px;
+    margin-right: -8px;
+
+    margin-bottom: 8px;
 }
-.status-message-size {
-    justify-self: end;
-    font-size: 80%;
-    margin-top: 3px;
+.current-status-message.has-status { display: block; }
+.current-status-message-container button {
+    margin-left: auto;
 }

@@ -59,6 +59,8 @@ export class DialogFrame extends ComponentBase<DialogViewModel<any>> {
         const frameClassWCM = new WhenChangeManager();
         this.watch(".", v => {
             if (v) {
+                this._currentDialogComponent = null;
+
                 while (elContentArea.firstElementChild) {
                     elContentArea.firstElementChild.remove();
                 }
@@ -68,6 +70,7 @@ export class DialogFrame extends ComponentBase<DialogViewModel<any>> {
                     if (v instanceof k) {
                         const dlgEl = new (DialogFrame._registeredDialogTypes.get(k)!)();
                         dlgEl.viewModel = v;
+                        this._currentDialogComponent = dlgEl;
                         elContentArea.appendChild(dlgEl);
 
                         frameClassWCM.assign({ frameClass: dlgEl.dialogBorderType.frameClass }, (args) => {
@@ -101,11 +104,13 @@ export class DialogFrame extends ComponentBase<DialogViewModel<any>> {
         this.whenConnected(() => {
             //this.log("CONNECTED");
             const keydownListener = EventListenerUtil.addDisposableEventListener(window, "keydown", (ev: KeyboardEvent) => {
-                const btn = this.getButtonForKeyboardEvent(ev);
-                if (btn) {
-                    btn.onClick();
-                    ev.preventDefault();
-                    ev.stopPropagation();
+                if (!this.shouldPreventKeyboardEventDefault(ev)) {
+                    const btn = this.getButtonForKeyboardEvent(ev);
+                    if (btn) {
+                        btn.onClick();
+                        ev.preventDefault();
+                        ev.stopPropagation();
+                    }
                 }
             }, true);
 
@@ -132,6 +137,23 @@ export class DialogFrame extends ComponentBase<DialogViewModel<any>> {
                 }
             }
         });
+    }
+
+    private _currentDialogComponent: DialogComponentBase<any> | null = null;
+
+    protected shouldPreventKeyboardEventDefault(ev: KeyboardEvent): boolean {
+        if (this._currentDialogComponent) {
+            return this._currentDialogComponent.shouldPreventKeyboardDefault(ev);
+        }
+        else {
+            return false;
+        }
+    }
+
+    setActiveDialog() {
+        if (this._currentDialogComponent) {
+            this._currentDialogComponent.setActiveDialog();
+        }
     }
 
     private getButtonForKeyboardEvent(ev: KeyboardEvent): (DialogButtonViewModel | null) {
@@ -247,6 +269,19 @@ export abstract class DialogComponentBase<TViewModel> extends ComponentBase<TVie
      get dialogBorderType(): DialogBorderType { return DialogBorderType.NORMAL; }
 
      onShown() { }
+
+     shouldPreventKeyboardDefault(ev: KeyboardEvent): boolean { return false; }
+
+     private _initialActiveDone = false;
+     setActiveDialog() {
+        if (!this._initialActiveDone) {
+            this._initialActiveDone = true;
+            const initFocusEl = this._sroot.querySelector("*[data-initial-focus]");
+            if (initFocusEl) {
+                (initFocusEl as HTMLElement).focus();
+            }
+        }
+     }
 }
 
 export class DialogBorderType {

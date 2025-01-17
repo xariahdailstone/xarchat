@@ -23,7 +23,13 @@
     align-items: center;
     margin-bottom: 15px;
 
-    --caption-button-size: 24px;
+    background-color: var(--bg-level-2);
+    color: var(--fg-level-2);
+
+    font-size: 12.8px;
+    padding: 5px 9px;
+
+    --caption-button-size: 16px;
 }
 .titlebar-title { grid-area: title; }
 .titlebar-captionbuttons { grid-area: captionbuttons; }
@@ -42,6 +48,7 @@
     color: inherit;
     background: inherit;
     cursor: pointer;
+    padding: 0;
 }
 .titlebar-close-icon {
     max-width: var(--caption-button-size);
@@ -113,13 +120,14 @@
     color: var(--fg-level-3);
 
     border-radius: 8px;
+    border: 1px solid var(--border-level-2);
 
     display: grid;
     grid-template-columns: 8px minmax(0, auto) 8px;
-    grid-template-rows: 8px minmax(0px, max-content) minmax(0, max-content) minmax(0px, max-content) 8px;
+    grid-template-rows: /*8px*/ minmax(0px, max-content) minmax(0, max-content) minmax(0px, max-content) 8px;
     grid-template-areas:
-        ". . ."
-        ". titlebar ."
+        /*". . ."*/
+        "titlebar titlebar titlebar"
         ". contentarea ."
         ". buttonbar ."
         ". . .";
@@ -164,6 +172,8 @@
 }
 #elMain.frame-fullpagewithtitlebar .titlebar { 
     padding: 10px 10px 0px 10px;
+    background: inherit;
+    color: inherit;
 }
 
 
@@ -213,6 +223,10 @@
 }
 #elMain.frame-rightpane .titlebar {
     margin-bottom: 0px;
+    background: inherit;
+    color: inherit;
+    font-size: 100%;
+    padding: 2px 4px;
 }
 #elMain.frame-rightpane .contentarea {
     width: auto;

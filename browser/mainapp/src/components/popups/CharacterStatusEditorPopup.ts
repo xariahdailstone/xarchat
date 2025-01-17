@@ -1,8 +1,10 @@
 import { CharacterName } from "../../shared/CharacterName";
 import { OnlineStatus, OnlineStatusConvert } from "../../shared/OnlineStatus";
+import { BBCodeParser, ChatBBCodeParser } from "../../util/bbcode/BBCode";
 import { asDisposable } from "../../util/Disposable";
 import { HTMLUtils } from "../../util/HTMLUtils";
 import { URLUtils } from "../../util/URLUtils";
+import { CharacterStatusEditDialogViewModel } from "../../viewmodel/dialogs/CharacterStatusEditDialogViewModel";
 import { CharacterStatusEditorPopupViewModel } from "../../viewmodel/popups/CharacterStatusEditorPopupViewModel";
 import { componentArea, componentElement } from "../ComponentBase";
 import { StatusDotLightweight } from "../StatusDot";
@@ -15,6 +17,8 @@ import { popupViewFor } from "./PopupFrame";
 export class CharacterStatusEditorPopup extends ContextPopupBase<CharacterStatusEditorPopupViewModel> {
     constructor() {
         super();
+
+        this.clickable = true;
 
         HTMLUtils.assignStaticHTMLFragment(this.elMain, `
             <img class="avatar-image" id="elAvatarImage" />
@@ -31,32 +35,58 @@ export class CharacterStatusEditorPopup extends ContextPopupBase<CharacterStatus
                     <option>DND</option>
                 </select>
             </div>
-            <textarea class="status-message" id="elStatusMessage" maxlength="255"></textarea>
-            <div class="status-message-size"><span id="elStatusMessageCharsUsed">0</span> / 255</div>
+
+            <div class="current-status-message-container">
+                <div class="current-status-message" id="elCurrentStatusMessage"></div>
+                <button class="current-status-edit-button theme-button" id="btnEditStatus">Edit Status</button>
+            </div>
         `);
 
         const elAvatarImage = this.$("elAvatarImage") as HTMLImageElement;
         const elOnlineStatusSelect = this.$("elOnlineStatusSelect") as HTMLSelectElement;
         const elStatusDotContainer = this.$("elStatusDotContainer") as HTMLDivElement;
         const elCharacterName = this.$("elCharacterName") as HTMLDivElement;
-        const elStatusMessage = this.$("elStatusMessage") as HTMLTextAreaElement;
-        const elStatusMessageCharsUsed = this.$("elStatusMessageCharsUsed") as HTMLSpanElement;
+        const elCurrentStatusMessage = this.$("elCurrentStatusMessage") as HTMLDivElement;
+        const btnEditStatus = this.$("btnEditStatus") as HTMLButtonElement;
 
-        this.watch("characterName", (v: CharacterName | null) => {
-            if (v) {
-                elAvatarImage.src = URLUtils.getAvatarImageUrl(v);
-                elCharacterName.innerText = v.value;
+        this.watchExpr(vm => vm.characterName, cname => {
+            if (cname) {
+                elAvatarImage.src = URLUtils.getAvatarImageUrl(cname);
+                elCharacterName.innerText = cname.value;
             }
             else {
                 elAvatarImage.src = URLUtils.getEmptyImageUrl();
                 elCharacterName.innerText = "";
             }
         });
-        this.watch("selectedStatusMessage", (v: string | null) => {
-            v = v ?? "";
-            if (v != elStatusMessage.value) {
-                elStatusMessage.value = v;
-                elStatusMessageCharsUsed.innerText = elStatusMessage.value.length.toString();
+        this.watchExpr(vm => vm.currentCharacterStatus.status, onlineStatus => {
+            if (onlineStatus) {
+                elOnlineStatusSelect.value = OnlineStatusConvert.toString(onlineStatus);    
+            }
+        });
+        this.watchExpr(vm => vm.currentCharacterStatus.statusMessage, statusMessage => {
+            if (statusMessage && this.viewModel) {
+                if (statusMessage != "") {
+                    const bbcodeParseResult = ChatBBCodeParser.parse(statusMessage, {
+                        addUrlDomains: true, 
+                        appViewModel: this.viewModel.activeLoginViewModel.appViewModel, 
+                        activeLoginViewModel: this.viewModel.activeLoginViewModel,
+                        imagePreviewPopups: true,
+                        sink: this.viewModel.activeLoginViewModel.bbcodeSink 
+                    });
+
+                    elCurrentStatusMessage.appendChild(bbcodeParseResult.element);
+                    elCurrentStatusMessage.classList.toggle("has-status", true);
+
+                    return asDisposable(() => {
+                        HTMLUtils.clearChildren(elCurrentStatusMessage);
+                        bbcodeParseResult.dispose();
+                    });
+                }
+                else {
+                    HTMLUtils.clearChildren(elCurrentStatusMessage);
+                    elCurrentStatusMessage.classList.toggle("has-status", false);
+                }
             }
         });
 
@@ -66,7 +96,7 @@ export class CharacterStatusEditorPopup extends ContextPopupBase<CharacterStatus
             statusDot.character = vm.characterName;
             elStatusDotContainer.appendChild(statusDot.element);
 
-            elOnlineStatusSelect.value = OnlineStatusConvert.toString(vm.selectedStatus);
+            //elOnlineStatusSelect.value = OnlineStatusConvert.toString(vm.selectedStatus);
 
             return asDisposable(() => {
                 statusDot.element.remove();
@@ -74,19 +104,15 @@ export class CharacterStatusEditorPopup extends ContextPopupBase<CharacterStatus
             });
         });
 
-        const pushTextbox = () => {
-            if (this.viewModel != null) {
-                this.viewModel.selectedStatusMessage = elStatusMessage.value;
-            }
-            elStatusMessageCharsUsed.innerText = elStatusMessage.value.length.toString();
-        }
-        elStatusMessage.addEventListener("input", pushTextbox);
-        elStatusMessage.addEventListener("change", pushTextbox);
-
         elOnlineStatusSelect.addEventListener("change", () => {
             if (this.viewModel != null) {
-                this.viewModel.selectedStatus = OnlineStatusConvert.toOnlineStatus(elOnlineStatusSelect.value)!;
+                this.viewModel.setOnlineStatusAsync(OnlineStatusConvert.toOnlineStatus(elOnlineStatusSelect.value)!);
             }
-        })
+        });
+        btnEditStatus.addEventListener("click", () => {
+            if (this.viewModel != null) {
+                this.viewModel.showStatusMessageEditorAsync();
+            }
+        });
     }  
 }
