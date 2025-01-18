@@ -1,8 +1,8 @@
 import { EL } from "../../EL";
-import { BBCodeClickContext, getContentText } from "../BBCode";
+import { BBCodeClickContext, BBCodeParseContext, BBCodeTagContent, getContentText } from "../BBCode";
 import { BBCodeTag } from "../BBCodeTag";
 
-export const BBCodeTagSession = new BBCodeTag("session", true, true, (context, arg, content) => {
+const sessionConvert: (context: BBCodeParseContext, arg: string | undefined, content: BBCodeTagContent) => (Node | Node[]) = (context, arg, content) => {
     const contentText = getContentText(content);
     const x = EL("span", { 
         class: "bbcode-session", 
@@ -13,7 +13,7 @@ export const BBCodeTagSession = new BBCodeTag("session", true, true, (context, a
             class: "bbcode-session-icon",
             "data-copycontent": ""
         }),
-        document.createTextNode(arg ?? "Link") 
+        document.createTextNode(arg ?? ((contentText && contentText != "") ? contentText : "Link")) 
     ]);
     if (typeof context.parseOptions.sink?.sessionClick == "function") {
         const sessionClick = context.parseOptions.sink!.sessionClick!; // as ((target: string, titleHint: string) => void);
@@ -27,4 +27,8 @@ export const BBCodeTagSession = new BBCodeTag("session", true, true, (context, a
         });
     }
     return x;
-});
+}
+
+export const BBCodeTagSession = new BBCodeTag("session", true, true, sessionConvert);
+
+export const BBCodeTagChannel = new BBCodeTag("channel", true, false, sessionConvert);

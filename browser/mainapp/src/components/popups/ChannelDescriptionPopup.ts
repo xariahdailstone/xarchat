@@ -77,16 +77,25 @@ export class ChannelDescriptionPopup extends PopupBase<ChannelDescriptionPopupVi
         });
 
         const parsedBBCodeWCM = new WhenChangeManager();
-        this.watch("description", (v) => {
+        this.watchExpr(vm => vm.description, v => {
             v = v ?? "";
-            parsedBBCodeWCM.assign({ v }, () => {
-                const sp = ChatBBCodeParser.parse(v, {
-                });
-                this.elMain.appendChild(sp.element);
-                return asDisposable(() => {
-                    this.elMain.removeChild(sp.element);
-                    sp.dispose();
-                });
+            parsedBBCodeWCM.assign({ description: v, viewModel: this.viewModel }, () => {
+                const vm = this.viewModel;
+                if (vm) {
+                    const sp = ChatBBCodeParser.parse(v, {
+                        sink: vm.activeLoginViewModel.bbcodeSink,
+                        addUrlDomains: true, 
+                        appViewModel: vm.appViewModel, 
+                        activeLoginViewModel: vm.activeLoginViewModel,
+                        channelViewModel: vm.channelViewModel ?? undefined,
+                        imagePreviewPopups: true
+                    });
+                    this.elMain.appendChild(sp.element);
+                    return asDisposable(() => {
+                        this.elMain.removeChild(sp.element);
+                        sp.dispose();
+                    });
+                }
             });
         });
 

@@ -242,7 +242,7 @@ export class ChannelHeader extends ComponentBase<ChannelViewModel> {
             const vm = this.viewModel;
             if (vm) {
                 if (elDescriptionShowMore.hasAttribute("data-expandto")) {
-                    const popup = new ChannelDescriptionPopupViewModel(vm.appViewModel);
+                    const popup = new ChannelDescriptionPopupViewModel(vm);
                     popup.description = elDescriptionShowMore.getAttribute("data-expandto")!;
                     popup.popFromElement = elDescriptionArea;
                     vm.appViewModel.popups.push(popup);
