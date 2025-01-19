@@ -1,6 +1,7 @@
 import { CharacterName } from "../shared/CharacterName.js";
 import { CharacterSet, CharacterStatus } from "../shared/CharacterSet.js";
 import { OnlineStatus, OnlineStatusConvert } from "../shared/OnlineStatus.js";
+import { jsx, Fragment, VNode } from "../snabbdom/index.js";
 import { asDisposable, IDisposable } from "../util/Disposable.js";
 import { WhenChangeManager } from "../util/WhenChange.js";
 import { ComponentBase, componentElement } from "./ComponentBase.js";
@@ -249,3 +250,16 @@ export class StatusDotLightweight implements IDisposable {
     }
 }
 
+export class StatusDotVNodeBuilder {
+    static getStatusDotVNode(cs: CharacterStatus): VNode {
+        const classes: Record<string, boolean> = {};
+        classes["statusdot"] = true;
+        classes["onlinestatus-" + OnlineStatusConvert.toString(cs.status).toLowerCase()] = true;
+
+        const attrs: Record<string, string> = {};
+        attrs["title"] = OnlineStatusConvert.toString(cs.status);
+
+        const resultNode = <span class={classes} attrs={attrs}>{ "\u2B24" }</span>;
+        return resultNode;
+    }
+}

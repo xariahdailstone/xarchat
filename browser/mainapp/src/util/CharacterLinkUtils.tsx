@@ -1,5 +1,6 @@
 import { CharacterGenderConvert } from "../shared/CharacterGender";
 import { CharacterName } from "../shared/CharacterName";
+import { CharacterStatus } from "../shared/CharacterSet";
 import { jsx, VNode } from "../snabbdom/index";
 import { ActiveLoginViewModel } from "../viewmodel/ActiveLoginViewModel";
 import { AppViewModel } from "../viewmodel/AppViewModel";
@@ -10,9 +11,7 @@ import { IDisposable, asDisposable } from "./Disposable";
 import { EventListenerUtil } from "./EventListenerUtil";
 
 export class CharacterLinkUtils {
-    static createCharacterLinkVNode(sess: ActiveLoginViewModel, char: CharacterName, channelContext?: ChannelViewModel | null): VNode {
-        const csi = sess.characterSet.getCharacterStatus(char);
-        
+    static createStaticCharacterLinkVNode(sess: ActiveLoginViewModel, char: CharacterName, csi: CharacterStatus, channelContext?: ChannelViewModel | null): VNode {
         const vnode = <span classList={[ "character-link", `gender-${CharacterGenderConvert.toString(csi.gender)}` ]}
             on={{
                 "click": (ev: MouseEvent) => {
@@ -31,6 +30,11 @@ export class CharacterLinkUtils {
                 }
             }}>{getEffectiveCharacterNameVNodes(char, sess)}</span>;
         return vnode;
+    }
+
+    static createCharacterLinkVNode(sess: ActiveLoginViewModel, char: CharacterName, channelContext?: ChannelViewModel | null): VNode {
+        const csi = sess.characterSet.getCharacterStatus(char);
+        return CharacterLinkUtils.createStaticCharacterLinkVNode(sess, char, csi, channelContext);
     }
 
     static setupCharacterLink(el: HTMLElement, sess: ActiveLoginViewModel, char: CharacterName, channelContext: ChannelViewModel | null): IDisposable {

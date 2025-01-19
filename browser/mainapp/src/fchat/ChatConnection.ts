@@ -61,6 +61,21 @@ export interface ChatConnection extends IDisposable {
     ignoreCharacterAsync(character: CharacterName): Promise<void>;
     unignoreCharacterAsync(character: CharacterName): Promise<void>;
     notifyIgnoredAsync(character: CharacterName): Promise<void>;
+
+    performPartnerSearchAsync(args: PartnerSearchArgs): Promise<PartnerSearchResult>;
+}
+
+export interface PartnerSearchArgs {
+    genders: readonly string[];
+    orientations: readonly string[];
+    roles: readonly string[];
+    positions: readonly string[];
+    languages: readonly string[];
+    kinks: readonly string[];
+}
+
+export interface PartnerSearchResult {
+    characters: CharacterName[];
 }
 
 export interface ChannelMetadata {

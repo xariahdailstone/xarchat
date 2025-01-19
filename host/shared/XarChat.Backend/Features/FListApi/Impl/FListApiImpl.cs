@@ -9,6 +9,7 @@ using System.Text.Json;
 using XarChat.Backend.Common;
 using XarChat.Backend.Features.EIconUpdateSubmitter;
 using Microsoft.Extensions.DependencyInjection;
+using System.Reflection;
 
 namespace XarChat.Backend.Features.FListApi.Impl
 {
@@ -41,6 +42,26 @@ namespace XarChat.Backend.Features.FListApi.Impl
                 var json = await resp.Content.ReadAsStringAsync(cts.Token);
                 var result = JsonUtilities.Deserialize<KinksList>(json, SourceGenerationContext.Default.KinksList)!;
                 return new AsyncCacheCreationResult<KinksList>(result, TimeSpan.FromHours(2));
+            }, cancellationToken);
+            return result.Value;
+        }
+
+        public async Task<PartnerSearchFieldsDefinitions> GetPartnerSearchFieldsDefinitionsAsync(CancellationToken cancellationToken)
+        {
+            var cacheKey = "GetPartnerSearchFieldsDefinitionsAsync";
+            var result = await _cache.GetOrCreateAsync(cacheKey, async () =>
+            {
+                var q =
+                    from n in Assembly.GetExecutingAssembly().GetManifestResourceNames()
+                    where n.EndsWith(".ChatSearchFields.json")
+                    select Assembly.GetExecutingAssembly().GetManifestResourceStream(n);
+
+                using var stream = q.First();
+                using var sr = new StreamReader(stream);
+                var json = await sr.ReadToEndAsync(CancellationToken.None);
+
+                var result = JsonUtilities.Deserialize<PartnerSearchFieldsDefinitions>(json, SourceGenerationContext.Default.PartnerSearchFieldsDefinitions)!;
+                return new AsyncCacheCreationResult<PartnerSearchFieldsDefinitions>(result, TimeSpan.FromHours(2));
             }, cancellationToken);
             return result.Value;
         }

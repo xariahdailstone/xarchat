@@ -9,7 +9,7 @@ import { ChatChannelMessageMode, ChatChannelMessageModeConvert } from "../viewmo
 import { BottleSpinData, ChatConnectionSink, ChatDisconnectReason, RollData, completeSink } from "./ChatConnectionSink";
 import { ServerADLMessage, ServerAOPMessage, ServerBROMessage, ServerCBUMessage, ServerCDSMessage, ServerCHAMessage, ServerCIUMessage, ServerCKUMessage, ServerCOAMessage, ServerCOLMessage, ServerCONMessage, ServerCORMessage, ServerCSOMessage, ServerCTUMessage, ServerERRMessage, ServerFLNMessage, ServerFRLMessage, ServerHLOMessage, ServerICHMessage, ServerIDNMessage, ServerIGNMessage, ServerJCHMessage, ServerLCHMessage, ServerLISMessage, ServerLRPMessage, ServerMSGMessage, ServerNLNMessage, ServerORSMessage, ServerPRIMessage, ServerRLLMessage, ServerRTBMessage, ServerSTAMessage, ServerSYSMessage, ServerTPNMessage, ServerVARMessage, ServerXHMMessage } from "./ServerMessages";
 import { ChatMessage, Handleable, TypedChatMessage, HandleableTypedChatMessage, HandleableChatMessage } from "./ChatConnectionFactory";
-import { ChannelMetadata, ChatConnection, IdentificationFailedError } from "./ChatConnection";
+import { ChannelMetadata, ChatConnection, IdentificationFailedError, PartnerSearchArgs, PartnerSearchResult } from "./ChatConnection";
 import { IncomingMessageSink } from "./IncomingMessageSink";
 import { PromiseSource } from "../util/PromiseSource";
 import { Mutex } from "../util/Mutex";
@@ -1347,5 +1347,40 @@ export class ChatConnectionImpl implements ChatConnection {
                 character: character.value
             }
         });
+    }
+
+    async performPartnerSearchAsync(args: PartnerSearchArgs): Promise<PartnerSearchResult> {
+        let result: PartnerSearchResult | null = null;
+        let error: string | null = null;
+
+        await this.bracketedSendAsync({
+                code: "FKS",
+                body: {
+                    kinks: args.kinks,
+                    genders: args.genders.length > 0 ? args.genders : undefined,
+                    roles: args.roles.length > 0 ? args.roles : undefined,
+                    orientations: args.orientations.length > 0 ? args.orientations : undefined,
+                    positions: args.positions.length > 0 ? args.positions : undefined,
+                    languages: args.languages.length > 0 ? args.languages : undefined
+                }
+            },
+            (recvMsg) => {
+                if (recvMsg.code == "FKS") {
+                    result = { characters: [] };
+                    for (let c of recvMsg.body!.characters) {
+                        result.characters.push(CharacterName.create(c));
+                    }
+                }
+                else if (recvMsg.code == "ERR") {
+                    error = recvMsg.body!.message;
+                }
+            });
+
+        if (result) {
+            return result;
+        }
+        else {
+            throw new Error(error ?? "Unknown error.");
+        }
     }
 }

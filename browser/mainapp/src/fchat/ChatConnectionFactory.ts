@@ -7,7 +7,7 @@ import { HostInterop } from "../util/HostInterop";
 import { IdleDetectionScreenState, IdleDetectionUserState } from "../util/IdleDetection";
 import { PromiseSource } from "../util/PromiseSource";
 import { SnapshottableSet } from "../util/collections/SnapshottableSet";
-import { ChannelMetadata, ChatConnection } from "./ChatConnection";
+import { ChannelMetadata, ChatConnection, PartnerSearchArgs, PartnerSearchResult } from "./ChatConnection";
 import { ChatConnectionImpl } from "./ChatConnectionImpl";
 import { ChatConnectionSink } from "./ChatConnectionSink";
 import { ProfileInfo } from "./api/FListApi";
@@ -244,6 +244,8 @@ export class NullChatConnection implements ChatConnection {
     async ignoreCharacterAsync(character: CharacterName): Promise<void> { }
     async unignoreCharacterAsync(character: CharacterName): Promise<void> { }
     async notifyIgnoredAsync(character: CharacterName): Promise<void> { }
+
+    async performPartnerSearchAsync(args: PartnerSearchArgs): Promise<PartnerSearchResult> { throw new Error("unavailable"); }
 
     dispose(): void {
     }
