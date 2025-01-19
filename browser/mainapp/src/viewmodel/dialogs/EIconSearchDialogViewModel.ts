@@ -1,14 +1,13 @@
 import { HostInterop } from "../../util/HostInterop";
 import { ObservableBase, observableProperty } from "../../util/ObservableBase";
 import { AppViewModel } from "../AppViewModel";
-import { ChannelViewModel } from "../ChannelViewModel";
 import { DialogButtonStyle, DialogButtonViewModel, DialogViewModel } from "./DialogViewModel";
 import { ContextPopupViewModel } from "../popups/PopupViewModel";
 import { TaskUtils } from "../../util/TaskUtils";
 
 export class EIconSearchDialogViewModel extends DialogViewModel<string | null> {
-    constructor(parent: ChannelViewModel) {
-        super(parent.appViewModel);
+    constructor(parent: AppViewModel) {
+        super(parent);
 
         this.title = "EIcon Search";
         this.closeBoxResult = null;

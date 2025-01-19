@@ -177,37 +177,31 @@ export class ChannelTextBox extends ComponentBase<ChannelViewModel> {
         }
         elTextbox.addEventListener("input", pushTextbox);
         elTextbox.addEventListener("change", pushTextbox);
-        elTextbox.addEventListener("keydown", (ev) => {
-            if (ev.keyCode == 13 && !ev.shiftKey) {
-                ev.preventDefault();
-                const mm = (this.viewModel instanceof ChatChannelViewModel) ? (this.viewModel?.messageMode ?? null) : ChatChannelMessageMode.CHAT_ONLY;
-                switch (mm) {
-                    case ChatChannelMessageMode.ADS_ONLY:
-                        this.sendAd();
-                        break;
-                    case ChatChannelMessageMode.CHAT_ONLY:
-                    case ChatChannelMessageMode.BOTH:
-                        this.sendChat();
-                        break;
+        BBCodeUtils.addEditingShortcuts(elTextbox, {
+            appViewModelGetter: () => { return this.viewModel?.appViewModel ?? null; },
+            onKeyDownHandler: (ev, handleShortcuts) => {
+                if (ev.keyCode == 13 && !ev.shiftKey) {
+                    ev.preventDefault();
+                    const mm = (this.viewModel instanceof ChatChannelViewModel) ? (this.viewModel?.messageMode ?? null) : ChatChannelMessageMode.CHAT_ONLY;
+                    switch (mm) {
+                        case ChatChannelMessageMode.ADS_ONLY:
+                            this.sendAd();
+                            break;
+                        case ChatChannelMessageMode.CHAT_ONLY:
+                        case ChatChannelMessageMode.BOTH:
+                            this.sendChat();
+                            break;
+                    }
                 }
-            }
-            else if (this.tryHandleEditShortcutKey(ev)) {
-                ev.preventDefault();
-            }
-        });
-        elTextbox.addEventListener("paste", (ev: ClipboardEvent) => {
-            let pasteText = ev.clipboardData?.getData("text") ?? "";
-            pasteText = BBCodeUtils.autoWrapUrls(pasteText);
-            
-            const selStart = elTextbox.selectionStart;
-            const selEnd = elTextbox.selectionEnd;
-            let v = elTextbox.value.substring(0, selStart) +
-                pasteText +
-                elTextbox.value.substring(selEnd);
-            document.execCommand("insertText", false, pasteText);
-            elTextbox.setSelectionRange(selStart + pasteText.length, selStart + pasteText.length, "forward");
-
-            ev.preventDefault();
+                else if (ev.ctrlKey && ev.keyCode == KeyCodes.KEY_T && this.viewModel) {
+                    this.viewModel.textBoxToolbarShown = !this.viewModel.textBoxToolbarShown;
+                    ev.preventDefault();
+                }
+                else if (handleShortcuts(ev)) {
+                    ev.preventDefault();
+                }
+            },
+            onTextChanged: (value) => { this.viewModel!.textBoxContent = value; }
         });
 
         elSendChat.addEventListener("click", () => this.sendChat());
@@ -304,93 +298,6 @@ export class ChannelTextBox extends ComponentBase<ChannelViewModel> {
             elTextbox.setSelectionRange(tesh.selectionAt, tesh.selectionAt + tesh.selectionLength);
             return true;
         }
-    }
-
-    private tryHandleEditShortcutKey(ev: KeyboardEvent) {
-        if (ev.ctrlKey) {
-            const elTextbox = this.$("elTextbox")! as HTMLTextAreaElement;
-
-            const tesh = new TextEditShortcutsHelper();
-            tesh.value = elTextbox.value;
-            tesh.selectionAt = Math.min(elTextbox.selectionStart, elTextbox.selectionEnd)
-            tesh.selectionLength = Math.abs(elTextbox.selectionEnd - elTextbox.selectionStart);
-
-            let loadBack = false;
-
-            switch (ev.keyCode) {
-                case KeyCodes.KEY_B:
-                    tesh.bold();
-                    loadBack = true;
-                    break;
-                case KeyCodes.KEY_E:
-                    // tesh.eicon();
-                    loadBack = true;
-                    (async () => {
-                        const pdialog = new EIconSearchDialogViewModel(this.viewModel!);
-                        const dlgResult = await this.viewModel?.appViewModel.showDialogAsync(pdialog);
-                        if (dlgResult) {
-                            tesh.eicon(dlgResult);
-                            elTextbox.value = tesh.value;
-                            elTextbox.setSelectionRange(tesh.selectionAt, tesh.selectionAt + tesh.selectionLength);
-                            this.viewModel!.textBoxContent = elTextbox.value;
-                        }
-                        elTextbox.focus();
-                    })();
-                    // TODO: handle result
-                    break;
-                case KeyCodes.KEY_I:
-                    tesh.italic();
-                    loadBack = true;
-                    break;
-                case KeyCodes.KEY_U:
-                    tesh.underline();
-                    loadBack = true;
-                    break;
-                case KeyCodes.UP_ARROW:
-                    tesh.superscript();
-                    loadBack = true;
-                    break;
-                case KeyCodes.DOWN_ARROW:
-                    tesh.subscript();
-                    loadBack = true;
-                    break;
-                case KeyCodes.KEY_K:
-                    tesh.spoiler();
-                    loadBack = true;
-                    break;
-                case KeyCodes.KEY_N:
-                    tesh.noparse();
-                    loadBack = true;
-                    break;
-                case KeyCodes.KEY_O:
-                    tesh.icon();
-                    loadBack = true;
-                    break;
-                case KeyCodes.KEY_R:
-                    tesh.user();
-                    loadBack = true;
-                    break;
-                case KeyCodes.KEY_S:
-                    tesh.strikethrough();
-                    loadBack = true;
-                    break;
-                case KeyCodes.KEY_T:
-                    if (this.viewModel) {
-                        this.viewModel.textBoxToolbarShown = !this.viewModel.textBoxToolbarShown;
-                    }
-                    loadBack = true;
-                    break;
-            }
-
-            if (loadBack) {
-                elTextbox.value = tesh.value;
-                elTextbox.setSelectionRange(tesh.selectionAt, tesh.selectionAt + tesh.selectionLength);
-                this.viewModel!.textBoxContent = elTextbox.value;
-                return true;
-            }
-        }
-
-        return false;
     }
 
     get viewModel(): (ChannelViewModel | null) { return super.viewModel; }
