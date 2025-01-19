@@ -1,4 +1,5 @@
 import { TypingStatus } from "../shared/TypingStatus.js";
+import { BBCodeUtils } from "../util/BBCodeUtils.js";
 import { asDisposable } from "../util/Disposable.js";
 import { EL } from "../util/EL.js";
 import { HTMLUtils } from "../util/HTMLUtils.js";
@@ -194,6 +195,21 @@ export class ChannelTextBox extends ComponentBase<ChannelViewModel> {
                 ev.preventDefault();
             }
         });
+        elTextbox.addEventListener("paste", (ev: ClipboardEvent) => {
+            let pasteText = ev.clipboardData?.getData("text") ?? "";
+            pasteText = BBCodeUtils.autoWrapUrls(pasteText);
+            
+            const selStart = elTextbox.selectionStart;
+            const selEnd = elTextbox.selectionEnd;
+            let v = elTextbox.value.substring(0, selStart) +
+                pasteText +
+                elTextbox.value.substring(selEnd);
+            document.execCommand("insertText", false, pasteText);
+            elTextbox.setSelectionRange(selStart + pasteText.length, selStart + pasteText.length, "forward");
+
+            ev.preventDefault();
+        });
+
         elSendChat.addEventListener("click", () => this.sendChat());
         elSendAd.addEventListener("click", () => this.sendAd());
 
