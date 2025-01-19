@@ -88,128 +88,54 @@ function tryHandleEditShortcutKey(textarea: HTMLTextAreaElement, ev: KeyboardEve
 }
 
 export class BBCodeUtils {
-    // static shouldAutoWrapUrlAt(str: string, urlAt: number): string {
-    //     const tokens = ChatBBCodeParser.tokenize(str);
+    static pasteWithAutoUrlization(origText: string, selStart: number, selEnd: number, pasteText: string) {
+        if (BBCodeUtils.isPastedUrl(pasteText)) {
+            if (BBCodeUtils.isCursorAtAutoUrlLocation(origText, selStart)) {
+                return `[url]${pasteText}[/url]`;
+            }
+        }
+        return pasteText;
+    }
 
-    //     let consumedLength = 0;
-    //     let inUrlCount = 0;
-    //     for (let tok of tokens) {
-    //         if (tok.type == "tag") {
-    //             if (tok.tagName?.toUpperCase() == "URL") {
-    //                 inUrlCount++;
-    //             }
-    //         }
-    //         else if (tok.type == "closingtag") {
-    //             if (tok.tagName?.toUpperCase() == "URL") {
-    //                 inUrlCount = Math.max(0, inUrlCount - 1);
-    //             }
-    //         }
-    //         else if (tok.type == "text") {
-    //             const urlIsInThisToken = (urlAt <= consumedLength) && (consumedLength + tok.tagOrig!.length > urlAt);
-    //             if (urlIsInThisToken) {
-    //                 const urlIsAt = urlAt - consumedLength;
-    //                 let thisTokenConsumed = 0;
+    private static isPastedUrl(pasteText: string) {
+        return (pasteText.startsWith("http://") || pasteText.startsWith("https://")) && (pasteText.match(/\s/) == null);
+    }
 
-    //                 if (inUrlCount == 0) {
-    //                     const resultBuilder: string[] = [];
-    //                     let charsConsumed = 0;
-    //                     for (let m of [...tok.text!.matchAll(urlPattern)]) {
-    //                         const allMatchText = m[0];
-    //                         const beforeText = m[1];
-    //                         let urlText = m[2];
-    //                         let afterText = "";
+    private static isCursorAtAutoUrlLocation(str: string, cursorPosition: number): boolean {
+        const tokens = ChatBBCodeParser.tokenize(str);
 
-    //                         const thisIsTheUrl = (thisTokenConsumed + beforeText.length) == urlIsAt;
-    //                         if (thisIsTheUrl) {
-    //                             if (beforeText.endsWith("[url=") || beforeText.endsWith("[URL=")) {
-    //                                 return urlText;
-    //                                 // resultBuilder.push(beforeText);
-    //                                 // resultBuilder.push(urlText);
-    //                             }
-    //                             else {
-    //                                 charsConsumed += allMatchText.length;
-    //                                 if (urlText.endsWith(".") || urlText.endsWith("?") || urlText.endsWith("!") || urlText.endsWith(",")) {
-    //                                     afterText = urlText.charAt(urlText.length - 1);
-    //                                     urlText = urlText.substring(0, urlText.length - 1);
-    //                                     return `[url]${urlText}[/url]`;
-    //                                 }
-    //                                 resultBuilder.push(beforeText);
-    //                                 resultBuilder.push("[url]");
-    //                                 resultBuilder.push(urlText);
-    //                                 resultBuilder.push("[/url]");
-    //                                 resultBuilder.push(afterText);
-    //                             }
-    //                         }
-    //                         thisTokenConsumed += beforeText.length + urlText.length;
-    //                     }
-    //                     resultBuilder.push(tok.text!.substring(charsConsumed));
-    //                     tok.text = resultBuilder.join("");
-    //                 }
-    //             }
-    //         }
-    //         consumedLength += tok.tagOrig!.length;
-    //     }
-    // }
+        let consumedLength = 0;
+        let inUrlCount = 0;
+        for (let tok of tokens) {
+            const tokenContainsCursor = (tok.type != "text") ?
+                 ((cursorPosition >= consumedLength) && (cursorPosition < (consumedLength + tok.sourceText.length)))
+                 : ((cursorPosition >= consumedLength) && (cursorPosition <= (consumedLength + tok.sourceText.length)));
 
-    // static autoWrapUrls(str: string): string {
-    //     const tokens = ChatBBCodeParser.tokenize(str);
+            if (tok.type == "tag") {
+                if (tok.tagName?.toUpperCase() == "URL") {
+                    inUrlCount++;
+                }
+            }
+            else if (tok.type == "closingtag") {
+                if (tok.tagName?.toUpperCase() == "URL") {
+                    inUrlCount = Math.max(0, inUrlCount - 1);
+                }
+            }
+            else if (tok.type == "text") {
+                if (tokenContainsCursor) {
+                    const beforeText = tok.text!.substring(0, cursorPosition - consumedLength);
+                    const isWritingTag = beforeText.endsWith("[url=") || beforeText.endsWith("[URL=");
 
-    //     let inUrlCount = 0;
-    //     for (let tok of tokens) {
-    //         if (tok.type == "tag") {
-    //             if (tok.tagName?.toUpperCase() == "URL") {
-    //                 inUrlCount++;
-    //             }
-    //         }
-    //         else if (tok.type == "closingtag") {
-    //             if (tok.tagName?.toUpperCase() == "URL") {
-    //                 inUrlCount = Math.max(0, inUrlCount - 1);
-    //             }
-    //         }
-    //         else if (tok.type == "text") {
-    //             if (inUrlCount == 0) {
-    //                 const resultBuilder: string[] = [];
-    //                 let charsConsumed = 0;
-    //                 for (let m of [...tok.text!.matchAll(urlPattern)]) {
-    //                     const allMatchText = m[0];
-    //                     const beforeText = m[1];
-    //                     let urlText = m[2];
-    //                     let afterText = "";
-
-    //                     if (beforeText.endsWith("[url=") || beforeText.endsWith("[URL=")) {
-    //                         resultBuilder.push(beforeText);
-    //                         resultBuilder.push(urlText);
-    //                     }
-    //                     else {
-    //                         charsConsumed += allMatchText.length;
-    //                         if (urlText.endsWith(".") || urlText.endsWith("?") || urlText.endsWith("!") || urlText.endsWith(",")) {
-    //                             afterText = urlText.charAt(urlText.length - 1);
-    //                             urlText = urlText.substring(0, urlText.length - 1);
-    //                         }
-    //                         resultBuilder.push(beforeText);
-    //                         resultBuilder.push("[url]");
-    //                         resultBuilder.push(urlText);
-    //                         resultBuilder.push("[/url]");
-    //                         resultBuilder.push(afterText);
-    //                     }
-    //                 }
-    //                 resultBuilder.push(tok.text!.substring(charsConsumed));
-    //                 tok.text = resultBuilder.join("");
-    //             }
-    //         }
-    //     }
-
-    //     const finalResultBuilder: string[] = [];
-    //     for (let tok of tokens) {
-    //         if (tok.type == "text") {
-    //             finalResultBuilder.push(tok.text!);
-    //         }
-    //         else {
-    //             finalResultBuilder.push(tok.tagOrig!);
-    //         }
-    //     }
-    //     return finalResultBuilder.join("");
-    // }
+                    return (!isWritingTag) && (inUrlCount == 0);
+                }
+            }
+            consumedLength += tok.sourceText.length;
+            if (consumedLength > cursorPosition) {
+                return false;
+            }
+        }
+        return (inUrlCount == 0);
+    }
 
     static addEditingShortcuts(textarea: HTMLTextAreaElement, options: AddEditingShortcutsOptions) {
         if (!(options?.onKeyDownHandler)) {
@@ -230,22 +156,23 @@ export class BBCodeUtils {
                 });
             });
         }
-        // textarea.addEventListener("paste", (ev: ClipboardEvent) => {
-        //     let pasteText = ev.clipboardData?.getData("text") ?? "";
-            
-        //     const selStart = textarea.selectionStart;
-        //     const selEnd = textarea.selectionEnd;
-        //     let v = textarea.value.substring(0, selStart) +
-        //         pasteText +
-        //         textarea.value.substring(selEnd);
+        textarea.addEventListener("paste", (ev: ClipboardEvent) => {
+            const avm = options.appViewModelGetter();
+            if (!!(avm?.getConfigSettingById("autoUrlPaste"))) {
+               let pasteText = ev.clipboardData?.getData("text") ?? "";
+                if (pasteText != "") {
+                    const selStart = textarea.selectionStart;
+                    const selEnd = textarea.selectionEnd;
 
-        //     if (BBCodeUtils.shouldAutoWrapUrlAt(v, selStart)) {
-        //         document.execCommand("insertText", false, pasteText);
-        //         textarea.setSelectionRange(selStart + pasteText.length, selStart + pasteText.length, "forward");
-        //         options.onTextChanged(textarea.value);
-        //         ev.preventDefault();
-        //     }
-        // });
+                    const effectivePaste = BBCodeUtils.pasteWithAutoUrlization(textarea.value, selStart, selEnd, pasteText);
+                    //textarea.setSelectionRange(0, textarea.value.length, "forward");
+                    document.execCommand("insertText", false, effectivePaste);
+                    //textarea.setSelectionRange(res.newSelStart, res.newSelEnd, "forward");
+                    options.onTextChanged(textarea.value);
+                    ev.preventDefault();
+                }
+            }
+        });
     }
 }
 
