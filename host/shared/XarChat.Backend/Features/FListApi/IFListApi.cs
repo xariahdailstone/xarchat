@@ -19,5 +19,7 @@ namespace XarChat.Backend.Features.FListApi
         Task<ProfileFieldsInfoList> GetProfileFieldsInfoListAsync(CancellationToken cancellationToken);
 
         Task<KinksList> GetKinksListAsync(CancellationToken cancellationToken);
+
+        Task<PartnerSearchFieldsDefinitions> GetPartnerSearchFieldsDefinitionsAsync(CancellationToken cancellationToken);
     }
 }

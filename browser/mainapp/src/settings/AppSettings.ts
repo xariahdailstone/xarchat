@@ -56,6 +56,8 @@ export interface RawSavedChatStateNamedFilterEntry {
     name: string;
     isSelected: boolean;
     filterClasses: string[];
+    canPing?: boolean;
+    controlsUnseenDot?: boolean;
 }
 interface RawSavedChatStateHasNamedFilters {
     namedFilters?: RawSavedChatStateNamedFilterMap;

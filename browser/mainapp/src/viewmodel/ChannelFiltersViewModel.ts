@@ -23,7 +23,9 @@ export class ChannelFiltersViewModel extends ObservableBase {
                     const item: RawSavedChatStateNamedFilterEntry = {
                         isSelected: isSelected,
                         filterClasses: IterableUtils.asQueryable(y.selectedCategories).select(x => x.code).toArray(),
-                        name: y.name
+                        name: y.name,
+                        canPing: y.canPing,
+                        controlsUnseenDot: y.controlsUnseenDot
                     };
                     res.push(item);
                 }
@@ -48,6 +50,34 @@ export class ChannelFiltersViewModel extends ObservableBase {
 
     @observableProperty
     sccData: RawSavedChatStateNamedFilterMap | null = null;
+
+    get unseenMessagesFilter(): ChannelNamedFilterViewModel {
+        for (let nf of this.namedFilters) {
+            if (nf.controlsUnseenDot) {
+                return nf;
+            }
+        }
+        if (this.namedFilters.length > 0) {
+            this.namedFilters[0]!.controlsUnseenDot = true;
+            return this.namedFilters[0]!;
+        }
+        else {
+            return new ChannelNamedFilterViewModel(this);
+        }
+    }
+
+    isInPingableCategoryCodes(code: string): boolean {
+        for (let nf of this.namedFilters) {
+            if (nf.canPing) {
+                for (let sc of nf.selectedCategories) {
+                    if (sc.code == code) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
 
     addCategory(code: string, title: string, description: string) {
         const f = new ChannelFiltersCategoryViewModel(code, title, description);
@@ -77,6 +107,8 @@ export class ChannelFiltersViewModel extends ObservableBase {
                 if (e.isSelected) {
                     selectedNf = nf;
                 }
+                nf.canPing = e.canPing ?? true;
+                nf.controlsUnseenDot = e.controlsUnseenDot ?? false;
             }
             if (selectedNf) {
                 this.selectedFilter = selectedNf;
@@ -136,6 +168,9 @@ export class ChannelFiltersViewModel extends ObservableBase {
             else {
                 this.selectedFilter = null;
             }
+            if (sf.controlsUnseenDot) {
+                this.namedFilters[0]!.controlsUnseenDot = true;
+            }
         }
     }
 }
@@ -159,7 +194,36 @@ export class ChannelNamedFilterViewModel extends ObservableBase {
     name: string = "Untitled";
 
     @observableProperty
+    controlsUnseenDot: boolean = false;
+
+    @observableProperty
+    canPing: boolean = true;
+
+    toggleControlsUnseenDot() {
+        const setToValue = !this.controlsUnseenDot;
+        if (setToValue) {
+            for (let nf of this.filtersSet.namedFilters) {
+                if (nf == this) continue;
+                nf.controlsUnseenDot = false;
+            }
+        }
+        this.controlsUnseenDot = !this.controlsUnseenDot;
+    }
+    toggleCanPing() { 
+        this.canPing = !this.canPing;
+    }
+
+    @observableProperty
     readonly selectedCategories: Collection<ChannelFiltersCategoryViewModel> = new Collection();
+
+    isInSelectedCategoryCodes(code: string): boolean {
+        for (let sc of this.selectedCategories) {
+            if (sc.code == code) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     toggleCategory(c: ChannelFiltersCategoryViewModel, shouldHave: boolean) {
         if (shouldHave) {

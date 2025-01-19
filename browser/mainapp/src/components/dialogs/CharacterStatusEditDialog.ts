@@ -1,5 +1,6 @@
 import { OnlineStatusConvert } from "../../shared/OnlineStatus";
 import { ChatBBCodeParser } from "../../util/bbcode/BBCode";
+import { BBCodeUtils } from "../../util/BBCodeUtils";
 import { asDisposable } from "../../util/Disposable";
 import { HTMLUtils } from "../../util/HTMLUtils";
 import { KeyCodes } from "../../util/KeyCodes";
@@ -73,11 +74,19 @@ export class CharacterStatusEditDialog extends DialogComponentBase<CharacterStat
         };
         elTextarea.addEventListener("input", () => { textareaUpdate(); });
         elTextarea.addEventListener("change", () => { textareaUpdate(); });
-        elTextarea.addEventListener("keydown", (ev) => {
-            if (ev.keyCode == 13 && ev.shiftKey) {
-                ev.stopPropagation();
+        BBCodeUtils.addEditingShortcuts(elTextarea, {
+            appViewModelGetter: () => this.viewModel?.activeLoginViewModel.appViewModel ?? null,
+            onTextChanged: (v) => { textareaUpdate(); },
+            onKeyDownHandler: (ev, handleShortcuts) => {
+                if (ev.keyCode == 13 && ev.shiftKey) {
+                    ev.stopPropagation();
+                }
+                else if (handleShortcuts(ev)) {
+                    ev.stopPropagation();
+                }
             }
-        });
+        })
+
         elTextarea.addEventListener("focus", () => {
             this._textAreaHasFocus = true;
         });

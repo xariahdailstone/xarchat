@@ -121,6 +121,7 @@
 
     border-radius: 8px;
     border: 1px solid var(--border-level-2);
+    overflow: hidden;
 
     display: grid;
     grid-template-columns: 8px minmax(0, auto) 8px;

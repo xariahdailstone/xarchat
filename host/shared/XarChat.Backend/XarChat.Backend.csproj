@@ -22,6 +22,14 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Remove="Features\FListApi\ChatSearchFields.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Features\FListApi\ChatSearchFields.json" />
+  </ItemGroup>
+
+  <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 

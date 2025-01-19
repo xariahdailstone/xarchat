@@ -44,6 +44,12 @@ namespace XarChat.Backend.UrlHandlers.FListApiProxy
                 var result = await flistApi.GetProfileFieldsInfoListAsync(cancellationToken);
                 return CustomResults.NewtonsoftJsonResult(result, SourceGenerationContext.Default.ProfileFieldsInfoList);
             });
+            app.MapGet(urlBase + "partnerSearchFieldsDefinitions", async (
+                CancellationToken cancellationToken) =>
+            {
+                var result = await flistApi.GetPartnerSearchFieldsDefinitionsAsync(cancellationToken);
+                return CustomResults.NewtonsoftJsonResult(result, SourceGenerationContext.Default.PartnerSearchFieldsDefinitions);
+            });
             app.MapPost(urlBase + "authenticate", async (
                 HttpRequest request,
                 CancellationToken cancellationToken) =>
