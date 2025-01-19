@@ -17,7 +17,7 @@ $zip = [System.IO.Compression.ZipFile]::Open((Join-Path -Path $(Resolve-Path -Pa
 foreach ($fname in $filesFullPath) {
     $rname = $(Resolve-Path -Path $fname -RelativeBasePath $ContentFilesPath -Relative).TrimStart("./\")  # .replace($ContentFilesPath,'')
     echo $rname
-    $zentry = $zip.CreateEntry($rname)
+    $zentry = $zip.CreateEntry($rname, [System.IO.Compression.CompressionLevel]::SmallestSize)
     $zentryWriter = New-Object -TypeName System.IO.BinaryWriter $zentry.Open()
     $zentryWriter.Write([System.IO.File]::ReadAllBytes($fname))
     $zentryWriter.Flush()
