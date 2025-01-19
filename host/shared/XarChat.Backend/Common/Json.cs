@@ -92,6 +92,7 @@ namespace XarChat.Backend.Common
     [JsonSerializable(typeof(ProfileFriendsInfo))]
     [JsonSerializable(typeof(GuestbookPageInfo))]
     [JsonSerializable(typeof(SubmitEIconMetadataArgs))]
+    [JsonSerializable(typeof(PartnerSearchFieldsDefinitions))]
     internal partial class SourceGenerationContext : JsonSerializerContext
     {
     }

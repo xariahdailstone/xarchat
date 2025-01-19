@@ -37,6 +37,23 @@ namespace XarChat.Backend.Features.FListApi.CachingImpl
             return result;
         }
 
+        public async Task<PartnerSearchFieldsDefinitions> GetPartnerSearchFieldsDefinitionsAsync(CancellationToken cancellationToken)
+        {
+            var cacheDuration = TimeSpan.FromHours(12);
+            var cacheKey = "FListApi/PartnerSearchFieldsDefinitions";
+            var result = await _localDataCache.GetOrCreateAsync(
+                cacheKey: cacheKey,
+                cancellationToken: cancellationToken,
+                maxAge: cacheDuration,
+                jsonTypeInfo: SourceGenerationContext.Default.PartnerSearchFieldsDefinitions,
+                asyncCreationFunc: async (ct) =>
+                {
+                    var result = await _inner.GetPartnerSearchFieldsDefinitionsAsync(ct);
+                    return result;
+                });
+            return result;
+        }
+
         public async Task<MappingList> GetMappingListAsync(CancellationToken cancellationToken)
         {
             var cacheDuration = TimeSpan.FromHours(12);

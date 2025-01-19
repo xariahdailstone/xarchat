@@ -18,8 +18,14 @@ body {
     --fg-level-3: hsl(var(--bg-base-hue), var(--fg-base-sat), 50%); /* #757e8a; */
     --fg-level-4: hsl(var(--bg-base-hue), var(--fg-base-sat), 87%); /* #dbdee1; */
 
+    --bg-level-2-highlight: hsl(var(--bg-base-hue), var(--bg-base-sat), 24%);
+    --fg-level-2-highlight: white;
+
     --bg-level-3-highlight: hsl(var(--bg-base-hue), var(--bg-base-sat), 27%); /* #404249; */
     --fg-level-3-highlight: white;
+
+    --bg-level-2-hover: hsl(var(--bg-base-hue), calc(var(--bg-base-sat) * 0.65), 27%);
+    --fg-level-2-hover: white;
 
     --border-level-2: hsl(var(--bg-base-hue), var(--fg-base-sat), 25%); /* #b5bac1; */
 

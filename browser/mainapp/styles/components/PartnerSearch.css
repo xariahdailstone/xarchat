@@ -1,0 +1,211 @@
+
+#elMain {
+    display: grid;
+    grid-template-columns: auto;
+    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-areas:
+        "params"
+        "results";
+
+    width: 100%;
+    height: 100%;
+
+    padding: 10px 10px;
+    padding-left: 3px;
+    gap: 8px;
+}
+
+* { box-sizing: border-box; }
+
+.parameters { grid-area: params; }
+.results { grid-area: results; }
+
+.parameters {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr 1fr auto;
+    grid-template-rows: 145px auto;
+    grid-template-areas:
+        "genders orientations roles positions languages buttons"
+        "kinks kinks kinks kinks kinks buttons";
+    gap: 8px;
+}
+
+.parameters-genders { grid-area: genders; }
+.parameters-orientations { grid-area: orientations; }
+.parameters-roles { grid-area: roles; }
+.parameters-positions { grid-area: positions; }
+.parameters-languages { grid-area: languages; }
+.parameters-kinks { grid-area: kinks; }
+.parameters-buttons { grid-area: buttons; }
+
+.parameters-section {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-columns: auto;
+    grid-template-areas:
+        "title"
+        "listbox";
+    overflow: hidden;
+    width: 100%;
+    height: 100%;
+}
+.parameters-section-title { grid-area: title; }
+.parameters-section-listbox { grid-area: listbox; }
+
+.parameters-section-title {
+    font-weight: bold;
+    margin-bottom: 6px;
+}
+.parameters-section-listbox {
+    background: var(--bg-level-2);
+    color: var(--fg-level-2);
+    width: 100%;
+    overflow-x: hidden;
+    overflow-y: scroll;
+}
+.parameters-section-listbox-item {
+    padding: 2px 6px;
+    cursor: pointer;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+.parameters-section-listbox-item.is-selected {
+    background: var(--bg-level-2-highlight);
+    color: var(--fg-level-2-highlight);
+}
+.parameters-section-listbox-item:hover {
+    background: var(--bg-level-2-hover);
+    color: var(--fg-level-2-hover);
+}
+
+.parameters-kinks {
+    display: grid;
+    grid-template-rows: auto;
+    grid-template-columns: auto 1fr;
+    grid-template-areas:
+        "title field";
+
+    gap: 8px;
+    align-items: baseline;
+}
+.parameters-kinks .parameters-section-title { grid-area: title; }
+.parameters-kinks .parameters-kinks-set { grid-area: field; }
+
+.parameters-kinks-set {
+    background: var(--bg-level-2);
+    color: var(--bg-level-2);
+    width: 100%;
+    height: 100%;
+    overflow-x: hidden;
+    overflow-y: scroll;
+
+    display: flex;
+    flex-direction: row;
+    padding: 4px 4px;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+
+.parameters-kinks-set-item {
+    display: inline-grid;
+    grid-template-rows: auto;
+    grid-template-columns: auto auto;
+    grid-template-areas: "select close";
+    background: var(--bg-level-4);
+    color: var(--fg-level-4);
+
+    padding: 2px 6px;
+    padding-left: 6px;
+    border-radius: 8px;
+}
+.parameters-kinks-set-item select { grid-area: select; }
+.parameters-kinks-set-item-remove { grid-area: close; }
+
+.parameters-kinks-set-item select {
+    background: inherit;
+    color: inherit;
+    border: 0;
+    outline: 0;
+    font: inherit;
+}
+
+.parameters-kinks-set-item-remove {
+    cursor: pointer;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    grid-template-rows: 1fr auto 1fr;
+    grid-template-areas:
+        ". . ."
+        ". icon ."
+        ". . .";
+    padding-left: 8px;
+}
+.parameters-kinks-set-item-remove x-iconimage {
+    grid-area: icon;
+    --iconimage-max-width: 16px;
+    --iconimage-max-height: 16px;
+}
+
+.parameters-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.results {
+    background: var(--bg-level-2);
+    color: var(--fg-level-2);
+
+    overflow-y: scroll;
+    overflow-x: hidden;
+}
+
+.results-list-item {
+    display: grid;
+    grid-template-columns: auto auto 1fr;
+    grid-template-rows: 1fr auto auto 1fr;
+    grid-template-areas:
+        "icon . ."
+        "icon statusdot name"
+        "icon message message"
+        "icon . .";
+
+    gap: 4px;
+
+    padding: 4px 4px;
+    border-bottom: 1px solid var(--border-level-2);
+
+    font: var(--chat-font);
+}
+.results-list-item-avatar { grid-area: icon; }
+.results-list-item-name { grid-area: name; }
+.results-list-item-statusdot { grid-area: statusdot; }
+.results-list-item-message { grid-area: message; }
+
+.results-list-item-avatar img {
+    max-width: 48px;
+    max-height: 48px;
+}
+.results-list-item-name .character-link { 
+    font-weight: bold;
+    margin-left: 4px;
+}
+.results-list-item-message { 
+    margin-left: 4px;
+}
+
+.results-error {
+    background: var(--bg-warning-message);
+    color: var(--fg-warning-message);
+}
+.results-message {
+    margin-top: 30px;
+    text-align: center;
+
+    margin-left: 50px;
+    margin-right: 50px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+    border-radius: 10px;
+}

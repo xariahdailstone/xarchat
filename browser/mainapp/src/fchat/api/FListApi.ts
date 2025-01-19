@@ -6,6 +6,8 @@ export interface FListApi {
     getMappingListAsync(cancellationToken: CancellationToken): Promise<MappingList>;
     getProfileFieldsInfoListAsync(cancellationToken: CancellationToken): Promise<ProfileFieldsInfoList>;
     getKinksListAsync(cancellationToken: CancellationToken): Promise<KinkList>;
+
+    getPartnerSearchFieldsAsync(cancellationToken: CancellationToken): Promise<PartnerSearchFieldsDefinitions>;
 }
 
 export interface FListAuthenticatedApi extends FListApi {
@@ -219,4 +221,17 @@ export interface FriendsListRequest {
     dest: string;  // name of the pending friend
     id: number;
     source: string;  // name of your character
+}
+
+export interface PartnerSearchFieldsDefinitions {
+    readonly genders: ReadonlyArray<string>;
+    readonly orientations: ReadonlyArray<string>;
+    readonly roles: ReadonlyArray<string>;
+    readonly positions: ReadonlyArray<string>;
+    readonly languages: ReadonlyArray<string>;
+    readonly kinks: ReadonlyArray<PartnerSearchKink>;
+}
+export interface PartnerSearchKink {
+    readonly name: string;
+    readonly fetish_id: string;
 }
