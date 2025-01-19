@@ -11,6 +11,7 @@ export class ChannelFiltersEditPopupViewModel extends ContextPopupViewModel {
 
         super(parent, contextElement);
         this.filtersViewModel = filtersViewModel;
+        filtersViewModel.unseenMessagesFilter; // ensure a controlsUnseenDot is chosen when there isn't one
     }
 
     @observableProperty

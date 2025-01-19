@@ -422,14 +422,45 @@ export abstract class ChannelViewModel extends ObservableBase implements IDispos
             // }
 
             if (!(options?.seen ?? false)) {
-                this.pingIfNecessary(message);
+                if (this.canPingAccordingToFilters(filterClasses)) {
+                    this.pingIfNecessary(message);
+                }
                 if (!(options?.bypassUnseenCount ?? false)) {
-                    this.increaseUnseenCountIfNecessary();
+                    if (this.canBeUnseenAccordingToFilters(filterClasses)) {
+                        this.increaseUnseenCountIfNecessary();
+                    }
                 }
             }
             if (this.scrolledTo != null) {
                 this.newMessagesBelowNotify = true;
             }
+        }
+    }
+    canBeUnseenAccordingToFilters(filterClasses: string[]): boolean {
+        if (this.channelFilters) {
+            const umf = this.channelFilters.unseenMessagesFilter;
+            for (let fc of filterClasses) {
+                if (umf.isInSelectedCategoryCodes(fc)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        else {
+            return true;
+        }
+    }
+    canPingAccordingToFilters(filterClasses: string[]): boolean {
+        if (this.channelFilters) {
+            for (let fc of filterClasses) {
+                if (this.channelFilters.isInPingableCategoryCodes(fc)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        else {
+            return true;
         }
     }
 
