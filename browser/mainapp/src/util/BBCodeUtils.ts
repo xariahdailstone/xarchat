@@ -88,59 +88,128 @@ function tryHandleEditShortcutKey(textarea: HTMLTextAreaElement, ev: KeyboardEve
 }
 
 export class BBCodeUtils {
-    static autoWrapUrls(str: string): string {
-        const tokens = ChatBBCodeParser.tokenize(str);
+    // static shouldAutoWrapUrlAt(str: string, urlAt: number): string {
+    //     const tokens = ChatBBCodeParser.tokenize(str);
 
-        let inUrlCount = 0;
-        for (let tok of tokens) {
-            if (tok.type == "tag") {
-                if (tok.tagName?.toUpperCase() == "URL") {
-                    inUrlCount++;
-                }
-            }
-            else if (tok.type == "closingtag") {
-                if (tok.tagName?.toUpperCase() == "URL") {
-                    inUrlCount = Math.max(0, inUrlCount - 1);
-                }
-            }
-            else if (tok.type == "text") {
-                if (inUrlCount == 0) {
-                    const resultBuilder: string[] = [];
-                    let charsConsumed = 0;
-                    for (let m of [...tok.text!.matchAll(urlPattern)]) {
-                        const allMatchText = m[0];
-                        const beforeText = m[1];
-                        let urlText = m[2];
-                        let afterText = "";
+    //     let consumedLength = 0;
+    //     let inUrlCount = 0;
+    //     for (let tok of tokens) {
+    //         if (tok.type == "tag") {
+    //             if (tok.tagName?.toUpperCase() == "URL") {
+    //                 inUrlCount++;
+    //             }
+    //         }
+    //         else if (tok.type == "closingtag") {
+    //             if (tok.tagName?.toUpperCase() == "URL") {
+    //                 inUrlCount = Math.max(0, inUrlCount - 1);
+    //             }
+    //         }
+    //         else if (tok.type == "text") {
+    //             const urlIsInThisToken = (urlAt <= consumedLength) && (consumedLength + tok.tagOrig!.length > urlAt);
+    //             if (urlIsInThisToken) {
+    //                 const urlIsAt = urlAt - consumedLength;
+    //                 let thisTokenConsumed = 0;
 
-                        charsConsumed += allMatchText.length;
-                        if (urlText.endsWith(".") || urlText.endsWith("?") || urlText.endsWith("!") || urlText.endsWith(",")) {
-                            afterText = urlText.charAt(urlText.length - 1);
-                            urlText = urlText.substring(0, urlText.length - 1);
-                        }
-                        resultBuilder.push(beforeText);
-                        resultBuilder.push("[url]");
-                        resultBuilder.push(urlText);
-                        resultBuilder.push("[/url]");
-                        resultBuilder.push(afterText);
-                    }
-                    resultBuilder.push(tok.text!.substring(charsConsumed));
-                    tok.text = resultBuilder.join("");
-                }
-            }
-        }
+    //                 if (inUrlCount == 0) {
+    //                     const resultBuilder: string[] = [];
+    //                     let charsConsumed = 0;
+    //                     for (let m of [...tok.text!.matchAll(urlPattern)]) {
+    //                         const allMatchText = m[0];
+    //                         const beforeText = m[1];
+    //                         let urlText = m[2];
+    //                         let afterText = "";
 
-        const finalResultBuilder: string[] = [];
-        for (let tok of tokens) {
-            if (tok.type == "text") {
-                finalResultBuilder.push(tok.text!);
-            }
-            else {
-                finalResultBuilder.push(tok.tagOrig!);
-            }
-        }
-        return finalResultBuilder.join("");
-    }
+    //                         const thisIsTheUrl = (thisTokenConsumed + beforeText.length) == urlIsAt;
+    //                         if (thisIsTheUrl) {
+    //                             if (beforeText.endsWith("[url=") || beforeText.endsWith("[URL=")) {
+    //                                 return urlText;
+    //                                 // resultBuilder.push(beforeText);
+    //                                 // resultBuilder.push(urlText);
+    //                             }
+    //                             else {
+    //                                 charsConsumed += allMatchText.length;
+    //                                 if (urlText.endsWith(".") || urlText.endsWith("?") || urlText.endsWith("!") || urlText.endsWith(",")) {
+    //                                     afterText = urlText.charAt(urlText.length - 1);
+    //                                     urlText = urlText.substring(0, urlText.length - 1);
+    //                                     return `[url]${urlText}[/url]`;
+    //                                 }
+    //                                 resultBuilder.push(beforeText);
+    //                                 resultBuilder.push("[url]");
+    //                                 resultBuilder.push(urlText);
+    //                                 resultBuilder.push("[/url]");
+    //                                 resultBuilder.push(afterText);
+    //                             }
+    //                         }
+    //                         thisTokenConsumed += beforeText.length + urlText.length;
+    //                     }
+    //                     resultBuilder.push(tok.text!.substring(charsConsumed));
+    //                     tok.text = resultBuilder.join("");
+    //                 }
+    //             }
+    //         }
+    //         consumedLength += tok.tagOrig!.length;
+    //     }
+    // }
+
+    // static autoWrapUrls(str: string): string {
+    //     const tokens = ChatBBCodeParser.tokenize(str);
+
+    //     let inUrlCount = 0;
+    //     for (let tok of tokens) {
+    //         if (tok.type == "tag") {
+    //             if (tok.tagName?.toUpperCase() == "URL") {
+    //                 inUrlCount++;
+    //             }
+    //         }
+    //         else if (tok.type == "closingtag") {
+    //             if (tok.tagName?.toUpperCase() == "URL") {
+    //                 inUrlCount = Math.max(0, inUrlCount - 1);
+    //             }
+    //         }
+    //         else if (tok.type == "text") {
+    //             if (inUrlCount == 0) {
+    //                 const resultBuilder: string[] = [];
+    //                 let charsConsumed = 0;
+    //                 for (let m of [...tok.text!.matchAll(urlPattern)]) {
+    //                     const allMatchText = m[0];
+    //                     const beforeText = m[1];
+    //                     let urlText = m[2];
+    //                     let afterText = "";
+
+    //                     if (beforeText.endsWith("[url=") || beforeText.endsWith("[URL=")) {
+    //                         resultBuilder.push(beforeText);
+    //                         resultBuilder.push(urlText);
+    //                     }
+    //                     else {
+    //                         charsConsumed += allMatchText.length;
+    //                         if (urlText.endsWith(".") || urlText.endsWith("?") || urlText.endsWith("!") || urlText.endsWith(",")) {
+    //                             afterText = urlText.charAt(urlText.length - 1);
+    //                             urlText = urlText.substring(0, urlText.length - 1);
+    //                         }
+    //                         resultBuilder.push(beforeText);
+    //                         resultBuilder.push("[url]");
+    //                         resultBuilder.push(urlText);
+    //                         resultBuilder.push("[/url]");
+    //                         resultBuilder.push(afterText);
+    //                     }
+    //                 }
+    //                 resultBuilder.push(tok.text!.substring(charsConsumed));
+    //                 tok.text = resultBuilder.join("");
+    //             }
+    //         }
+    //     }
+
+    //     const finalResultBuilder: string[] = [];
+    //     for (let tok of tokens) {
+    //         if (tok.type == "text") {
+    //             finalResultBuilder.push(tok.text!);
+    //         }
+    //         else {
+    //             finalResultBuilder.push(tok.tagOrig!);
+    //         }
+    //     }
+    //     return finalResultBuilder.join("");
+    // }
 
     static addEditingShortcuts(textarea: HTMLTextAreaElement, options: AddEditingShortcutsOptions) {
         if (!(options?.onKeyDownHandler)) {
@@ -161,21 +230,22 @@ export class BBCodeUtils {
                 });
             });
         }
-        textarea.addEventListener("paste", (ev: ClipboardEvent) => {
-            let pasteText = ev.clipboardData?.getData("text") ?? "";
-            pasteText = BBCodeUtils.autoWrapUrls(pasteText);
+        // textarea.addEventListener("paste", (ev: ClipboardEvent) => {
+        //     let pasteText = ev.clipboardData?.getData("text") ?? "";
             
-            const selStart = textarea.selectionStart;
-            const selEnd = textarea.selectionEnd;
-            let v = textarea.value.substring(0, selStart) +
-                pasteText +
-                textarea.value.substring(selEnd);
-            document.execCommand("insertText", false, pasteText);
-            textarea.setSelectionRange(selStart + pasteText.length, selStart + pasteText.length, "forward");
-            options.onTextChanged(textarea.value);
+        //     const selStart = textarea.selectionStart;
+        //     const selEnd = textarea.selectionEnd;
+        //     let v = textarea.value.substring(0, selStart) +
+        //         pasteText +
+        //         textarea.value.substring(selEnd);
 
-            ev.preventDefault();
-        });
+        //     if (BBCodeUtils.shouldAutoWrapUrlAt(v, selStart)) {
+        //         document.execCommand("insertText", false, pasteText);
+        //         textarea.setSelectionRange(selStart + pasteText.length, selStart + pasteText.length, "forward");
+        //         options.onTextChanged(textarea.value);
+        //         ev.preventDefault();
+        //     }
+        // });
     }
 }
 
