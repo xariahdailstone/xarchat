@@ -107,3 +107,34 @@
     padding: 5px 5px;
 }
 .currentfilter-container label div { display: inline; }
+
+.currentfilter-optionset {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.currentfilter-optionset-title {
+    font-weight: bold;
+    margin-top: 5px;
+    margin-bottom: 3px;
+}
+
+.currentfilter-optionset-option {
+    display: grid;
+    grid-template-rows: auto;
+    grid-template-columns: auto 1fr;
+    grid-template-areas: "checkbox title";
+
+    font-size: 85%;
+}
+.currentfilter-optionset-option-checkbox { grid-area: checkbox; }
+.currentfilter-optionset-option-title { grid-area: title; }
+
+.currentfilter-optionset-option-checkbox {
+    align-self: baseline;
+}
+.currentfilter-optionset-option-title {
+    margin-left: 6px;
+    align-self: center;
+}

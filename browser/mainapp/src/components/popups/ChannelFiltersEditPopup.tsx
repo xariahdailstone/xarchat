@@ -43,9 +43,22 @@ export class ChannelFiltersEditRenderingPopup extends RenderingComponentBase<Cha
             const canMoveUp = selIdx > 0;
             const canMoveDown = selIdx != -1 && (selIdx < (vm.filtersViewModel.namedFilters.length - 1));
 
+            const canUntoggleControlsUnseenDot = 
+                vm.filtersViewModel.selectedFilter && !vm.filtersViewModel.selectedFilter.controlsUnseenDot;
+            const toggleControlsUnseenDot = () => {
+                if (canUntoggleControlsUnseenDot) {
+                    vm.filtersViewModel.selectedFilter!.toggleControlsUnseenDot();
+                }
+            };
+            const toggleCanPing = () => {
+                if (vm.filtersViewModel.selectedFilter) {
+                    vm.filtersViewModel.selectedFilter.toggleCanPing();
+                }
+            };
+            
             return <>
                 <div classList={[ "namedfilterslist-container-outer" ]}>
-                    <div classList={[ "namedfilterlist-container-title" ]}>Filter Tabs</div>
+                    <div classList={[ "namedfilterlist-container-title" ]}>Filters</div>
                     <div classList={[ "namedfilterlist-container" ]}>
                         { this.renderNamedFilterRows(vm.filtersViewModel) }
                     </div>
@@ -69,7 +82,7 @@ export class ChannelFiltersEditRenderingPopup extends RenderingComponentBase<Cha
                     }}>Delete Tab</button>
                 </div>
                 <div classList={[ "currentfilter-container-outer", (!hasSelection ? "hidden": "") ]}>
-                    <div classList={[ "currentfilter-container-title" ]}>Selected Tab</div>
+                    <div classList={[ "currentfilter-container-title" ]}>Selected Filter</div>
                     <label classList={[ "currentfilter-container-name" ]}>
                         <div classList={[ "currentfilter-container-name-label" ]}>Name:</div>
                         <input attr-type="text" attr-maxlength="20" classList={[ "currentfilter-container-name-textbox", "theme-textbox" ]} 
@@ -81,6 +94,28 @@ export class ChannelFiltersEditRenderingPopup extends RenderingComponentBase<Cha
                     <div classList={[ "currentfilter-container" ]}>
                         { hasSelection ? this.renderCurrentFilterCategoriesCheckboxes(vm.filtersViewModel, vm.filtersViewModel.selectedFilter!) : null }
                     </div>
+
+                    <div classList={[ "currentfilter-optionset" ]}>
+                    <div classList={[ "currentfilter-optionset-title" ]}>Filter Options</div>
+                        <label classList={[ "currentfilter-optionset-option" ]}>
+                            <input attr-type="checkbox" classList={[ "currentfilter-optionset-option-checkbox" ]}
+                                props={{ "checked": vm.filtersViewModel.selectedFilter?.controlsUnseenDot ?? false, "readonly": !canUntoggleControlsUnseenDot }} on={{
+                                    "change": toggleControlsUnseenDot
+                                }}></input>
+                            <div classList={[ "currentfilter-optionset-option-title" ]}>
+                                This filter controls the unseen messages dot for the channel.
+                            </div>
+                        </label>
+                        <label classList={[ "currentfilter-optionset-option" ]}>
+                            <input attr-type="checkbox" classList={[ "currentfilter-optionset-option-checkbox" ]}
+                                props={{ "checked": vm.filtersViewModel.selectedFilter?.canPing ?? false }} on={{
+                                    "change": toggleCanPing
+                                }}></input>
+                            <div classList={[ "currentfilter-optionset-option-title" ]}>
+                                Messages in this filter can ping.
+                            </div>
+                        </label>
+                    </div>
                 </div>
             </>;
         }
@@ -91,13 +126,17 @@ export class ChannelFiltersEditRenderingPopup extends RenderingComponentBase<Cha
 
         for (let nf of vm.namedFilters) {
             const isSelected = (vm.selectedFilter == nf);
+            let effName = nf.name.trim() != "" ? nf.name : "(No Name)";
+            if (nf.controlsUnseenDot) {
+                effName = `${effName} \u2022`;
+            }
             results.push(<div classList={[ "namedfilterslist-item", (isSelected ? "namedfilterslist-item-selected" : "") ]}
                 on={{
                     "click": () => {
                         vm.selectedFilter = nf;
                     }
                 }}>
-                { nf.name.trim() != "" ? nf.name : "(No Name)" }
+                { effName }
             </div>);
         }
 
