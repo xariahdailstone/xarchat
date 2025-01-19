@@ -43,6 +43,7 @@ import { ObservableExpression } from "../util/ObservableExpression.js";
 import { InAppToastViewModel } from "./InAppToastViewModel.js";
 import { InAppToastManagerViewModel } from "./InAppToastManagerViewModel.js";
 import { LogSearch2ViewModel } from "./newlogsearch/LogSearch2ViewModel.js";
+import { PartnerSearchViewModel } from "./PartnerSearchViewModel.js";
 
 declare const XCHost: any;
 
@@ -63,11 +64,13 @@ export class ActiveLoginViewModel extends ObservableBase {
         this.toastManager = new InAppToastManagerViewModel(this);
 
         this.console = new ConsoleChannelViewModel(this);
+        this.partnerSearch = new PartnerSearchViewModel(this);
         this.miscTabs.push(new MiscTabViewModel(this, "Console", this.console));
         this._logSearchViewModel = new LogSearchViewModel(this, this.appViewModel, savedChatState.characterName);
         this.miscTabs.push(new MiscTabViewModel(this, "Log Viewer", this._logSearchViewModel));
         this._logSearchViewModel2 = new LogSearch2ViewModel(this, this.appViewModel, savedChatState.characterName);
         this.miscTabs.push(new MiscTabViewModel(this, "Log Viewer 2", this._logSearchViewModel2));
+        this.miscTabs.push(new MiscTabViewModel(this, "Partner Search", this.partnerSearch));
 
         //this.serverOps.addEventListener("collectionchange", (ev) => { this.notifyChannelsOfCharacterChange(this.serverOps, ev); });
         //this.watchedChars.addEventListener("collectionchange", (ev) => { this.notifyChannelsOfCharacterChange(this.watchedChars, ev); });
@@ -330,6 +333,8 @@ export class ActiveLoginViewModel extends ObservableBase {
     readonly openChannelsByChannelName: Map<ChannelName, ChatChannelViewModel> = new Map();
 
     readonly console: ConsoleChannelViewModel;
+
+    readonly partnerSearch: PartnerSearchViewModel;
 
     get pingWords() { return this.savedChatState.pingWords; };
 
@@ -971,7 +976,7 @@ export class ActiveLoginViewModel extends ObservableBase {
 
 export type SelectedChannel = ChannelViewModel | AddChannelsViewModel | LogSearchViewModel | LogSearch2ViewModel;
 
-export type SelectableTab = SelectedChannel;
+export type SelectableTab = SelectedChannel | PartnerSearchViewModel;
 
 export type CharactersEventListener = (characters: CharacterName[]) => void;
 

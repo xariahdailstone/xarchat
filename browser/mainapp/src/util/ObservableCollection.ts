@@ -277,6 +277,14 @@ export class Collection<T> implements ObservableCollection<T>, Observable {
         return this._items.filter(predicate);
     }
 
+    map<U>(func: (item: T) => U) {
+        const results: U[] = [];
+        for (let item of this._items) {
+            results.push(func(item));
+        }
+        return results;
+    }
+
     indexOf(value: T): number {
         const idx = this._items.indexOf(value);
         return idx;
@@ -296,6 +304,12 @@ export class Collection<T> implements ObservableCollection<T>, Observable {
                 this.remove(sortedItems[i]);
                 this.addAt(sortedItems[i], i);
             }
+        }
+    }
+
+    clear() {
+        while (this._items.length > 0) {
+            this.removeAt(0);
         }
     }
 

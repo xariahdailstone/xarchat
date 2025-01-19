@@ -178,9 +178,15 @@ export class AddChannelsView extends StageViewComponent<AddChannelsViewModel> {
             const listItemEl = targetEl?.closest("*[data-channelname]");
             if (listItemEl) {
                 const chanName = ChannelName.create(listItemEl.getAttribute("data-channelname")!);
-                const wasJoined = listItemEl.classList.contains("joined");
+                const wasJoined = vm.activeLoginViewModel.openChannelsByChannelName.has(chanName);
                 if (!wasJoined) {
                     vm.activeLoginViewModel.chatConnection.joinChannelAsync(chanName);
+                }
+                else {
+                    const ch = vm.activeLoginViewModel.getChannel(chanName);
+                    if (ch) {
+                        ch.close();
+                    }
                 }
             }
         });

@@ -1,6 +1,6 @@
 import { CharacterName } from "../../shared/CharacterName";
 import { CancellationToken } from "../../util/CancellationTokenSource";
-import { ApiTicket, FListApi, FListAuthenticatedApi, FriendsList, GuestbookPageInfo, KinkList, MappingList, ProfileFieldsInfoList, ProfileFriendsInfo, ProfileInfo } from "./FListApi";
+import { ApiTicket, FListApi, FListAuthenticatedApi, FriendsList, GuestbookPageInfo, KinkList, MappingList, PartnerSearchFieldsDefinitions, ProfileFieldsInfoList, ProfileFriendsInfo, ProfileInfo } from "./FListApi";
 
 const API_URL_BASE = "/api/flist/";
 
@@ -70,6 +70,11 @@ export class HostInteropApi implements FListApi {
         const result = new HostInteropAuthenticatedApi(this, account, password);
         return result;
     }
+
+    async getPartnerSearchFieldsAsync(cancellationToken: CancellationToken): Promise<PartnerSearchFieldsDefinitions> {
+        const r = await this.getFromHostInteropAsync<PartnerSearchFieldsDefinitions>("partnerSearchFieldsDefinitions", cancellationToken);
+        return r;
+    }
 }
 
 export class HostInteropAuthenticatedApi implements FListAuthenticatedApi {
@@ -123,6 +128,11 @@ export class HostInteropAuthenticatedApi implements FListAuthenticatedApi {
     async getGuestbookPageAsync(name: CharacterName, page: number, cancellationToken: CancellationToken): Promise<GuestbookPageInfo> {
         const result = await this.owner.getFromHostInteropAsync<GuestbookPageInfo>(`${this.account}/guestbook/${name.value}/${page}`, cancellationToken);
         return result;
+    }
+
+    async getPartnerSearchFieldsAsync(cancellationToken: CancellationToken): Promise<PartnerSearchFieldsDefinitions> {
+        const r = await this.owner.getPartnerSearchFieldsAsync(cancellationToken);
+        return r;
     }
 
     getAuthenticatedApiAsync(account: string, password: string, cancellationToken: CancellationToken): Promise<FListAuthenticatedApi> {
