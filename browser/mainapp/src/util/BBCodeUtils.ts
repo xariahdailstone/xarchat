@@ -91,12 +91,10 @@ export class BBCodeUtils {
     static pasteWithAutoUrlization(origText: string, selStart: number, selEnd: number, pasteText: string) {
         if (BBCodeUtils.isPastedUrl(pasteText)) {
             if (BBCodeUtils.isCursorAtAutoUrlLocation(origText, selStart)) {
-                pasteText = `[url]${pasteText}[/url]`;
+                return `[url]${pasteText}[/url]`;
             }
         }
-    
-        const resText = origText.substring(0, selStart) + pasteText + origText.substring(selEnd);
-        return { newText: resText, newSelStart: selStart + pasteText.length, newSelEnd: selStart + pasteText.length };
+        return pasteText;
     }
 
     private static isPastedUrl(pasteText: string) {
@@ -166,10 +164,10 @@ export class BBCodeUtils {
                     const selStart = textarea.selectionStart;
                     const selEnd = textarea.selectionEnd;
 
-                    const res = BBCodeUtils.pasteWithAutoUrlization(textarea.value, selStart, selEnd, pasteText);
-                    textarea.setSelectionRange(0, textarea.value.length, "forward");
-                    document.execCommand("insertText", false, res.newText);
-                    textarea.setSelectionRange(res.newSelStart, res.newSelEnd, "forward");
+                    const effectivePaste = BBCodeUtils.pasteWithAutoUrlization(textarea.value, selStart, selEnd, pasteText);
+                    //textarea.setSelectionRange(0, textarea.value.length, "forward");
+                    document.execCommand("insertText", false, effectivePaste);
+                    //textarea.setSelectionRange(res.newSelStart, res.newSelEnd, "forward");
                     options.onTextChanged(textarea.value);
                     ev.preventDefault();
                 }
