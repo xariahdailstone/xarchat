@@ -128,22 +128,16 @@ export class BBCodeUtils {
                     const beforeText = tok.text!.substring(0, cursorPosition - consumedLength);
                     const isWritingTag = beforeText.endsWith("[url=") || beforeText.endsWith("[URL=");
 
-                        charsConsumed += allMatchText.length;
-                        if (urlText.endsWith(".") || urlText.endsWith("?") || urlText.endsWith("!") || urlText.endsWith(",")) {
-                            afterText = urlText.charAt(urlText.length - 1);
-                            urlText = urlText.substring(0, urlText.length - 1);
-                        }
-                        resultBuilder.push(beforeText);
-                        resultBuilder.push("[url]");
-                        resultBuilder.push(urlText);
-                        resultBuilder.push("[/url]");
-                        resultBuilder.push(afterText);
-                    }
-                    resultBuilder.push(tok.text!.substring(charsConsumed));
-                    tok.text = resultBuilder.join("");
+                    return (!isWritingTag) && (inUrlCount == 0);
                 }
             }
+            consumedLength += tok.sourceText.length;
+            if (consumedLength > cursorPosition) {
+                return false;
+            }
         }
+        return (inUrlCount == 0);
+    }
 
     static addEditingShortcuts(textarea: HTMLTextAreaElement, options: AddEditingShortcutsOptions) {
         if (!(options?.onKeyDownHandler)) {
