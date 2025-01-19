@@ -417,27 +417,30 @@ export class BBCodeParser {
             const postText = replaceHRBack(m.groups!.posttext);
 
             if (pretext && pretext.length > 0) {
-                result.push({ type: "text", text: pretext });
+                result.push({ type: "text", text: pretext, sourceText: pretext });
             }
 
             result.push({
                 type: isClosingTag ? "closingtag": "tag",
                 tagName: tagName,
                 tagArgument: arg,
-                tagOrig: tagOrig
+                tagOrig: tagOrig,
+                sourceText: tagOrig!
             });
             
             if (postText && postText.length > 0) {
                 result.push({
                     type: "text",
-                    text: postText
+                    text: postText,
+                    sourceText: postText
                 });
             }
         }
         if (result.length == 0) {
             result.push({
                 type: "text",
-                text: raw
+                text: raw,
+                sourceText: raw
             });
         }
 
@@ -495,6 +498,7 @@ export interface Token {
     tagName?: string;
     tagArgument?: string;
     tagOrig?: string;
+    sourceText: string;
 }
 
 export function getContentText(content: BBCodeTagContent) {

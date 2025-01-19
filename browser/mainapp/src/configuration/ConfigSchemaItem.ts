@@ -161,6 +161,15 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     defaultValue: true,
                     configBlockKey: "highlightMyMessages"
                 },
+                {
+                    id: "autoUrlPaste",
+                    scope: getScopeArray(["global"]),
+                    title: "Automatically add [url] tags to pasted URLs.",
+                    description: "When pasting in a URL, automatically add [url] tags around the URL when appropriate.",
+                    type: "boolean",
+                    defaultValue: true,
+                    configBlockKey: "autoUrlPaste"
+                },
                 // {
                 //     id: "submitNewEIcons",
                 //     scope: [ "global" ],
