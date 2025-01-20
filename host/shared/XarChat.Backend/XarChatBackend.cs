@@ -57,6 +57,18 @@ using XarChat.Backend.Features.EIconLoader;
 using XarChat.Backend.Features.CrashLogWriter;
 using XarChat.Backend.Features.CrashLogWriter.Impl;
 using XarChat.Backend.Features.EIconLoader.Impl;
+using XarChat.Backend.Features.TimingSet;
+using XarChat.Backend.Features.TimingSet.Impl;
+using XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.AppReady;
+using XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.ShowDevTools;
+using XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.WindowStateControl;
+using XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.ChatLogging;
+using XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.UpdateAppBadge;
+using XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.IdleMonitor;
+using XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.UpdateChecking;
+using XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.GetFileData;
+using XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.ConfigData;
+using XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.EIconSearch;
 
 namespace XarChat.Backend
 {
@@ -259,6 +271,10 @@ namespace XarChat.Backend
 
             services.AddSingleton<ICrashLogWriter, CrashLogWriterImpl>();
 
+            services.AddScoped<ITimingSetFactory, TimingSetFactoryImpl>();
+
+            SetupXCHostCommandHandlers(services);
+
             services.AddSingleton<FListApiImpl>();
             services.AddSingleton<IFListApi>(sp =>
             {
@@ -298,6 +314,34 @@ namespace XarChat.Backend
             {
                 services.AddSingleton<IMemoryHinter, NullMemoryHinter>();
             }
+        }
+
+        private void SetupXCHostCommandHandlers(IServiceCollection services)
+        {
+            services.AddSingleton<IXCHostCommandHandlerFactory, XCHostCommandHandlerFactoryImpl>();
+
+            services.AddXCHostCommandHandler<AppReadyCommandHandler>("appReady");
+            services.AddXCHostCommandHandler<ShowDevToolsCommandHandler>("showDevTools");
+            services.AddXCHostCommandHandler<WinMinimizeCommandHandler>("win.minimize");
+            services.AddXCHostCommandHandler<WinMaximizeCommandHandler>("win.maximize");
+            services.AddXCHostCommandHandler<WinRestoreCommandHandler>("win.restore");
+            services.AddXCHostCommandHandler<WinCloseCommandHandler>("win.close");
+            services.AddXCHostCommandHandler<LogChannelMessageCommandHandler>("log.ChannelMessage");
+            services.AddXCHostCommandHandler<LogPMConvoMessageCommandHandler>("log.PMConvoMessage");
+            services.AddXCHostCommandHandler<EndCharacterSessionCommandHandler>("endCharacterSession");
+            services.AddXCHostCommandHandler<UpdateAppBadgeCommandHandler>("updateAppBadge");
+            services.AddXCHostCommandHandler<AddIdleMonitorRegistrationCommandHandler>("addIdleMonitorRegistration");
+            services.AddXCHostCommandHandler<RemoveIdleMonitorRegistrationCommandHandler>("removeIdleMonitorRegistration");
+            services.AddXCHostCommandHandler<AddUpdateCheckerRegistrationCommandHandler>("addUpdateCheckerMonitorRegistration");
+            services.AddXCHostCommandHandler<RemoveUpdateCheckerRegistrationCommandHandler>("removeUpdateCheckerMonitorRegistration");
+            services.AddXCHostCommandHandler<RelaunchToApplyUpdateCommandHandler>("relaunchToApplyUpdate");
+            services.AddXCHostCommandHandler<LoginSuccessCommandHandler>("loginSuccess");
+            services.AddXCHostCommandHandler<GetFileDataCommandHandler>("getcssdata");
+            services.AddXCHostCommandHandler<GetAllCssCommandHandler>("getallcss");
+            services.AddXCHostCommandHandler<GetFileDataCommandHandler>("getsvgdata");
+            services.AddXCHostCommandHandler<GetConfigDataCommandHandler>("getconfig");
+            services.AddXCHostCommandHandler<SetConfigDataCommandHandler>("setconfig");
+            services.AddXCHostCommandHandler<SubmitEIconMetadataCommandHandler>("submiteiconmetadata");
         }
 
         private object _concurrentCountLock = new object();
