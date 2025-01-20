@@ -357,74 +357,94 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions
 
         private async Task ProcessCommandAsync(string str, CancellationToken stoppingToken)
         {
-            var timingSet = _sp.GetRequiredService<ITimingSetFactory>().CreateTimingSet();
-
-            string cmd;
+            string cmd = "";
             string arg;
-            using (var _ = timingSet.BeginTimingOperation("ProcessCommandAsync"))
+            try
             {
-                cmd = str.IndexOf(' ') == -1 ? str : str.Substring(0, str.IndexOf(' '));
-                arg = str.IndexOf(' ') == -1 ? "" : str.Substring(str.IndexOf(' ') + 1);
+                var timingSet = _sp.GetRequiredService<ITimingSetFactory>().CreateTimingSet();
 
-                //await WriteAsync($"recvack {{ \"cmd\": \"{cmd}\" }}");
-                //var pcsw = Stopwatch.StartNew();
-
-                bool handled = false;
-                if (cmd.Contains('.'))
+                using (var _ = timingSet.BeginTimingOperation("ProcessCommandAsync"))
                 {
-                    var parts = cmd.Split('.');
-                    if (_namespaces.TryGetValue(parts[0], out var sns))
+                    cmd = str.IndexOf(' ') == -1 ? str : str.Substring(0, str.IndexOf(' '));
+                    arg = str.IndexOf(' ') == -1 ? "" : str.Substring(str.IndexOf(' ') + 1);
+
+                    //await WriteAsync($"recvack {{ \"cmd\": \"{cmd}\" }}");
+                    //var pcsw = Stopwatch.StartNew();
+
+                    bool handled = false;
+                    if (cmd.Contains('.'))
                     {
-                        var d = !String.IsNullOrWhiteSpace(arg) ? arg : null;
-                        handled = await sns.TryInvokeAsync(cmd.Substring(parts[0].Length + 1), d, stoppingToken);
+                        var parts = cmd.Split('.');
+                        if (_namespaces.TryGetValue(parts[0], out var sns))
+                        {
+                            var d = !String.IsNullOrWhiteSpace(arg) ? arg : null;
+                            handled = await sns.TryInvokeAsync(cmd.Substring(parts[0].Length + 1), d, stoppingToken);
+                        }
+                    }
+
+                    if (!handled)
+                    {
+                        if (_commandHandlers.TryGetValue(cmd, out var handler))
+                        {
+                            await handler(this, arg, stoppingToken);
+                            handled = true;
+                        }
+                        else
+                        {
+                            handled = await RunCommandHandlerServiceAsync(cmd, arg, stoppingToken);
+                        }
+                    }
+                    if (!handled)
+                    {
+                        var xjsonObject = new JsonObject();
+                        xjsonObject["cmd"] = cmd;
+                        await WriteAsync("unhandledcommand " +
+                            JsonSerializer.Serialize(xjsonObject, SourceGenerationContext.Default.JsonObject));
                     }
                 }
 
-                if (!handled)
-                {
-                    if (_commandHandlers.TryGetValue(cmd, out var handler))
+                var jsonObject = new JsonObject();
+                jsonObject["cmd"] = cmd;
+                jsonObject["timing"] = new JsonArray(
+                    timingSet.GetTimedOperations().Select(toi => new JsonArray()
                     {
-                        await handler(this, arg, stoppingToken);
-                    }
-                    else
-                    {
-                        await RunCommandHandlerServiceAsync(cmd, arg, stoppingToken);
-                    }
-                }
-            }
-            
-            var jsonObject = new JsonObject();
-            jsonObject["cmd"] = cmd;
-            jsonObject["timing"] = new JsonArray(
-                timingSet.GetTimedOperations().Select(toi => new JsonArray()
-                {
                     (JsonNode)toi.Name,
                     (JsonNode)toi.Elapsed.TotalMilliseconds
-                }).ToArray()
-            );
+                    }).ToArray()
+                );
 
-            await WriteAsync("commandtiming " +
-                JsonSerializer.Serialize(jsonObject, SourceGenerationContext.Default.JsonObject));
+                await WriteAsync("commandtiming " +
+                    JsonSerializer.Serialize(jsonObject, SourceGenerationContext.Default.JsonObject));
+            }
+            catch (Exception ex)
+            {
+                var jsonObject = new JsonObject();
+                jsonObject["cmd"] = cmd;
+                jsonObject["ex"] = ex.ToString();
+                await WriteAsync("commandfailed " +
+                    JsonSerializer.Serialize(jsonObject, SourceGenerationContext.Default.JsonObject));
+            }
 		}
 
-        private async Task RunCommandHandlerServiceAsync(string cmd, string arg, CancellationToken cancellationToken)
+        private async Task<bool> RunCommandHandlerServiceAsync(string cmd, string arg, CancellationToken cancellationToken)
         {
+            var f = _sp.GetRequiredService<IXCHostCommandHandlerFactory>();
+
             var scope = _sp.CreateAsyncScope();
             var disposeScope = true;
             try
             {
                 var scopedSP = scope.ServiceProvider;
-                var ch = scopedSP.GetKeyedService<IXCHostCommandHandler>(cmd.ToLowerInvariant());
-                if (ch is not null)
+                if (f.TryGetHandler(scopedSP, cmd, out var handler))
                 {
-                    if (ch is IAsyncXCHostCommandHandler ach)
+                    if (handler.RunAsynchronously)
                     {
                         disposeScope = false;
                         _ = Task.Run(async () =>
                         {
                             try
                             {
-                                await ach.HandleCommandAsync(new XCHostCommandContext(
+                                await handler.HandleCommandAsync(new XCHostCommandContext(
                                     cmd, arg,
                                     async (msg) => await WriteAsync(msg),
                                     _sessionDisposables), cancellationToken);
@@ -437,11 +457,16 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions
                     }
                     else
                     {
-                        await ch.HandleCommandAsync(new XCHostCommandContext(
+                        await handler.HandleCommandAsync(new XCHostCommandContext(
                             cmd, arg,
                             async (msg) => await WriteAsync(msg),
                             _sessionDisposables), cancellationToken);
                     }
+                    return true;
+                }
+                else
+                {
+                    return false;
                 }
             }
             finally

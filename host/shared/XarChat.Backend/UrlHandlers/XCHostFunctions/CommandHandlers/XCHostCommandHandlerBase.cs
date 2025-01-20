@@ -11,6 +11,8 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers
 {
     public abstract class XCHostCommandHandlerBase : IXCHostCommandHandler
     {
+        public virtual bool RunAsynchronously => false;
+
         public async Task HandleCommandAsync(XCHostCommandContext context, CancellationToken cancellationToken)
         {
             this.CommandContext = context;
@@ -22,21 +24,15 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers
         protected abstract Task HandleCommandAsync(CancellationToken cancellationToken);
     }
 
-    public abstract class AsyncXCHostCommandHandlerBase : IAsyncXCHostCommandHandler
+    public abstract class AsyncXCHostCommandHandlerBase : XCHostCommandHandlerBase
     {
-        public async Task HandleCommandAsync(XCHostCommandContext context, CancellationToken cancellationToken)
-        {
-            this.CommandContext = context;
-            await HandleCommandAsync(cancellationToken);
-        }
-
-        protected XCHostCommandContext CommandContext { get; private set; } = null!;
-
-        protected abstract Task HandleCommandAsync(CancellationToken cancellationToken);
+        public override bool RunAsynchronously => true;
     }
 
     public abstract class XCHostCommandHandlerBase<TArgs> : IXCHostCommandHandler
     {
+        public virtual bool RunAsynchronously => false;
+
         public async Task HandleCommandAsync(XCHostCommandContext context, CancellationToken cancellationToken)
         {
             this.CommandContext = context;
@@ -50,18 +46,8 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers
         protected abstract Task HandleCommandAsync(TArgs args, CancellationToken cancellationToken);
     }
 
-    public abstract class AsyncXCHostCommandHandlerBase<TArgs> : IAsyncXCHostCommandHandler
+    public abstract class AsyncXCHostCommandHandlerBase<TArgs> : XCHostCommandHandlerBase<TArgs>
     {
-        public async Task HandleCommandAsync(XCHostCommandContext context, CancellationToken cancellationToken)
-        {
-            this.CommandContext = context;
-            var jsonTypeInfo = SourceGenerationContext.Default.GetTypeInfo(typeof(TArgs))!;
-            var args = (TArgs)JsonSerializer.Deserialize(context.Args, jsonTypeInfo)!;
-            await HandleCommandAsync(args, cancellationToken);
-        }
-
-        protected XCHostCommandContext CommandContext { get; private set; } = null!;
-
-        protected abstract Task HandleCommandAsync(TArgs args, CancellationToken cancellationToken);
+        public override bool RunAsynchronously => true;
     }
 }

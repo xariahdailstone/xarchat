@@ -318,6 +318,8 @@ namespace XarChat.Backend
 
         private void SetupXCHostCommandHandlers(IServiceCollection services)
         {
+            services.AddSingleton<IXCHostCommandHandlerFactory, XCHostCommandHandlerFactoryImpl>();
+
             services.AddXCHostCommandHandler<AppReadyCommandHandler>("appReady");
             services.AddXCHostCommandHandler<ShowDevToolsCommandHandler>("showDevTools");
             services.AddXCHostCommandHandler<WinMinimizeCommandHandler>("win.minimize");

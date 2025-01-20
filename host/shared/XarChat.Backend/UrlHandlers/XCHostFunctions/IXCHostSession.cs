@@ -16,13 +16,54 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions
         event EventHandler? Disposed;
     }
 
-    public interface IXCHostCommandHandler
+    public interface IXCHostCommandHandlerRegistration
     {
-        Task HandleCommandAsync(XCHostCommandContext context, CancellationToken cancellationToken);
+        string Command { get; }
+
+        Type HandlerType { get; }
     }
 
-    public interface IAsyncXCHostCommandHandler : IXCHostCommandHandler
+    public record XCHostCommandHandlerRegistration(string Command, Type HandlerType) : IXCHostCommandHandlerRegistration;
+
+    public interface IXCHostCommandHandlerFactory
     {
+        bool TryGetHandler(IServiceProvider serviceProvider, string cmd,
+            [NotNullWhen(true)] out IXCHostCommandHandler? handler);
+    }
+
+    internal class XCHostCommandHandlerFactoryImpl : IXCHostCommandHandlerFactory
+    {
+        private readonly Dictionary<string, IXCHostCommandHandlerRegistration> _registrations
+            = new Dictionary<string, IXCHostCommandHandlerRegistration>(StringComparer.OrdinalIgnoreCase);
+
+        public XCHostCommandHandlerFactoryImpl(
+            IEnumerable<IXCHostCommandHandlerRegistration> registrations)
+        {
+            foreach (var reg in registrations)
+            {
+                _registrations.Add(reg.Command, reg);
+            }
+        }
+
+        public bool TryGetHandler(
+            IServiceProvider serviceProvider, string cmd, 
+            [NotNullWhen(true)] out IXCHostCommandHandler? handler)
+        {
+            if (_registrations.TryGetValue(cmd, out var registration))
+            {
+                handler = (IXCHostCommandHandler?)serviceProvider.GetService(registration.HandlerType);
+                return (handler is not null);
+            }
+            handler = default;
+            return false;
+        }
+    }
+
+    public interface IXCHostCommandHandler
+    {
+        bool RunAsynchronously { get; }
+
+        Task HandleCommandAsync(XCHostCommandContext context, CancellationToken cancellationToken);
     }
 
     public record XCHostCommandContext(
