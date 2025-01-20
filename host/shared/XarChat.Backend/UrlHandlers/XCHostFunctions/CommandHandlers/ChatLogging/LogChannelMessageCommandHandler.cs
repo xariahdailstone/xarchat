@@ -9,7 +9,7 @@ using static XarChat.Backend.UrlHandlers.XCHostFunctions.WebSocketXCHostSession;
 
 namespace XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.ChatLogging
 {
-    internal class LogChannelMessageCommandHandler : XCHostCommandHandlerBase<LogChannelMessageArgs>
+    internal class LogChannelMessageCommandHandler : AsyncXCHostCommandHandlerBase<LogChannelMessageArgs>
     {
         private readonly IChatLogWriter _chatLogWriter;
 
@@ -28,7 +28,7 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.ChatLoggin
         }
     }
 
-    internal class LogPMConvoMessageCommandHandler : XCHostCommandHandlerBase<LogPMConvoMessageArgs>
+    internal class LogPMConvoMessageCommandHandler : AsyncXCHostCommandHandlerBase<LogPMConvoMessageArgs>
     {
         private readonly IChatLogWriter _chatLogWriter;
 
@@ -47,7 +47,7 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.ChatLoggin
         }
     }
 
-    internal class EndCharacterSessionCommandHandler : XCHostCommandHandlerBase
+    internal class EndCharacterSessionCommandHandler : AsyncXCHostCommandHandlerBase
     {
         private readonly IChatLogWriter _chatLogWriter;
 

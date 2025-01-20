@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.AspNetCore.Mvc.DataAnnotations;
 using Microsoft.Extensions.DependencyInjection;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
@@ -351,8 +352,8 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions
         }
 
 
-        private readonly Dictionary<object, IDisposable> _sessionDisposables
-            = new Dictionary<object, IDisposable>();
+        private readonly ConcurrentDictionary<object, IDisposable> _sessionDisposables
+            = new ConcurrentDictionary<object, IDisposable>();
 
         private async Task ProcessCommandAsync(string str, CancellationToken stoppingToken)
         {
@@ -387,16 +388,7 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions
                     }
                     else
                     {
-                        using var scope = _sp.CreateAsyncScope();
-                        var scopedSP = scope.ServiceProvider;
-                        var ch = scopedSP.GetKeyedService<IXCHostCommandHandler>(cmd.ToLowerInvariant());
-                        if (ch is not null)
-                        {
-                            await ch.HandleCommandAsync(new XCHostCommandContext(
-                                cmd, arg,
-                                async (msg) => await WriteAsync(msg),
-                                _sessionDisposables), stoppingToken);
-                        }
+                        await RunCommandHandlerServiceAsync(cmd, arg, stoppingToken);
                     }
                 }
             }
@@ -414,6 +406,52 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions
             await WriteAsync("commandtiming " +
                 JsonSerializer.Serialize(jsonObject, SourceGenerationContext.Default.JsonObject));
 		}
+
+        private async Task RunCommandHandlerServiceAsync(string cmd, string arg, CancellationToken cancellationToken)
+        {
+            var scope = _sp.CreateAsyncScope();
+            var disposeScope = true;
+            try
+            {
+                var scopedSP = scope.ServiceProvider;
+                var ch = scopedSP.GetKeyedService<IXCHostCommandHandler>(cmd.ToLowerInvariant());
+                if (ch is not null)
+                {
+                    if (ch is IAsyncXCHostCommandHandler ach)
+                    {
+                        disposeScope = false;
+                        _ = Task.Run(async () =>
+                        {
+                            try
+                            {
+                                await ach.HandleCommandAsync(new XCHostCommandContext(
+                                    cmd, arg,
+                                    async (msg) => await WriteAsync(msg),
+                                    _sessionDisposables), cancellationToken);
+                            }
+                            finally
+                            {
+                                scope.Dispose();
+                            }
+                        });
+                    }
+                    else
+                    {
+                        await ch.HandleCommandAsync(new XCHostCommandContext(
+                            cmd, arg,
+                            async (msg) => await WriteAsync(msg),
+                            _sessionDisposables), cancellationToken);
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeScope)
+                {
+                    scope.Dispose();
+                }
+            }
+        }
 
         private void ConfigDataChanged(string key, JsonNode? value, Dictionary<string, object?>? changeMetadata)
         {

@@ -2,7 +2,7 @@
 
 namespace XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.WindowStateControl
 {
-    internal class WinCloseCommandHandler : XCHostCommandHandlerBase
+    internal class WinCloseCommandHandler : AsyncXCHostCommandHandlerBase
     {
         private readonly IWindowControl _windowControl;
 

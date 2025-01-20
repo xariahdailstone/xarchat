@@ -2,7 +2,7 @@
 
 namespace XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.WindowStateControl
 {
-    internal class WinMaximizeCommandHandler : XCHostCommandHandlerBase
+    internal class WinMaximizeCommandHandler : AsyncXCHostCommandHandlerBase
     {
         private readonly IWindowControl _windowControl;
 

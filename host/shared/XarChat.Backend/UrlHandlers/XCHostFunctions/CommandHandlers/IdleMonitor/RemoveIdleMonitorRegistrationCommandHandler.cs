@@ -3,7 +3,7 @@ using static XarChat.Backend.UrlHandlers.XCHostFunctions.WebSocketXCHostSession;
 
 namespace XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.IdleMonitor
 {
-    internal class RemoveIdleMonitorRegistrationCommandHandler : XCHostCommandHandlerBase<RemoveIdleMonitorRegistrationArgs>
+    internal class RemoveIdleMonitorRegistrationCommandHandler : AsyncXCHostCommandHandlerBase<RemoveIdleMonitorRegistrationArgs>
     {
         private readonly IIdleDetectionManager _idleDetectionManager;
 

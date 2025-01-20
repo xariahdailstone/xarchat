@@ -8,7 +8,7 @@ using XarChat.Backend.Features.WindowControl;
 
 namespace XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.ShowDevTools
 {
-    public class ShowDevToolsCommandHandler : XCHostCommandHandlerBase
+    public class ShowDevToolsCommandHandler : AsyncXCHostCommandHandlerBase
     {
         private readonly IAppConfiguration _appConfig;
         private readonly IWindowControl _windowControl;

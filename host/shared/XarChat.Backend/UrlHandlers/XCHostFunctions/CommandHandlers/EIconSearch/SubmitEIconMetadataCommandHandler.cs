@@ -8,7 +8,7 @@ using static XarChat.Backend.UrlHandlers.XCHostFunctions.WebSocketXCHostSession;
 
 namespace XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.EIconSearch
 {
-    internal class SubmitEIconMetadataCommandHandler : XCHostCommandHandlerBase<SubmitEIconMetadataArgs>
+    internal class SubmitEIconMetadataCommandHandler : AsyncXCHostCommandHandlerBase<SubmitEIconMetadataArgs>
     {
         private readonly IDataUpdateSubmitter _dataUpdateSubmitter;
 
@@ -17,15 +17,11 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.EIconSearc
             _dataUpdateSubmitter = dataUpdateSubmitter;
         }
 
-        protected override Task HandleCommandAsync(SubmitEIconMetadataArgs args, CancellationToken cancellationToken)
+        protected override async Task HandleCommandAsync(
+            SubmitEIconMetadataArgs args, CancellationToken cancellationToken)
         {
-            _ = Task.Run(async () =>
-            {
-                await _dataUpdateSubmitter.SubmitHardLoadedEIconInfoAsync(
-                    args.Name, args.ETag, args.ContentLength, cancellationToken);
-            });
-
-            return Task.CompletedTask;
+            await _dataUpdateSubmitter.SubmitHardLoadedEIconInfoAsync(
+                args.Name, args.ETag, args.ContentLength, cancellationToken);
         }
     }
 }

@@ -7,7 +7,7 @@ using XarChat.Backend.Features.WindowControl;
 
 namespace XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.WindowStateControl
 {
-    internal class WinMinimizeCommandHandler : XCHostCommandHandlerBase
+    internal class WinMinimizeCommandHandler : AsyncXCHostCommandHandlerBase
     {
         private readonly IWindowControl _windowControl;
 

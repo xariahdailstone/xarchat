@@ -8,7 +8,7 @@ using static XarChat.Backend.UrlHandlers.XCHostFunctions.WebSocketXCHostSession;
 
 namespace XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.UpdateAppBadge
 {
-    internal class UpdateAppBadgeCommandHandler : XCHostCommandHandlerBase<UpdateAppBadgeArgs>
+    internal class UpdateAppBadgeCommandHandler : AsyncXCHostCommandHandlerBase<UpdateAppBadgeArgs>
     {
         private readonly INotificationBadgeManager _notificationBadgeManager;
 

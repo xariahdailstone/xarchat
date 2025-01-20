@@ -8,7 +8,7 @@ using static XarChat.Backend.UrlHandlers.XCHostFunctions.WebSocketXCHostSession;
 
 namespace XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.IdleMonitor
 {
-    internal class AddIdleMonitorRegistrationCommandHandler : XCHostCommandHandlerBase<AddIdleMonitorRegistrationArgs>
+    internal class AddIdleMonitorRegistrationCommandHandler : AsyncXCHostCommandHandlerBase<AddIdleMonitorRegistrationArgs>
     {
         private readonly IIdleDetectionManager _idleDetectionManager;
 

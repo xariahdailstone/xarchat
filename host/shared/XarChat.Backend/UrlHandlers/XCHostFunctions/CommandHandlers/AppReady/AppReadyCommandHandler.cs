@@ -7,7 +7,7 @@ using XarChat.Backend.Features.WindowControl;
 
 namespace XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.AppReady
 {
-    public class AppReadyCommandHandler : XCHostCommandHandlerBase
+    public class AppReadyCommandHandler : AsyncXCHostCommandHandlerBase
     {
         private readonly IWindowControl _windowControl;
 

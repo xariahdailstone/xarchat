@@ -9,7 +9,7 @@ using static XarChat.Backend.UrlHandlers.XCHostFunctions.WebSocketXCHostSession;
 
 namespace XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.GetFileData
 {
-    internal class GetFileDataCommandHandler : XCHostCommandHandlerBase<GetCssDataArgs>
+    internal class GetFileDataCommandHandler : AsyncXCHostCommandHandlerBase<GetCssDataArgs>
     {
         private readonly IAppFileServer _appFileServer;
 
@@ -46,7 +46,7 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.GetFileDat
         }
     }
 
-    internal class GetAllCssCommandHandler : XCHostCommandHandlerBase<GetAllCssArgs>
+    internal class GetAllCssCommandHandler : AsyncXCHostCommandHandlerBase<GetAllCssArgs>
     {
         private readonly IAppFileServer _appFileServer;
 

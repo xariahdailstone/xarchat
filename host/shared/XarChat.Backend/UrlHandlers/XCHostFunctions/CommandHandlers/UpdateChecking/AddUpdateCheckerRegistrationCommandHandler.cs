@@ -13,7 +13,7 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.UpdateChec
         public static object GetMonitorKey(string name) => $"AddUpdateCheckerRegistration-{name.ToLower()}";
     }
 
-    internal class AddUpdateCheckerRegistrationCommandHandler : XCHostCommandHandlerBase<AddUpdateCheckerMonitorRegistrationArgs>
+    internal class AddUpdateCheckerRegistrationCommandHandler : AsyncXCHostCommandHandlerBase<AddUpdateCheckerMonitorRegistrationArgs>
     {
         private readonly IUpdateChecker _updateChecker;
 
@@ -37,7 +37,7 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.UpdateChec
         }
     }
 
-    internal class RemoveUpdateCheckerRegistrationCommandHandler : XCHostCommandHandlerBase<RemoveUpdateCheckerMonitorRegistrationArgs>
+    internal class RemoveUpdateCheckerRegistrationCommandHandler : AsyncXCHostCommandHandlerBase<RemoveUpdateCheckerMonitorRegistrationArgs>
     {
         private readonly IUpdateChecker _updateChecker;
 
@@ -58,7 +58,7 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.UpdateChec
         }
     }
 
-    internal class RelaunchToApplyUpdateCommandHandler : XCHostCommandHandlerBase
+    internal class RelaunchToApplyUpdateCommandHandler : AsyncXCHostCommandHandlerBase
     {
         private readonly IUpdateChecker _updateChecker;
 
@@ -74,7 +74,7 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.UpdateChec
         }
     }
 
-    internal class LoginSuccessCommandHandler : XCHostCommandHandlerBase
+    internal class LoginSuccessCommandHandler : AsyncXCHostCommandHandlerBase
     {
         private readonly IUpdateChecker _updateChecker;
 

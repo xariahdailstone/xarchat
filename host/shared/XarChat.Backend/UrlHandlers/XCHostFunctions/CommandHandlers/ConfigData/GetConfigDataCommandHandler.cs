@@ -15,7 +15,7 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.ConfigData
         public static readonly string Value = Guid.NewGuid().ToString();
     }
 
-    internal class GetConfigDataCommandHandler : XCHostCommandHandlerBase<GetConfigDataArgs>
+    internal class GetConfigDataCommandHandler : AsyncXCHostCommandHandlerBase<GetConfigDataArgs>
     {
         private readonly IAppConfiguration _appConfiguration;
 
@@ -54,7 +54,7 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.ConfigData
         }
     }
 
-    internal class SetConfigDataCommandHandler : XCHostCommandHandlerBase<ConfigKeyValue>
+    internal class SetConfigDataCommandHandler : AsyncXCHostCommandHandlerBase<ConfigKeyValue>
     {
         private readonly IAppConfiguration _appConfiguration;
 

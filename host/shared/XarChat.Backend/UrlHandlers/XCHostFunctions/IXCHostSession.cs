@@ -21,6 +21,10 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions
         Task HandleCommandAsync(XCHostCommandContext context, CancellationToken cancellationToken);
     }
 
+    public interface IAsyncXCHostCommandHandler : IXCHostCommandHandler
+    {
+    }
+
     public record XCHostCommandContext(
         string Command, 
         string Args, 
