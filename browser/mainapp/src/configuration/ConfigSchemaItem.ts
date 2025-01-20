@@ -170,6 +170,15 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     defaultValue: true,
                     configBlockKey: "autoUrlPaste"
                 },
+                {
+                    id: "joinFriendsAndBookmarks",
+                    scope: getScopeArray(["global", "char"]),
+                    title: "Show Friends and Bookmarks Together",
+                    description: "Show friends and bookmarks together in the left bar tab strip and in channel character lists.",
+                    type: "boolean",
+                    defaultValue: true,
+                    configBlockKey: "joinFriendsAndBookmarks"
+                },
                 // {
                 //     id: "submitNewEIcons",
                 //     scope: [ "global" ],

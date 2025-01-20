@@ -86,7 +86,9 @@ export class ActiveLoginViewModel extends ObservableBase {
         });
 
         this.characterSet = new CharacterSet(this.ignoredChars);
-        this.onlineWatchedChars = new OnlineWatchedCharsCharacterNameSet(this);
+        this.onlineWatchedChars = new OnlineWatchedCharsCharacterNameSet(this, this.watchedChars);
+        this.onlineFriends = new OnlineWatchedCharsCharacterNameSet(this, this.friends);
+        this.onlineBookmarks = new OnlineWatchedCharsCharacterNameSet(this, this.bookmarks);
 
         const openChannelPingMentionChange = (ev: PropertyChangeEvent) => {
             if (ev.propertyName == "hasPing" || ev.propertyName == "unseenMessageCount") {
@@ -316,6 +318,12 @@ export class ActiveLoginViewModel extends ObservableBase {
 
     @observableProperty
     readonly onlineWatchedChars: CharacterNameSet;
+
+    @observableProperty
+    readonly onlineFriends: CharacterNameSet;
+
+    @observableProperty
+    readonly onlineBookmarks: CharacterNameSet;
 
     @observableProperty
     showOnlineWatchedOnly: boolean = true;
@@ -1031,7 +1039,9 @@ class SortedPMConvoSet extends ObservableOrderedDictionaryImpl<PMConvoChannelVie
 
 export enum LeftListSelectedPane {
     CHATS = "chats",
-    WATCHLIST = "watchlist",
+    WATCHED = "watched",
+    FRIENDS = "friends",
+    BOOKMARKS = "bookmarks",
     OTHER = "other"
 }
 
