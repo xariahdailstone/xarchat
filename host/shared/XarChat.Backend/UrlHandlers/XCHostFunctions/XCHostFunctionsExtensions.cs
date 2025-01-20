@@ -26,6 +26,12 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions
             });
         }
 
+        public static void AddXCHostCommandHandler<T>(this IServiceCollection services, string cmd)
+            where T : class, IXCHostCommandHandler
+        {
+            services.AddKeyedScoped<IXCHostCommandHandler, T>(cmd.ToLowerInvariant());
+        }
+
         public static void UseXCHostFunctions(this WebApplication app, string urlBase)
         {
             app.Map(urlBase, XCHostRunAsync);
