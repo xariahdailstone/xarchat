@@ -944,9 +944,11 @@ export class ChannelMessageViewModel extends ObservableBase implements IDisposab
         let needPing = false;
         const msgText = this.text.toLowerCase();
         for (let x of allPingWords) {
-            if (msgText.indexOf(x) != -1) {
-                needPing = true;
-                break;
+            if (x != null && x != "") {
+                if (msgText.indexOf(x) != -1) {
+                    needPing = true;
+                    break;
+                }
             }
         }
         return needPing;
