@@ -5,7 +5,7 @@ import { AppViewModel } from "../viewmodel/AppViewModel.js";
 import { ChatsList } from "./ChatsList.js";
 import { ComponentBase, componentElement } from "./ComponentBase.js";
 import { MiscTabsList } from "./MiscTabsList.js";
-import { WatchedList } from "./WatchedList.js";
+import { WatchedList, WatchedListShowType } from "./WatchedList.js";
 
 @componentElement("x-leftbar")
 export class LeftBar extends ComponentBase<AppViewModel> {
@@ -19,35 +19,72 @@ export class LeftBar extends ComponentBase<AppViewModel> {
             <x-instanceselectpanel id="elInstanceSelectPanel"></x-instanceselectpanel>
         `);
 
-        this.watch("currentlySelectedSession.leftListSelectedPane", v => {
-            switch (v) {
-                case LeftListSelectedPane.CHATS:
-                    {
-                        const el = new ChatsList();
-                        el.id = "elChatsList";
-                        el.modelPath = "currentlySelectedSession";
-                        el.classList.add("mainsection");
-                        this.elMain.appendChild(el);
-                        return asDisposable(() => { el.remove(); });
+        this.watchExpr(vm => [vm.currentlySelectedSession?.leftListSelectedPane, !!vm.currentlySelectedSession?.getConfigSettingById("joinFriendsAndBookmarks")], v => {
+            if (v) {
+                let selectedPane = v[0];
+                const joinFriendsAndBookmarks = v[1];
+
+                if (joinFriendsAndBookmarks) {
+                    if (selectedPane == LeftListSelectedPane.FRIENDS || selectedPane == LeftListSelectedPane.BOOKMARKS) {
+                        selectedPane = LeftListSelectedPane.WATCHED;
                     }
-                case LeftListSelectedPane.WATCHLIST:
-                    {
-                        const el = new WatchedList();
-                        el.id = "elWatchedList";
-                        el.modelPath = "currentlySelectedSession";
-                        el.classList.add("mainsection");
-                        this.elMain.appendChild(el);
-                        return asDisposable(() => { el.remove(); });
+                }
+                else {
+                    if (selectedPane == LeftListSelectedPane.WATCHED) {
+                        selectedPane = LeftListSelectedPane.FRIENDS;
                     }
-                case LeftListSelectedPane.OTHER:
-                    {
-                        const el = new MiscTabsList();
-                        el.id = "elMiscTabsList";
-                        el.modelPath = "currentlySelectedSession";
-                        el.classList.add("mainsection");
-                        this.elMain.appendChild(el);
-                        return asDisposable(() => { el.remove(); });
-                    }
+                }
+
+                switch (selectedPane) {
+                    case LeftListSelectedPane.CHATS:
+                        {
+                            const el = new ChatsList();
+                            el.id = "elChatsList";
+                            el.modelPath = "currentlySelectedSession";
+                            el.classList.add("mainsection");
+                            this.elMain.appendChild(el);
+                            return asDisposable(() => { el.remove(); });
+                        }
+                    case LeftListSelectedPane.WATCHED:
+                        {
+                            const el = new WatchedList();
+                            el.id = "elWatchedList";
+                            el.modelPath = "currentlySelectedSession";
+                            el.showType = WatchedListShowType.ALL;
+                            el.classList.add("mainsection");
+                            this.elMain.appendChild(el);
+                            return asDisposable(() => { el.remove(); });
+                        }
+                    case LeftListSelectedPane.FRIENDS:
+                        {
+                            const el = new WatchedList();
+                            el.id = "elWatchedList";
+                            el.modelPath = "currentlySelectedSession";
+                            el.showType = WatchedListShowType.FRIENDS;
+                            el.classList.add("mainsection");
+                            this.elMain.appendChild(el);
+                            return asDisposable(() => { el.remove(); });
+                        }
+                    case LeftListSelectedPane.BOOKMARKS:
+                        {
+                            const el = new WatchedList();
+                            el.id = "elWatchedList";
+                            el.modelPath = "currentlySelectedSession";
+                            el.showType = WatchedListShowType.BOOKMARKS;
+                            el.classList.add("mainsection");
+                            this.elMain.appendChild(el);
+                            return asDisposable(() => { el.remove(); });
+                        }
+                    case LeftListSelectedPane.OTHER:
+                        {
+                            const el = new MiscTabsList();
+                            el.id = "elMiscTabsList";
+                            el.modelPath = "currentlySelectedSession";
+                            el.classList.add("mainsection");
+                            this.elMain.appendChild(el);
+                            return asDisposable(() => { el.remove(); });
+                        }
+                }
             }
         });
     }
