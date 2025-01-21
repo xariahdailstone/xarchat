@@ -11,6 +11,7 @@ import { ColorHSSelectPopup } from "../popups/ColorHSSelectPopup";
 import { ColorHSSelectPopupViewModel } from "../../viewmodel/popups/ColorHSSelectPopupViewModel";
 import { HostInterop } from "../../util/HostInterop";
 import { NotificationRouting, NotificationRoutingTargetSetting } from "../../configuration/NotificationRouting";
+import { ColorRGBSelectPopupViewModel } from "../../viewmodel/popups/ColorRGBSelectPopupViewModel";
 
 @componentArea("dialogs")
 @componentElement("x-settingsdialog")
@@ -154,10 +155,21 @@ export class SettingsDialogContent extends RenderingComponentBase<SettingsDialog
 
     private renderSettingColor(setting: SettingsDialogItemViewModel): VNode {
         return <div classList={["setting-entry", "setting-entry-color"]}>
-            <div classList={[ "setting-entry-color-swatch" ]} style={{ "fontWeight": "bold", "backgroundColor": setting.value }}></div>
+            <div classList={[ "setting-entry-color-swatch" ]} style={{ "fontWeight": "bold", "backgroundColor": setting.value }}
+                on={{ "click": (e) => { this.showColorRGBPicker(setting, e.target as HTMLElement); } }}></div>
             <button classList={[ "setting-entry-color-btn-default", "theme-button" ]}
                 on={{ "click": () => { setting.value = null; } }}>Default</button>
         </div>
+    }
+    private showColorRGBPicker(setting: SettingsDialogItemViewModel, el: HTMLElement) {
+        if (this.viewModel){
+            const vm = new ColorRGBSelectPopupViewModel(this.viewModel.parent, el);
+            vm.rgbString = setting.value;
+            vm.onChange = (value) => {
+                setting.value = value;
+            };
+            this.viewModel.parent.popups.push(vm);
+        }
     }
 
     private renderSettingColorHS(setting: SettingsDialogItemViewModel): VNode {

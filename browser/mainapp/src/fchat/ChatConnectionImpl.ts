@@ -86,7 +86,7 @@ export class ChatConnectionImpl implements ChatConnection {
             await this.sendMessageRawAsync(message);
         }
         //this.logger.logDebug("sending bracket close");
-        await this.sendMessageRawAsync({ code: "TPN", body: { character: this._identifiedCharacter.value, status: TypingStatusConvert.toString(TypingStatus.IDLE) }});
+        await this.sendMessageRawAsync({ code: "TPN", body: { character: this._identifiedCharacter.value, status: TypingStatusConvert.toString(TypingStatus.NONE) }});
 
         using ms = this.createIncomingMessageSink();
 
@@ -100,7 +100,7 @@ export class ChatConnectionImpl implements ChatConnection {
                     if (tstatus == TypingStatusConvert.toString(TypingStatus.TYPING)) {
                         inBracketedReceive = true;
                     }
-                    else if (tstatus == TypingStatusConvert.toString(TypingStatus.IDLE)) {
+                    else if (tstatus == TypingStatusConvert.toString(TypingStatus.NONE)) {
                         bracketFinished = true;
                     }
                 }
