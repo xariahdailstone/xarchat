@@ -45,6 +45,7 @@ export class PartnerSearchViewModel extends ObservableBase {
     searchRoles: Collection<string> = new Collection();
     searchPositions: Collection<string> = new Collection();
     searchLanguages: Collection<string> = new Collection();
+    searchFurryPrefs: Collection<string> = new Collection();
     searchKinks: Collection<PartnerSearchKink> = new Collection();
 
     async initialize() {
@@ -90,7 +91,8 @@ export class PartnerSearchViewModel extends ObservableBase {
                     roles: [...this.searchRoles],
                     positions: [...this.searchPositions],
                     languages: [...this.searchLanguages],
-                    kinks: [...this.searchKinks.map(k => k.fetish_id)]
+                    kinks: [...this.searchKinks.map(k => k.fetish_id)],
+                    furryprefs: [...this.searchFurryPrefs]
                 });
                 const newResults: PartnerSearchResultItem[] = [];
                 for (let char of r.characters) {

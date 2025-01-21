@@ -71,6 +71,7 @@ export interface PartnerSearchArgs {
     roles: readonly string[];
     positions: readonly string[];
     languages: readonly string[];
+    furryprefs: readonly string[];
     kinks: readonly string[];
 }
 

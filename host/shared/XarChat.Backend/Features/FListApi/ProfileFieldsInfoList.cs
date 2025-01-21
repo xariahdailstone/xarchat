@@ -27,6 +27,9 @@ namespace XarChat.Backend.Features.FListApi
 
         [JsonPropertyName("languages")]
         public required List<string> Languages { get; set; }
+
+        [JsonPropertyName("furryprefs")]
+        public required List<string> FurryPrefs { get; set; }
     }
 
     public class PartnerSearchKink
