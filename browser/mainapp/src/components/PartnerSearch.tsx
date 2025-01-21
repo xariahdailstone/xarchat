@@ -56,6 +56,10 @@ export class PartnerSearch extends RenderingStageViewComponent<PartnerSearchView
                         <div classList={[ "parameters-section-title" ]}>Languages</div>
                         { this.renderSelectionListbox(vm, vm.searchLanguages, vm.partnerSearchFields?.languages) }
                     </div>
+                    <div classList={[ "parameters-section", "parameters-furryprefs" ]}>
+                        <div classList={[ "parameters-section-title" ]}>Furry Preference</div>
+                        { this.renderSelectionListbox(vm, vm.searchFurryPrefs, vm.partnerSearchFields?.furryprefs) }
+                    </div>
                     <div classList={[ "parameters-section", "parameters-kinks" ]}>
                         <div classList={[ "parameters-section-title" ]}>Kinks</div>
                         { this.renderKinksSet(vm) }

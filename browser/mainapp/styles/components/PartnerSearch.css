@@ -22,12 +22,14 @@
 
 .parameters {
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr 1fr 1fr auto;
+    grid-template-columns: 130fr 200fr 180fr 150fr 120fr 280fr auto;
     grid-template-rows: 145px auto;
     grid-template-areas:
-        "genders orientations roles positions languages buttons"
-        "kinks kinks kinks kinks kinks buttons";
+        "genders orientations roles positions languages furryprefs buttons"
+        "kinks kinks kinks kinks kinks kinks buttons";
     gap: 8px;
+
+    font-size: 90%;
 }
 
 .parameters-genders { grid-area: genders; }
@@ -35,8 +37,28 @@
 .parameters-roles { grid-area: roles; }
 .parameters-positions { grid-area: positions; }
 .parameters-languages { grid-area: languages; }
+.parameters-furryprefs { grid-area: furryprefs; }
 .parameters-kinks { grid-area: kinks; }
 .parameters-buttons { grid-area: buttons; }
+
+.parameters-genders {
+    width: 100px;
+}
+.parameters-orientations {
+    width: 200px;
+}
+.parameters-roles {
+    width: 200px;
+}
+.parameters-positions {
+    width: 150px;
+}
+.parameters-positions {
+    width: 100px;
+}
+.parameters-furryprefs {
+    width: 300px;
+}
 
 .parameters-section {
     display: grid;

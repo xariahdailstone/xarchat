@@ -2288,5 +2288,12 @@
     "Spanish",
     "Swedish"
   ],
+  "furryprefs": [
+    "No humans, just furry characters",
+    "Furs and / or humans",
+    "No furry characters, just humans",
+    "Humans ok, Furries Preferred",
+    "Furries ok, Humans Preferred"
+  ],
   "error": ""
 }
