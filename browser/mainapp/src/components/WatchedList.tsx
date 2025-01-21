@@ -2,10 +2,12 @@ import { CharacterGenderConvert } from "../shared/CharacterGender";
 import { CharacterName } from "../shared/CharacterName";
 import { CharacterStatus } from "../shared/CharacterSet";
 import { OnlineStatusConvert } from "../shared/OnlineStatus";
+import { jsx, Fragment, VNode } from "../snabbdom/index";
 import { IDisposable, asDisposable } from "../util/Disposable";
 import { EL } from "../util/EL";
 import { MouseButton } from "../util/EventListenerUtil";
 import { HTMLUtils } from "../util/HTMLUtils";
+import { ObservableValue } from "../util/Observable";
 import { ObservableExpression } from "../util/ObservableExpression";
 import { URLUtils } from "../util/URLUtils";
 import { WhenChangeManager } from "../util/WhenChange";
@@ -16,10 +18,71 @@ import { PMConvoChannelViewModel } from "../viewmodel/PMConvoChannelViewModel";
 import { CharacterDetailPopupViewModel } from "../viewmodel/popups/CharacterDetailPopupViewModel";
 import { CollectionViewLightweight } from "./CollectionViewLightweight";
 import { ComponentBase, componentElement } from "./ComponentBase";
+import { RenderingComponentBase } from "./RenderingComponentBase";
 import { StatusDot, StatusDotLightweight } from "./StatusDot";
 
 @componentElement("x-watchedlist")
-export class WatchedList extends ComponentBase<ActiveLoginViewModel> {
+export class WatchedList extends RenderingComponentBase<ActiveLoginViewModel> {
+    render(): (VNode | [VNode, IDisposable]) {
+        const vm = this.viewModel;
+        if (vm) {
+
+            const hdrText = this.showType == WatchedListShowType.ALL ? "Friends/Bookmarks"
+                : this.showType == WatchedListShowType.FRIENDS ? "Friends"
+                : "Bookmarks";
+
+            const listModel = this.showType == WatchedListShowType.ALL ? vm.watchedChars
+                : this.showType == WatchedListShowType.FRIENDS ? vm.friends
+                : vm.bookmarks;
+            const onlineListModel = this.showType == WatchedListShowType.ALL ? vm.onlineWatchedChars
+                : this.showType == WatchedListShowType.FRIENDS ? vm.onlineFriends
+                : vm.onlineBookmarks;
+
+            const countText = (vm.showOnlineWatchedOnly ? `${onlineListModel.length} of ${listModel.length}` : listModel.length)
+            const boundList = (vm.showOnlineWatchedOnly ? onlineListModel : listModel);
+
+            return <>
+                <div classList={["filter-button-container"]}>
+                    <button classList={["filter-button", (!vm.showOnlineWatchedOnly ? "selected" : "not-selected") ]} id="elFilterAll" on={{
+                        "click": () => { vm.showOnlineWatchedOnly = false; }
+                    }}>All</button>
+                    <button classList={["filter-button", (vm.showOnlineWatchedOnly ? "selected" : "not-selected") ]} id="elFilterOnline" on={{
+                        "click": () => { vm.showOnlineWatchedOnly = true; }
+                    }}>Online</button>
+                </div>
+                <div id="elSection" classList={["section"]}>
+                    <div classList={["sectiontitle"]}>
+                        <div classList={["sectiontitle-text"]}>{hdrText} (<span id="elCount">{countText}</span>)</div>
+                    </div>
+
+                    <x-characterscollectionview props={{ "activeLoginViewModel": vm, "viewModel": boundList }} id="elCollectionView">
+                        <div classList={["sectionitems", "pmconvo"]} id="elWatchedChars"></div>
+                    </x-characterscollectionview>
+                </div>
+            </>;
+        }
+        else {
+            return <></>;
+        }
+    }
+
+    protected override get requiredStylesheets() {
+        return [ 
+            ...this.coreRequiredStylesheets,
+            `styles/components/ChatsList.css`,
+            ...this.myRequiredStylesheets
+        ];
+    }
+
+    private readonly _showType: ObservableValue<WatchedListShowType> = new ObservableValue(WatchedListShowType.ALL);
+    get showType() { return this._showType.value; }
+    set showType(value: WatchedListShowType) {
+        this._showType.value = value;
+    }
+}
+
+@componentElement("x-watchedlistold")
+export class WatchedListOld extends ComponentBase<ActiveLoginViewModel> {
     constructor() {
         super();
 
@@ -97,6 +160,18 @@ export class WatchedList extends ComponentBase<ActiveLoginViewModel> {
             ...this.myRequiredStylesheets
         ];
     }
+
+    private _showType: WatchedListShowType = WatchedListShowType.ALL;
+    get showType() { return this._showType; }
+    set showType(value: WatchedListShowType) {
+        this._showType = value;
+    }
+}
+
+export enum WatchedListShowType {
+    ALL,
+    FRIENDS,
+    BOOKMARKS
 }
 
 @componentElement("x-characterscollectionview")
@@ -174,6 +249,7 @@ export class CharactersCollectionView extends CollectionViewLightweight<KeyValue
                     elName.innerText = cs.characterName.value;
                     const className = `gender-${CharacterGenderConvert.toString(cs.gender).toLowerCase()}`;
                     elName.classList.add(className);
+                    elName.classList.toggle("char-is-friend", this.activeLoginViewModel!.friends.has(cs.characterName));
 
                     let subText = OnlineStatusConvert.toString(cs.status);
                     if (cs.statusMessage != "") {

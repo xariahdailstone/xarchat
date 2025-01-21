@@ -2,9 +2,11 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -24,6 +26,15 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions
                 var prov = sp.GetRequiredService<XCHostSessionProvider>();
                 return prov.XCHostSession;
             });
+        }
+
+        public static void AddXCHostCommandHandler<
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors)] T>(this IServiceCollection services, string cmd)
+            where T : class, IXCHostCommandHandler
+        {
+            var reg = new XCHostCommandHandlerRegistration(cmd, typeof(T));
+            services.AddSingleton<IXCHostCommandHandlerRegistration>(reg);
+            services.TryAddScoped<T>();
         }
 
         public static void UseXCHostFunctions(this WebApplication app, string urlBase)

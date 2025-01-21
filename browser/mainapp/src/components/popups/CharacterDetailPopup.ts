@@ -106,6 +106,7 @@ export class CharacterDetailPopup extends ContextPopupBase<CharacterDetailPopupV
                         elCharacterName.innerText = character.value;
                         elCharacterName.classList.forEach(v => { if (v.startsWith("gender-")) { elCharacterName.classList.remove(v); }});
                         elCharacterName.classList.add(`gender-${CharacterGenderConvert.toString(cs.gender).toLowerCase()}`);
+                        elCharacterName.classList.toggle("char-is-friend", vm.session.friends.has(character));
                         statusDot!.status = cs.status;
                         elStatusText.innerText = OnlineStatusConvert.toStringWithFor(cs.status, cs.statusLastChanged);
                         elIgnore.innerText = cs.ignored ? "Unignore" : "Ignore";

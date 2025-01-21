@@ -170,6 +170,15 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     defaultValue: true,
                     configBlockKey: "autoUrlPaste"
                 },
+                {
+                    id: "joinFriendsAndBookmarks",
+                    scope: getScopeArray(["global", "char"]),
+                    title: "Show Friends and Bookmarks Together",
+                    description: "Show friends and bookmarks together in the left bar tab strip and in channel character lists.",
+                    type: "boolean",
+                    defaultValue: true,
+                    configBlockKey: "joinFriendsAndBookmarks"
+                },
                 // {
                 //     id: "submitNewEIcons",
                 //     scope: [ "global" ],
@@ -361,86 +370,96 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     items: [
                         {
                             scope: getScopeArray(["global"]),
-                            id: "gender.male",
+                            id: "color.gender.male",
                             title: "Male",
-                            description: "[Coming Soon]",
+                            description: "",
                             type: "color",
                             defaultValue: "#6699FF",
-                            configBlockKey: "color.gender.male",
-                            notYetImplemented: true
+                            configBlockKey: "color.gender.male"
                         },
                         {
                             scope: getScopeArray(["global"]),
-                            id: "gender.female",
+                            id: "color.gender.female",
                             title: "Female",
-                            description: "[Coming Soon]",
+                            description: "",
                             type: "color",
                             defaultValue: "#FF6699",
-                            configBlockKey: "color.gender.female",
-                            notYetImplemented: true
+                            configBlockKey: "color.gender.female"
                         },
                         {
                             scope: getScopeArray(["global"]),
-                            id: "gender.herm",
+                            id: "color.gender.herm",
                             title: "Hermaphrodite",
-                            description: "[Coming Soon]",
+                            description: "",
                             type: "color",
                             defaultValue: "#9B30FF",
-                            configBlockKey: "color.gender.herm",
-                            notYetImplemented: true
+                            configBlockKey: "color.gender.herm"
                         },
                         {
                             scope: getScopeArray(["global"]),
-                            id: "gender.male-herm",
+                            id: "color.gender.male-herm",
                             title: "Male Hermaphrodite",
-                            description: "[Coming Soon]",
+                            description: "",
                             type: "color",
                             defaultValue: "#007FFF",
-                            configBlockKey: "color.gender.male-herm",
-                            notYetImplemented: true
+                            configBlockKey: "color.gender.male-herm"
                         },
                         {
                             scope: getScopeArray(["global"]),
-                            id: "gender.shemale",
+                            id: "color.gender.shemale",
                             title: "Shemale",
-                            description: "[Coming Soon]",
+                            description: "",
                             type: "color",
                             defaultValue: "#CC66FF",
-                            configBlockKey: "color.gender.shemale",
-                            notYetImplemented: true
+                            configBlockKey: "color.gender.shemale"
                         },
                         {
                             scope: getScopeArray(["global"]),
-                            id: "gender.cunt-boy",
+                            id: "color.gender.cunt-boy",
                             title: "Cuntboy",
-                            description: "[Coming Soon]",
+                            description: "",
                             type: "color",
                             defaultValue: "#00CC66",
-                            configBlockKey: "color.gender.cunt-boy",
-                            notYetImplemented: true
+                            configBlockKey: "color.gender.cunt-boy"
                         },
                         {
                             scope: getScopeArray(["global"]),
-                            id: "gender.transgender",
+                            id: "color.gender.transgender",
                             title: "Transgender",
-                            description: "[Coming Soon]",
+                            description: "",
                             type: "color",
                             defaultValue: "#EE8822",
-                            configBlockKey: "color.gender.transgender",
-                            notYetImplemented: true
+                            configBlockKey: "color.gender.transgender"
                         },
                         {
                             scope: getScopeArray(["global"]),
-                            id: "gender.none",
+                            id: "color.gender.none",
                             title: "None",
-                            description: "[Coming Soon]",
+                            description: "",
                             type: "color",
                             defaultValue: "#FFFFBB",
-                            configBlockKey: "color.gender.none",
-                            notYetImplemented: true
-                        },
+                            configBlockKey: "color.gender.none"
+                        }
                     ]
-                }
+                },
+                {
+                    id: "useFriendColor",
+                    scope: getScopeArray(["global"]),
+                    title: "Use Friend Color",
+                    description: "Colorize friends' names with a distinct 'Friend' color.",
+                    type: "boolean",
+                    defaultValue: false,
+                    configBlockKey: "useFriendColor"
+                },
+                {
+                    scope: getScopeArray(["global"]),
+                    id: "color.friend",
+                    title: "Friend",
+                    description: "",
+                    type: "color",
+                    defaultValue: "#00FF00",
+                    configBlockKey: "color.friend"
+                },
             ]
         },
         {

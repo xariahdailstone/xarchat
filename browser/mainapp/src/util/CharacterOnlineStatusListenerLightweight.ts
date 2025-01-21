@@ -42,18 +42,33 @@ export function addCharacterGenderListenerLightweight(
 
     if (charSet && name && el) {
 
-        let lastAssignedStatus: string | null = null;
+        let lastAssignedClasses: string[] | null = null;
         const assignStatus = (status: CharacterStatus) => {
-            if (lastAssignedStatus) {
-                el.classList.remove(lastAssignedStatus);
+            if (lastAssignedClasses) {
+                for (let c of lastAssignedClasses) {
+                    el.classList.remove(c);
+                }
             }
+
             if (status.status == OnlineStatus.OFFLINE && includeOfflineStatus) {
-                lastAssignedStatus = "gender-offline";
+                lastAssignedClasses ??= [];
+                lastAssignedClasses.push("gender-offline");
             }
             else {
-                lastAssignedStatus = `gender-${CharacterGenderConvert.toString(status.gender).toLowerCase()}`;
+                lastAssignedClasses ??= [];
+                lastAssignedClasses.push(`gender-${CharacterGenderConvert.toString(status.gender).toLowerCase()}`);
             }
-            el.classList.add(lastAssignedStatus);
+
+            if (status.isFriend) {
+                lastAssignedClasses ??= [];
+                lastAssignedClasses.push("char-is-friend");
+            }
+
+            if (lastAssignedClasses) {
+                for (let c of lastAssignedClasses) {
+                    el.classList.add(c);
+                }
+            }
         };
 
         const csListener = charSet.addStatusListenerDebug(
@@ -66,8 +81,10 @@ export function addCharacterGenderListenerLightweight(
             if (!disposed) {
                 disposed = true;
                 csListener.dispose();
-                if (lastAssignedStatus) {
-                    el.classList.remove(lastAssignedStatus);
+                if (lastAssignedClasses) {
+                    for (let c of lastAssignedClasses) {
+                        el.classList.remove(c);
+                    }
                 }
             }
         });

@@ -12,7 +12,14 @@ import { TypingStatus } from "./TypingStatus.js";
 
 export class CharacterSet {
 
-    static emptyStatus(name: CharacterName, ignoreSet?: CharacterNameSet, lingeringGender?: (LingeringCharacterGender | null)) {
+    static emptyStatus(
+        name: CharacterName, 
+        ignoreSet?: CharacterNameSet,
+        friendsSet?: CharacterNameSet,
+        bookmarkSet?: CharacterNameSet,
+        interestsSet?: CharacterNameSet,
+        lingeringGender?: (LingeringCharacterGender | null)) {
+
         return new CharacterStatusImpl(
             name, 
             OnlineStatus.OFFLINE,
@@ -21,11 +28,17 @@ export class CharacterSet {
             null,
             TypingStatus.NONE, 
             lingeringGender != null ? lingeringGender.gender : CharacterGender.NONE, 
-            ignoreSet ? ignoreSet.has(name) : false);
+            ignoreSet ? ignoreSet.has(name) : false,
+            friendsSet ? friendsSet.has(name) : false,
+            bookmarkSet ? bookmarkSet.has(name) : false,
+            interestsSet ? interestsSet.has(name) : false);
     }
 
-    constructor(ignoreSet: CharacterNameSet) {
+    constructor(ignoreSet: CharacterNameSet, friendSet: CharacterNameSet, bookmarkSet: CharacterNameSet, interestsSet: CharacterNameSet) {
         this._ignoreSet = ignoreSet;
+        this._friendSet = friendSet;
+        this._bookmarkSet = bookmarkSet;
+        this._interestsSet = interestsSet;
 
         ignoreSet.addEventListener("dictionarychange", (dce) => {
             switch (dce.type) {
@@ -37,9 +50,43 @@ export class CharacterSet {
                     break;
             }
         });
+        friendSet.addEventListener("dictionarychange", (dce) => {
+            switch (dce.type) {
+                case DictionaryChangeType.ITEM_ADDED:
+                    this.setCharacterStatus(dce.item, { isFriend: true });
+                    break;
+                case DictionaryChangeType.ITEM_REMOVED:
+                    this.setCharacterStatus(dce.item, { isFriend: false });
+                    break;
+            }
+        });
+        bookmarkSet.addEventListener("dictionarychange", (dce) => {
+            switch (dce.type) {
+                case DictionaryChangeType.ITEM_ADDED:
+                    this.setCharacterStatus(dce.item, { isBookmark: true });
+                    break;
+                case DictionaryChangeType.ITEM_REMOVED:
+                    this.setCharacterStatus(dce.item, { isBookmark: false });
+                    break;
+            }
+        });
+        interestsSet.addEventListener("dictionarychange", (dce) => {
+            switch (dce.type) {
+                case DictionaryChangeType.ITEM_ADDED:
+                    this.setCharacterStatus(dce.item, { isInterest: true });
+                    break;
+                case DictionaryChangeType.ITEM_REMOVED:
+                    this.setCharacterStatus(dce.item, { isInterest: false });
+                    break;
+            }
+        });
     }
 
     private readonly _ignoreSet: CharacterNameSet;
+    private readonly _friendSet: CharacterNameSet;
+    private readonly _bookmarkSet: CharacterNameSet;
+    private readonly _interestsSet: CharacterNameSet;
+
     private readonly _statuses: SnapshottableMap<CharacterName, CharacterStatusImpl> = new SnapshottableMap();
     private readonly _statusListeners: Map<CharacterName, SnapshottableSet<CharacterStatusChangeHandler>> = new Map();
 
@@ -63,7 +110,10 @@ export class CharacterSet {
             (status.statusMessage != null && status.statusMessage != existingStatus.statusMessage && asOf != null) ? (asOf ?? null) : existingStatus.statusMessageLastChanged,
             (status.typingStatus != null) ? status.typingStatus : existingStatus.typingStatus,
             (status.gender != null) ? status.gender : existingStatus.gender,
-            (status.ignored != null) ? status.ignored : existingStatus.ignored
+            (status.ignored != null) ? status.ignored : existingStatus.ignored,
+            (status.isFriend != null) ? status.isFriend : existingStatus.isFriend,
+            (status.isBookmark != null) ? status.isBookmark : existingStatus.isBookmark,
+            (status.isInterest != null) ? status.isInterest : existingStatus.isInterest
         );
 
         const statusUpdated =
@@ -96,7 +146,7 @@ export class CharacterSet {
         }
         else {
             const lingeringGender = this._lingeringGenders.tryGet(characterName);
-            const fresult = CharacterSet.emptyStatus(characterName, this._ignoreSet, lingeringGender);
+            const fresult = CharacterSet.emptyStatus(characterName, this._ignoreSet, this._friendSet, this._bookmarkSet, this._interestsSet, lingeringGender);
             Observable.publishNamedRead(`cs-${characterName.canonicalValue}`, fresult);
             return fresult;
         }
@@ -167,7 +217,11 @@ export interface CharacterStatus {
     readonly statusMessage: string;
     readonly typingStatus: TypingStatus;
     readonly gender: CharacterGender;
+
     readonly ignored: boolean;
+    readonly isFriend: boolean;
+    readonly isBookmark: boolean;
+    readonly isInterest: boolean;
 
     equals(cs: CharacterStatus | null): boolean;
 }
@@ -188,7 +242,10 @@ class CharacterStatusImpl implements CharacterStatusWithLastChangedInfo {
         public readonly statusMessageLastChanged: StatusLastChangeInfo,
         public readonly typingStatus: TypingStatus,
         public readonly gender: CharacterGender,
-        public readonly ignored: boolean)
+        public readonly ignored: boolean,
+        public readonly isFriend: boolean,
+        public readonly isBookmark: boolean,
+        public readonly isInterest: boolean)
     {
     }
 
@@ -200,7 +257,10 @@ class CharacterStatusImpl implements CharacterStatusWithLastChangedInfo {
             cs.statusMessage == this.statusMessage &&
             cs.typingStatus == this.typingStatus &&
             cs.gender == this.gender &&
-            cs.ignored == this.ignored;
+            cs.ignored == this.ignored &&
+            cs.isFriend == this.isFriend &&
+            cs.isBookmark == this.isBookmark &&
+            cs.isInterest == this.isInterest;
     }
 }
 

@@ -1,3 +1,4 @@
+import { ObservableExpression } from "../util/ObservableExpression";
 import { AppViewModel } from "./AppViewModel";
 
 export class ColorThemeViewModel {
@@ -14,5 +15,35 @@ export class ColorThemeViewModel {
             document.body.style.setProperty("--bg-base-hue", hue.toString());
             document.body.style.setProperty("--bg-base-sat", sat.toString() + "%");
         });
+
+        const setupGenderColor = (gender: string) => {
+            const oe = new ObservableExpression(
+                () => [ 
+                    appViewModel.getConfigSettingById(`color.gender.${gender}`), 
+                    appViewModel.getConfigSettingById(`useFriendColor`),
+                    appViewModel.getConfigSettingById(`color.friend`)
+                ],
+                (v) => {
+                    if (v) {
+                        const rawColor = v[0] as string;
+                        const useFriendColor = v[1] as boolean;
+                        const friendColor = v[2] as string;
+
+                        document.body.style.setProperty(`--fg-gender-${gender}`, rawColor);
+                        document.body.style.setProperty(`--fg-friend-gender-${gender}`, useFriendColor ? friendColor : rawColor);
+                    }
+                },
+                (err) => {}
+            );
+        };
+
+        setupGenderColor("male");
+        setupGenderColor("female");
+        setupGenderColor("herm");
+        setupGenderColor("male-herm");
+        setupGenderColor("shemale");
+        setupGenderColor("cunt-boy");
+        setupGenderColor("transgender");
+        setupGenderColor("none");
     }
 }
