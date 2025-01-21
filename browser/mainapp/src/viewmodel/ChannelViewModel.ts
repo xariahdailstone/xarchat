@@ -479,6 +479,9 @@ export abstract class ChannelViewModel extends ObservableBase implements IDispos
                     characterStatus: {
                         characterName: loggedMessage.speakingCharacter,
                         ignored: false,
+                        isFriend: activeLoginViewModel.friends.has(loggedMessage.speakingCharacter),
+                        isBookmark: activeLoginViewModel.bookmarks.has(loggedMessage.speakingCharacter),
+                        isInterest: activeLoginViewModel.interests.has(loggedMessage.speakingCharacter),
                         gender: (loggedMessage.speakingCharacterGender as CharacterGender) ?? CharacterGender.NONE,
                         status: (loggedMessage.speakingCharacterOnlineStatus as OnlineStatus) ?? OnlineStatus.OFFLINE,
                         statusMessage: "",
@@ -497,6 +500,9 @@ export abstract class ChannelViewModel extends ObservableBase implements IDispos
                         gender: (loggedMessage.speakingCharacterGender as CharacterGender) ?? CharacterGender.NONE,
                         status: (loggedMessage.speakingCharacterOnlineStatus as OnlineStatus) ?? OnlineStatus.OFFLINE,
                         ignored: false,
+                        isFriend: activeLoginViewModel.friends.has(loggedMessage.speakingCharacter),
+                        isBookmark: activeLoginViewModel.bookmarks.has(loggedMessage.speakingCharacter),
+                        isInterest: activeLoginViewModel.interests.has(loggedMessage.speakingCharacter),
                         statusMessage: "",
                         typingStatus: TypingStatus.IDLE
                     },

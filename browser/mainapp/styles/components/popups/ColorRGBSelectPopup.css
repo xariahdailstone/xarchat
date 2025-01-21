@@ -1,0 +1,100 @@
+
+#elMain {
+    display: grid;
+    grid-template-rows: auto auto;
+    grid-template-columns: auto auto;
+    grid-template-areas: 
+        "huesatbox huebar"
+        "bottombar bottombar";
+    gap: 8px;
+    margin: 8px 8px;
+}
+
+.huesatbox {
+    grid-area: huesatbox;
+    position: relative;
+    background-color: red;
+    width: 360px;
+    height: 360px;
+}
+.white-gradient,
+.black-gradient {
+    display: block;
+    position: absolute;
+    width: 360px;
+    height: 360px;
+    pointer-events: none;
+}
+.white-gradient {
+    z-index: 1;
+    background: linear-gradient(90deg, rgba(255,255,255,1) 0%, rgba(255,255,255,0) 100%);
+}
+.black-gradient {
+    z-index: 2;
+    background: linear-gradient(0deg, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 100%);
+}
+.selection-dot {
+    border-radius: 50%;
+    background-color: black;
+    border: 1px solid white;
+    position: absolute;
+    width: 5px;
+    height: 5px;
+    z-index: 3;
+
+    top: 200px;
+    left: 200px;
+    pointer-events: none;
+}
+
+.huebar {
+    grid-area: huebar;
+    position: relative;
+}
+.huebar-image {
+    display: block;
+    height: 360px;
+    width: 36px;
+    pointer-events: none;
+}
+.selection-bar {
+    position: absolute;
+    top: 140px;
+    background-color: black;
+    height: 1px;
+    border-top: 1px solid rgba(255, 255, 255, 0.5);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.5);
+    width: 100%;
+    pointer-events: none;
+}
+
+.bottombar {
+    grid-area: bottombar;
+
+    width: 100%;
+    min-width: 100%;
+
+    display: grid;
+    grid-template-rows: auto;
+    grid-template-columns: auto 1fr auto auto;
+    grid-template-areas: "swatch . label field";
+
+    gap: 8px;
+}
+.bottombar-swatch {
+    grid-area: swatch;
+    border: 1px solid black;
+    width: 65px;
+    height: 26px;
+}
+.bottombar-text-label {
+    grid-area: label;
+    align-self: center;
+}
+.bottombar-text {
+    grid-area: field;
+    align-self: center;
+    width: 65px;
+    padding-top: 3px;
+    padding-bottom: 3px;
+}

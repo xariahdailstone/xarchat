@@ -40,6 +40,15 @@ body {
     --fg-gender-shemale: #CC66FF;
     --fg-gender-none: #FFFFBB;
 
+    --fg-friend-gender-male: var(--fg-gender-male);
+    --fg-friend-gender-male-herm: var(--fg-gender-male-herm);
+    --fg-friend-gender-female: var(--fg-gender-female);
+    --fg-friend-gender-herm: var(--fg-gender-herm);
+    --fg-friend-gender-cunt-boy: var(--fg-gender-cunt-boy);
+    --fg-friend-gender-transgender: var(--fg-gender-transgender);
+    --fg-friend-gender-shemale: var(--fg-gender-shemale);
+    --fg-friend-gender-none: var(--fg-gender-none);
+
     --bg-main-textbox: hsl(var(--bg-base-hue), var(--bg-base-sat), 24%); /* #383a40; */
     --fg-main-textbox: hsl(var(--bg-base-hue), var(--fg-base-sat), 87%); /* #dbdee1; */
     --highlight-main-textbox: #CC66FF;

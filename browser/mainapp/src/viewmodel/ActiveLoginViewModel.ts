@@ -85,7 +85,7 @@ export class ActiveLoginViewModel extends ObservableBase {
             this.notifyChannelsOfCharacterChange(chars);
         });
 
-        this.characterSet = new CharacterSet(this.ignoredChars);
+        this.characterSet = new CharacterSet(this.ignoredChars, this.friends, this.bookmarks, this.interests);
         this.onlineWatchedChars = new OnlineWatchedCharsCharacterNameSet(this, this.watchedChars);
         this.onlineFriends = new OnlineWatchedCharsCharacterNameSet(this, this.friends);
         this.onlineBookmarks = new OnlineWatchedCharsCharacterNameSet(this, this.bookmarks);
