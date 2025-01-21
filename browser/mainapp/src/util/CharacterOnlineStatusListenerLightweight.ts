@@ -48,6 +48,7 @@ export function addCharacterGenderListenerLightweight(
                 for (let c of lastAssignedClasses) {
                     el.classList.remove(c);
                 }
+                lastAssignedClasses = [];
             }
 
             if (status.status == OnlineStatus.OFFLINE && includeOfflineStatus) {
