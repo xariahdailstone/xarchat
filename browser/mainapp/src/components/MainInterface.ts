@@ -2,6 +2,7 @@ import { CharacterName } from "../shared/CharacterName.js";
 import { IDisposable } from "../util/Disposable.js";
 import { FocusMagnet } from "../util/FocusMagnet.js";
 import { HTMLUtils } from "../util/HTMLUtils.js";
+import { HostInterop } from "../util/HostInterop.js";
 import { TransitionUtils } from "../util/TransitionUtils.js";
 import { AppViewModel } from "../viewmodel/AppViewModel.js";
 import { DialogViewModel } from "../viewmodel/dialogs/DialogViewModel.js";
@@ -138,7 +139,10 @@ export class MainInterface extends ComponentBase<AppViewModel> {
         }, { passive: false });
         this.watchExpr(vm => vm.interfaceZoom, izoom => {
             if (izoom != null) {
-                this.elMain.style.zoom = izoom.toString();
+                //document.documentElement.style.zoom = izoom.toString();
+                //this.elMain.style.setProperty("--ui-zoom-level", izoom.toString());
+                //this.elMain.style.zoom = izoom.toString();
+                HostInterop.setZoomLevel(izoom);
             }
         });
 
