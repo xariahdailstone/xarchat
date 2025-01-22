@@ -133,7 +133,7 @@ namespace XarChat.Backend
             //ThreadPool.SetMinThreads(100, 100);
 
             startupLogWriter("XarChatBackend.RunAsync - creating webapp builder");
-            var builder = WebApplication.CreateBuilder();
+            var builder = WebApplication.CreateSlimBuilder();
 
             startupLogWriter("XarChatBackend.RunAsync - configuring Kestrel");
             builder.WebHost.UseKestrel(options =>
