@@ -671,10 +671,10 @@ export class ChatViewModelSink implements ChatConnectionSink {
                         msgText = `[user]${s.characterName.value}[/user] changed status to ${OnlineStatusConvert.toString(s.status) ?? "unknown"}.`;
                     }
 
-                    const eventName = this.viewModel.friends.has(s.characterName) ? "friendStatusUpdate"
+                    const eventName: RoutedNotificationEventName = this.viewModel.friends.has(s.characterName) ? "friendStatusUpdate"
                         : this.viewModel.bookmarks.has(s.characterName) ? "bookmarkStatusUpdate"
                         : this.viewModel.interests.has(s.characterName) ? "interestStatusUpdate"
-                        : null;
+                        : "otherStatusUpdate";
                     if (eventName) {
                         this.sendRoutedNotification({
                             text: msgText,
@@ -699,10 +699,10 @@ export class ChatViewModelSink implements ChatConnectionSink {
     characterCameOnline(character: CharacterName): void {
         const ns = this.viewModel;
 
-        const eventName = this.viewModel.friends.has(character) ? "friendOnlineChange"
+        const eventName: RoutedNotificationEventName = this.viewModel.friends.has(character) ? "friendOnlineChange"
             : this.viewModel.bookmarks.has(character) ? "bookmarkOnlineChange"
             : this.viewModel.interests.has(character) ? "interestOnlineChange"
-            : null;
+            : "otherOnlineChange";
         if (eventName) {
             this.sendRoutedNotification({
                 text: `[user]${character.value}[/user] came online.`, 
@@ -728,10 +728,10 @@ export class ChatViewModelSink implements ChatConnectionSink {
             ch.removeUser(character);
         }
 
-        const eventName = this.viewModel.friends.has(character) ? "friendOnlineChange"
+        const eventName: RoutedNotificationEventName = this.viewModel.friends.has(character) ? "friendOnlineChange"
             : this.viewModel.bookmarks.has(character) ? "bookmarkOnlineChange"
             : this.viewModel.interests.has(character) ? "interestOnlineChange"
-            : null;
+            : "otherOnlineChange";
         if (eventName) {
             this.sendRoutedNotification({
                 text: `[user]${character.value}[/user] went offline.`, 
