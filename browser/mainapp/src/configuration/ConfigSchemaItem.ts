@@ -9,6 +9,7 @@ export interface ConfigSchemaItemDefinitionItem {
     scope?: ConfigSchemaScopeType[];
     title: string;
     description?: string;
+    descriptionByScope?: { [key in ConfigSchemaScopeType]: string };
     type: ConfigSchemaItemType;
     options?: ConfigSchemaOptionDefinition[];
     defaultValue: unknown;
@@ -28,6 +29,7 @@ export interface ConfigSchemaItemDefinitionSection {
     scope?: ConfigSchemaScopeType[];
     sectionTitle: string;
     description?: string;
+    descriptionByScope?: { [key in ConfigSchemaScopeType]: string };
     items: ConfigSchemaItemDefinition[];
 }
 
@@ -46,8 +48,10 @@ export type ConfigSchemaScopeType = "global" | "char" | "char.chancategory" | "c
 export type ConfigSchemaScopeTypeSimple = "global" | "char" | "chan" | "convo";
 
 export type RoutedNotificationEventName = "errorGet" | "broadcastGet" | "systemMessageGet" | "friendAddRemove" | "friendRequest" | "bookmarkAddRemove" |
-    "interestAddRemove" | "ignoreAddRemove" | "serverOpAddRemove" | "meStatusUpdate" | "friendStatusUpdate" | "bookmarkStatusUpdate" |
-    "interestStatusUpdate" | "friendOnlineChange" | "bookmarkOnlineChange" | "interestOnlineChange" | "meKicked" | "otherKicked" | "chanOpChange" |
+    "interestAddRemove" | "ignoreAddRemove" | "serverOpAddRemove" | 
+    "meStatusUpdate" | "friendStatusUpdate" | "bookmarkStatusUpdate" | "interestStatusUpdate" | "otherStatusUpdate" |
+    "friendOnlineChange" | "bookmarkOnlineChange" | "interestOnlineChange" | "otherOnlineChange" | 
+    "meKicked" | "otherKicked" | "chanOpChange" |
     "chanInvited" | "noteGet";
 export function getFullRoutedNotificationConfigName(en: RoutedNotificationEventName) {
     return `notifrouting.${en}`;
@@ -116,6 +120,31 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     configBlockKey: "restoreStatusMessageOnLogin"
                 },
                 {
+                    id: "allowPings",
+                    scope: getScopeArray(["global", "char", "chan", "convo"]),
+                    title: "Allow Pings",
+                    description: "",
+                    descriptionByScope: {
+                        "global": "Allow pings from any source.",
+                        "char": "Allow pings from any source for a login session for \"$MYCHAR$\".",
+                        "char.chancategory": "Allow pings from any channels in the \"$CHANCATEGORY$\" category.",
+                        "char.chan": "Allow pings from this channel.",
+                        "char.convo": "Allow pings from any messages sent by \"$CONVOCHAR$\""
+                    },
+                    type: "boolean",
+                    defaultValue: true,
+                    configBlockKey: "allowPings"
+                },
+                {
+                    id: "allowPingsInAds",
+                    scope: getScopeArray(["global", "char", "chan"]),
+                    title: "Allow Pings in Ads",
+                    description: "Allow pings from roleplay ad messages.",
+                    type: "boolean",
+                    defaultValue: false,
+                    configBlockKey: "allowPingsInAds"
+                },
+                {
                     id: "pingCharName",
                     scope: getScopeArray(["global", "char", "chan"]),
                     title: "Ping On Your Character Name",
@@ -156,7 +185,14 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     id: "highlightMyMessages",
                     scope: getScopeArray(["global", "char", "chan", "convo"]),
                     title: "Highlight My Messages",
-                    description: "Highlight to messages from me with a lighter background color.",
+                    description: "",
+                    descriptionByScope: {
+                        "global": "Highlight messages sent by me with a lighter background color.",
+                        "char": "Highlight messages sent by me with a lighter background color.",
+                        "char.chancategory": "Highlight messages sent by me with a lighter background color.",
+                        "char.chan": "Highlight messages sent by me with a lighter background color.",
+                        "char.convo": "Highlight messages sent by me with a lighter background color in PM conversations with \"$CONVOCHAR$\"."
+                    },
                     type: "boolean",
                     defaultValue: true,
                     configBlockKey: "highlightMyMessages"
@@ -616,6 +652,18 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                 },
                 {
                     scope: getScopeArray(["global", "char"]),
+                    id: getFullRoutedNotificationConfigName("otherStatusUpdate"),
+                    title: "Anyone Else Status Updated",
+                    description: "Someone who is not a friend, bookmark, or interest updated their character status.",
+                    type: "notifroutes",
+                    defaultValue: "pmconvo",
+                    configBlockKey: getFullRoutedNotificationConfigName("otherStatusUpdate"),
+                    notifRouteOptions: {
+                        hasCharacterContext: true
+                    }
+                },
+                {
+                    scope: getScopeArray(["global", "char"]),
                     id: getFullRoutedNotificationConfigName("friendOnlineChange"),
                     title: "Friend Online/Offline",
                     description: "A friend came online or went offline.",
@@ -652,12 +700,12 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                 },
                 {
                     scope: getScopeArray(["global", "char"]),
-                    id: getFullRoutedNotificationConfigName("interestOnlineChange"),
+                    id: getFullRoutedNotificationConfigName("otherOnlineChange"),
                     title: "Anyone Else Online/Offline",
                     description: "Someone who is not a friend, bookmark, or interest came online or went offline.",
                     type: "notifroutes",
                     defaultValue: "pmconvo",
-                    configBlockKey: getFullRoutedNotificationConfigName("interestOnlineChange"),
+                    configBlockKey: getFullRoutedNotificationConfigName("otherOnlineChange"),
                     notifRouteOptions: {
                         hasCharacterContext: true
                     }

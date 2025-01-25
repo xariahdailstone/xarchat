@@ -942,6 +942,10 @@ export class ChannelMessageViewModel extends ObservableBase implements IDisposab
             return false;
         }
 
+        if (!this.activeLoginViewModel.getConfigSettingById("allowPings", this.parent)) { return false; }
+        if (!this.activeLoginViewModel.getConfigSettingById("allowPings", { characterName: this.characterStatus.characterName })) { return false; }
+        if (this.type == ChannelMessageType.AD && !this.activeLoginViewModel.getConfigSettingById("allowPingsInAds", this.parent)) { return false; }
+
         const selfPingWord = this.activeLoginViewModel.getConfigSettingById("pingCharName", this.parent) ? [ this.parent!.activeLoginViewModel.characterName.value ] : [];
         const cfgPingWords = this.activeLoginViewModel.getConfigSettingById("pingWords", this.parent) as string[];
         const oldPingWords = this.activeLoginViewModel.pingWords;

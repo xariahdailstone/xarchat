@@ -104,7 +104,16 @@ export abstract class SettingsDialogSettingViewModel extends ObservableBase {
 
     get title(): string { return (this.itemDefinition as any).sectionTitle ?? (this.itemDefinition as any).title }
 
-    get description(): string | undefined { return this.itemDefinition.description; }
+    get description(): string | undefined { 
+        let descStr = this.itemDefinition.description;
+        if (this.itemDefinition.descriptionByScope && this.itemDefinition.descriptionByScope[this.scope.scopeString]) {
+            descStr = this.itemDefinition.descriptionByScope[this.scope.scopeString];
+        }
+        descStr = descStr?.replace("$MYCHAR$", this.scope.myCharacter?.value ?? "");
+        descStr = descStr?.replace("$CHANCATEGORY$", this.scope.categoryName ?? "");
+        descStr = descStr?.replace("$CONVOCHAR$", this.scope.pmConvoCharacter?.value ?? "");
+        return descStr;
+    }
 
     @observableProperty
     readonly settings: Collection<SettingsDialogSettingViewModel> = new Collection<SettingsDialogSettingViewModel>();

@@ -10,7 +10,7 @@ import { Observable, ObservableValue, PropertyChangeEvent } from "../util/Observ
 import { ObservableBase, observableProperty, observablePropertyExt } from "../util/ObservableBase.js";
 import { Collection, CollectionChangeEvent, CollectionChangeType, ObservableCollection } from "../util/ObservableCollection.js";
 import { DictionaryChangeType, ObservableKeyExtractedOrderedDictionary, ObservableOrderedDictionaryImpl, ObservableOrderedSet } from "../util/ObservableKeyedLinkedList.js";
-import { AppNotifyEventType, AppViewModel } from "./AppViewModel.js";
+import { AppNotifyEventType, AppViewModel, GetConfigSettingChannelViewModel } from "./AppViewModel.js";
 import { ChannelMessageViewModel, ChannelViewModel } from "./ChannelViewModel.js";
 import { CharacterNameSet, OnlineWatchedCharsCharacterNameSet } from "./CharacterNameSet.js";
 import { ChatChannelPresenceState, ChatChannelViewModel, ChatChannelViewModelSortKey } from "./ChatChannelViewModel.js";
@@ -962,15 +962,15 @@ export class ActiveLoginViewModel extends ObservableBase {
         this.selectedTab = this._logSearchViewModel;
     }
 
-    getConfigSettingById(configSettingId: string, channel?: ChannelViewModel | null) {
+    getConfigSettingById(configSettingId: string, channel?: GetConfigSettingChannelViewModel | null) {
         return this.appViewModel.getConfigSettingById(configSettingId, this, channel);
     }
 
-    getConfigEntryHierarchical(key: string, channel?: ChannelViewModel | null) {
+    getConfigEntryHierarchical(key: string, channel?: GetConfigSettingChannelViewModel | null) {
         return this.appViewModel.getConfigEntryHierarchical(key, this, channel);
     }
 
-    getFirstConfigEntryHierarchical(keys: string[], channel?: ChannelViewModel | null): (unknown | null) {
+    getFirstConfigEntryHierarchical(keys: string[], channel?: GetConfigSettingChannelViewModel | null): (unknown | null) {
         return this.appViewModel.getFirstConfigEntryHierarchical(keys, this, channel);
     }
 
