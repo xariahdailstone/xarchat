@@ -9,6 +9,7 @@ export interface ConfigSchemaItemDefinitionItem {
     scope?: ConfigSchemaScopeType[];
     title: string;
     description?: string;
+    descriptionByScope?: { [key in ConfigSchemaScopeType]: string };
     type: ConfigSchemaItemType;
     options?: ConfigSchemaOptionDefinition[];
     defaultValue: unknown;
@@ -28,6 +29,7 @@ export interface ConfigSchemaItemDefinitionSection {
     scope?: ConfigSchemaScopeType[];
     sectionTitle: string;
     description?: string;
+    descriptionByScope?: { [key in ConfigSchemaScopeType]: string };
     items: ConfigSchemaItemDefinition[];
 }
 
@@ -46,8 +48,10 @@ export type ConfigSchemaScopeType = "global" | "char" | "char.chancategory" | "c
 export type ConfigSchemaScopeTypeSimple = "global" | "char" | "chan" | "convo";
 
 export type RoutedNotificationEventName = "errorGet" | "broadcastGet" | "systemMessageGet" | "friendAddRemove" | "friendRequest" | "bookmarkAddRemove" |
-    "interestAddRemove" | "ignoreAddRemove" | "serverOpAddRemove" | "meStatusUpdate" | "friendStatusUpdate" | "bookmarkStatusUpdate" |
-    "interestStatusUpdate" | "friendOnlineChange" | "bookmarkOnlineChange" | "interestOnlineChange" | "meKicked" | "otherKicked" | "chanOpChange" |
+    "interestAddRemove" | "ignoreAddRemove" | "serverOpAddRemove" | 
+    "meStatusUpdate" | "friendStatusUpdate" | "bookmarkStatusUpdate" | "interestStatusUpdate" | "otherStatusUpdate" |
+    "friendOnlineChange" | "bookmarkOnlineChange" | "interestOnlineChange" | "otherOnlineChange" | 
+    "meKicked" | "otherKicked" | "chanOpChange" |
     "chanInvited" | "noteGet";
 export function getFullRoutedNotificationConfigName(en: RoutedNotificationEventName) {
     return `notifrouting.${en}`;
@@ -116,6 +120,31 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     configBlockKey: "restoreStatusMessageOnLogin"
                 },
                 {
+                    id: "allowPings",
+                    scope: getScopeArray(["global", "char", "chan", "convo"]),
+                    title: "Allow Pings",
+                    description: "",
+                    descriptionByScope: {
+                        "global": "Allow pings from any source.",
+                        "char": "Allow pings from any source for a login session for \"$MYCHAR$\".",
+                        "char.chancategory": "Allow pings from any channels in the \"$CHANCATEGORY$\" category.",
+                        "char.chan": "Allow pings from this channel.",
+                        "char.convo": "Allow pings from any messages sent by \"$CONVOCHAR$\""
+                    },
+                    type: "boolean",
+                    defaultValue: true,
+                    configBlockKey: "allowPings"
+                },
+                {
+                    id: "allowPingsInAds",
+                    scope: getScopeArray(["global", "char", "chan"]),
+                    title: "Allow Pings in Ads",
+                    description: "Allow pings from roleplay ad messages.",
+                    type: "boolean",
+                    defaultValue: false,
+                    configBlockKey: "allowPingsInAds"
+                },
+                {
                     id: "pingCharName",
                     scope: getScopeArray(["global", "char", "chan"]),
                     title: "Ping On Your Character Name",
@@ -156,10 +185,35 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     id: "highlightMyMessages",
                     scope: getScopeArray(["global", "char", "chan", "convo"]),
                     title: "Highlight My Messages",
-                    description: "Highlight to messages from me with a lighter background color.",
+                    description: "",
+                    descriptionByScope: {
+                        "global": "Highlight messages sent by me with a lighter background color.",
+                        "char": "Highlight messages sent by me with a lighter background color.",
+                        "char.chancategory": "Highlight messages sent by me with a lighter background color.",
+                        "char.chan": "Highlight messages sent by me with a lighter background color.",
+                        "char.convo": "Highlight messages sent by me with a lighter background color in PM conversations with \"$CONVOCHAR$\"."
+                    },
                     type: "boolean",
                     defaultValue: true,
                     configBlockKey: "highlightMyMessages"
+                },
+                {
+                    id: "autoUrlPaste",
+                    scope: getScopeArray(["global"]),
+                    title: "Automatically add [url] tags to pasted URLs.",
+                    description: "When pasting in a URL, automatically add [url] tags around the URL when appropriate.",
+                    type: "boolean",
+                    defaultValue: true,
+                    configBlockKey: "autoUrlPaste"
+                },
+                {
+                    id: "joinFriendsAndBookmarks",
+                    scope: getScopeArray(["global", "char"]),
+                    title: "Show Friends and Bookmarks Together",
+                    description: "Show friends and bookmarks together in the left bar tab strip and in channel character lists.",
+                    type: "boolean",
+                    defaultValue: true,
+                    configBlockKey: "joinFriendsAndBookmarks"
                 },
                 // {
                 //     id: "submitNewEIcons",
@@ -352,86 +406,96 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     items: [
                         {
                             scope: getScopeArray(["global"]),
-                            id: "gender.male",
+                            id: "color.gender.male",
                             title: "Male",
-                            description: "[Coming Soon]",
+                            description: "",
                             type: "color",
                             defaultValue: "#6699FF",
-                            configBlockKey: "color.gender.male",
-                            notYetImplemented: true
+                            configBlockKey: "color.gender.male"
                         },
                         {
                             scope: getScopeArray(["global"]),
-                            id: "gender.female",
+                            id: "color.gender.female",
                             title: "Female",
-                            description: "[Coming Soon]",
+                            description: "",
                             type: "color",
                             defaultValue: "#FF6699",
-                            configBlockKey: "color.gender.female",
-                            notYetImplemented: true
+                            configBlockKey: "color.gender.female"
                         },
                         {
                             scope: getScopeArray(["global"]),
-                            id: "gender.herm",
+                            id: "color.gender.herm",
                             title: "Hermaphrodite",
-                            description: "[Coming Soon]",
+                            description: "",
                             type: "color",
                             defaultValue: "#9B30FF",
-                            configBlockKey: "color.gender.herm",
-                            notYetImplemented: true
+                            configBlockKey: "color.gender.herm"
                         },
                         {
                             scope: getScopeArray(["global"]),
-                            id: "gender.male-herm",
+                            id: "color.gender.male-herm",
                             title: "Male Hermaphrodite",
-                            description: "[Coming Soon]",
+                            description: "",
                             type: "color",
                             defaultValue: "#007FFF",
-                            configBlockKey: "color.gender.male-herm",
-                            notYetImplemented: true
+                            configBlockKey: "color.gender.male-herm"
                         },
                         {
                             scope: getScopeArray(["global"]),
-                            id: "gender.shemale",
+                            id: "color.gender.shemale",
                             title: "Shemale",
-                            description: "[Coming Soon]",
+                            description: "",
                             type: "color",
                             defaultValue: "#CC66FF",
-                            configBlockKey: "color.gender.shemale",
-                            notYetImplemented: true
+                            configBlockKey: "color.gender.shemale"
                         },
                         {
                             scope: getScopeArray(["global"]),
-                            id: "gender.cunt-boy",
+                            id: "color.gender.cunt-boy",
                             title: "Cuntboy",
-                            description: "[Coming Soon]",
+                            description: "",
                             type: "color",
                             defaultValue: "#00CC66",
-                            configBlockKey: "color.gender.cunt-boy",
-                            notYetImplemented: true
+                            configBlockKey: "color.gender.cunt-boy"
                         },
                         {
                             scope: getScopeArray(["global"]),
-                            id: "gender.transgender",
+                            id: "color.gender.transgender",
                             title: "Transgender",
-                            description: "[Coming Soon]",
+                            description: "",
                             type: "color",
                             defaultValue: "#EE8822",
-                            configBlockKey: "color.gender.transgender",
-                            notYetImplemented: true
+                            configBlockKey: "color.gender.transgender"
                         },
                         {
                             scope: getScopeArray(["global"]),
-                            id: "gender.none",
+                            id: "color.gender.none",
                             title: "None",
-                            description: "[Coming Soon]",
+                            description: "",
                             type: "color",
                             defaultValue: "#FFFFBB",
-                            configBlockKey: "color.gender.none",
-                            notYetImplemented: true
-                        },
+                            configBlockKey: "color.gender.none"
+                        }
                     ]
-                }
+                },
+                {
+                    id: "useFriendColor",
+                    scope: getScopeArray(["global"]),
+                    title: "Use Friend Color",
+                    description: "Colorize friends' names with a distinct 'Friend' color.",
+                    type: "boolean",
+                    defaultValue: false,
+                    configBlockKey: "useFriendColor"
+                },
+                {
+                    scope: getScopeArray(["global"]),
+                    id: "color.friend",
+                    title: "Friend",
+                    description: "",
+                    type: "color",
+                    defaultValue: "#00FF00",
+                    configBlockKey: "color.friend"
+                },
             ]
         },
         {
@@ -588,6 +652,18 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                 },
                 {
                     scope: getScopeArray(["global", "char"]),
+                    id: getFullRoutedNotificationConfigName("otherStatusUpdate"),
+                    title: "Anyone Else Status Updated",
+                    description: "Someone who is not a friend, bookmark, or interest updated their character status.",
+                    type: "notifroutes",
+                    defaultValue: "pmconvo",
+                    configBlockKey: getFullRoutedNotificationConfigName("otherStatusUpdate"),
+                    notifRouteOptions: {
+                        hasCharacterContext: true
+                    }
+                },
+                {
+                    scope: getScopeArray(["global", "char"]),
                     id: getFullRoutedNotificationConfigName("friendOnlineChange"),
                     title: "Friend Online/Offline",
                     description: "A friend came online or went offline.",
@@ -624,12 +700,12 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                 },
                 {
                     scope: getScopeArray(["global", "char"]),
-                    id: getFullRoutedNotificationConfigName("interestOnlineChange"),
+                    id: getFullRoutedNotificationConfigName("otherOnlineChange"),
                     title: "Anyone Else Online/Offline",
                     description: "Someone who is not a friend, bookmark, or interest came online or went offline.",
                     type: "notifroutes",
                     defaultValue: "pmconvo",
-                    configBlockKey: getFullRoutedNotificationConfigName("interestOnlineChange"),
+                    configBlockKey: getFullRoutedNotificationConfigName("otherOnlineChange"),
                     notifRouteOptions: {
                         hasCharacterContext: true
                     }

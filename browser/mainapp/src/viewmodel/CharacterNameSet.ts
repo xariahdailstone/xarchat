@@ -22,12 +22,13 @@ export class UnsortedCharacterNameSet extends Collection<KeyValuePair<CharacterN
 
 export class OnlineWatchedCharsCharacterNameSet extends CharacterNameSet {
     constructor(
-        private readonly activeLoginViewModel: ActiveLoginViewModel) {
+        private readonly activeLoginViewModel: ActiveLoginViewModel,
+        characterNameSet: CharacterNameSet) {
 
         super();
 
         const csWatches: Map<CharacterName, IDisposable> = new Map();
-        activeLoginViewModel.watchedChars.addCollectionObserver(entries => {
+        characterNameSet.addCollectionObserver(entries => {
             for (let entry of entries) {
                 switch (entry.changeType) {
                     case StdObservableCollectionChangeType.ITEM_ADDED:

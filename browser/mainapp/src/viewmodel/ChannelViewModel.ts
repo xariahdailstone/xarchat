@@ -479,6 +479,9 @@ export abstract class ChannelViewModel extends ObservableBase implements IDispos
                     characterStatus: {
                         characterName: loggedMessage.speakingCharacter,
                         ignored: false,
+                        isFriend: activeLoginViewModel.friends.has(loggedMessage.speakingCharacter),
+                        isBookmark: activeLoginViewModel.bookmarks.has(loggedMessage.speakingCharacter),
+                        isInterest: activeLoginViewModel.interests.has(loggedMessage.speakingCharacter),
                         gender: (loggedMessage.speakingCharacterGender as CharacterGender) ?? CharacterGender.NONE,
                         status: (loggedMessage.speakingCharacterOnlineStatus as OnlineStatus) ?? OnlineStatus.OFFLINE,
                         statusMessage: "",
@@ -497,6 +500,9 @@ export abstract class ChannelViewModel extends ObservableBase implements IDispos
                         gender: (loggedMessage.speakingCharacterGender as CharacterGender) ?? CharacterGender.NONE,
                         status: (loggedMessage.speakingCharacterOnlineStatus as OnlineStatus) ?? OnlineStatus.OFFLINE,
                         ignored: false,
+                        isFriend: activeLoginViewModel.friends.has(loggedMessage.speakingCharacter),
+                        isBookmark: activeLoginViewModel.bookmarks.has(loggedMessage.speakingCharacter),
+                        isInterest: activeLoginViewModel.interests.has(loggedMessage.speakingCharacter),
                         statusMessage: "",
                         typingStatus: TypingStatus.IDLE
                     },
@@ -936,6 +942,10 @@ export class ChannelMessageViewModel extends ObservableBase implements IDisposab
             return false;
         }
 
+        if (!this.activeLoginViewModel.getConfigSettingById("allowPings", this.parent)) { return false; }
+        if (!this.activeLoginViewModel.getConfigSettingById("allowPings", { characterName: this.characterStatus.characterName })) { return false; }
+        if (this.type == ChannelMessageType.AD && !this.activeLoginViewModel.getConfigSettingById("allowPingsInAds", this.parent)) { return false; }
+
         const selfPingWord = this.activeLoginViewModel.getConfigSettingById("pingCharName", this.parent) ? [ this.parent!.activeLoginViewModel.characterName.value ] : [];
         const cfgPingWords = this.activeLoginViewModel.getConfigSettingById("pingWords", this.parent) as string[];
         const oldPingWords = this.activeLoginViewModel.pingWords;
@@ -944,9 +954,11 @@ export class ChannelMessageViewModel extends ObservableBase implements IDisposab
         let needPing = false;
         const msgText = this.text.toLowerCase();
         for (let x of allPingWords) {
-            if (msgText.indexOf(x) != -1) {
-                needPing = true;
-                break;
+            if (x != null && x != "") {
+                if (msgText.indexOf(x) != -1) {
+                    needPing = true;
+                    break;
+                }
             }
         }
         return needPing;

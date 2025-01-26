@@ -40,7 +40,7 @@ namespace XarChat.Backend.Features.FListApi.CachingImpl
         public async Task<PartnerSearchFieldsDefinitions> GetPartnerSearchFieldsDefinitionsAsync(CancellationToken cancellationToken)
         {
             var cacheDuration = TimeSpan.FromHours(12);
-            var cacheKey = "FListApi/PartnerSearchFieldsDefinitions";
+            var cacheKey = "FListApi/PartnerSearchFieldsDefinitionsx";
             var result = await _localDataCache.GetOrCreateAsync(
                 cacheKey: cacheKey,
                 cancellationToken: cancellationToken,

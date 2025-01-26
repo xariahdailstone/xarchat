@@ -102,6 +102,8 @@ export interface IHostInterop {
 
     getEIconDataBlob(name: string, cancellationToken: CancellationToken): Promise<Blob>;
     submitEIconMetadata(name: string, contentLength: number, etag: string): Promise<void>;
+
+    setZoomLevel(value: number): Promise<void>;
 }
 
 export interface IXarHost2HostInterop extends IHostInterop {
@@ -187,6 +189,10 @@ class XarHost2Interop implements IXarHost2HostInterop {
         for (let sess of this.sessions) {
             sess.writeMessage = (msg) => this.writeToXCHostSocket(sess.prefix + msg);
         }
+
+        window.addEventListener("resize", () => {
+            this.doClientResize(window.innerWidth * window.devicePixelRatio, window.innerHeight * window.devicePixelRatio, false);
+        })
     }
 
     doDownloadStatusUpdate(data: any) {
@@ -1133,6 +1139,12 @@ class XarHost2Interop implements IXarHost2HostInterop {
     //     const blob = await fetchResp.blob();
     //     return blob;
     // }
+
+    async setZoomLevel(value: number): Promise<void> {
+        this.writeToXCHostSocket("setZoomLevel " + JSON.stringify({
+            value: value
+        }));
+    }
 }
 
 export type ChooseLocalFileOptions = {

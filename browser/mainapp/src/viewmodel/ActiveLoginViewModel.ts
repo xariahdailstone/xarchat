@@ -10,7 +10,7 @@ import { Observable, ObservableValue, PropertyChangeEvent } from "../util/Observ
 import { ObservableBase, observableProperty, observablePropertyExt } from "../util/ObservableBase.js";
 import { Collection, CollectionChangeEvent, CollectionChangeType, ObservableCollection } from "../util/ObservableCollection.js";
 import { DictionaryChangeType, ObservableKeyExtractedOrderedDictionary, ObservableOrderedDictionaryImpl, ObservableOrderedSet } from "../util/ObservableKeyedLinkedList.js";
-import { AppNotifyEventType, AppViewModel } from "./AppViewModel.js";
+import { AppNotifyEventType, AppViewModel, GetConfigSettingChannelViewModel } from "./AppViewModel.js";
 import { ChannelMessageViewModel, ChannelViewModel } from "./ChannelViewModel.js";
 import { CharacterNameSet, OnlineWatchedCharsCharacterNameSet } from "./CharacterNameSet.js";
 import { ChatChannelPresenceState, ChatChannelViewModel, ChatChannelViewModelSortKey } from "./ChatChannelViewModel.js";
@@ -88,8 +88,10 @@ export class ActiveLoginViewModel extends ObservableBase {
             this.notifyChannelsOfCharacterChange(chars);
         });
 
-        this.characterSet = new CharacterSet(this.ignoredChars);
-        this.onlineWatchedChars = new OnlineWatchedCharsCharacterNameSet(this);
+        this.characterSet = new CharacterSet(this.ignoredChars, this.friends, this.bookmarks, this.interests);
+        this.onlineWatchedChars = new OnlineWatchedCharsCharacterNameSet(this, this.watchedChars);
+        this.onlineFriends = new OnlineWatchedCharsCharacterNameSet(this, this.friends);
+        this.onlineBookmarks = new OnlineWatchedCharsCharacterNameSet(this, this.bookmarks);
 
         const openChannelPingMentionChange = (ev: PropertyChangeEvent) => {
             if (ev.propertyName == "hasPing" || ev.propertyName == "unseenMessageCount") {
@@ -321,6 +323,12 @@ export class ActiveLoginViewModel extends ObservableBase {
 
     @observableProperty
     readonly onlineWatchedChars: CharacterNameSet;
+
+    @observableProperty
+    readonly onlineFriends: CharacterNameSet;
+
+    @observableProperty
+    readonly onlineBookmarks: CharacterNameSet;
 
     @observableProperty
     showOnlineWatchedOnly: boolean = true;
@@ -959,15 +967,15 @@ export class ActiveLoginViewModel extends ObservableBase {
         this.selectedTab = this._logSearchViewModel;
     }
 
-    getConfigSettingById(configSettingId: string, channel?: ChannelViewModel | null) {
+    getConfigSettingById(configSettingId: string, channel?: GetConfigSettingChannelViewModel | null) {
         return this.appViewModel.getConfigSettingById(configSettingId, this, channel);
     }
 
-    getConfigEntryHierarchical(key: string, channel?: ChannelViewModel | null) {
+    getConfigEntryHierarchical(key: string, channel?: GetConfigSettingChannelViewModel | null) {
         return this.appViewModel.getConfigEntryHierarchical(key, this, channel);
     }
 
-    getFirstConfigEntryHierarchical(keys: string[], channel?: ChannelViewModel | null): (unknown | null) {
+    getFirstConfigEntryHierarchical(keys: string[], channel?: GetConfigSettingChannelViewModel | null): (unknown | null) {
         return this.appViewModel.getFirstConfigEntryHierarchical(keys, this, channel);
     }
 
@@ -1036,7 +1044,9 @@ class SortedPMConvoSet extends ObservableOrderedDictionaryImpl<PMConvoChannelVie
 
 export enum LeftListSelectedPane {
     CHATS = "chats",
-    WATCHLIST = "watchlist",
+    WATCHED = "watched",
+    FRIENDS = "friends",
+    BOOKMARKS = "bookmarks",
     OTHER = "other"
 }
 
