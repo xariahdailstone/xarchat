@@ -155,6 +155,7 @@ export class StatusDotLightweight implements IDisposable {
         if (!this._disposed) {
             this._disposed = true;
             this._wcm.dispose();
+            this.element.remove();
             //this.updateState();
         }
     }

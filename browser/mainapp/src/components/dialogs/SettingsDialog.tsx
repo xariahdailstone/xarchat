@@ -1,7 +1,7 @@
 import { AppViewModel } from "../../viewmodel/AppViewModel";
 import { SettingsDialogSectionViewModel, SettingsDialogItemViewModel, SettingsDialogSettingViewModel, SettingsDialogTabViewModel, SettingsDialogViewModel } from "../../viewmodel/dialogs/SettingsDialogViewModel";
 import { componentArea, componentElement } from "../ComponentBase";
-import { RenderingComponentBase } from "../RenderingComponentBase";
+import { makeRenderingComponent, RenderingComponentBase } from "../RenderingComponentBase";
 import { DialogBorderType, DialogComponentBase, dialogViewFor } from "./DialogFrame";
 import { Fragment, init, jsx, VNode, styleModule, toVNode, propsModule, eventListenersModule, h } from "../../snabbdom/index.js";
 import { IterableUtils } from "../../util/IterableUtils";
@@ -19,19 +19,15 @@ import { ColorRGBSelectPopupViewModel } from "../../viewmodel/popups/ColorRGBSel
 export class SettingsDialog extends DialogComponentBase<SettingsDialogViewModel> {
     constructor() {
         super();
-        HTMLUtils.assignStaticHTMLFragment(this.elMain, "<x-settingsdialogcontent></x-settingsdialogcontent>");
+        makeRenderingComponent(
+            this, {
+                render: () => this.render()
+            }
+        );
     }
 
     override get dialogBorderType() { return DialogBorderType.FULLPAGEWITHTITLEBAR; }
-}
-
-@componentArea("dialogs")
-@componentElement("x-settingsdialogcontent")
-export class SettingsDialogContent extends RenderingComponentBase<SettingsDialogViewModel> {
-    constructor() {
-        super();
-    }
-
+    
     render(): VNode {
         const vm = this.viewModel;
         if (vm == null) {
@@ -284,10 +280,10 @@ export class SettingsDialogContent extends RenderingComponentBase<SettingsDialog
     private static readonly ItemGeneratedIdSym = Symbol("ItemGeneratedIdSym");
 
     private getOrCreateSettingId(setting: ConfigSchemaItemDefinitionItem): string {
-        let id = (setting as any)[SettingsDialogContent.ItemGeneratedIdSym] as (string | undefined | null);
+        let id = (setting as any)[SettingsDialog.ItemGeneratedIdSym] as (string | undefined | null);
         if (!id) {
-            id = `gen${SettingsDialogContent._nextGeneratedIdNum++}`;
-            (setting as any)[SettingsDialogContent.ItemGeneratedIdSym] = id;
+            id = `gen${SettingsDialog._nextGeneratedIdNum++}`;
+            (setting as any)[SettingsDialog.ItemGeneratedIdSym] = id;
         }
         return id;
     }
