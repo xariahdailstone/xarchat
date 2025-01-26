@@ -218,9 +218,9 @@ export abstract class ComponentBase<TViewModel> extends HTMLElement {
     }
 
     protected readonly _sroot: ShadowRoot;
-    protected readonly elMain: HTMLDivElement;
+    public readonly elMain: HTMLDivElement;
 
-    protected $(id: string): (HTMLElement | null) { return this._sroot.getElementById(id) as HTMLElement; }
+    public $(id: string): (HTMLElement | null) { return this._sroot.getElementById(id) as HTMLElement; }
 
     private _isComponentConnected: boolean = false;
     protected get isComponentConnected() { return this._isComponentConnected; }

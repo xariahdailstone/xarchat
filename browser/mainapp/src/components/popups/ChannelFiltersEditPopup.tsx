@@ -4,9 +4,12 @@ import { HTMLUtils } from "../../util/HTMLUtils";
 import { ChannelFiltersViewModel, ChannelNamedFilterViewModel } from "../../viewmodel/ChannelFiltersViewModel";
 import { ChannelFiltersEditPopupViewModel } from "../../viewmodel/popups/ChannelFiltersEditPopupViewModel";
 import { componentArea, componentElement } from "../ComponentBase";
-import { RenderingComponentBase } from "../RenderingComponentBase";
+import { makeRenderingComponent, RenderingComponentBase } from "../RenderingComponentBase";
 import { ContextPopupBase } from "./ContextPopupBase";
 import { popupViewFor } from "./PopupFrame";
+
+const UP_ARROW: string = "\u2191";
+const DOWN_ARROW: string = "\u2193";
 
 @componentArea("popups")
 @componentElement("x-channelfilterseditpopup")
@@ -14,21 +17,12 @@ import { popupViewFor } from "./PopupFrame";
 export class ChannelFiltersEditPopup extends ContextPopupBase<ChannelFiltersEditPopupViewModel> {
     constructor() {
         super();
+        makeRenderingComponent(this, {
+            render: () => this.render()
+        });
 
-        HTMLUtils.assignStaticHTMLFragment(this.elMain, '<x-channelfilterseditrenderingpopup></x-channelfilterseditrenderingpopup>');
         this.clickable = true;
         this.freezePosition = true;
-    }
-}
-
-const UP_ARROW: string = "\u2191";
-const DOWN_ARROW: string = "\u2193";
-
-@componentArea("popups")
-@componentElement("x-channelfilterseditrenderingpopup")
-export class ChannelFiltersEditRenderingPopup extends RenderingComponentBase<ChannelFiltersEditPopupViewModel> {
-    constructor() {
-        super();
     }
 
     render(): (VNode | [VNode, IDisposable]) {

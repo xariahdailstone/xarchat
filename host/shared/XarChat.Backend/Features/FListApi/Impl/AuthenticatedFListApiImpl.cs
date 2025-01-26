@@ -4,6 +4,11 @@ using System.Text.Json;
 using XarChat.Backend.Common;
 using System.Text.Json.Serialization.Metadata;
 using XarChat.Backend.Features.EIconUpdateSubmitter;
+using System.Web;
+using HtmlAgilityPack;
+using Microsoft.AspNetCore.Mvc.RazorPages;
+using XarChat.Backend.Features.LocalDataCache;
+using System.Xml.Linq;
 
 namespace XarChat.Backend.Features.FListApi.Impl
 {
@@ -12,16 +17,19 @@ namespace XarChat.Backend.Features.FListApi.Impl
         private readonly FListApiImpl _flistApi;
         private readonly string _account;
         private readonly IDataUpdateSubmitter _dataUpdateSubmitter;
+        private readonly ILocalDataCache _localDataCache;
 
         public record CreationArgs(FListApiImpl Owner, string Account);
 
 		public AuthenticatedFListApiImpl(
 			CreationArgs creationArgs,
-            IDataUpdateSubmitter dataUpdateSubmitter)
+            IDataUpdateSubmitter dataUpdateSubmitter,
+            ILocalDataCache localDataCache)
         {
             this._flistApi = creationArgs.Owner;
             this._account = creationArgs.Account;
             this._dataUpdateSubmitter = dataUpdateSubmitter;
+            this._localDataCache = localDataCache;
         }
 
         public string Account => _account;
@@ -159,6 +167,14 @@ namespace XarChat.Backend.Features.FListApi.Impl
                     await _dataUpdateSubmitter.SubmitHardLoadedProfileDataAsync(name, profileJson, cancellationToken);
                 },
                 cancellationToken);
+
+            if (result.Memo is not null)
+            {
+                await _localDataCache.EvictAsync(GetMemoCacheKey(name), cancellationToken);
+                await _localDataCache.AssignAsync(GetMemoCacheKey(name), result.Memo.Memo,
+                    SourceGenerationContext.Default.String,
+                    TimeSpan.FromHours(1), cancellationToken);
+            }
             return result;
         }
 
@@ -208,6 +224,10 @@ namespace XarChat.Backend.Features.FListApi.Impl
             var result = await PerformAuthenticatedRequest<SaveMemoResponse>("api/character-memo-save.php", formData,
                 SourceGenerationContext.Default.SaveMemoResponse, cancellationToken);
 
+            await _localDataCache.AssignAsync(GetMemoCacheKey(name), result.Note,
+                SourceGenerationContext.Default.String,
+                TimeSpan.FromHours(1), cancellationToken);
+
             return result;
         }
 
@@ -244,6 +264,36 @@ namespace XarChat.Backend.Features.FListApi.Impl
                 SourceGenerationContext.Default.GuestbookPageInfo, cancellationToken);
 
             return result;
+        }
+
+        private string GetMemoCacheKey(string name) => $"Memo::{this.Account}::{name}";
+
+        public async Task<GetAllMemosResponseItem> GetMemoAsync(string name, CancellationToken cancellationToken)
+        {
+            var cacheKey = GetMemoCacheKey(name);
+            var memoText = await _localDataCache.GetOrCreateAsync(
+                cacheKey: cacheKey,
+                asyncCreationFunc: async (cancellationToken) =>
+                {
+                    var formData = new Dictionary<string, string>
+                    {
+                        { "target", name }
+                    };
+
+                    var result = await PerformAuthenticatedRequest<GetAllMemosResponseItem>("api/character-memo-get2.php", formData,
+                        SourceGenerationContext.Default.GetAllMemosResponseItem, cancellationToken);
+
+                    return result.MemoText;
+                },
+                maxAge: TimeSpan.FromHours(1),
+                jsonTypeInfo: SourceGenerationContext.Default.String,
+                cancellationToken: cancellationToken);
+
+            return new GetAllMemosResponseItem()
+            {
+                CharacterName = name,
+                MemoText = memoText
+            };
         }
     }
 }
