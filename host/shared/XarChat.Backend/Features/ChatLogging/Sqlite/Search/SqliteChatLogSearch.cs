@@ -114,12 +114,9 @@ namespace XarChat.Backend.Features.ChatLogging.Sqlite.Search
             if (criteria.WhoSpec is not null && criteria.WhoSpec is SearchLogsForCharacterCriterion lfc)
             {
                 channelWheres.Add($@"
-                    (c.channeltype = 'C' 
-                     or (c.channeltype = 'P' 
-                        and c.mycharacterid = (select xc.id from character xc where xc.namelower = @mycharnamelower)
-                     )
-                    )");
-                var prmMyCharNameLower = new SqliteParameter("@mycharnamelower", SqliteType.Text);
+                    (cm.speakingcharacterid = (select xc.id from character xc where xc.namelower = @speakingcharnamelower))
+                    ");
+                var prmMyCharNameLower = new SqliteParameter("@speakingcharnamelower", SqliteType.Text);
                 prmMyCharNameLower.Value = lfc.CharacterName.ToLower();
                 channelWheresParams.Add(prmMyCharNameLower);
             }
@@ -134,11 +131,16 @@ namespace XarChat.Backend.Features.ChatLogging.Sqlite.Search
             }
             else if (criteria.StreamSpec is not null && criteria.StreamSpec is SearchPrivateMessagesWithCriterion pmc)
             {
-                channelWheres.Add("(c.channeltype = 'P' and c.interlocutorcharacterid = (select id from character cx where cx.namelower = @interlocutornamelower))");
+                channelWheres.Add(@"(c.channeltype = 'P' 
+                    and c.mycharacterid = (select id from character cx where cx.namelower = @mycharacternamelower)
+                    and c.interlocutorcharacterid = (select id from character cx where cx.namelower = @interlocutornamelower))");
 
-                var prmMyCharNameLower = new SqliteParameter("@interlocutornamelower", SqliteType.Text);
-                prmMyCharNameLower.Value = pmc.InterlocutorCharacterName.ToLower();
+                var prmMyCharNameLower = new SqliteParameter("@mycharacternamelower", SqliteType.Text);
+                prmMyCharNameLower.Value = pmc.MyCharacterName.ToLower();
                 channelWheresParams.Add(prmMyCharNameLower);
+                var prmInterlocutorNameLower = new SqliteParameter("@interlocutornamelower", SqliteType.Text);
+                prmInterlocutorNameLower.Value = pmc.InterlocutorCharacterName.ToLower();
+                channelWheresParams.Add(prmInterlocutorNameLower);
             }
 
             if (channelWheres.Count > 1)

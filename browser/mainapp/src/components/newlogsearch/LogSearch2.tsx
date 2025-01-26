@@ -25,6 +25,33 @@ export class LogSearch2 extends RenderingComponentBase<LogSearch2ViewModel> {
             return <></>;
         }
     }
+
+    private renderCriteria(vm: LogSearch2ViewModel): [VNode, IDisposable] {
+        const disposables: IDisposable[] = [];
+
+        const criteria = vm.searchCriteria;
+
+        const vnode = <div classList={[ "search-criteria" ]}>
+            <div classList={[ "search-criteria-whospec-row" ]}>
+                <div classList={[ "search-criteria-label" ]}>Messages From:</div>
+                <x-suggesttextbox classList={[ "search-criteria-field" ]} attr-props={{
+                    "viewModel": criteria.speakingCharacter
+                }}></x-suggesttextbox>
+            </div>
+            <div classList={[ "search-criteria-streamspec-row" ]}>
+                <div classList={[ "search-criteria-label" ]}>In:</div>
+            </div>
+            <div classList={[ "search-criteria-textspec-row" ]}>
+                <div classList={[ "search-criteria-label" ]}>Containing:</div>
+                <input classList={[ "search-criteria-field" ]} attr-type="text" />
+            </div>
+            <div classList={[ "search-criteria-timespec-row" ]}>
+                <div classList={[ "search-criteria-label" ]}>Timestamp:</div>
+            </div>
+        </div>;
+
+        return [vnode, asDisposable(...disposables)];
+    }
 }
 
 @componentArea("newlogsearch")

@@ -7,6 +7,7 @@ import { TaskUtils } from "../../util/TaskUtils";
 import { ActiveLoginViewModel } from "../ActiveLoginViewModel";
 import { AppViewModel } from "../AppViewModel";
 import { LogSearch2ResultItemViewModel } from "./LogSearch2ResultItemViewModel";
+import { SearchCriteriaViewModel } from "./SearchCriteriaViewModel";
 
 export class LogSearch2ViewModel extends ObservableBase {
     constructor(
@@ -16,6 +17,7 @@ export class LogSearch2ViewModel extends ObservableBase {
 
         super();
 
+        this.searchCriteria = new SearchCriteriaViewModel(activeLoginViewModel);
         this.assignResultSet(new LogSearch2DynamicResultSet(this, 3000));
     }
 
@@ -38,6 +40,9 @@ export class LogSearch2ViewModel extends ObservableBase {
             this.resultView = null;
         }
     }
+
+    @observableProperty
+    searchCriteria: SearchCriteriaViewModel;
 
     @observableProperty
     resultView: VirtualScrollViewModel<LogSearch2ResultItemViewModel> | null = null;
