@@ -25,6 +25,14 @@ export function isDisposable(obj: any) {
         && typeof obj[Symbol.dispose] == "function");
 }
 
+export function maybeDispose(obj: any) {
+    if (isDisposable(obj)) {
+        (obj as Disposable)[Symbol.dispose]();
+    }
+    else if (isIDisposable(obj)) {
+        (obj as IDisposable).dispose();
+    }
+}
 export type ConvertibleToDisposable = ((() => void) | IDisposable | Disposable | null | undefined);
 
 export function asDisposable(...funcs: ConvertibleToDisposable[]): (IDisposable & Disposable) {

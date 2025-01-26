@@ -1,0 +1,13 @@
+
+:host {
+    width: 100%;
+}
+
+#elMain {
+    width: 100%;
+    font: var(--chat-font);
+    padding: 0;
+    margin: 0;
+    contain: paint;
+    border-bottom: 1px solid var(--bg-level-2);
+}
