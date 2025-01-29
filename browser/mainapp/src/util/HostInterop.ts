@@ -800,10 +800,23 @@ class XarHost2Interop implements IXarHost2HostInterop {
         this.writeToXCHostSocket("endCharacterSession " + characterName.value);
     }
 
+    // async getAppSettings(): Promise<unknown> {
+    //     const resp = await fetch("/api/appSettings");
+    //     const json = await resp.json();
+    //     return json;
+    // }
+
     async getAppSettings(): Promise<unknown> {
-        const resp = await fetch("/api/appSettings");
-        const json = await resp.json();
-        return json;
+        const res = await this.writeAndReadToXCHostSocketAsync({ 
+                cmd: "AppSettings.get",
+                data: {}
+            }, CancellationToken.NONE);
+        if (res.error) {
+            throw new Error(`Failed to get AppSettings: ${res.error}`);
+        }
+        else {
+            return res.result;
+        }
     }
 
     private _isUpdatingAppSettings: boolean = false;
@@ -811,18 +824,36 @@ class XarHost2Interop implements IXarHost2HostInterop {
     private _nextAppSettingsUpdate: any = undefined;
     private _nextAppSettingsUpdatePCS: PromiseSource<void> | null = null;
 
+    // private async updateAppSettingsInternal(settings: any): Promise<void> {
+    //     const resp = await fetch("/api/appSettings", {
+    //         method: "PUT",
+    //         body: JSON.stringify(settings)
+    //     });
+
+    //     try {
+    //         const body = await resp.text();
+    //     }
+    //     catch { }
+    // }
+
+    private async updateAppSettingsInternal(settings: any): Promise<void> {
+        const res = await this.writeAndReadToXCHostSocketAsync({ 
+                cmd: "AppSettings.update",
+                data: settings
+            }, CancellationToken.NONE);
+        if (res.error) {
+            throw new Error(`Failed to update AppSettings: ${res.error}`);
+        }
+        else {
+            return;
+        }
+    }
+
     async updateAppSettings(settings: any): Promise<void> {
         if (!this._isUpdatingAppSettings) {
             this._isUpdatingAppSettings = true;
-            const resp = await fetch("/api/appSettings", {
-                method: "PUT",
-                body: JSON.stringify(settings)
-            });
 
-            try {
-                const body = await resp.text();
-            }
-            catch { }
+            await this.updateAppSettingsInternal(settings);
 
             this._isUpdatingAppSettings = false;
 

@@ -31,6 +31,7 @@ using XarChat.Backend.Features.UpdateChecker;
 using XarChat.Backend.Features.WindowControl;
 using XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.ConfigData;
 using XarChat.Backend.UrlHandlers.XCHostFunctions.SessionAdapters;
+using XarChat.Backend.UrlHandlers.XCHostFunctions.SessionAdapters.AppSettings;
 using XarChat.Backend.UrlHandlers.XCHostFunctions.SessionAdapters.OldNewAppSettings;
 using XarChat.Backend.UrlHandlers.XCHostFunctions.SessionNamespaces;
 using XarChat.Backend.UrlHandlers.XCHostFunctions.SessionNamespaces.EIconData;
@@ -77,6 +78,10 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions
             {
                 var nas = sp.GetRequiredService<INewAppSettings>();
                 return new SessionNewAppSettingsAdapter(nas);
+            });
+            _replyableCommandAdapters.Add("AppSettings", (sp) =>
+            {
+                return ActivatorUtilities.CreateInstance<AppSettingsSessionAdapter>(sp);
             });
 
             this.AddSessionNamespace("logsearch", w =>
