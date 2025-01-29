@@ -11,9 +11,11 @@ import { EventListenerUtil } from "../util/EventListenerUtil.js";
 import { getRoot } from "../util/GetRoot.js";
 import { HTMLUtils } from "../util/HTMLUtils.js";
 import { IterableUtils } from "../util/IterableUtils.js";
+import { ObservableValue } from "../util/Observable.js";
 import { ResizeObserverNice } from "../util/ResizeObserverNice.js";
 import { ScrollAnchorTo } from "../util/ScrollAnchorTo.js";
-import { ChannelMessageType, ChannelMessageViewModel, ChannelViewModel, ChannelViewScrollPositionModel } from "../viewmodel/ChannelViewModel.js";
+import { URLUtils } from "../util/URLUtils.js";
+import { ChannelMessageDisplayStyle, ChannelMessageType, ChannelMessageViewModel, ChannelViewModel, ChannelViewScrollPositionModel } from "../viewmodel/ChannelViewModel.js";
 import { ChannelView } from "./ChannelView.js";
 import { CollectionView2 } from "./CollectionView2.js";
 import { CollectionViewLightweight } from "./CollectionViewLightweight.js";
@@ -112,9 +114,12 @@ export class ChannelStream extends ComponentBase<ChannelViewModel> {
             elScrolledUp.classList.toggle("shown", scrolledUp && !newMsgs);
         };
 
-        this.watch(".", v => {
-            elCollectionView.channelViewModel = v;
-        });
+        this.watchExpr(vm => vm, vm => {
+            elCollectionView.channelViewModel = vm ?? null;
+        })
+        // this.watch(".", v => {
+        //     elCollectionView.channelViewModel = v;
+        // });
         this.watch("newMessagesBelowNotify", v => {
             updateAlerts();
         });
@@ -371,6 +376,7 @@ class AdCollapseManagerImpl {
 const AdCollapseManager: AdCollapseManagerImpl = new AdCollapseManagerImpl();
 
 const dtf = new Intl.DateTimeFormat(undefined, { timeStyle: "short" });
+const dtfDate = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'numeric', year: 'numeric' });
 const dtfWithDate = new Intl.DateTimeFormat(undefined, { dateStyle: "short", timeStyle: "short" });
 
 function areSameDate(a: Date, b: Date) {
@@ -383,9 +389,19 @@ function areSameDate(a: Date, b: Date) {
 export class ChannelMessageCollectionView extends CollectionViewLightweight<KeyValuePair<any, ChannelMessageViewModel>> {
     constructor() {
         super();
+
+        this.watchExpr(vm => this.channelViewModel?.messageDisplayStyle, mds => {
+            if (mds) {
+                console.log("message display style change -->", mds);
+                this.recreateElements();
+                console.log("done with message display style change -->", mds);
+            }
+        });
     }
 
-    channelViewModel: (ChannelViewModel | null) = null;
+    private _channelViewModel: ObservableValue<(ChannelViewModel | null)> = new ObservableValue(null);
+    get channelViewModel() { return this._channelViewModel.value; }
+    set channelViewModel(value: (ChannelViewModel | null)) { this._channelViewModel.value = value; }
 
     createUserElement(kvm: KeyValuePair<any, ChannelMessageViewModel>): [HTMLElement, IDisposable] {
         const vm = kvm.value;
@@ -431,8 +447,11 @@ export class ChannelMessageCollectionView extends CollectionViewLightweight<KeyV
         const resultDisposables: IDisposable[] = [];
         //let resultDisposable: IDisposable = EmptyDisposable;
 
+        const displayStyle = vm.channelViewModel?.messageDisplayStyle ?? ChannelMessageDisplayStyle.FCHAT;
+
         let elMain = document.createElement("div");
         elMain.classList.add("messageitem");
+        elMain.classList.add(`displaystyle-${displayStyle.toString().toLowerCase()}`);
 
         let isSystemMessage = vm.type == ChannelMessageType.SYSTEM || vm.type == ChannelMessageType.SYSTEM_IMPORTANT;
 
@@ -444,11 +463,25 @@ export class ChannelMessageCollectionView extends CollectionViewLightweight<KeyV
             emoteStyle = "possessive";
         }
 
+        if (displayStyle == ChannelMessageDisplayStyle.DISCORD) {
+            const elIcon = document.createElement("img");
+            elIcon.classList.add("icon");
+            elIcon.src = URLUtils.getAvatarImageUrl(vm.characterStatus.characterName);
+            elMain.appendChild(elIcon);
+        }
+
         const elTimestamp = document.createElement("span");
         elTimestamp.classList.add("timestamp");
-        const tsText = "[" + ( areSameDate(new Date(), vm.timestamp) ? dtf.format(vm.timestamp) : dtfWithDate.format(vm.timestamp) ) + "]";
+        let tsText: string;
+        let copyText: string = "[" + ( areSameDate(new Date(), vm.timestamp) ? dtf.format(vm.timestamp) : dtfWithDate.format(vm.timestamp) ) + "]";
+        if (displayStyle == ChannelMessageDisplayStyle.DISCORD) {
+            tsText = ( areSameDate(new Date(), vm.timestamp) ? ("Today at " + dtf.format(vm.timestamp)) : (dtfDate.format(vm.timestamp) + " at " + dtf.format(vm.timestamp)) )
+        }
+        else {
+            tsText = copyText;
+        }
         elTimestamp.innerText = tsText;
-        elTimestamp.setAttribute("data-copycontent", `[sub]${tsText}[/sub]`);
+        elTimestamp.setAttribute("data-copycontent", `[sub]${copyText}[/sub]`);
         elMain.appendChild(elTimestamp);
 
         const elTsSpacer = document.createElement("span");
@@ -559,6 +592,9 @@ export class ChannelMessageCollectionView extends CollectionViewLightweight<KeyV
 
         elMain.classList.toggle("emote", (emoteStyle != "none"));
         elMain.classList.toggle("ad", (vm.type == ChannelMessageType.AD));
+        elMain.classList.toggle("roll", (vm.type == ChannelMessageType.ROLL));
+        elMain.classList.toggle("spin", (vm.type == ChannelMessageType.SPIN));
+        elMain.classList.toggle("chat", (vm.type == ChannelMessageType.CHAT));
         elMain.classList.toggle("system", isSystemMessage);
         elMain.classList.toggle("important", (vm.type == ChannelMessageType.SYSTEM_IMPORTANT));
         elMain.classList.toggle("has-ping", vm.containsPing);

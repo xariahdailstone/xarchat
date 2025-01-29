@@ -319,7 +319,8 @@ export class SettingsDialogItemViewModel extends SettingsDialogSettingViewModel 
                     case "text":
                     case "radio":
                     case "notifroutes":
-                        this.assignStringValue(value);
+                    case "select":
+                            this.assignStringValue(value);
                         break;
                     default:
                         this.logger.logError(`don't know how to assign ${this.schema.type}`);

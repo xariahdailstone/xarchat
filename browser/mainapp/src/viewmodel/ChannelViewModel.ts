@@ -27,8 +27,6 @@ import { ChannelFiltersViewModel } from "./ChannelFiltersViewModel.js";
 import { MultiSelectPopupViewModel } from "./popups/MultiSelectPopupViewModel.js";
 import { SlashCommandViewModel } from "./SlashCommandViewModel.js";
 
-
-
 export abstract class ChannelViewModel extends ObservableBase implements IDisposable {
     constructor(parent: ActiveLoginViewModel, title: string) {
         super();
@@ -71,6 +69,11 @@ export abstract class ChannelViewModel extends ObservableBase implements IDispos
     set title(value) { this._title = value; }
 
     abstract get collectiveName(): string;
+
+    get messageDisplayStyle(): ChannelMessageDisplayStyle {
+        const result = this.getConfigSettingById("messageDisplayStyle") as ChannelMessageDisplayStyle;
+        return result;
+    }
 
     @observableProperty
     showConfigButton: boolean = false;
@@ -1207,4 +1210,9 @@ export class MultiSelectChannelFilterOptionItem {
             }
         }
     }
+}
+
+export enum ChannelMessageDisplayStyle {
+    FCHAT = "fchat",
+    DISCORD = "discord"
 }

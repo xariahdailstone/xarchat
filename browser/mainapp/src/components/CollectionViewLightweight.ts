@@ -1,5 +1,6 @@
 import { IDisposable, asDisposable } from "../util/Disposable";
 import { HTMLUtils } from "../util/HTMLUtils";
+import { Collection } from "../util/ObservableCollection";
 import { DictionaryChangeEvent, DictionaryChangeType, ObservableOrderedDictionary } from "../util/ObservableKeyedLinkedList";
 import { WhenChangeManager } from "../util/WhenChange";
 import { KeyValuePair } from "../util/collections/KeyValuePair";
@@ -117,6 +118,7 @@ export abstract class CollectionViewLightweight<TViewModel> extends ComponentBas
     private setRelatedElement(vm: TViewModel, el: HTMLElement) {
         (vm as any)[this._symElement] = el;
         (el as any)[this._symVM] = vm;
+        el.setAttribute("data-cvlw-hasVM", "true");
     }
     private getRelatedElement(vm: TViewModel): HTMLElement {
         return (vm as any)[this._symElement] as HTMLElement;
@@ -128,6 +130,7 @@ export abstract class CollectionViewLightweight<TViewModel> extends ComponentBas
         const el = (vm as any)[this._symElement] as HTMLElement;
         delete (vm as any)[this._symElement];
         delete (el as any)[this._symVM];
+        el.removeAttribute("data-cvlw-hasVM");
     }
 
     private _elementUpdateCount: number = 0;
@@ -146,6 +149,35 @@ export abstract class CollectionViewLightweight<TViewModel> extends ComponentBas
 
     private readonly SYM_EL_DISPOSABLE = Symbol();
 
+    protected recreateElements() {
+        const containerEl = this.containerElement;
+        const vm = this.viewModel as (ReadOnlyStdObservableCollection<TViewModel> | null);
+
+        if (containerEl) {
+            this.startingElementUpdate();
+
+            const emptyColl = vm ?? new Collection<TViewModel>();
+            this.onCollectionChange(containerEl, emptyColl, null);
+
+            if (vm) {
+                let prevItem: TViewModel | null = null;
+                for (let item of vm.iterateValues()) {
+                    this.onCollectionChange(containerEl, vm, new StdObservableCollectionChange<TViewModel>(
+                        StdObservableCollectionChangeType.ITEM_ADDED,
+                        item,
+                        undefined,
+                        prevItem ?? undefined
+                    ));
+                    // this.onCollectionChange(containerEl, vm, new DictionaryChangeEvent(DictionaryChangeType.ITEM_ADDED, item.character, item,
+                    //     undefined, undefined, prevItem?.character ?? undefined, prevItem ?? undefined));
+                    prevItem = item;
+                }
+            }
+
+            this.finishingElementUpdate();
+        }
+    }
+
     private onCollectionChange(containerEl: HTMLElement,
         coll: ReadOnlyStdObservableCollection<TViewModel>,
         ev: StdObservableCollectionChange<TViewModel> | null) {
@@ -154,10 +186,16 @@ export abstract class CollectionViewLightweight<TViewModel> extends ComponentBas
 
         if (ev == null) {
             // Remove all items
-            while (containerEl.firstElementChild) {
-                const el = containerEl.firstElementChild as HTMLElement;
+            const elementsToRemove: HTMLElement[] = [];
+            for (let i = 0; i < containerEl.children.length; i++) {
+                elementsToRemove.push(containerEl.children.item(i) as HTMLElement);
+            }
+            for (let x = 0; x < elementsToRemove.length; x++) {
+                const el = elementsToRemove[x];
                 const v = this.getRelatedViewModel(el);
-                this.clearRelatedElement(v);
+                if (v) {
+                    this.clearRelatedElement(v);
+                }
                 this.destroyUserElementInternal(v, el);
             }
         }
@@ -218,16 +256,22 @@ export abstract class CollectionViewLightweight<TViewModel> extends ComponentBas
     private destroyUserElementInternal(vm: TViewModel, el: HTMLElement): void {
         const d = (el as any)[this.SYM_EL_DISPOSABLE];
         if (d) {
-            (d as IDisposable).dispose();
+            try { (d as IDisposable).dispose(); }
+            catch { }
         }
-        const maybePromise = this.destroyUserElement(vm, el);
-        if (maybePromise) {
-            maybePromise.then(() => {
+        try {
+            const maybePromise = this.destroyUserElement(vm, el);
+            if (maybePromise) {
+                maybePromise.then(() => {
+                    el.remove();
+                    this.dispatchEvent(new Event("delayedremovecomplete"));
+                });
+            }
+            else {
                 el.remove();
-                this.dispatchEvent(new Event("delayedremovecomplete"));
-            });
+            }
         }
-        else {
+        catch {
             el.remove();
         }
     }
