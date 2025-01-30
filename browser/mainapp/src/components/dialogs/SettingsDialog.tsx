@@ -12,6 +12,7 @@ import { ColorHSSelectPopupViewModel } from "../../viewmodel/popups/ColorHSSelec
 import { HostInterop } from "../../util/HostInterop";
 import { NotificationRouting, NotificationRoutingTargetSetting } from "../../configuration/NotificationRouting";
 import { ColorRGBSelectPopupViewModel } from "../../viewmodel/popups/ColorRGBSelectPopupViewModel";
+import { ThemeToggle } from "../ThemeToggle";
 
 @componentArea("dialogs")
 @componentElement("x-settingsdialog")
@@ -145,13 +146,18 @@ export class SettingsDialog extends DialogComponentBase<SettingsDialogViewModel>
     private renderSettingBoolean(setting: SettingsDialogItemViewModel): VNode {
         const schema = setting.schema;
 
+        const hooks: Hooks = {
+            postpatch: (o, n) => {
+                (n.elm as ThemeToggle).value = !!setting.value;
+            }
+        }
         const onChange = (e: Event) => {
-            this.logger.logDebug('on change', (e.target as any).value, setting.schema.id);
-            setting.value = (e.target as any).value;
+            this.logger.logDebug('on change', (e.target as ThemeToggle).value, setting.schema.id);
+            setting.value = (e.target as ThemeToggle).value;
         };
 
         return <x-themetoggle classList={["setting-entry", "setting-entry-boolean"]} 
-            props={{ "value": !!setting.value }}
+            props={{ "value": !!setting.value }} hook={hooks}
             on={{ "change": onChange }}></x-themetoggle>
     }
 
