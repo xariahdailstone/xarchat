@@ -47,10 +47,12 @@ function tryHandleEditShortcutKey(textarea: HTMLTextAreaElement, ev: KeyboardEve
                 loadBack = true;
                 break;
             case KeyCodes.UP_ARROW:
+            case KeyCodes.KEY_Y:
                 tesh.superscript();
                 loadBack = true;
                 break;
             case KeyCodes.DOWN_ARROW:
+            case KeyCodes.KEY_H:
                 tesh.subscript();
                 loadBack = true;
                 break;
