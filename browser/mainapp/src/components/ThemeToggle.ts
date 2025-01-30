@@ -43,7 +43,7 @@ export class ThemeToggle extends ComponentBase<boolean> {
     set value(value: boolean) {
         if (value != this._unboundValue.value) {
             this._unboundValue.value = value;
-            this.dispatchEvent(new Event("change"));
+            //this.dispatchEvent(new Event("change"));
         }
     }
 }
