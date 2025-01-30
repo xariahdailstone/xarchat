@@ -18,32 +18,43 @@ export class ThemeToggle extends ComponentBase<boolean> {
         const elCheckbox = this.$("elCheckbox") as HTMLInputElement;
 
         elCheckboxContainer.addEventListener("click", (e) => {
-            this.value = !this.value;
+            this.assignValue(!this.value, true);
             e.preventDefault();
             return false;
         });
         elCheckbox.addEventListener("change", (e) => {
-            this.value = elCheckbox.checked;
+            this.assignValue(!this.value, true);
             e.preventDefault();
             return false;
-        });
-
-        this.watchExpr(() => this.value, (ev) => {
-            ev = !!ev;
-            elCheckboxContainer.classList.toggle("is-checked", ev);
-            elCheckbox.checked = ev;
         });
     }
 
     readonly _unboundValue: ObservableValue<boolean> = new ObservableValue<boolean>(false);
+
+    private assignValue(value: boolean, isUserInitiated: boolean) {
+        const elCheckboxContainer = this.$("elCheckboxContainer") as HTMLLabelElement;
+        const elCheckbox = this.$("elCheckbox") as HTMLInputElement;
+
+        this._unboundValue.value = value;
+        elCheckbox.checked = value;
+
+        elCheckboxContainer.classList.toggle("is-unchecked", !value);
+        elCheckboxContainer.classList.toggle("is-checked", value);
+        if (isUserInitiated) {
+            elCheckboxContainer.classList.toggle("is-user-initiated", true);
+            this.dispatchEvent(new Event("change"));
+        }
+        else {
+            elCheckboxContainer.classList.toggle("is-user-initiated", false);
+        }
+    }
 
     get value() {
         return !!(this._unboundValue.value);
     }
     set value(value: boolean) {
         if (value != this._unboundValue.value) {
-            this._unboundValue.value = value;
-            //this.dispatchEvent(new Event("change"));
+            this.assignValue(!this.value, false);
         }
     }
 }
