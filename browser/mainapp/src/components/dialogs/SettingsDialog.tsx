@@ -3,7 +3,7 @@ import { SettingsDialogSectionViewModel, SettingsDialogItemViewModel, SettingsDi
 import { componentArea, componentElement } from "../ComponentBase";
 import { makeRenderingComponent, RenderingComponentBase } from "../RenderingComponentBase";
 import { DialogBorderType, DialogComponentBase, dialogViewFor } from "./DialogFrame";
-import { Fragment, init, jsx, VNode, styleModule, toVNode, propsModule, eventListenersModule, h } from "../../snabbdom/index.js";
+import { Fragment, init, jsx, VNode, styleModule, toVNode, propsModule, eventListenersModule, h, Hooks } from "../../snabbdom/index.js";
 import { IterableUtils } from "../../util/IterableUtils";
 import { HTMLUtils } from "../../util/HTMLUtils";
 import { ConfigSchemaItemDefinitionItem } from "../../configuration/ConfigSchemaItem";
@@ -144,9 +144,15 @@ export class SettingsDialog extends DialogComponentBase<SettingsDialogViewModel>
 
     private renderSettingBoolean(setting: SettingsDialogItemViewModel): VNode {
         const schema = setting.schema;
+
+        const onChange = (e: Event) => {
+            this.logger.logDebug('on change', (e.target as any).value, setting.schema.id);
+            setting.value = (e.target as any).value;
+        };
+
         return <x-themetoggle classList={["setting-entry", "setting-entry-boolean"]} 
             props={{ "value": !!setting.value }}
-            on={{ "change": (e) => { this.logger.logDebug('on change', (e.target as any).value, setting); setting.value = (e.target as any).value; } }}></x-themetoggle>
+            on={{ "change": onChange }}></x-themetoggle>
     }
 
     private renderSettingColor(setting: SettingsDialogItemViewModel): VNode {
