@@ -29,7 +29,9 @@ body {
 
     --border-level-2: hsl(var(--bg-base-hue), var(--fg-base-sat), 25%); /* #b5bac1; */
 
-    --dark-border-level-4:  hsl(var(--bg-base-hue), var(--bg-base-sat), 15%); /* #232428; */
+    --dark-border-level-4: hsl(var(--bg-base-hue), var(--bg-base-sat), 15%); /* #232428; */
+
+    --tooltip-border: hsl(var(--bg-base-hue), var(--bg-base-sat), 35%); /* #232428; */
 
     --fg-gender-male: #6699FF;
     --fg-gender-male-herm: #007FFF;
