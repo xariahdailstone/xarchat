@@ -2290,10 +2290,10 @@
   ],
   "furryprefs": [
     "No humans, just furry characters",
-    "Furs and / or humans",
-    "No furry characters, just humans",
     "Humans ok, Furries Preferred",
-    "Furries ok, Humans Preferred"
+    "Furs and / or humans",
+    "Furries ok, Humans Preferred",
+    "No furry characters, just humans"
   ],
   "error": ""
 }
