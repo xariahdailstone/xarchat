@@ -276,7 +276,7 @@
     }
 }
 
-.messageitem-lognav.displaystyle-fchat {
+.messageitem-lognav {
     user-select: none;
     
     & .lognavtext {
