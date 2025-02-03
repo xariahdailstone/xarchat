@@ -1,12 +1,12 @@
 import { CharacterStatus, CharacterStatusWithLastChangedInfo } from "../../shared/CharacterSet";
 import { OnlineStatusConvert } from "../../shared/OnlineStatus";
-import { ChatBBCodeParser } from "../../util/bbcode/BBCode";
+import { BBCodeParseResult, ChatBBCodeParser } from "../../util/bbcode/BBCode";
 import { IDisposable, asDisposable } from "../../util/Disposable";
 import { URLUtils } from "../../util/URLUtils";
 import { WhenChangeManager } from "../../util/WhenChange";
 import { AlsoInChannelLineItem, CharacterDetailPopupViewModel } from "../../viewmodel/popups/CharacterDetailPopupViewModel";
 import { componentArea, componentElement } from "../ComponentBase";
-import { StatusDotLightweight } from "../StatusDot";
+import { StatusDotLightweight, StatusDotVNodeBuilder } from "../StatusDot";
 import { PopupBase, PopupFrame, popupViewFor } from "./PopupFrame";
 import { ContextPopupBase } from "./ContextPopupBase";
 import { CharacterGenderConvert } from "../../shared/CharacterGender";
@@ -69,19 +69,17 @@ export class CharacterDetailPopup extends ContextPopupBase<CharacterDetailPopupV
                 statusMessageForInnerText = "";
             }
 
-            let statusMessageEl: HTMLElement | null = null;
+            let statusMessageParseResult: BBCodeParseResult | null = null;
             if (hasStatusMessage) {
                 mainClasses.push("has-statusmessage");
                 const bbcodeParse = ChatBBCodeParser.parse(cs.statusMessage, {
                     sink: vm.session.bbcodeSink
                 });
                 disposables.push(bbcodeParse);
-                statusMessageEl = bbcodeParse.element;
+                statusMessageParseResult = bbcodeParse;
             }
 
-            const statusDot = new StatusDotLightweight();
-            statusDot.status = cs.status;
-            disposables.push(statusDot);
+            const statusDotVNode = StatusDotVNodeBuilder.getStatusDotVNode(cs);
 
             const hasNoteNode = (vm.memoText != null && vm.memoText != "" && vm.memoText.trim() != "")
                 ? <span classList="has-memo-icon" title={vm.memoText}> {"\u{1F4C4}"}</span>
@@ -91,16 +89,7 @@ export class CharacterDetailPopup extends ContextPopupBase<CharacterDetailPopupV
                 <img classList="character-icon" id="elCharacterIcon" attr-src={URLUtils.getAvatarImageUrl(character)} />
                 <div classList={["character-name", ...charNameClasses]} id="elCharacterName">{character.value}{hasNoteNode}</div>
                 <div classList="character-onlinestatus" id="elCharacterOnlineStatus">
-                    <div classList="statusdotcontainer" id="elStatusDotContainer" hook={{
-                        "create": (o, n) => {
-                            HTMLUtils.clearChildren(n.elm as HTMLElement);
-                            n.elm?.appendChild(statusDot.element);
-                        },
-                        "update": (o, n) => {
-                            HTMLUtils.clearChildren(n.elm as HTMLElement);
-                            n.elm?.appendChild(statusDot.element);
-                        }
-                    }}></div>
+                    <div classList="statusdotcontainer" id="elStatusDotContainer">{statusDotVNode}</div>
                     <div classList="onlinestatustext" id="elStatusText">{OnlineStatusConvert.toStringWithFor(cs.status, cs.statusLastChanged)}</div>
                 </div>
 
@@ -113,20 +102,7 @@ export class CharacterDetailPopup extends ContextPopupBase<CharacterDetailPopupV
                     <x-iconimage id="elConfigIcon" attr-src="assets/ui/config-button.svg"></x-iconimage>
                 </div>
 
-                <div classList="character-statusmessage" id="elCharacterStatusMessage" hook={{
-                    "create": (o, n) => {
-                        if (statusMessageEl) {
-                            HTMLUtils.clearChildren(n.elm as HTMLElement);
-                            n.elm?.appendChild(statusMessageEl);
-                        }
-                    },
-                    "update": (o, n) => {
-                        if (statusMessageEl) {
-                            HTMLUtils.clearChildren(n.elm as HTMLElement);
-                            n.elm?.appendChild(statusMessageEl);
-                        }
-                    }
-                }}></div>
+                <div classList="character-statusmessage" id="elCharacterStatusMessage">{statusMessageParseResult?.asVNode()}</div>
                 <div classList="character-statusmessage-for" id="elCharacterStatusMessageFor">{statusMessageForInnerText}</div>
 
                 <div classList={["character-alsoinchannels", (vm.alsoInChannels.length > 0 ? "shown": "not-shown")]} id="elCharacterAlsoInChannels">

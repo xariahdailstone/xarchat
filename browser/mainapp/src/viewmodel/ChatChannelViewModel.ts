@@ -703,6 +703,16 @@ export class ChatChannelViewModel extends ChannelViewModel {
                     return "";
                 }
             ),
+            new SlashCommandViewModel(
+                ["warn"],
+                "Send a Warning Message",
+                "Sends a message to the channel, highlighted as a warning message (requires channel op status).",
+                ["!text"],
+                async (context, args) => {
+                    await this.sendAsWarningMessageAsync();
+                    return "";
+                }
+            )
         ]
     }
 
@@ -1077,6 +1087,11 @@ export class ChatChannelViewModel extends ChannelViewModel {
     async changeChannelPrivacyStatusAsync(status: "public" | "private") {
         this.verifyCurrentlyEffectiveOp();
         await this.activeLoginViewModel.chatConnection.changeChannelPrivacyStatusAsync(this.name, status);
+    }
+
+    async sendAsWarningMessageAsync() {
+        this.verifyCurrentlyEffectiveOp();
+        this.sendTextboxInternalAsync();
     }
 }
 

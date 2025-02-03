@@ -11,9 +11,11 @@ import { EventListenerUtil } from "../util/EventListenerUtil.js";
 import { getRoot } from "../util/GetRoot.js";
 import { HTMLUtils } from "../util/HTMLUtils.js";
 import { IterableUtils } from "../util/IterableUtils.js";
+import { ObservableValue } from "../util/Observable.js";
 import { ResizeObserverNice } from "../util/ResizeObserverNice.js";
 import { ScrollAnchorTo } from "../util/ScrollAnchorTo.js";
-import { ChannelMessageType, ChannelMessageViewModel, ChannelViewModel, ChannelViewScrollPositionModel } from "../viewmodel/ChannelViewModel.js";
+import { URLUtils } from "../util/URLUtils.js";
+import { ChannelMessageDisplayStyle, ChannelMessageType, ChannelMessageViewModel, ChannelViewModel, ChannelViewScrollPositionModel } from "../viewmodel/ChannelViewModel.js";
 import { ChannelView } from "./ChannelView.js";
 import { CollectionView2 } from "./CollectionView2.js";
 import { CollectionViewLightweight } from "./CollectionViewLightweight.js";
@@ -112,9 +114,12 @@ export class ChannelStream extends ComponentBase<ChannelViewModel> {
             elScrolledUp.classList.toggle("shown", scrolledUp && !newMsgs);
         };
 
-        this.watch(".", v => {
-            elCollectionView.channelViewModel = v;
-        });
+        this.watchExpr(vm => vm, vm => {
+            elCollectionView.channelViewModel = vm ?? null;
+        })
+        // this.watch(".", v => {
+        //     elCollectionView.channelViewModel = v;
+        // });
         this.watch("newMessagesBelowNotify", v => {
             updateAlerts();
         });
@@ -265,21 +270,21 @@ class AdCollapseManagerEntry {
     }
 
     private styleNotHighEnough() {
-        this.outer.style.maxHeight = this._collapseHeight + "px";
+        //this.outer.style.maxHeight = this._collapseHeight + "px";
         this.outer.classList.remove("collapsed");
         this.outer.classList.remove("expanded");
     }
 
     private styleCollapsed() {
         this.collapseBtn.innerText = "Expand";
-        this.outer.style.maxHeight = this._collapseHeight + "px";
+        //this.outer.style.maxHeight = this._collapseHeight + "px";
         this.outer.classList.add("collapsed");
         this.outer.classList.remove("expanded");
     }
 
     private styleExpanded() {
         this.collapseBtn.innerText = "Collapse";
-        this.outer.style.maxHeight = "none";
+        //this.outer.style.maxHeight = "none";
         this.outer.classList.remove("collapsed");
         this.outer.classList.add("expanded");
     }
@@ -315,7 +320,8 @@ class AdCollapseManagerImpl {
     }
 
     private handleInnerChange(v: AdCollapseManagerEntry, innerSize: DOMRectReadOnly) {
-        const isCollapsable = (innerSize.height > v.vm.appViewModel.collapseHeight);
+        const collapseHeight = +(window.getComputedStyle(v.outer).getPropertyValue("--ad-collapse-max-height-numeric"));
+        const isCollapsable = (innerSize.height > collapseHeight);
         if (isCollapsable) {
             v.isHighEnough = true;
         }
@@ -371,6 +377,7 @@ class AdCollapseManagerImpl {
 const AdCollapseManager: AdCollapseManagerImpl = new AdCollapseManagerImpl();
 
 const dtf = new Intl.DateTimeFormat(undefined, { timeStyle: "short" });
+const dtfDate = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'numeric', year: 'numeric' });
 const dtfWithDate = new Intl.DateTimeFormat(undefined, { dateStyle: "short", timeStyle: "short" });
 
 function areSameDate(a: Date, b: Date) {
@@ -383,9 +390,19 @@ function areSameDate(a: Date, b: Date) {
 export class ChannelMessageCollectionView extends CollectionViewLightweight<KeyValuePair<any, ChannelMessageViewModel>> {
     constructor() {
         super();
+
+        this.watchExpr(vm => this.channelViewModel?.messageDisplayStyle, mds => {
+            if (mds) {
+                console.log("message display style change -->", mds);
+                this.recreateElements();
+                console.log("done with message display style change -->", mds);
+            }
+        });
     }
 
-    channelViewModel: (ChannelViewModel | null) = null;
+    private _channelViewModel: ObservableValue<(ChannelViewModel | null)> = new ObservableValue(null);
+    get channelViewModel() { return this._channelViewModel.value; }
+    set channelViewModel(value: (ChannelViewModel | null)) { this._channelViewModel.value = value; }
 
     createUserElement(kvm: KeyValuePair<any, ChannelMessageViewModel>): [HTMLElement, IDisposable] {
         const vm = kvm.value;
@@ -431,8 +448,11 @@ export class ChannelMessageCollectionView extends CollectionViewLightweight<KeyV
         const resultDisposables: IDisposable[] = [];
         //let resultDisposable: IDisposable = EmptyDisposable;
 
+        const displayStyle = vm.channelViewModel?.messageDisplayStyle ?? ChannelMessageDisplayStyle.FCHAT;
+
         let elMain = document.createElement("div");
         elMain.classList.add("messageitem");
+        elMain.classList.add(`displaystyle-${displayStyle.toString().toLowerCase()}`);
 
         let isSystemMessage = vm.type == ChannelMessageType.SYSTEM || vm.type == ChannelMessageType.SYSTEM_IMPORTANT;
 
@@ -444,34 +464,39 @@ export class ChannelMessageCollectionView extends CollectionViewLightweight<KeyV
             emoteStyle = "possessive";
         }
 
+        let isImportant = vm.type == ChannelMessageType.SYSTEM_IMPORTANT;
+        if (vm.type == ChannelMessageType.CHAT && vm.text.startsWith("/warn ")) {
+            const isChanOp = this.channelViewModel?.isEffectiveOp(vm.characterStatus.characterName) ?? false;
+            if (isChanOp) {
+                isImportant = true;
+            }
+        }
+
+        if (displayStyle == ChannelMessageDisplayStyle.DISCORD) {
+            const elIcon = document.createElement("img");
+            elIcon.classList.add("icon");
+            elIcon.src = URLUtils.getAvatarImageUrl(vm.characterStatus.characterName);
+            elMain.appendChild(elIcon);
+        }
+
         const elTimestamp = document.createElement("span");
         elTimestamp.classList.add("timestamp");
-        const tsText = "[" + ( areSameDate(new Date(), vm.timestamp) ? dtf.format(vm.timestamp) : dtfWithDate.format(vm.timestamp) ) + "]";
+        let tsText: string;
+        let copyText: string = "[" + ( areSameDate(new Date(), vm.timestamp) ? dtf.format(vm.timestamp) : dtfWithDate.format(vm.timestamp) ) + "]";
+        if (displayStyle == ChannelMessageDisplayStyle.DISCORD) {
+            tsText = ( areSameDate(new Date(), vm.timestamp) ? ("Today at " + dtf.format(vm.timestamp)) : (dtfDate.format(vm.timestamp) + " at " + dtf.format(vm.timestamp)) )
+        }
+        else {
+            tsText = copyText;
+        }
         elTimestamp.innerText = tsText;
-        elTimestamp.setAttribute("data-copycontent", `[sub]${tsText}[/sub]`);
+        elTimestamp.setAttribute("data-copycontent", `[sub]${copyText}[/sub]`);
         elMain.appendChild(elTimestamp);
 
         const elTsSpacer = document.createElement("span");
         elTsSpacer.classList.add("timestamp-spacer");
         elTsSpacer.innerText = " ";
         elMain.appendChild(elTsSpacer);
-
-        if (vm.type == ChannelMessageType.AD) {
-            // const elAd = document.createElement("div");
-            // elAd.classList.add("ad-flag");
-            
-            // const elAdInner = document.createElement("x-iconimage");
-            // elAdInner.classList.add("ad-flag-inner");
-            // elAdInner.setAttribute("src", "assets/ui/ad-icon.svg");
-
-            // elAd.appendChild(elAdInner);
-            // elMain.appendChild(elAd);
-
-            // const elAdSpacer = document.createElement("span");
-            // elAdSpacer.classList.add("ad-spacer");
-            // elAdSpacer.innerText = " ";
-            // elMain.appendChild(elAdSpacer);
-        }
 
         if (vm.type == ChannelMessageType.ROLL) {
             const elDiceIcon = document.createElement("span");
@@ -485,13 +510,33 @@ export class ChannelMessageCollectionView extends CollectionViewLightweight<KeyV
             elBottleIcon.innerText = "\u{1F37E} ";
             elMain.appendChild(elBottleIcon);
         }
+        else if (vm.type == ChannelMessageType.CHAT && isImportant) {
+            const elWarningIcon = document.createElement("span");
+            elWarningIcon.classList.add("dice-icon");
+            elWarningIcon.innerText = "\u{1F6D1} ";
+            elMain.appendChild(elWarningIcon);
+        }
+        else if (vm.type == ChannelMessageType.AD) {
+            const elAdIcon = document.createElement("span");
+            elAdIcon.classList.add("dice-icon");
+            elAdIcon.innerText = "\u{1F4E2} ";
+            elMain.appendChild(elAdIcon);
+        }
+
+        let targetContainer: HTMLElement = elMain;
+        if (displayStyle == ChannelMessageDisplayStyle.DISCORD && emoteStyle != "none") {
+            const messageContentEl = document.createElement("span");
+            messageContentEl.classList.add("message-content");
+            elMain.appendChild(messageContentEl);
+            targetContainer = messageContentEl;
+        }
 
         if (!isSystemMessage) {
             const sdLightweight = new StatusDotLightweight();
             sdLightweight.status = vm.characterStatus.status;
             sdLightweight.element.classList.add("character-status");
             sdLightweight.element.setAttribute("data-copycontent", "");
-            elMain.appendChild(sdLightweight.element);
+            targetContainer.appendChild(sdLightweight.element);
             resultDisposables.push(sdLightweight);
 
             // const elUsernameStatus = document.createElement("x-statusdot");
@@ -504,7 +549,7 @@ export class ChannelMessageCollectionView extends CollectionViewLightweight<KeyV
             elCSSpacer.classList.add("character-status-spacer");
             elCSSpacer.setAttribute("data-copycontent", "");
             elCSSpacer.innerText = " ";
-            elMain.appendChild(elCSSpacer);
+            targetContainer.appendChild(elCSSpacer);
         }
 
         const elUsername = document.createElement("span");
@@ -516,7 +561,7 @@ export class ChannelMessageCollectionView extends CollectionViewLightweight<KeyV
         }
         const ecnFrag = getEffectiveCharacterNameDocFragment(vm.characterStatus.characterName, vm.parent ?? vm.activeLoginViewModel);
         elUsername.appendChild(ecnFrag);
-        elMain.appendChild(elUsername);
+        targetContainer.appendChild(elUsername);
 
         let spacerText = "";
         switch (vm.type) {
@@ -548,19 +593,22 @@ export class ChannelMessageCollectionView extends CollectionViewLightweight<KeyV
         const elUsernameSpacer = document.createElement("span");
         elUsernameSpacer.classList.add("character-spacer");
         elUsernameSpacer.innerText = spacerText;
-        elMain.appendChild(elUsernameSpacer); 
+        targetContainer.appendChild(elUsernameSpacer); 
 
         const elMessageText = document.createElement("span");
         elMessageText.classList.add("messagetext");
         vm.incrementParsedTextUsage();
         resultDisposables.push(asDisposable(() => vm.decrementParsedTextUsage()));
         elMessageText.appendChild(vm.parsedText);
-        elMain.appendChild(elMessageText);
+        targetContainer.appendChild(elMessageText);
 
         elMain.classList.toggle("emote", (emoteStyle != "none"));
         elMain.classList.toggle("ad", (vm.type == ChannelMessageType.AD));
+        elMain.classList.toggle("roll", (vm.type == ChannelMessageType.ROLL));
+        elMain.classList.toggle("spin", (vm.type == ChannelMessageType.SPIN));
+        elMain.classList.toggle("chat", (vm.type == ChannelMessageType.CHAT));
         elMain.classList.toggle("system", isSystemMessage);
-        elMain.classList.toggle("important", (vm.type == ChannelMessageType.SYSTEM_IMPORTANT));
+        elMain.classList.toggle("important", isImportant);
         elMain.classList.toggle("has-ping", vm.containsPing);
         elMain.classList.toggle("from-me", CharacterName.equals(vm.characterStatus.characterName, vm.activeLoginViewModel.characterName));
 

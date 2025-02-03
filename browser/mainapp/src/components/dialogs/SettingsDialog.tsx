@@ -95,6 +95,9 @@ export class SettingsDialog extends DialogComponentBase<SettingsDialogViewModel>
                 case "notifroutes":
                     inner = this.renderSettingNotifRoute(setting);
                     break;
+                case "select":
+                    inner = this.renderSettingSelect(setting);
+                    break;
             }
         }
         else {
@@ -373,6 +376,25 @@ export class SettingsDialog extends DialogComponentBase<SettingsDialogViewModel>
             { makeSelect("Channel", "targetChannel", "Send notifications of this type to the channel tab for the related channel (if one exists).") }
             { makeSelect("All", "everywhere", "Send notifications of this type to every open tab.") }
         </div>
-        return <></>;
+    }
+
+    private renderSettingSelect(setting: SettingsDialogItemViewModel): VNode {
+        const optionNodes: VNode[] = [];
+
+        for (let o of setting.schema.selectOptions!) {
+            const isSelected = setting.value == o.value;
+            optionNodes.push(<option attrs={{ "value": o.value, "selected": isSelected }}>{o.displayValue ?? o.value}</option>)
+        }
+
+        const onChange = (e: Event) => {
+            const elSelect = e.target as HTMLSelectElement;
+            setting.value = elSelect.value;
+        };
+
+        return <div classList={[ "setting-entry", "setting-entry-select" ]}>
+            <select classList={[ "theme-select" ]} on={{ "change": onChange }}>
+                {optionNodes}
+            </select>
+        </div>;
     }
 }

@@ -12,6 +12,7 @@ export interface ConfigSchemaItemDefinitionItem {
     descriptionByScope?: { [key in ConfigSchemaScopeType]: string };
     type: ConfigSchemaItemType;
     options?: ConfigSchemaOptionDefinition[];
+    selectOptions?: ConfigSchemaSelectOptionDefinition[];
     defaultValue: unknown;
     configBlockKey: string;
     items?: ConfigSchemaItemDefinition[];
@@ -39,10 +40,14 @@ export interface ConfigSchemaOptionDefinition {
     prompt?: string;
     value?: unknown;
 }
+export interface ConfigSchemaSelectOptionDefinition {
+    value: string;
+    displayValue: string;
+}
 
 export type ConfigSchemaItemDefinition = (ConfigSchemaItemDefinitionItem | ConfigSchemaItemDefinitionSection);
 
-export type ConfigSchemaItemType = "text" | "boolean" | "text[]" | "radio" | "timespan" | "color" | "color-hs" | "notifroutes";
+export type ConfigSchemaItemType = "text" | "boolean" | "text[]" | "radio" | "timespan" | "color" | "color-hs" | "notifroutes" | "select";
 export type ConfigSchemaOptionItemType = "string" | "file";
 export type ConfigSchemaScopeType = "global" | "char" | "char.chancategory" | "char.chan" | "char.convo";
 export type ConfigSchemaScopeTypeSimple = "global" | "char" | "chan" | "convo";
@@ -215,6 +220,19 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     defaultValue: true,
                     configBlockKey: "joinFriendsAndBookmarks"
                 },
+                {
+                    id: "messageDisplayStyle",
+                    scope: getScopeArray(["global", "char", "chan", "convo"]),
+                    title: "Message Display Style",
+                    description: "Select a display style for messages.",
+                    type: "select",
+                    selectOptions: [
+                        { value: "fchat", displayValue: "F-Chat" },
+                        { value: "discord", displayValue: "Discord" },
+                    ],
+                    defaultValue: "fchat",
+                    configBlockKey: "messageDisplayStyle"
+                }
                 // {
                 //     id: "submitNewEIcons",
                 //     scope: [ "global" ],

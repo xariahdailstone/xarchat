@@ -14,7 +14,9 @@
         "filtersbar"
         "messagecontainer";
 
-    background: var(--bg-level-4); 
+    background: var(--bg-level-4);
+
+    --ad-collapse-max-height-numeric: 40;
 }
 
 .filtersbar {
