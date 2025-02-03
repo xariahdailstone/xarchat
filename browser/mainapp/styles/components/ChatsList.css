@@ -41,7 +41,7 @@
     align-items: center;
 }
 
-.sectiontitle-collapse { grid-area: collapse; }
+.sectiontitle-collapse { grid-area: collapse; line-height: 0; }
 .sectiontitle-text { grid-area: text; }
 .sectiontitle-addbtn { grid-area: addbtn; }
 
@@ -358,3 +358,42 @@
 .sectionitems-item-inner:hover .close-icon {
     display: block;
 }
+
+.collapsebutton {
+    display: inline-block;
+    width: 1.21em;
+    height: 1.21em;
+    outline: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+    background-color: inherit;
+    color: inherit;
+}
+.collapsearrow {
+    width: 1.21em;
+    height: 1.21em;
+    max-width: 1.21em;
+    max-height: 1.21em;
+    transform: rotate(0deg);
+    transition: transform 0.25s;
+    --iconimage-max-width: 1.21em;
+    --iconimage-max-height: 1.21em;
+}
+.collapsearrow.collapsed {
+    transform: rotate(-90deg);
+}
+.section-collapsebody {
+    display: flex;
+    flex-direction: column;
+    max-height: 99999px;
+    transition: max-height 0.3s cubic-bezier(1,0,1,0);
+    overflow: hidden;
+}
+
+.section-collapsebody.collapsed {
+    max-height: 0px;
+    transition: max-height 0.3s cubic-bezier(0,1,0,1);
+}
+#elMain.has-alerts-below .new-alerts-below { display: grid !important; }
+#elMain.has-alerts-above .new-alerts-above { display: grid !important; }

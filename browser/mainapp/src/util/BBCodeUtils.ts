@@ -47,10 +47,12 @@ function tryHandleEditShortcutKey(textarea: HTMLTextAreaElement, ev: KeyboardEve
                 loadBack = true;
                 break;
             case KeyCodes.UP_ARROW:
+            case KeyCodes.KEY_Y:
                 tesh.superscript();
                 loadBack = true;
                 break;
             case KeyCodes.DOWN_ARROW:
+            case KeyCodes.KEY_H:
                 tesh.subscript();
                 loadBack = true;
                 break;
@@ -91,7 +93,7 @@ export class BBCodeUtils {
     static pasteWithAutoUrlization(origText: string, selStart: number, selEnd: number, pasteText: string) {
         if (BBCodeUtils.isPastedUrl(pasteText)) {
             if (BBCodeUtils.isCursorAtAutoUrlLocation(origText, selStart)) {
-                return `[url]${pasteText}[/url]`;
+                return `[url=${pasteText}][/url]`;
             }
         }
         return pasteText;

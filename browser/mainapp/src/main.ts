@@ -148,6 +148,11 @@ onReady(async () => {
     
 });
 
+window.addEventListener("resize", (e) => {
+    document.body.style.setProperty("--device-pixel-ratio", window.devicePixelRatio.toString());
+});
+document.body.style.setProperty("--device-pixel-ratio", window.devicePixelRatio.toString());
+
 document.addEventListener("keydown", (e) => {
     if (e.keyCode == KeyCodes.KEY_R) {
         if (e.ctrlKey) {

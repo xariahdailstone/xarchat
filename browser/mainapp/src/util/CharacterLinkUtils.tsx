@@ -28,7 +28,7 @@ export class CharacterLinkUtils {
                         return false;
                     }
                 }
-            }}>{getEffectiveCharacterNameVNodes(char, sess)}</span>;
+            }}>{getEffectiveCharacterNameVNodes(char, channelContext ?? sess)}</span>;
         return vnode;
     }
 
