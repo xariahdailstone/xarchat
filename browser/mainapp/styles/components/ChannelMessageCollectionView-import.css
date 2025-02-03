@@ -92,6 +92,7 @@
 }
 #elSending.shown { display: block; }
 
+/*
 .messageitem {
     &.ad {
         background-color: rgba(0, 255, 100, 0.1);
@@ -103,6 +104,7 @@
         background-color: #500;
     }
 }
+*/
 .messageitem.displaystyle-discord:not(.system) {
     --icon-height: 42px;
     --vertical-gap: 4px;
@@ -161,7 +163,9 @@
     &.emote .messagetext {
         font-style: italic;
     }
-    &:has(.dice-icon) .messagetext {
+    &.spin .messagetext,
+    &.roll .messagetext,
+    &.emote .messagetext {
         font-style: italic;
         & .bbcode-b {
             background-color: white;
@@ -230,6 +234,41 @@
     }
 }
 
+.messageitem.displaystyle-discord.emote {
+    grid-template-rows: calc((var(--icon-height) / 2) - (var(--vertical-gap) / 2)) var(--vertical-gap) auto;
+    grid-template-columns: auto auto auto auto auto 1fr;
+    grid-template-areas:
+        "icon timestamp"
+        "icon ."
+        "icon message";
+    padding-top: 6px;
+    padding-bottom: 0px;
+
+    align-items: baseline;
+
+    & .icon { grid-area: icon; }
+    & .timestamp { grid-area: timestamp; }
+    & .timestamp-spacer { display: none; }
+    & .message-content { grid-area: message; }
+    & .character-status-spacer { display: none; }
+    & .character-spacer { display: inline; }
+    & .character { grid-area: character; }
+    & .statusdot { grid-area: statusdot; }
+    & .dice-icon { display: none; }
+    & .messagetext { grid-area: message; }
+
+    & .timestamp {
+        margin-left: 0px;
+    }
+    & .message-content {
+        display: block;
+        font-style: italic;
+    }
+    & .statusdot {
+        font-style: normal;
+    }
+}
+
 .messageitem.displaystyle-fchat {
     display: block;
     padding-top: 3px;
@@ -237,6 +276,9 @@
 
     &.emote {
         font-style: italic;
+    }
+    &.ad {
+        & .dice-icon { display: none; }
     }
 
     & .timestamp {
@@ -298,13 +340,30 @@
 
     contain: paint;
     border-bottom: 1px solid var(--bg-level-2);
+
+    --ad-collapse-max-height: calc(1px * var(--ad-collapse-max-height-numeric));
 }
 .collapse-host:has(.messageitem.displaystyle-discord) {
     border-bottom: none;
+    --ad-collapse-max-height-numeric: 65;
+}
+
+.collapse-host:has(.ad) {
+    background-color: rgba(0, 255, 100, 0.1);
+}
+.collapse-host:has(.has-ping) {
+    background-color: rgba(0, 0, 255, 0.2);
+}
+.collapse-host:has(.important) {
+    background-color: #500;
 }
 
 .collapse-host.collapsed {
     overflow: hidden;
+    max-height: var(--ad-collapse-max-height);
+}
+.collapse-host.expanded {
+    max-height: none;
 }
 
 .collapse-host .collapse-button-container {
@@ -324,6 +383,7 @@
     font-size: 85%;
     
     display: none;
+    cursor: pointer;
 }
 .collapse-host.collapsible {
     overflow: hidden;

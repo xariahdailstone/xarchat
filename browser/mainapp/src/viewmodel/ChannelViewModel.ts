@@ -921,6 +921,9 @@ export class ChannelMessageViewModel extends ObservableBase implements IDisposab
                 else if (this.text.startsWith("/me's ")) {
                     effectiveText = this.text.substring(6);
                 }
+                else if (this.text.startsWith("/warn ")) {
+                    effectiveText = this.text.substring(6);
+                }
             }
 
             const parseResult = ChatBBCodeParser.parse(effectiveText, { 
