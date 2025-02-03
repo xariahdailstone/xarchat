@@ -93,7 +93,7 @@ export class BBCodeUtils {
     static pasteWithAutoUrlization(origText: string, selStart: number, selEnd: number, pasteText: string) {
         if (BBCodeUtils.isPastedUrl(pasteText)) {
             if (BBCodeUtils.isCursorAtAutoUrlLocation(origText, selStart)) {
-                return `[url]${pasteText}[/url]`;
+                return `[url=${pasteText}][/url]`;
             }
         }
         return pasteText;
