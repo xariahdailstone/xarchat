@@ -232,6 +232,15 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     ],
                     defaultValue: "fchat",
                     configBlockKey: "messageDisplayStyle"
+                },
+                {
+                    id: "collapseAds",
+                    scope: getScopeArray(["global", "char", "chan"]),
+                    title: "Collapse Large Ads",
+                    description: "Show large ads in a collapsed format by default.",
+                    type: "boolean",
+                    defaultValue: "true",
+                    configBlockKey: "collapseAds"
                 }
                 // {
                 //     id: "submitNewEIcons",

@@ -1,4 +1,5 @@
 import { h } from "../snabbdom/h.js";
+import { SnapshottableMap } from "./collections/SnapshottableMap.js";
 import { SnapshottableSet } from "./collections/SnapshottableSet.js";
 import { IDisposable, EmptyDisposable, asDisposable } from "./Disposable.js";
 import { setupValueSubscription, ValueSubscriptionImpl } from "./ObservableBase.js";
@@ -61,6 +62,30 @@ export class Observable {
                 this._currentFireStackCount = 0;
                 this._currentFireStackDepth = 0;
                 this._maxFireStackDepth = 0;
+            }
+        }
+    }
+
+    static getDependenciesMonitor(func: () => any): DependencySet {
+        const ds = new DependencySetImpl();
+        let returned = false;
+        try {
+            const rm = Observable.addReadMonitor((observable, propertyName) => {
+                ds.maybeAddDependency(observable, propertyName);
+            });
+            try {
+                func();
+            }
+            finally {
+                rm.dispose();
+            }
+
+            returned = true;
+            return ds;
+        }
+        finally {
+            if (!returned) {
+                ds.dispose();
             }
         }
     }
@@ -242,4 +267,75 @@ export class ObservableValue<T> implements Observable {
             this.raisePropertyChangeEvent("value", value);
         }
     }
+}
+
+export interface DependencySet extends IDisposable {
+    addChangeListener(callback: () => any): IDisposable;
+}
+
+class DependencySetImpl implements DependencySet {
+    constructor() {
+    }
+
+    private readonly _deps: Map<any, Map<string, IDisposable>> = new Map();
+
+    private _disposed: boolean = false;
+    dispose() {
+        if (!this._disposed) {
+            this._disposed = true;
+            for (let depsForVm of this._deps.values()) {
+                for (let depForProp of depsForVm.values()) {
+                    depForProp.dispose();
+                }
+            }
+        }
+    }
+
+    [Symbol.dispose]() { this.dispose(); }
+
+    get isDisposed() { return this._disposed; }
+
+    maybeAddDependency(vm: any, propertyName: string) {
+        let depsForVm = this._deps.get(vm);
+        if (!depsForVm) {
+            depsForVm = new Map();
+            this._deps.set(vm, depsForVm);
+        }
+
+        let depForProp = depsForVm.get(propertyName);
+        if (!depForProp) {
+            depForProp = this.attachToObservable(vm, propertyName);
+            depsForVm.set(propertyName, depForProp);
+        }
+    }
+
+    private attachToObservable(observable: any, propertyName: string): IDisposable {
+        const newListener = (observable as Observable).addEventListener("propertychange", (e) => {
+            if (e.propertyName == propertyName) {
+                this.stateHasChanged();
+            }
+        })
+        return newListener;
+    }
+
+    private stateHasChanged() {
+        this._changeListeners.forEachValueSnapshotted(v => {
+            try { v(); }
+            catch { }
+        });
+    }
+
+    private readonly _changeListeners: SnapshottableMap<object, () => any> = new SnapshottableMap();
+    addChangeListener(callback: () => any): IDisposable {
+        const myKey = {};
+        this._changeListeners.set(myKey, callback);
+        return asDisposable(() => {
+            this._changeListeners.delete(myKey);
+        });
+    }
+}
+
+interface Dependency {
+    target: any;
+    propertyName: string;
 }

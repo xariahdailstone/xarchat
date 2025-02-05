@@ -912,6 +912,9 @@ export class ChannelMessageViewModel extends ObservableBase implements IDisposab
     }
 
     get parsedText() {
+        return this.parseResult.element;
+    }
+    get parseResult() {
         if (this._parsedText == null) {
             let effectiveText = this.text;
             if (this.type == ChannelMessageType.CHAT) {
@@ -938,7 +941,7 @@ export class ChannelMessageViewModel extends ObservableBase implements IDisposab
             //registerCleanupDispose(this, parseResult);
             this._parsedText = parseResult;
         }
-        return this._parsedText.element;
+        return this._parsedText;
     }
 
     readonly containsPing: boolean;
@@ -982,6 +985,12 @@ export class ChannelMessageViewModel extends ObservableBase implements IDisposab
         }
         return false;
     }
+
+    @observableProperty
+    isOversized: boolean | null = false;
+
+    @observableProperty
+    collapsed: boolean | null = true;
 
     serializeForLog(): SerializedChannelMessageViewModel {
         return {

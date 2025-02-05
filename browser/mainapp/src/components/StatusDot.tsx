@@ -252,7 +252,7 @@ export class StatusDotLightweight implements IDisposable {
 }
 
 export class StatusDotVNodeBuilder {
-    static getStatusDotVNode(cs: CharacterStatus): VNode {
+    static getStatusDotVNode(cs: Omit<CharacterStatus, "equals">): VNode {
         const classes: Record<string, boolean> = {};
         classes["statusdot"] = true;
         classes["onlinestatus-" + OnlineStatusConvert.toString(cs.status).toLowerCase()] = true;
