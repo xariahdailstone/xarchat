@@ -77,7 +77,7 @@ export class ChannelStream extends ComponentBase<ChannelViewModel> {
             return result;
         };
         this._scrollManager = new DefaultStreamScrollManager(elMessageContainer, iterateElements, getElementByIdentity, (v) => {
-            console.log("setting scrolledTo", v, this.viewModel?.collectiveName);
+            //console.log("setting scrolledTo", v, this.viewModel?.collectiveName);
             if (this.viewModel) {
                 if (v) {
                     this.viewModel.scrolledTo = v;
@@ -101,13 +101,13 @@ export class ChannelStream extends ComponentBase<ChannelViewModel> {
             const cmcv = new ChannelStreamMessageViewRenderer();
             cmcv.updatingElements = () => {
                 if (this.viewModel === vm) {
-                    console.log("cmcv updatingelements", this.viewModel?.messages?.length ?? "null", elMessageContainer.childElementCount);
+                    //console.log("cmcv updatingelements", this.viewModel?.messages?.length ?? "null", elMessageContainer.childElementCount);
                     this.suppressScrollRecording(ScrollSuppressionReason.CMCVUpdatingElements);
                 }
             };
             cmcv.updatedElements = () => {
                 if (this.viewModel === vm) {
-                    console.log("cmcv updatedelements", this.viewModel?.messages?.length ?? "null", elMessageContainer.childElementCount);
+                    //console.log("cmcv updatedelements", this.viewModel?.messages?.length ?? "null", elMessageContainer.childElementCount);
                     this.resumeScrollRecording(ScrollSuppressionReason.CMCVUpdatingElements);
                     if (!firstRenderComplete) {
                         firstRenderComplete = true;
@@ -456,9 +456,9 @@ export class ChannelMessageCollectionView extends CollectionViewLightweight<KeyV
 
         this.watchExpr(vm => this.channelViewModel?.messageDisplayStyle, mds => {
             if (mds) {
-                console.log("message display style change -->", mds);
+                //console.log("message display style change -->", mds);
                 this.recreateElements();
-                console.log("done with message display style change -->", mds);
+                //console.log("done with message display style change -->", mds);
             }
         });
     }
@@ -817,7 +817,7 @@ export class DefaultStreamScrollManager implements StreamScrollManager {
             this.containerElement.style.visibility = "hidden";
         }
         
-        console.log("^^^ _suppressionCount", this._suppressionCount, this.buildReasonsString());
+        //console.log("^^^ _suppressionCount", this._suppressionCount, this.buildReasonsString());
     }
 
     resumeScrollRecording(reason: ScrollSuppressionReason, skipScrollReset?: boolean) {
@@ -836,7 +836,7 @@ export class DefaultStreamScrollManager implements StreamScrollManager {
             this._suppressionReasons.set(reason, prevCount - 1);
         }
 
-        console.log("vvv _suppressionCount", this.buildReasonsString());
+        //console.log("vvv _suppressionCount", this.buildReasonsString());
         if (this._suppressionCount == 0) {
             this.containerElement.style.visibility = "visible";
         }
@@ -897,7 +897,7 @@ export class DefaultStreamScrollManager implements StreamScrollManager {
             let isSmoothScroll = this._pendingScrollSmooth;
             let isScrolledToMaximum: boolean;
             let scrollToY: number;
-            console.log("resetting scroll", this.scrolledTo);
+            //console.log("resetting scroll", this.scrolledTo);
             if (this.scrolledTo) {
                 scrollToY = 0;
                 const scrollToEl = this.getElementByIdentity(this.scrolledTo.elementIdentity);
@@ -926,7 +926,7 @@ export class DefaultStreamScrollManager implements StreamScrollManager {
             }
 
             isScrolledToMaximum = this.scrollStreamTo(scrollToY, isSmoothScroll);
-            console.log("resetting scroll ==> ", scrollToY, isScrolledToMaximum);
+            //console.log("resetting scroll ==> ", scrollToY, isScrolledToMaximum);
             if (isScrolledToMaximum && this._suppressionCount == 1) {
                 this.scrolledTo = null;
             }
