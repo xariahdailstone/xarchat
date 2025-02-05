@@ -59,44 +59,29 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
     private scrollToNextAlertBelow: ((() => void) | null) = null;
 
     private setupScrollerAlertsNotifications(): IDisposable {
-        let ioScroller: HTMLElement | null = null;
         let io: IntersectionObserver | null = null;
         const elementsNotVisibleAbove = new Map<HTMLElement, number>();
         const elementsNotVisibleBelow = new Map<HTMLElement, number>();
 
-        const scrollToNext = (map: Map<HTMLElement, number>, shouldTake: (curBound: number, maxBound: number) => boolean) => {
-            if (map.size > 0) {
-                let maxBound: number | null = null;
-                let maxEl: HTMLElement | null = null;
-                for (let kvp of map) {
-                    const curEl = kvp[0];
-                    const curBound = kvp[1];
-                    if (maxBound == null || shouldTake(curBound, maxBound)) {
-                        maxBound = curBound;
-                        maxEl = curEl;
-                    }
-                }
-                if (maxEl) {
-                    maxEl.scrollIntoView({ block: "center", behavior: "smooth" });
-                }
-            }
-        }
-        this.scrollToNextAlertAbove = () => {
-            scrollToNext(elementsNotVisibleAbove, (cur, max) => cur > max);
+        const updateAlertNoticeVisibility = () => {
+            this.cleanOutMissingElements(elementsNotVisibleAbove);
+            this.cleanOutMissingElements(elementsNotVisibleBelow);
+            this.elMain.classList.toggle("has-alerts-above", elementsNotVisibleAbove.size > 0);
+            this.elMain.classList.toggle("has-alerts-below", elementsNotVisibleBelow.size > 0);
         };
-        this.scrollToNextAlertBelow = () => {
-            scrollToNext(elementsNotVisibleBelow, (cur, max) => cur < max);
-        };
-
-        const mo = new MutationObserver(entries => {
+        const recalculateAlertDisplay = () => {
             if (io) {
+                elementsNotVisibleAbove.clear();
+                elementsNotVisibleBelow.clear();
+                updateAlertNoticeVisibility();
                 io.disconnect();
                 io = null;
             }
             const scroller = this.$("scroller");
-            if (scroller && scroller != ioScroller) {
+            if (scroller) {
                 elementsNotVisibleAbove.clear();
                 elementsNotVisibleBelow.clear();
+                updateAlertNoticeVisibility();
                 io = new IntersectionObserver(entries => {
                     for (let entry of entries) {
                         const target = entry.target as HTMLElement;
@@ -117,9 +102,7 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
                     }
                     this.cleanOutMissingElements(elementsNotVisibleAbove);
                     this.cleanOutMissingElements(elementsNotVisibleBelow);
-
-                    this.elMain.classList.toggle("has-alerts-above", elementsNotVisibleAbove.size > 0);
-                    this.elMain.classList.toggle("has-alerts-below", elementsNotVisibleBelow.size > 0);
+                    updateAlertNoticeVisibility();
                 }, {
                     root: scroller,
                     threshold: [0, 0.25, 0.5, 0.75, 0.99]
@@ -129,6 +112,34 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
                     io!.observe(el as HTMLElement);
                 });
             }
+        };
+        const scrollToNext = (map: Map<HTMLElement, number>, shouldTake: (curBound: number, maxBound: number) => boolean) => {
+            if (map.size > 0) {
+                let maxBound: number | null = null;
+                let maxEl: HTMLElement | null = null;
+                for (let kvp of map) {
+                    const curEl = kvp[0];
+                    const curBound = kvp[1];
+                    if (maxBound == null || shouldTake(curBound, maxBound)) {
+                        maxBound = curBound;
+                        maxEl = curEl;
+                    }
+                }
+                if (maxEl) {
+                    maxEl.scrollIntoView({ block: "center", behavior: "smooth" });
+                }
+            }
+            recalculateAlertDisplay();
+        }
+        this.scrollToNextAlertAbove = () => {
+            scrollToNext(elementsNotVisibleAbove, (cur, max) => cur > max);
+        };
+        this.scrollToNextAlertBelow = () => {
+            scrollToNext(elementsNotVisibleBelow, (cur, max) => cur < max);
+        };
+
+        const mo = new MutationObserver(entries => {
+            recalculateAlertDisplay();
         });
         mo.observe(this.elMain, {
             subtree: true,
@@ -136,11 +147,21 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
             attributes: true
         });
 
+        const winResizeEvt = EventListenerUtil.addDisposableEventListener(window, "resize", () => {
+            recalculateAlertDisplay();
+        });
+        const appWindowStateChanged = new ObservableExpression(
+            () => this.viewModel?.appViewModel.appWindowState,
+            (v) => { recalculateAlertDisplay(); },
+            (e) => { recalculateAlertDisplay(); });
+
         return asDisposable(() => {
             if (io) {
                 io.disconnect();
                 io = null;
             }
+            winResizeEvt?.dispose();
+            appWindowStateChanged?.dispose();
             mo.disconnect();
             this.scrollToNextAlertAbove = null;
             this.scrollToNextAlertBelow = null;
@@ -377,6 +398,7 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
         }
 
         const result = this.renderCollapsibleSection({
+            vm: vm,
             id: "pmConvos",
             title: `Private Messages (${vm.pmConversations.length})`,
             isExpanded: isExpanded,
@@ -407,11 +429,13 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
 
         // TODO: add "Add Channels" button
         const result = this.renderCollapsibleSection({
+            vm: vm,
             id: "unpinnedChannels",
             title: `${sectionTitle} (${vm.unpinnedChannels.length.toLocaleString()})`,
             isExpanded: isExpanded,
             toggleCollapse: () => { vm.channelsCollapsed = isExpanded; },
             supportDragDrop: true,
+            addChannelButton: true,
             getHeaderDot: () => !isExpanded ? this.renderHeaderDot(
                     "unpinnedChannelsHeaderDot", 
                     vm.unpinnedChannels.filter(v => v.hasPing).length > 0,
@@ -437,6 +461,7 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
         }
 
         const result = this.renderCollapsibleSection({
+            vm: vm,
             id: "pinnedChannels",
             title: `Pinned Channels (${vm.pinnedChannels.length})`,
             isExpanded: isExpanded,
@@ -640,6 +665,16 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
 
         const headerDot = options.getHeaderDot();
 
+        let addChannelEl: VNode | null = null;
+        if (options.addChannelButton ?? false) {
+            const isSelected = options.vm.selectedTab instanceof AddChannelsViewModel;
+            addChannelEl = <button classList={["sectiontitle-addbtn", isSelected ? "selected" : "not-selected" ]} id="elAddChannelsButton" attr-tabindex="-1" on={{
+                    "click": () => {
+                        options.vm.showAddChannels();
+                    }
+                }}>+</button>;
+        }
+
         return <div key={id} id={id} classList={["section"]}>
             <div classList={["sectiontitle"]}>
                 <div classList={["sectiontitle-collapse"]}>
@@ -650,6 +685,7 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
                     </button>
                 </div>
                 <div classList={["sectiontitle-text"]}>{headerDot}{title}</div>
+                {addChannelEl}
             </div>
             <div classList={["section-collapsebody", options.isExpanded ? "expanded" : "collapsed"]}>
                 {options.renderContent()}
@@ -659,11 +695,13 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
 }
 
 interface SectionOptions {
+    vm: ActiveLoginViewModel,
     id: string,
     title: string,
     isExpanded: boolean,
     toggleCollapse: () => void,
     supportDragDrop: boolean,
+    addChannelButton?: boolean,
     getHeaderDot: () => (VNode | null),
     renderContent: () => (VNode | VNode[] | null)
 }

@@ -105,6 +105,8 @@
     }
 }
 */
+
+.messageitem.displaystyle-discord .message-content { display: contents; }
 .messageitem.displaystyle-discord:not(.system) {
     --icon-height: 42px;
     --vertical-gap: 4px;
@@ -158,6 +160,11 @@
     }
     & .messagetext {
         margin-bottom: 9px;
+        margin-right: 9px;
+    }
+    & .message-content {
+        margin-bottom: 9px;
+        margin-right: 9px;
     }
 
     &.emote .messagetext {
@@ -167,6 +174,9 @@
     &.roll .messagetext,
     &.emote .messagetext {
         font-style: italic;
+    }
+    &.spin .messagetext,
+    &.roll .messagetext {
         & .bbcode-b {
             background-color: white;
             color: black;
@@ -234,13 +244,15 @@
     }
 }
 
-.messageitem.displaystyle-discord.emote {
+.messageitem.displaystyle-discord.emote,
+.messageitem.displaystyle-discord.roll,
+.messageitem.displaystyle-discord.spin {
     grid-template-rows: calc((var(--icon-height) / 2) - (var(--vertical-gap) / 2)) var(--vertical-gap) auto;
     grid-template-columns: auto auto auto auto auto 1fr;
     grid-template-areas:
-        "icon timestamp"
-        "icon ."
-        "icon message";
+        "icon timestamp timestamp"
+        "icon . ."
+        "icon diceicon message";
     padding-top: 6px;
     padding-bottom: 0px;
 
@@ -255,6 +267,8 @@
     & .character { grid-area: character; }
     & .statusdot { grid-area: statusdot; }
     & .dice-icon { display: none; }
+    &.roll .dice-icon, 
+    &.spin .dice-icon { grid-area: diceicon; display: inline; margin-left: 0; margin-right: 5px; }
     & .messagetext { grid-area: message; }
 
     & .timestamp {
@@ -369,6 +383,11 @@
 .collapse-host .collapse-button-container {
     float: right;
     padding: 5px;
+    user-select: none;
+}
+.collapse-host:not(.is-oversized) .collapse-button-container {
+    visibility: hidden;
+    pointer-events: none;
 }
 .collapse-host .collapse-button {
     width: 55px;
@@ -390,9 +409,8 @@
 }
 .collapse-host.collapsible .collapse-button {
     display: block;
-    visibility: hidden;
-    pointer-events: none;
 }
+/*
 .collapse-host.collapsible.collapsed .collapse-button {
     visibility: visible;
     pointer-events: initial;
@@ -401,6 +419,7 @@
     visibility: visible;
     pointer-events: initial;
 }
+    */
 
 .collapse-host.collapsible .messageitem::after {
     content: "";

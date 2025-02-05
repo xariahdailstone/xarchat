@@ -21,6 +21,7 @@ import { SlashCommandViewModel } from "./SlashCommandViewModel.js";
 import { IterableUtils } from "../util/IterableUtils.js";
 import { ChannelFiltersViewModel } from "./ChannelFiltersViewModel.js";
 import { ObservableExpression } from "../util/ObservableExpression.js";
+import { ObservableValue } from "../util/Observable.js";
 
 export class ChatChannelUserViewModel extends ObservableBase implements IDisposable {
     constructor(
@@ -280,6 +281,15 @@ export class ChatChannelViewModel extends ChannelViewModel {
     set messageMode(value: ChatChannelMessageMode) {
         if (value != this._messageMode) {
             this._messageMode = value;
+
+            if (value == ChatChannelMessageMode.CHAT_ONLY) {
+                this._cantSendAsAdReasons.value =
+                    [CantSendAsAdReasons.ChannelDoesntAllowAds, ...this._cantSendAsAdReasons.value.filter(r => r != CantSendAsAdReasons.ChannelDoesntAllowAds)];
+            }
+            else {
+                this._cantSendAsAdReasons.value =this._cantSendAsAdReasons.value.filter(r => r != CantSendAsAdReasons.ChannelDoesntAllowAds);
+            }
+
             this.updateFilterOptions();
         }
     }
@@ -867,6 +877,9 @@ export class ChatChannelViewModel extends ChannelViewModel {
     @observableProperty
     canSendTextboxAsChat: boolean = true;
 
+    @observableProperty
+    adSendWaitRemainingSec: number | null = null;
+
     private readonly _sendQueue: SendQueue = new SendQueue();
 
     async sendTextboxInternalAsync(): Promise<void> {
@@ -920,11 +933,13 @@ export class ChatChannelViewModel extends ChannelViewModel {
         }
     }
 
+    private readonly _cantSendAsAdReasons: ObservableValue<CantSendAsAdReasons[]> = new ObservableValue([]);
+
     @observableProperty
-    canSendTextboxAsAd: boolean = true;
+    get canSendTextboxAsAd() { return this._cantSendAsAdReasons.value.length == 0; }
 
     async sendTextboxAsAdAsync(): Promise<void> {
-        if (this.textBoxContent && this.textBoxContent != "") {
+        if (this.textBoxContent && this.textBoxContent != "" && this.canSendTextboxAsAd) {
             const msgContent = this.textBoxContent;
             this.textBoxContent = "";
 
@@ -933,6 +948,21 @@ export class ChatChannelViewModel extends ChannelViewModel {
                 maxRetries: 3,
                 onAttemptAsync: async () => {
                     await this.parent.chatConnection.channelAdMessageAsync(this.name, msgContent);
+
+                    this._cantSendAsAdReasons.value =
+                        [CantSendAsAdReasons.WaitingOnAdThrottle, ...this._cantSendAsAdReasons.value.filter(r => r != CantSendAsAdReasons.WaitingOnAdThrottle)];
+
+                    const canSendAgainAt = (new Date()).getTime() + (1000 * 60 * 10);
+
+                    const tick = window.setInterval(() => { 
+                        const timeRemaining = Math.floor(Math.max(0, canSendAgainAt - (new Date()).getTime()) / 1000);
+                        this.adSendWaitRemainingSec = timeRemaining;
+                    }, 1000);
+                    window.setTimeout(() => {
+                        window.clearInterval(tick);
+                        this.adSendWaitRemainingSec = null;
+                        this._cantSendAsAdReasons.value = this._cantSendAsAdReasons.value.filter(r => r != CantSendAsAdReasons.WaitingOnAdThrottle);
+                    }, 1000 * 60 * 10);
                 },
                 onSuccessAsync: async () => {
                     this.addAdMessage({
@@ -1093,6 +1123,11 @@ export class ChatChannelViewModel extends ChannelViewModel {
         this.verifyCurrentlyEffectiveOp();
         this.sendTextboxInternalAsync();
     }
+}
+
+enum CantSendAsAdReasons {
+    ChannelDoesntAllowAds,
+    WaitingOnAdThrottle
 }
 
 export enum ChatChannelPresenceState {

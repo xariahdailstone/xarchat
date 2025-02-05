@@ -170,6 +170,16 @@ export class ChannelTextBox extends ComponentBase<ChannelViewModel> {
             }
         });
 
+        this.watchExpr(vm => vm instanceof ChatChannelViewModel ? vm.adSendWaitRemainingSec : null, remainSec => {
+            if (remainSec == null) {
+                elSendAd.innerText = "Send Ad";
+            }
+            else {
+                elSendAd.innerText = `Wait ${remainSec}s...`
+            }
+            updateDisableStates();
+        });
+
         const pushTextbox = () => {
             if (this.viewModel != null) {
                 this.viewModel.textBoxContent = elTextbox.value;
