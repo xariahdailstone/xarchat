@@ -82,8 +82,7 @@ export function errorNumberIsThrottle(errorNumber: number): boolean {
         errorNumber == ServerErrorNumbers.StatusUpdatesTooFast ||
         errorNumber == ServerErrorNumbers.SearchesTooFast ||
         errorNumber == ServerErrorNumbers.ModCallsTooFast ||
-        errorNumber == ServerErrorNumbers.RPAdsTooFast ||
-        errorNumber == ServerErrorNumbers.AdsNotAllowedInChannel) {
+        errorNumber == ServerErrorNumbers.RPAdsTooFast) {
 
         return true;
     }
