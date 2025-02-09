@@ -106,7 +106,7 @@
 }
 */
 
-.messageitem.displaystyle-discord .message-content { display: contents; }
+.messageitem.displaystyle-discord .message-content-container { display: flex; flex-direction: column; }
 .messageitem.displaystyle-discord:not(.system) {
     --icon-height: 42px;
     --vertical-gap: 4px;
@@ -131,7 +131,7 @@
     & .character { grid-area: character; }
     & .statusdot { grid-area: statusdot; }
     & .dice-icon { display: none; }
-    & .messagetext { grid-area: message; }
+    & .message-content-container { grid-area: message; }
 
     & .icon {
         width: var(--icon-height);
@@ -357,19 +357,23 @@
 
     --ad-collapse-max-height: calc(1px * var(--ad-collapse-max-height-numeric));
 }
-.collapse-host:has(.messageitem.displaystyle-discord) {
+.collapse-host:has(.messageitem.displaystyle-discord), 
+.collapse-host:has(.messageitem.displaystyle-discordn){
     border-bottom: none;
     --ad-collapse-max-height-numeric: 65;
 }
 
-.collapse-host:has(.ad) {
+.highlight-from-me .collapse-host:has(.from-me) {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+.messagecontainer .collapse-host:has(.ad) {
     background-color: rgba(0, 255, 100, 0.1);
 }
-.collapse-host:has(.has-ping) {
+.messagecontainer .collapse-host:has(.has-ping) {
     background-color: rgba(0, 0, 255, 0.2);
 }
-.collapse-host:has(.important) {
-    background-color: #500;
+.messagecontainer .collapse-host:has(.important) {
+    background-color: #500 !important;
 }
 
 .collapse-host.collapsed {
@@ -425,4 +429,128 @@
     content: "";
     display: table;
     clear: both;
+}
+
+
+
+
+.messageitem.displaystyle-discordn {
+    padding: 6px;
+
+    & .timestamp {
+        font-size: 80%;
+        opacity: 0.5;
+    }
+    & .header-info { display: inline-block; max-width: 1px; max-height: 1px; overflow: hidden; opacity: 0; }
+
+    &:not(:has(.character-container.is-system)) {
+        --icon-size: 42px;
+        --gap-size: 6px;
+
+        display: grid;
+        grid-template-columns: auto auto auto auto 1fr;
+        grid-template-rows: calc((var(--icon-size) / 2)) auto;
+        grid-template-areas:
+            "icon diceicon username timestamp ."
+            "icon messagecontainer messagecontainer messagecontainer messagecontainer";
+
+        & .icon { grid-area: icon; }
+        & .dice-icon { grid-area: diceicon; padding-bottom: calc(var(--gap-size) / 2); }
+        & .character-container { grid-area: username; padding-bottom: calc(var(--gap-size) / 2); }
+        & .timestamp { grid-area: timestamp; padding-bottom: calc(var(--gap-size) / 2); }
+        & .message-content-container { grid-area: messagecontainer; }
+
+        & .icon {
+            width: 42px;
+            height: 42px;
+            margin-right: 11px;
+            user-select: none;
+        }
+        & .character-container {
+            font-weight: bold;
+            align-self: flex-end;
+            margin-right: 8px;
+            user-select: none;
+
+            & .statusdot {
+                margin-right: 5px;
+            }
+        }
+        & .timestamp {
+            font-size: 80%;
+            align-self: flex-end;
+            margin-bottom: 0.15em;
+            opacity: 0.5;
+            user-select: none;
+        }
+        & .dice-icon { 
+            user-select: none; 
+            align-self: center;
+            margin-right: 6px;
+            font-style: normal;
+        }
+        & .message-content-container {
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+            padding-bottom: calc(var(--gap-size) / 2);
+
+            & .statusdot { display: none; }
+            & .character-status-spacer { display: none; }
+            & .character { display: none; }
+            & .character-spacer { display: none; }
+
+            & .message-content.emote,
+            & .message-content.roll,
+            & .message-content.spin {
+                font-style: italic;
+                & .dice-icon {
+                    margin-right: 0;
+                }
+                & .statusdot {
+                    display: initial;
+                    font-style: normal;
+                }
+                & .character-status-spacer {
+                    display: initial;
+                }
+                & .character { 
+                    display: initial; 
+                    font-weight: bold;
+                }
+                & .character-spacer {
+                    display: initial;
+                }
+            }
+
+            & .message-content.roll .bbcode-b {
+                background-color: white;
+                color: black;
+                padding-left: 5px;
+                padding-right: 5px;
+                border-radius: 5px;
+                font-style: normal;
+            }
+        }
+    }
+
+    &:has(.character-container.is-system) {
+        font-size: 85%;
+        display: grid;
+        grid-template-rows: auto;
+        grid-template-columns: auto 1fr;
+        grid-template-areas: "timestamp messagecontainer";
+        gap: 8px;
+
+        align-items: baseline;
+
+        & > * { display: none; }
+        & .timestamp { display: initial; grid-area: timestamp; }
+        & .message-content-container { display: initial; grid-area: messagecontainer; }
+        
+        & .message-content-container {
+            & .message-content .character { display: none; }
+            & .message-content .character-spacer { display: none; }
+        }
+    }
 }

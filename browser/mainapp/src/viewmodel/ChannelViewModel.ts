@@ -885,18 +885,18 @@ export class ChannelMessageViewModel extends ObservableBase implements IDisposab
 
     incrementParsedTextUsage() {
         this._parsedTextInUse++;
-        console.log("incrementParsedTextUsage", ObjectUniqueId.get(this), this._parsedTextInUse);
+        //console.log("incrementParsedTextUsage", ObjectUniqueId.get(this), this._parsedTextInUse);
         this.cancelParsedTextReleaseTimer();
     }
     decrementParsedTextUsage() {
         this._parsedTextInUse = Math.max(0, this._parsedTextInUse - 1);
-        console.log("decrementParsedTextUsage", ObjectUniqueId.get(this), this._parsedTextInUse);
+        //console.log("decrementParsedTextUsage", ObjectUniqueId.get(this), this._parsedTextInUse);
         if (this._parsedTextInUse == 0) {
             this.cancelParsedTextReleaseTimer();
             this._parsedTextReleaseTimer = HeldCacheManager.addReleasableItem(() => {
                 this._parsedTextReleaseTimer = null;
                 if (this._parsedText != null) {
-                    console.log("releasing parsedText");
+                    //console.log("releasing parsedText");
                     this._parsedText.dispose();
                     this._parsedText = null;
                 }
