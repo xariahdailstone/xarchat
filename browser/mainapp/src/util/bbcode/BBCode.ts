@@ -435,12 +435,20 @@ export class BBCodeParser {
                     sourceText: postText
                 });
             }
+            endedAt += m[0].length;
         }
         if (result.length == 0) {
             result.push({
                 type: "text",
                 text: raw,
                 sourceText: raw
+            });
+        }
+        else if (endedAt < raw.length) {
+            result.push({
+                type: "text",
+                text: raw.substring(endedAt),
+                sourceText: raw.substring(endedAt)
             });
         }
 
