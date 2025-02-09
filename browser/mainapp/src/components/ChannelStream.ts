@@ -5,6 +5,7 @@ import { BBCodeParser, ChatBBCodeParser } from "../util/bbcode/BBCode.js";
 import { CharacterLinkUtils } from "../util/CharacterLinkUtils.js";
 import { getEffectiveCharacterName, getEffectiveCharacterNameDocFragment } from "../util/CharacterNameIcons.js";
 import { KeyValuePair } from "../util/collections/KeyValuePair.js";
+import { ReadOnlyStdObservableCollection } from "../util/collections/ReadOnlyStdObservableCollection.js";
 import { NumberComparer } from "../util/Comparer.js";
 import { asDisposable, IDisposable, EmptyDisposable } from "../util/Disposable.js";
 import { EventListenerUtil } from "../util/EventListenerUtil.js";
@@ -22,9 +23,6 @@ import { CollectionView2 } from "./CollectionView2.js";
 import { CollectionViewLightweight } from "./CollectionViewLightweight.js";
 import { ComponentBase, componentElement } from "./ComponentBase.js";
 import { StatusDotLightweight } from "./StatusDot.js";
-
-const DEBUG_SCROLLING = false;
-const NEW_SCROLLING = false;
 
 enum ScrollSuppressionReason {
     NotConnectedToDocument = "NotConnectedToDocument",
@@ -117,10 +115,10 @@ export class ChannelStream extends ComponentBase<ChannelViewModel> {
                     this.updateCollapseHostMonitoring();
                 }
             };
-            HTMLUtils.clearChildren(elMessageContainer);
-            const tn = document.createElement("div");
-            elMessageContainer.appendChild(tn);
-            cmcv.element = tn;
+            // HTMLUtils.clearChildren(elMessageContainer);
+            // const tn = document.createElement("div");
+            // elMessageContainer.appendChild(tn);
+            cmcv.element = elMessageContainer;
             const mwatch = this.watchExpr(vm => vm.messages, m => {
                 cmcv.collection = m ?? null;
             });
@@ -225,7 +223,6 @@ export class ChannelStream extends ComponentBase<ChannelViewModel> {
     }
 
     private _resizeObserver: ResizeObserver | null = null;
-    private _knownSize: { width: number, cheight: number, sheight: number } = { width: 0, cheight: 0, sheight: 0 };
 
     protected override connectedToDocument(): void {
         this._resizeObserver = new ResizeObserverNice((entries) => {
@@ -251,482 +248,50 @@ export class ChannelStream extends ComponentBase<ChannelViewModel> {
     private resumeScrollRecording(reason: ScrollSuppressionReason, dontResetOnZero?: boolean) {
         this._scrollManager.resumeScrollRecording(reason, dontResetOnZero);
     }
-
-
-    private _pendingResetScroll: number | null = null;
-
-    private static SCROLL_TO_END = 9999999;
-    private scrollStreamTo(top: number): boolean {
-        const elMessageContainer = this.$("elMessageContainer") as HTMLDivElement;
-
-        if (top == ChannelStream.SCROLL_TO_END) {
-            elMessageContainer.scroll({ top: top, left: 0, behavior: "instant" });
-            return true;    
-        }
-
-        const SLACK = 10;
-        const scrollHeight = elMessageContainer.scrollHeight;
-        const clientHeight = elMessageContainer.clientHeight;
-
-        let isScrolledToBottom = false;
-        if (top >= scrollHeight - clientHeight - SLACK) {
-            top = scrollHeight - clientHeight;
-            isScrolledToBottom = true;
-        }
-
-        elMessageContainer.scroll({ top: top, left: 0, behavior: "instant" });
-        return isScrolledToBottom;
-    }
-}
-
-class AdCollapseManagerEntry {
-    constructor(
-        public readonly outer: HTMLDivElement,
-        public readonly inner: HTMLDivElement,
-        public readonly collapseBtn: HTMLButtonElement,
-        public readonly collapseBtnContainer: HTMLDivElement,
-        public readonly vm: ChannelMessageViewModel,
-        collapseHeight: number) {
-
-        this._collapseHeight = collapseHeight;
-        this.updateStyling();
-    }
-
-    private _collapseHeight: number;
-    private _isHighEnough: boolean = false;
-    private _isCollapsed: boolean = true;
-
-    get collapseHeight() { return this._collapseHeight; }
-    set collapseHeight(value: number) {
-        if (value !== this._collapseHeight) {
-            this._collapseHeight = value;
-            this.updateStyling();
-        }
-    }
-
-    get isHighEnough() { return this._isHighEnough; }
-    set isHighEnough(value: boolean) {
-        if (value !== this._isHighEnough) {
-            this._isHighEnough = value;
-            this.updateStyling();
-        }
-    }
-
-    get isCollapsed() { return this._isCollapsed; }
-    set isCollapsed(value: boolean) {
-        if (value !== this._isCollapsed) {
-            this._isCollapsed = value;
-            this.updateStyling();
-        }
-    }
-
-    updateStyling() {
-        if (!this._isHighEnough) {
-            this.styleNotHighEnough();
-        }
-        else if (this._isCollapsed) {
-            this.styleCollapsed();
-        }
-        else {
-            this.styleExpanded();
-        }
-    }
-
-    private styleNotHighEnough() {
-        //this.outer.style.maxHeight = this._collapseHeight + "px";
-        this.outer.classList.remove("collapsed");
-        this.outer.classList.remove("expanded");
-    }
-
-    private styleCollapsed() {
-        this.collapseBtn.innerText = "Expand";
-        //this.outer.style.maxHeight = this._collapseHeight + "px";
-        this.outer.classList.add("collapsed");
-        this.outer.classList.remove("expanded");
-    }
-
-    private styleExpanded() {
-        this.collapseBtn.innerText = "Collapse";
-        //this.outer.style.maxHeight = "none";
-        this.outer.classList.remove("collapsed");
-        this.outer.classList.add("expanded");
-    }
-
-    cleanup: (IDisposable | null) = null;
-}
-// type AdCollapseManagerEntry = { 
-//     outer: HTMLDivElement, 
-//     inner: HTMLDivElement, 
-//     collapseBtn: HTMLButtonElement,
-//     isCollapsed: boolean,
-//     vm: ChannelMessageViewModel, 
-//     cleanup: (IDisposable | null) 
-// };
-
-class AdCollapseManagerImpl {
-    constructor() {
-        this._rm = new ResizeObserverNice((entries) => this.handleResize(entries));
-    }
-
-    private readonly _rm: ResizeObserver;
-    private readonly _oiMap: Map<HTMLDivElement, AdCollapseManagerEntry> = new Map();
-
-    private handleResize(entries: ResizeObserverEntry[]) {
-        for (let entry of entries) {
-            const v = this._oiMap.get(entry.target as HTMLDivElement);
-            if (v) {
-                if (v.inner == entry.target) {
-                    this.handleInnerChange(v, entry.contentRect);
-                }
-            }
-        }
-    }
-
-    private handleInnerChange(v: AdCollapseManagerEntry, innerSize: DOMRectReadOnly) {
-        const collapseHeight = +(window.getComputedStyle(v.outer).getPropertyValue("--ad-collapse-max-height-numeric"));
-        const isCollapsable = (innerSize.height > collapseHeight);
-        if (isCollapsable) {
-            v.isHighEnough = true;
-        }
-        else {
-            v.isHighEnough = false;
-        }
-    }
-
-    add(vm: ChannelMessageViewModel, outerEl: HTMLDivElement, innerEl: HTMLDivElement) {
-        const collapseBtnContainer = document.createElement("div");
-        collapseBtnContainer.classList.add("collapse-button-container");
-        collapseBtnContainer.setAttribute("data-copycontent", "");
-
-        const collapseBtn = document.createElement("button");
-        collapseBtn.classList.add("collapse-button");
-        collapseBtn.innerText = "Expand";
-        collapseBtn.setAttribute("data-copycontent", "");
-        collapseBtn.setAttribute("data-iscollapsebutton", "true");
-        collapseBtnContainer.appendChild(collapseBtn);
-        
-        outerEl.insertBefore(collapseBtnContainer, innerEl);
-
-        const v = new AdCollapseManagerEntry(outerEl, innerEl, collapseBtn, collapseBtnContainer, vm, vm.appViewModel.collapseHeight);
-
-        this._oiMap.set(outerEl, v);
-        
-        this._oiMap.set(innerEl, v);
-
-        collapseBtn.addEventListener("click", () => {
-            v.isCollapsed = !v.isCollapsed;
-        });
-
-        this._rm.observe(outerEl);
-        this._rm.observe(innerEl);
-    }
-
-    remove(el: HTMLDivElement) {
-        const v = this._oiMap.get(el);
-        if (v) {
-            if (v.cleanup) {
-                v.cleanup.dispose();
-                v.cleanup = null;
-            }
-            v.collapseBtnContainer.remove();
-            this._rm.unobserve(v.inner);
-            this._rm.unobserve(v.outer);
-            this._oiMap.delete(v.inner);
-            this._oiMap.delete(v.outer);
-        }
-    }
-}
-
-const AdCollapseManager: AdCollapseManagerImpl = new AdCollapseManagerImpl();
-
-const dtf = new Intl.DateTimeFormat(undefined, { timeStyle: "short" });
-const dtfDate = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'numeric', year: 'numeric' });
-const dtfWithDate = new Intl.DateTimeFormat(undefined, { dateStyle: "short", timeStyle: "short" });
-
-function areSameDate(a: Date, b: Date) {
-    const aDate = a.getFullYear().toString() + '-' + a.getMonth().toString() + '-' + a.getDate().toString();
-    const bDate = b.getFullYear().toString() + '-' + b.getMonth().toString() + '-' + b.getDate().toString();
-    return (aDate == bDate);
 }
 
 @componentElement("x-channelmessagecollectionview")
-export class ChannelMessageCollectionView extends CollectionViewLightweight<KeyValuePair<any, ChannelMessageViewModel>> {
+export class ChannelMessageCollectionView extends ComponentBase<ReadOnlyStdObservableCollection<KeyValuePair<any, ChannelMessageViewModel>>> {
     constructor() {
         super();
 
-        this.watchExpr(vm => this.channelViewModel?.messageDisplayStyle, mds => {
-            if (mds) {
-                //console.log("message display style change -->", mds);
-                this.recreateElements();
-                //console.log("done with message display style change -->", mds);
-            }
+        HTMLUtils.assignStaticHTMLFragment(this.elMain, "<slot></slot>");
+
+        this.whenConnectedWithViewModel(vm => {
+            const mo = new MutationObserver(entries => {
+                for (let entry of entries) {
+                    if (entry.target == this) {
+                        this.containerElementChild.value = this.firstElementChild as (HTMLElement | null);
+                    }
+                }
+            });
+            mo.observe(this, {
+                childList: true
+            });
+
+            this.containerElementChild.value = this.firstElementChild as (HTMLElement | null);
+
+            const colWatch = this.watchExpr(vm => { return { containerElement: this.containerElementChild.value, vm: vm }; }, items => {
+                if (items) {
+                    this._renderer.setElementAndCollection(items.containerElement, items.vm);
+                }
+                else {
+                    this._renderer.setElementAndCollection(null, null);
+                }
+            });
+
+            return asDisposable(() => {
+                colWatch.dispose();
+                mo.disconnect();
+                this.containerElementChild.value = null;
+                this._renderer.setElementAndCollection(null, null);
+            });
         });
     }
 
-    private _channelViewModel: ObservableValue<(ChannelViewModel | null)> = new ObservableValue(null);
-    get channelViewModel() { return this._channelViewModel.value; }
-    set channelViewModel(value: (ChannelViewModel | null)) { this._channelViewModel.value = value; }
+    private readonly containerElementChild: ObservableValue<HTMLElement | null> = new ObservableValue(null);
 
-    createUserElement(kvm: KeyValuePair<any, ChannelMessageViewModel>): [HTMLElement, IDisposable] {
-        const vm = kvm.value;
-        switch (vm.type) {
-            case ChannelMessageType.CHAT:
-            case ChannelMessageType.AD:
-            case ChannelMessageType.ROLL:
-            case ChannelMessageType.SPIN:
-            case ChannelMessageType.SYSTEM:
-            case ChannelMessageType.SYSTEM_IMPORTANT:
-                return this.createStandardUserElement(vm);
-            case ChannelMessageType.LOG_NAV_PROMPT:
-                return this.createLogNavUserElement(vm);
-            case ChannelMessageType.TYPING_STATUS_INDICATOR:
-                return this.createTypingStatusElement(vm);
-        }
-    }
-
-    private createTypingStatusElement(vm: ChannelMessageViewModel): [HTMLElement, IDisposable] {
-        const resultDisposables: IDisposable[] = [];
-
-        let elMain = document.createElement("div");
-        elMain.classList.add("messageitem");
-        elMain.classList.add("typingstatusindicator");
-
-        const elMessageText = document.createElement("span");
-        elMessageText.classList.add("messagetext");
-
-        let emptySpan: HTMLSpanElement | null = null;
-        if (vm.text == "") {
-            emptySpan = document.createElement("span");
-            HTMLUtils.assignStaticHTMLFragment(emptySpan, "&nbsp;");
-        }
-        vm.incrementParsedTextUsage();
-        resultDisposables.push(asDisposable(() => vm.decrementParsedTextUsage()));
-        elMessageText.appendChild(vm.text != "" ? vm.parsedText : emptySpan!);
-        elMain.appendChild(elMessageText);
-
-        return [elMain, asDisposable(...resultDisposables)];
-    }
-
-    private createStandardUserElement(vm: ChannelMessageViewModel): [HTMLElement, IDisposable] {
-        const resultDisposables: IDisposable[] = [];
-        //let resultDisposable: IDisposable = EmptyDisposable;
-
-        const displayStyle = vm.channelViewModel?.messageDisplayStyle ?? ChannelMessageDisplayStyle.FCHAT;
-
-        let elMain = document.createElement("div");
-        elMain.classList.add("messageitem");
-        elMain.classList.add(`displaystyle-${displayStyle.toString().toLowerCase()}`);
-
-        let isSystemMessage = vm.type == ChannelMessageType.SYSTEM || vm.type == ChannelMessageType.SYSTEM_IMPORTANT;
-
-        let emoteStyle: ("none" | "normal" | "possessive") = "none";
-        if (vm.type == ChannelMessageType.CHAT && vm.text.startsWith("/me ")) {
-            emoteStyle = "normal";
-        }
-        else if (vm.type == ChannelMessageType.CHAT && vm.text.startsWith("/me's ")) {
-            emoteStyle = "possessive";
-        }
-
-        let isImportant = vm.type == ChannelMessageType.SYSTEM_IMPORTANT;
-        if (vm.type == ChannelMessageType.CHAT && vm.text.startsWith("/warn ")) {
-            const isChanOp = this.channelViewModel?.isEffectiveOp(vm.characterStatus.characterName) ?? false;
-            if (isChanOp) {
-                isImportant = true;
-            }
-        }
-
-        if (displayStyle == ChannelMessageDisplayStyle.DISCORD) {
-            const elIcon = document.createElement("img");
-            elIcon.classList.add("icon");
-            elIcon.src = URLUtils.getAvatarImageUrl(vm.characterStatus.characterName);
-            elMain.appendChild(elIcon);
-        }
-
-        const elTimestamp = document.createElement("span");
-        elTimestamp.classList.add("timestamp");
-        let tsText: string;
-        let copyText: string = "[" + ( areSameDate(new Date(), vm.timestamp) ? dtf.format(vm.timestamp) : dtfWithDate.format(vm.timestamp) ) + "]";
-        if (displayStyle == ChannelMessageDisplayStyle.DISCORD) {
-            tsText = ( areSameDate(new Date(), vm.timestamp) ? ("Today at " + dtf.format(vm.timestamp)) : (dtfDate.format(vm.timestamp) + " at " + dtf.format(vm.timestamp)) )
-        }
-        else {
-            tsText = copyText;
-        }
-        elTimestamp.innerText = tsText;
-        elTimestamp.setAttribute("data-copycontent", `[sub]${copyText}[/sub]`);
-        elMain.appendChild(elTimestamp);
-
-        const elTsSpacer = document.createElement("span");
-        elTsSpacer.classList.add("timestamp-spacer");
-        elTsSpacer.innerText = " ";
-        elMain.appendChild(elTsSpacer);
-
-        if (vm.type == ChannelMessageType.ROLL) {
-            const elDiceIcon = document.createElement("span");
-            elDiceIcon.classList.add("dice-icon");
-            elDiceIcon.innerText = "\u{1F3B2} ";
-            elMain.appendChild(elDiceIcon);
-        }
-        else if (vm.type == ChannelMessageType.SPIN) {
-            const elBottleIcon = document.createElement("span");
-            elBottleIcon.classList.add("dice-icon");
-            elBottleIcon.innerText = "\u{1F37E} ";
-            elMain.appendChild(elBottleIcon);
-        }
-        else if (vm.type == ChannelMessageType.CHAT && isImportant) {
-            const elWarningIcon = document.createElement("span");
-            elWarningIcon.classList.add("dice-icon");
-            elWarningIcon.innerText = "\u{1F6D1} ";
-            elMain.appendChild(elWarningIcon);
-        }
-        else if (vm.type == ChannelMessageType.AD) {
-            const elAdIcon = document.createElement("span");
-            elAdIcon.classList.add("dice-icon");
-            elAdIcon.innerText = "\u{1F4E2} ";
-            elMain.appendChild(elAdIcon);
-        }
-
-        let targetContainer: HTMLElement = elMain;
-        if (displayStyle == ChannelMessageDisplayStyle.DISCORD && emoteStyle != "none") {
-            const messageContentEl = document.createElement("span");
-            messageContentEl.classList.add("message-content");
-            elMain.appendChild(messageContentEl);
-            targetContainer = messageContentEl;
-        }
-
-        if (!isSystemMessage) {
-            const sdLightweight = new StatusDotLightweight();
-            sdLightweight.status = vm.characterStatus.status;
-            sdLightweight.element.classList.add("character-status");
-            sdLightweight.element.setAttribute("data-copycontent", "");
-            targetContainer.appendChild(sdLightweight.element);
-            resultDisposables.push(sdLightweight);
-
-            // const elUsernameStatus = document.createElement("x-statusdot");
-            // elUsernameStatus.classList.add("character-status");
-            // elUsernameStatus.setAttribute("status", OnlineStatusConvert.toString(vm.characterStatus.status));
-            // elUsernameStatus.setAttribute("statusmessage", vm.characterStatus.statusMessage);
-            // elMain.appendChild(elUsernameStatus);
-
-            const elCSSpacer = document.createElement("span");
-            elCSSpacer.classList.add("character-status-spacer");
-            elCSSpacer.setAttribute("data-copycontent", "");
-            elCSSpacer.innerText = " ";
-            targetContainer.appendChild(elCSSpacer);
-        }
-
-        const elUsername = document.createElement("span");
-        elUsername.classList.add("character");
-        if (!isSystemMessage) {
-            elUsername.classList.add("gender-" + (CharacterGenderConvert.toString(vm.characterStatus.gender) ?? "none"));
-            elUsername.setAttribute("data-copycontent", `[user]${vm.characterStatus.characterName.value}[/user]`);
-            CharacterLinkUtils.setupCharacterLink(elUsername, vm.activeLoginViewModel, vm.characterStatus.characterName, this.channelViewModel);
-        }
-        const ecnFrag = getEffectiveCharacterNameDocFragment(vm.characterStatus.characterName, vm.parent ?? vm.activeLoginViewModel);
-        elUsername.appendChild(ecnFrag);
-        targetContainer.appendChild(elUsername);
-
-        let spacerText = "";
-        switch (vm.type) {
-            case ChannelMessageType.ROLL:
-                spacerText = " ";
-                break;
-            case ChannelMessageType.SPIN:
-                spacerText = " ";
-                break;
-            case ChannelMessageType.CHAT:
-                if (emoteStyle == "none") {
-                    spacerText = ": "
-                }
-                else if (emoteStyle == "normal") {
-                    spacerText = " ";
-                }
-                else if (emoteStyle == "possessive") {
-                    spacerText = "'s ";
-                }
-                break;
-            case ChannelMessageType.AD:
-                spacerText = ": ";
-                break;
-            case ChannelMessageType.SYSTEM:
-            case ChannelMessageType.SYSTEM_IMPORTANT:
-                spacerText = ": ";
-                break;
-        }
-        const elUsernameSpacer = document.createElement("span");
-        elUsernameSpacer.classList.add("character-spacer");
-        elUsernameSpacer.innerText = spacerText;
-        targetContainer.appendChild(elUsernameSpacer); 
-
-        const elMessageText = document.createElement("span");
-        elMessageText.classList.add("messagetext");
-        vm.incrementParsedTextUsage();
-        resultDisposables.push(asDisposable(() => vm.decrementParsedTextUsage()));
-        elMessageText.appendChild(vm.parsedText);
-        targetContainer.appendChild(elMessageText);
-
-        elMain.classList.toggle("emote", (emoteStyle != "none"));
-        elMain.classList.toggle("ad", (vm.type == ChannelMessageType.AD));
-        elMain.classList.toggle("roll", (vm.type == ChannelMessageType.ROLL));
-        elMain.classList.toggle("spin", (vm.type == ChannelMessageType.SPIN));
-        elMain.classList.toggle("chat", (vm.type == ChannelMessageType.CHAT));
-        elMain.classList.toggle("system", isSystemMessage);
-        elMain.classList.toggle("important", isImportant);
-        elMain.classList.toggle("has-ping", vm.containsPing);
-        elMain.classList.toggle("from-me", CharacterName.equals(vm.characterStatus.characterName, vm.activeLoginViewModel.characterName));
-
-        const collapseAds = vm.type == ChannelMessageType.AD && vm.appViewModel.collapseAds;
-        if (collapseAds) {
-            let outerEl = document.createElement("div");
-            outerEl.setAttribute("data-messageid", vm.uniqueMessageId.toString());
-            outerEl.classList.add("collapse-host");
-            outerEl.classList.add("collapsible");
-            outerEl.setAttribute("data-copyinline", "true");
-            outerEl.appendChild(elMain);
-            AdCollapseManager.add(vm, outerEl, elMain);
-            return [outerEl, asDisposable(...resultDisposables, () => {
-                AdCollapseManager.remove(outerEl);
-            })];
-        }
-        else {
-            let outerEl = document.createElement("div");
-            outerEl.setAttribute("data-messageid", vm.uniqueMessageId.toString());
-            outerEl.classList.add("collapse-host");
-            outerEl.setAttribute("data-copyinline", "true");
-            outerEl.appendChild(elMain);
-            return [outerEl, asDisposable(...resultDisposables)];
-        }
-    }
-
-    private createLogNavUserElement(vm: ChannelMessageViewModel): [HTMLElement, IDisposable] {
-        let resultDisposables: IDisposable[] = [];
-
-        let elMain = document.createElement("div");
-        elMain.classList.add("messageitem");
-        elMain.classList.add("messageitem-lognav");
-
-        const elMessageText = document.createElement("div");
-        elMessageText.classList.add("lognavtext");
-        vm.incrementParsedTextUsage();
-        resultDisposables.push(asDisposable(() => vm.decrementParsedTextUsage()));
-        elMessageText.appendChild(vm.parsedText);
-        elMessageText.addEventListener("click", () => {
-            if (vm.onClick) {
-                vm.onClick();
-            }
-        });
-        elMain.appendChild(elMessageText);
-
-        let outerEl = document.createElement("div");
-            outerEl.setAttribute("data-messageid", vm.uniqueMessageId.toString());
-            outerEl.classList.add("collapse-host");
-            outerEl.setAttribute("data-copyinline", "true");
-            outerEl.appendChild(elMain);
-        return [outerEl, asDisposable(...resultDisposables)];
-    }
-
-    destroyUserElement(kvm: KeyValuePair<any, ChannelMessageViewModel>, el: HTMLElement): void {
-    }
+    private readonly _renderer: ChannelStreamMessageViewRenderer = new ChannelStreamMessageViewRenderer();
 }
 
 interface AnchorElementInfo {
