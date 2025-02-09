@@ -1027,7 +1027,7 @@ class ChannelStreamMessageViewRendererDiscord implements MessageRenderer {
             else {
                 let outerEl = <div key={`msg-${uniqueMessageId}`} classList={["collapse-host"]} attrs={{
                         "data-messageid": uniqueMessageId,
-                        "data-inline": "true"
+                        "data-copyinline": "true"
                     }} hook={{
                         "create": (_, e) => {
                             (e.elm! as HTMLElement).setAttribute("data-el-createdat", new Date().getTime().toString());
