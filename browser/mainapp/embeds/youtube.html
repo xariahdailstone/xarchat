@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title></title>
+        <link rel="stylesheet" href="../styles/fonts.css" />
+        <link rel="stylesheet" href="../styles/common.css" />
+        <link rel="stylesheet" href="../styles/dark-theme.css" />
+        <style>
+        html, body {
+            border: 0;
+            padding: 0;
+            margin: 0;
+            background: transparent;
+            color: white;
+        }
+        #elTarget {
+            width: 400px;
+            display: grid;
+            grid-template-columns: auto 1fr;
+            grid-template-rows: auto auto auto;
+            grid-template-areas:
+                "thumbnail thumbnail"
+                "yticon title"
+                "yticon author";
+            gap: 5px;
+        }
+        .thumbnail { 
+            grid-area: thumbnail;
+            max-width: 400px;
+        }
+        .yticon {
+            grid-area: yticon;
+            width: 32px;
+            height: 32px;
+            align-self: center;
+            margin-left: 8px;
+            margin-right: 8px;
+        }
+        .title {
+            font-weight: bold;
+            align-self: flex-end;
+            margin-right: 8px;
+        }
+        .author {
+            font-size: 90%;
+            opacity: 0.8;
+            align-self: flex-start;
+            margin-right: 8px;
+        }
+    </style>
+    </head>
+    <body>
+
+        <div id="elTarget">
+            <img class="yticon" src="https://www.youtube.com/s/desktop/eb0437e6/img/logos/favicon_32x32.png" />
+        </div>
+
+        <script>
+            const u = new URL(document.location);
+            const videoId = u.searchParams.get("vid");
+            const embedId = u.searchParams.get("eid");
+
+            (async () => {
+                const resp = await fetch(`https://youtube.com/watch?v=${videoId}`);
+                const ytBody = await resp.text();
+                const ytDoc = new DOMParser().parseFromString(ytBody, "text/html");
+
+                const thumbnailUrl = ytDoc.querySelector("meta[property='og:image']").content;
+                const videoTitle = ytDoc.querySelector("meta[property='og:title']").content;
+                const uploaderName = ytDoc.querySelector("span[itemprop='author'] link[itemprop='name']").getAttribute("content");
+
+                const elTarget = document.getElementById("elTarget");
+
+                const thumbnailImg = document.createElement("img");
+                thumbnailImg.classList.add("thumbnail");
+                thumbnailImg.addEventListener("load", () => {
+                    if (window.parent) {
+                    window.parent.postMessage({
+                        cmd: "embed-loaded",
+                        embedId: embedId,
+                        height: document.getElementById("elTarget").offsetHeight,
+                        width: document.getElementById("elTarget").offsetWidth,
+                    });
+                }
+                });
+                thumbnailImg.src = thumbnailUrl;
+                elTarget.appendChild(thumbnailImg);
+
+                const titleEl = document.createElement("div");
+                titleEl.classList.add("title");
+                titleEl.innerText = videoTitle;
+                elTarget.appendChild(titleEl);
+
+                const authorEl = document.createElement("div");
+                authorEl.classList.add("author");
+                authorEl.innerText = uploaderName;
+                elTarget.appendChild(authorEl);
+            })();
+        </script>
+    </body>
+</html>

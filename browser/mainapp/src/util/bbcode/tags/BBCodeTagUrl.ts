@@ -1,8 +1,10 @@
 import { ImagePreviewPopupViewModel } from "../../../viewmodel/popups/ImagePreviewPopupViewModel";
 import { LinkHintPopupViewModel } from "../../../viewmodel/popups/LinkHintPopupViewModel";
 import { TweetPreviewPopupViewModel } from "../../../viewmodel/popups/TweetPreviewPopupViewModel";
+import { CancellationToken } from "../../CancellationTokenSource";
 import { EL } from "../../EL";
 import { HostInterop } from "../../HostInterop";
+import { LinkPreviewData, LinkPreviewImageData, LinkPreviewProvider, LinkPreviewVideoData } from "../../linkpreviews/LinkPreviewProvider";
 import { URLUtils } from "../../URLUtils";
 import { BBCodeParseContext, BBCodeParser, getContentText } from "../BBCode";
 import { BBCodeTag } from "../BBCodeTag";
@@ -67,18 +69,21 @@ async function prepareLinkHintPopupAsync(context: BBCodeParseContext, el: HTMLEl
 }
 
 async function preparePreviewTooltipAsync(context: BBCodeParseContext, el: HTMLElement, linkUrl: string) {
-    const u = new URL(linkUrl);
-
     // if (u.host.endsWith("twitter.com")) {
     //     createTwitterPreviewTooltip(context, el, u);
     //     return;
     // }
 
-    const previewImageUrl = await URLUtils.getLinkedImagePreviewUrlAsync(linkUrl);
-    if (previewImageUrl != null) {
-        createImageLoadPreviewTooltip(context, el, linkUrl, previewImageUrl);
-        return;
+    const appViewModel = context.parseOptions.appViewModel;
+    if (appViewModel) {
+        LinkPreviewProvider.addMouseOverPreview(appViewModel, linkUrl, el);
     }
+
+    // const previewImageUrl = await URLUtils.getLinkedImagePreviewUrlAsync(linkUrl);
+    // if (previewImageUrl != null) {
+    //     createImageLoadPreviewTooltip(context, el, linkUrl, previewImageUrl);
+    //     return;
+    // }
 }
 
 export const BBCodeTagUrl = new BBCodeTag("url", true, true, (context, arg, content) => {

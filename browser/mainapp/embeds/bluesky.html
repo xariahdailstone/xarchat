@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title></title>
+        <style>
+            html, body {
+                padding: 0;
+                margin: 0;
+                border: 0;
+                overflow: hidden;
+            }
+            div.bluesky-embed {
+                margin: 0 !important;
+            }
+        </style>
+    </head>
+    <body>
+
+        <div id="elTarget"></div>
+
+        <script>
+            const u = new URL(document.location);
+            const postUrl = u.searchParams.get("url");
+            const embedId = u.searchParams.get("eid");
+
+            function insertAndExecute(id, text) {
+                document.getElementById(id).innerHTML = text;
+                var scripts = Array.prototype.slice.call(document.getElementById(id).getElementsByTagName("script"));
+                for (var i = 0; i < scripts.length; i++) {
+                    if (scripts[i].src != "") {
+                        var tag = document.createElement("script");
+                        tag.src = scripts[i].src;
+                        document.getElementsByTagName("head")[0].appendChild(tag);
+                    }
+                    else {
+                        eval(scripts[i].innerHTML);
+                    }
+                }
+            }
+
+            function notifyLoaded(s) {
+                if (window.parent) {
+                    window.parent.postMessage({
+                        cmd: "embed-loaded",
+                        embedId: embedId,
+                        height: document.getElementById("elTarget").offsetHeight,
+                        width: document.getElementById("elTarget").firstElementChild.offsetWidth,
+                    });
+                }
+            }
+
+            // the bluesky embed posts a message so its embedding script can resize the
+            // iframe after load.  We want to know when the skeet has loaded too, so we'll
+            // listen for events and check to see if the iframe's height has been set
+            // after a timeout
+            window.addEventListener('message', function (event) {
+                window.setTimeout(() => {
+                    var embed = document.querySelector("[data-bluesky-id]");
+                    if (!embed) {
+                        return;
+                    }
+                    if (embed.style.height) {
+                        notifyLoaded(embed.style.height);
+                    }
+                }, 1);
+            });
+
+            (async function () {
+                const elTarget = document.getElementById("elTarget");
+
+                const fetchResp = await fetch(postUrl);
+                const fetchedText = await fetchResp.text();
+                const pdoc = new DOMParser().parseFromString(fetchedText, "text/html");
+                const oEmbedLinkEl = pdoc.querySelector("link[rel='alternate'][type='application/json+oembed']");
+                const oEmbedUrl = oEmbedLinkEl.getAttribute("href");
+
+                const oefetchResp = await fetch(oEmbedUrl);
+                const oefetchJson = await oefetchResp.json();
+                insertAndExecute("elTarget", oefetchJson.html);
+            })();
+        </script>
+    </body>
+</html>

@@ -25,7 +25,8 @@
     line-height: 0;
 }
 
-#elMain > img {
+#elMain > img,
+#elMain > video {
     max-height: 90vh;
     max-width: 90vh;
 }
