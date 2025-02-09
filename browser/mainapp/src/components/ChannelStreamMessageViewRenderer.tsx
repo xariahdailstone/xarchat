@@ -5,6 +5,7 @@ import { CharacterLinkUtils } from "../util/CharacterLinkUtils";
 import { KeyValuePair } from "../util/collections/KeyValuePair";
 import { ReadOnlyStdObservableCollection } from "../util/collections/ReadOnlyStdObservableCollection";
 import { asDisposable, IDisposable } from "../util/Disposable";
+import { HTMLUtils } from "../util/HTMLUtils";
 import { Observable } from "../util/Observable";
 import { ObservableExpression } from "../util/ObservableExpression";
 import { classListNewModule } from "../util/snabbdom/classList-new";
@@ -78,8 +79,18 @@ export class ChannelStreamMessageViewRenderer implements IDisposable {
 
     get collection() { return this._collection; }
     set collection(value) { 
-        if (value !== this._element) {
+        if (value !== this._collection) {
             this._collection = value; 
+            this.handleElementCollectionChange();
+        }
+    }
+
+    setElementAndCollection(element: HTMLElement | null, collection: ReadOnlyStdObservableCollection<KeyValuePair<any, ChannelMessageViewModel>> | null) {
+        if (element !== this._element ||
+            collection !== this._collection) {
+
+            this._element = element;
+            this._collection = collection;
             this.handleElementCollectionChange();
         }
     }
@@ -138,7 +149,10 @@ export class ChannelStreamMessageViewRenderer implements IDisposable {
                             this.onUpdatingElements();
                             needEnd = true;
                             const initVNode = <></>;
-                            this._currentVNode = this.patch(element, initVNode);
+                            const target = document.createElement("span");
+                            HTMLUtils.clearChildren(element);
+                            element.appendChild(target);
+                            this._currentVNode = this.patch(target, initVNode);
                         }
                         this._lastRenderedElement = element;
                     }

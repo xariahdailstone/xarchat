@@ -581,7 +581,9 @@ export abstract class ComponentBase<TViewModel> extends HTMLElement {
                     this._whenConnectedDisposables.set(cf, d);
                 }
             }
-            catch { }
+            catch (e) {
+                this.logError("setupWhenConnecteds error", e);
+            }
         });
     }
 
