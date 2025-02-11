@@ -1,6 +1,7 @@
 .messagecontainer {
     overflow-x: hidden;
-    font: var(--chat-font);
+    font-size: var(--chat-font-size);
+    font-family: var(--chat-font-family);
     user-select: text;
 
     /* background: inherit; */

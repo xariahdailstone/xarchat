@@ -42,6 +42,14 @@ export class ChannelView extends StageViewComponent<ChannelViewModel> {
             this.elMain.classList.toggle("is-pmconvo", (vm instanceof PMConvoChannelViewModel));
             this.elMain.classList.toggle("is-console", (vm instanceof ConsoleChannelViewModel));
         });
+
+        this.watchExpr(vm => vm.getConfigSettingById("chatFontSize"), cfs => {
+            let ncfs = +((cfs) ? cfs : "12");
+            if (ncfs <= 0) {
+                ncfs = 12;
+            }
+            this.elMain.style.setProperty("--chat-font-size", `${ncfs}px`);
+        });
     }
 
     override viewActivated(): void {

@@ -149,7 +149,8 @@
     border: none;
     outline: none;
 
-    font: var(--chat-font);
+    font-size: var(--chat-font-size);
+    font-family: var(--chat-font-family);
 }
 .textbox-container.toolbar-shown #elTextbox {
     margin: var(--textbox-container-padding);
