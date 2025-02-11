@@ -234,6 +234,34 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     configBlockKey: "messageDisplayStyle"
                 },
                 {
+                    id: "chatFontSize",
+                    scope: getScopeArray(["global", "char", "chan", "convo"]),
+                    title: "Chat Font Size",
+                    description: "",
+                    descriptionByScope: {
+                        "global": "Change the size of the font in the chat message stream for channels and PM conversations. (You can change the size of everything with Ctrl+ScrollWheel.)",
+                        "char": "Change the size of the font in the chat message stream for channels and PM conversations. (You can change the size of everything with Ctrl+ScrollWheel.)",
+                        "char.chancategory": "Change the size of the font in the chat message stream for channels in this category. (You can change the size of everything with Ctrl+ScrollWheel.)",
+                        "char.chan": "Change the size of the font in the chat message stream for this channel. (You can change the size of everything with Ctrl+ScrollWheel.)",
+                        "char.convo": "Change the size of the font in the chat message stream for PM conversations with \"$CONVOCHAR$\". (You can change the size of everything with Ctrl+ScrollWheel.)"
+                    },
+                    type: "select",
+                    selectOptions: [
+                        { value: "9", displayValue: "9" },
+                        { value: "10", displayValue: "10" },
+                        { value: "11", displayValue: "11" },
+                        { value: "12", displayValue: "12" },
+                        { value: "13", displayValue: "13" },
+                        { value: "14", displayValue: "14" },
+                        { value: "15", displayValue: "15" },
+                        { value: "16", displayValue: "16" },
+                        { value: "17", displayValue: "17" },
+                        { value: "18", displayValue: "18" },
+                    ],
+                    defaultValue: "12",
+                    configBlockKey: "chatFontSize"
+                },
+                {
                     id: "collapseAds",
                     scope: getScopeArray(["global", "char", "chan"]),
                     title: "Collapse Large Ads",
