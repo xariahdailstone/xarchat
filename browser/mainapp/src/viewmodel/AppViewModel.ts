@@ -334,7 +334,7 @@ export class AppViewModel extends ObservableBase {
         ctxVm.addSeparator();
     }
 
-    getConfigSettingById(configSettingId: string, alvm?: { characterName: CharacterName } | null, channel?: ChannelViewModel | null) {
+    getConfigSettingById(configSettingId: string, alvm?: { characterName: CharacterName } | null, channel?: GetConfigSettingChannelViewModel | null) {
         const settingSchema = getConfigSchemaItemById(configSettingId);
         if (settingSchema) {
             const result = this.getConfigEntryHierarchical(settingSchema.configBlockKey, alvm, channel);
@@ -345,27 +345,47 @@ export class AppViewModel extends ObservableBase {
         }
     }
 
-    getConfigEntryHierarchical(key: string, alvm?: { characterName: CharacterName } | null, channel?: ChannelViewModel | null) {
+    getConfigEntryHierarchical(key: string, alvm?: { characterName: CharacterName } | null, channel?: GetConfigSettingChannelViewModel | null) {
         return this.getFirstConfigEntryHierarchical([key], alvm, channel);
     }
 
-    getFirstConfigEntryHierarchical(keys: string[], alvm?: { characterName: CharacterName } | null, channel?: ChannelViewModel | null): (unknown | null) {
+    getFirstConfigEntryHierarchical(keys: string[], alvm?: { characterName: CharacterName } | null, channel?: GetConfigSettingChannelViewModel | null): (unknown | null) {
         const k: string[] = [];
         if (alvm != null) {
             if (channel != null) {
-                if (channel instanceof ChatChannelViewModel) {
+                const getChannelTitle = () => {
+                    if (channel instanceof ChatChannelViewModel) { return channel.title; }
+                    if (typeof (channel as any).channelTitle == "string") { return (channel as any).channelTitle as string; }
+                    return null;
+                };
+                const getChannelCategory = () => {
+                    if (channel instanceof ChatChannelViewModel) { return channel.channelCategory; }
+                    if (typeof (channel as any).channelCategory == "string") { return (channel as any).channelCategory as string; }
+                    return null;
+                };
+                const getCharName = () => {
+                    if (channel instanceof PMConvoChannelViewModel) { return channel.character; }
+                    if ((channel as any).characterName) { return (channel as any).characterName; }
+                    return null;
+                };
+
+                const channelTitle = getChannelTitle();
+                const channelCategory = getChannelCategory();
+                const charName = getCharName();
+
+                if (channelTitle) {
                     for (let key of keys) {
-                        k.push(`character.${alvm.characterName.canonicalValue}.channel.${channel.title.toLowerCase()}.${key}`);
-                    }
-                    if (channel.channelCategory != null) {
-                        for (let key of keys) {
-                            k.push(`character.${alvm.characterName.canonicalValue}.channelcategory.${channel.channelCategory.toLowerCase()}.${key}`);
-                        }
+                        k.push(`character.${alvm.characterName.canonicalValue}.channel.${channelTitle.toLowerCase()}.${key}`);
                     }
                 }
-                else if (channel instanceof PMConvoChannelViewModel) {
+                if (channelCategory) {
                     for (let key of keys) {
-                        k.push(`character.${alvm.characterName.canonicalValue}.pm.${channel.character.canonicalValue}.${key}`);
+                        k.push(`character.${alvm.characterName.canonicalValue}.channelcategory.${channelCategory.toLowerCase()}.${key}`);
+                    }
+                }
+                if (charName) {
+                    for (let key of keys) {
+                        k.push(`character.${alvm.characterName.canonicalValue}.pm.${charName.canonicalValue}.${key}`);
                     }
                 }
             }
@@ -430,6 +450,11 @@ export class AppViewModel extends ObservableBase {
         }
     }
 }
+
+export type GetConfigSettingChannelViewModel = 
+    ChannelViewModel | 
+    { channelTitle: string, channelCategory: string } |
+    { characterName: CharacterName };
 
 export enum AppNotifyEventType {
     CONNECTED = "connect",

@@ -29,9 +29,6 @@
     line-height: 0;
 
     cursor: pointer;
-
-    transition: grid-template-columns 0.05s linear,
-        background-color 0.05s linear;
 }
 
 .cb {
@@ -54,6 +51,10 @@
     border-radius: calc((var(--cb-height) - (var(--cb-padding) * 2)) / 2);
 }
 
+.cb-container.is-user-initiated {
+    transition: grid-template-columns 0.05s linear,
+        background-color 0.05s linear;
+}
 
 .cb-container.is-checked {
     background-color: rgba(255, 255, 255, 0.3);   

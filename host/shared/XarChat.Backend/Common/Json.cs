@@ -93,6 +93,7 @@ namespace XarChat.Backend.Common
     [JsonSerializable(typeof(GuestbookPageInfo))]
     [JsonSerializable(typeof(SubmitEIconMetadataArgs))]
     [JsonSerializable(typeof(PartnerSearchFieldsDefinitions))]
+    [JsonSerializable(typeof(GetAllMemosResponse))]
     internal partial class SourceGenerationContext : JsonSerializerContext
     {
     }

@@ -12,7 +12,8 @@
     background-color: var(--bg-level-2);
     color: var(--fg-level-2);
 
-    font: var(--chat-font);
+    font-size: var(--chat-font-size);
+    font-family: var(--chat-font-family);
 }
 
 .tooltip-title {

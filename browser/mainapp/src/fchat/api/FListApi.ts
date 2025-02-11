@@ -230,6 +230,7 @@ export interface PartnerSearchFieldsDefinitions {
     readonly positions: ReadonlyArray<string>;
     readonly languages: ReadonlyArray<string>;
     readonly kinks: ReadonlyArray<PartnerSearchKink>;
+    readonly furryprefs: ReadonlyArray<string>;
 }
 export interface PartnerSearchKink {
     readonly name: string;

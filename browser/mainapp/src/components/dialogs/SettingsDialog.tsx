@@ -1,9 +1,9 @@
 import { AppViewModel } from "../../viewmodel/AppViewModel";
 import { SettingsDialogSectionViewModel, SettingsDialogItemViewModel, SettingsDialogSettingViewModel, SettingsDialogTabViewModel, SettingsDialogViewModel } from "../../viewmodel/dialogs/SettingsDialogViewModel";
 import { componentArea, componentElement } from "../ComponentBase";
-import { RenderingComponentBase } from "../RenderingComponentBase";
+import { makeRenderingComponent, RenderingComponentBase } from "../RenderingComponentBase";
 import { DialogBorderType, DialogComponentBase, dialogViewFor } from "./DialogFrame";
-import { Fragment, init, jsx, VNode, styleModule, toVNode, propsModule, eventListenersModule, h } from "../../snabbdom/index.js";
+import { Fragment, init, jsx, VNode, styleModule, toVNode, propsModule, eventListenersModule, h, Hooks } from "../../snabbdom/index.js";
 import { IterableUtils } from "../../util/IterableUtils";
 import { HTMLUtils } from "../../util/HTMLUtils";
 import { ConfigSchemaItemDefinitionItem } from "../../configuration/ConfigSchemaItem";
@@ -12,6 +12,7 @@ import { ColorHSSelectPopupViewModel } from "../../viewmodel/popups/ColorHSSelec
 import { HostInterop } from "../../util/HostInterop";
 import { NotificationRouting, NotificationRoutingTargetSetting } from "../../configuration/NotificationRouting";
 import { ColorRGBSelectPopupViewModel } from "../../viewmodel/popups/ColorRGBSelectPopupViewModel";
+import { ThemeToggle } from "../ThemeToggle";
 
 @componentArea("dialogs")
 @componentElement("x-settingsdialog")
@@ -19,19 +20,15 @@ import { ColorRGBSelectPopupViewModel } from "../../viewmodel/popups/ColorRGBSel
 export class SettingsDialog extends DialogComponentBase<SettingsDialogViewModel> {
     constructor() {
         super();
-        HTMLUtils.assignStaticHTMLFragment(this.elMain, "<x-settingsdialogcontent></x-settingsdialogcontent>");
+        makeRenderingComponent(
+            this, {
+                render: () => this.render()
+            }
+        );
     }
 
     override get dialogBorderType() { return DialogBorderType.FULLPAGEWITHTITLEBAR; }
-}
-
-@componentArea("dialogs")
-@componentElement("x-settingsdialogcontent")
-export class SettingsDialogContent extends RenderingComponentBase<SettingsDialogViewModel> {
-    constructor() {
-        super();
-    }
-
+    
     render(): VNode {
         const vm = this.viewModel;
         if (vm == null) {
@@ -98,6 +95,9 @@ export class SettingsDialogContent extends RenderingComponentBase<SettingsDialog
                 case "notifroutes":
                     inner = this.renderSettingNotifRoute(setting);
                     break;
+                case "select":
+                    inner = this.renderSettingSelect(setting);
+                    break;
             }
         }
         else {
@@ -148,9 +148,20 @@ export class SettingsDialogContent extends RenderingComponentBase<SettingsDialog
 
     private renderSettingBoolean(setting: SettingsDialogItemViewModel): VNode {
         const schema = setting.schema;
+
+        const hooks: Hooks = {
+            postpatch: (o, n) => {
+                (n.elm as ThemeToggle).value = !!setting.value;
+            }
+        }
+        const onChange = (e: Event) => {
+            this.logger.logDebug('on change', (e.target as ThemeToggle).value, setting.schema.id);
+            setting.value = (e.target as ThemeToggle).value;
+        };
+
         return <x-themetoggle classList={["setting-entry", "setting-entry-boolean"]} 
-            props={{ "value": !!setting.value }}
-            on={{ "change": (e) => { this.logger.logDebug('on change', (e.target as any).value, setting); setting.value = (e.target as any).value; } }}></x-themetoggle>
+            props={{ "value": !!setting.value }} hook={hooks}
+            on={{ "change": onChange }}></x-themetoggle>
     }
 
     private renderSettingColor(setting: SettingsDialogItemViewModel): VNode {
@@ -284,10 +295,10 @@ export class SettingsDialogContent extends RenderingComponentBase<SettingsDialog
     private static readonly ItemGeneratedIdSym = Symbol("ItemGeneratedIdSym");
 
     private getOrCreateSettingId(setting: ConfigSchemaItemDefinitionItem): string {
-        let id = (setting as any)[SettingsDialogContent.ItemGeneratedIdSym] as (string | undefined | null);
+        let id = (setting as any)[SettingsDialog.ItemGeneratedIdSym] as (string | undefined | null);
         if (!id) {
-            id = `gen${SettingsDialogContent._nextGeneratedIdNum++}`;
-            (setting as any)[SettingsDialogContent.ItemGeneratedIdSym] = id;
+            id = `gen${SettingsDialog._nextGeneratedIdNum++}`;
+            (setting as any)[SettingsDialog.ItemGeneratedIdSym] = id;
         }
         return id;
     }
@@ -365,6 +376,25 @@ export class SettingsDialogContent extends RenderingComponentBase<SettingsDialog
             { makeSelect("Channel", "targetChannel", "Send notifications of this type to the channel tab for the related channel (if one exists).") }
             { makeSelect("All", "everywhere", "Send notifications of this type to every open tab.") }
         </div>
-        return <></>;
+    }
+
+    private renderSettingSelect(setting: SettingsDialogItemViewModel): VNode {
+        const optionNodes: VNode[] = [];
+
+        for (let o of setting.schema.selectOptions!) {
+            const isSelected = setting.value == o.value;
+            optionNodes.push(<option attrs={{ "value": o.value, "selected": isSelected }}>{o.displayValue ?? o.value}</option>)
+        }
+
+        const onChange = (e: Event) => {
+            const elSelect = e.target as HTMLSelectElement;
+            setting.value = elSelect.value;
+        };
+
+        return <div classList={[ "setting-entry", "setting-entry-select" ]}>
+            <select classList={[ "theme-select" ]} on={{ "change": onChange }}>
+                {optionNodes}
+            </select>
+        </div>;
     }
 }

@@ -7,9 +7,11 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Mime;
+using System.Security.Principal;
 using System.Text;
 using System.Text.Json.Nodes;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 using XarChat.Backend.Common;
 using XarChat.Backend.Features.FListApi;
 using XarChat.Backend.Features.FListApi.Impl;
@@ -83,6 +85,16 @@ namespace XarChat.Backend.UrlHandlers.FListApiProxy
                 var authApi = await flistApi.GetAlreadyAuthenticatedFListApiAsync(account, cancellationToken);
                 await authApi.RemoveBookmarkAsync(name, cancellationToken);
                 return CustomResults.NewtonsoftJsonResult(new JsonObject(), SourceGenerationContext.Default.JsonObject);
+            });
+            app.MapGet(urlBase + "{account}/getMemo/{target}", async (
+                HttpRequest request,
+                [FromRoute] string account,
+                [FromRoute] string target,
+                CancellationToken cancellationToken) =>
+            {
+                var authApi = await flistApi.GetAlreadyAuthenticatedFListApiAsync(account, cancellationToken);
+                var response = await authApi.GetMemoAsync(target, cancellationToken);
+                return CustomResults.NewtonsoftJsonResult(response, SourceGenerationContext.Default.GetAllMemosResponseItem);
             });
             app.MapPost(urlBase + "{account}/saveMemo", async (
                 HttpRequest request,

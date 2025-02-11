@@ -91,7 +91,8 @@
     
     background: var(--bg-level-1);
     color: var(--fg-level-1);
-    font: var(--chat-font);
+    font-size: var(--chat-font-size);
+    font-family: var(--chat-font-family);
     border-radius: 8px;
     border: none;
     outline: none;

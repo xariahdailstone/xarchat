@@ -1,5 +1,5 @@
 import { Module } from "./modules/module";
-import { vnode, VNode } from "./vnode";
+import { Key, vnode, VNode } from "./vnode";
 import * as is from "./is";
 import { htmlDomApi, DOMAPI } from "./htmldomapi";
 
@@ -49,7 +49,7 @@ function isDocumentFragment(
   return api.isDocumentFragment!(vnode as any);
 }
 
-type KeyToIndexMap = { [key: string]: number };
+type KeyToIndexMap = { [key: Key]: number };
 
 type ArraysOf<T> = {
   [K in keyof T]: Array<T[K]>;
@@ -66,7 +66,7 @@ function createKeyToOldIdx(
   for (let i = beginIdx; i <= endIdx; ++i) {
     const key = children[i]?.key;
     if (key !== undefined) {
-      map[key as string] = i;
+      map[key] = i;
     }
   }
   return map;
@@ -78,7 +78,7 @@ const hooks: Array<keyof Module> = [
   "remove",
   "destroy",
   "pre",
-  "post",
+  "post"
 ];
 
 // TODO Should `domApi` be put into this in the next major version bump?
@@ -99,7 +99,7 @@ export function init(
     remove: [],
     destroy: [],
     pre: [],
-    post: [],
+    post: []
   };
 
   const api: DOMAPI = domApi !== undefined ? domApi : htmlDomApi;
@@ -138,7 +138,9 @@ export function init(
     return function rmCb() {
       if (--listeners === 0) {
         const parent = api.parentNode(childElm) as Node;
-        api.removeChild(parent, childElm);
+        if (parent !== null) {
+          api.removeChild(parent, childElm);
+        }
       }
     };
   }
@@ -160,6 +162,9 @@ export function init(
         vnode.text = "";
       }
       vnode.elm = api.createComment(vnode.text!);
+    } else if (sel === "") {
+      // textNode has no selector
+      vnode.elm = api.createTextNode(vnode.text!);
     } else if (sel !== undefined) {
       // Parse selector
       const hashIdx = sel.indexOf("#");
@@ -178,6 +183,13 @@ export function init(
       if (dotIdx > 0)
         elm.setAttribute("class", sel.slice(dot + 1).replace(/\./g, " "));
       for (i = 0; i < cbs.create.length; ++i) cbs.create[i](emptyNode, vnode);
+      if (
+        is.primitive(vnode.text) &&
+        (!is.array(children) || children.length === 0)
+      ) {
+        // allow h1 and similar nodes to be created w/ text and empty child list
+        api.appendChild(elm, api.createTextNode(vnode.text));
+      }
       if (is.array(children)) {
         for (i = 0; i < children.length; ++i) {
           const ch = children[i];
@@ -185,8 +197,6 @@ export function init(
             api.appendChild(elm, createElm(ch as VNode, insertedVnodeQueue));
           }
         }
-      } else if (is.primitive(vnode.text)) {
-        api.appendChild(elm, api.createTextNode(vnode.text));
       }
       const hook = vnode.data!.hook;
       if (isDef(hook)) {
@@ -342,15 +352,26 @@ export function init(
         if (oldKeyToIdx === undefined) {
           oldKeyToIdx = createKeyToOldIdx(oldCh, oldStartIdx, oldEndIdx);
         }
-        idxInOld = oldKeyToIdx[newStartVnode.key as string];
+        idxInOld = oldKeyToIdx[newStartVnode.key!];
         if (isUndef(idxInOld)) {
-          // New element
+          // `newStartVnode` is new, create and insert it in beginning
           api.insertBefore(
             parentElm,
             createElm(newStartVnode, insertedVnodeQueue),
             oldStartVnode.elm!
           );
+          newStartVnode = newCh[++newStartIdx];
+        } else if (isUndef(oldKeyToIdx[newEndVnode.key!])) {
+          // `newEndVnode` is new, create and insert it in the end
+          api.insertBefore(
+            parentElm,
+            createElm(newEndVnode, insertedVnodeQueue),
+            api.nextSibling(oldEndVnode.elm!)
+          );
+          newEndVnode = newCh[--newEndIdx];
         } else {
+          // Neither of the new endpoints are new vnodes, so we make progress by
+          // moving `newStartVnode` into position
           elmToMove = oldCh[idxInOld];
           if (elmToMove.sel !== newStartVnode.sel) {
             api.insertBefore(
@@ -363,8 +384,8 @@ export function init(
             oldCh[idxInOld] = undefined as any;
             api.insertBefore(parentElm, elmToMove.elm!, oldStartVnode.elm!);
           }
+          newStartVnode = newCh[++newStartIdx];
         }
-        newStartVnode = newCh[++newStartIdx];
       }
     }
 

@@ -27,8 +27,6 @@ import { ChannelFiltersViewModel } from "./ChannelFiltersViewModel.js";
 import { MultiSelectPopupViewModel } from "./popups/MultiSelectPopupViewModel.js";
 import { SlashCommandViewModel } from "./SlashCommandViewModel.js";
 
-
-
 export abstract class ChannelViewModel extends ObservableBase implements IDisposable {
     constructor(parent: ActiveLoginViewModel, title: string) {
         super();
@@ -71,6 +69,11 @@ export abstract class ChannelViewModel extends ObservableBase implements IDispos
     set title(value) { this._title = value; }
 
     abstract get collectiveName(): string;
+
+    get messageDisplayStyle(): ChannelMessageDisplayStyle {
+        const result = this.getConfigSettingById("messageDisplayStyle") as ChannelMessageDisplayStyle;
+        return result;
+    }
 
     @observableProperty
     showConfigButton: boolean = false;
@@ -882,18 +885,18 @@ export class ChannelMessageViewModel extends ObservableBase implements IDisposab
 
     incrementParsedTextUsage() {
         this._parsedTextInUse++;
-        console.log("incrementParsedTextUsage", ObjectUniqueId.get(this), this._parsedTextInUse);
+        //console.log("incrementParsedTextUsage", ObjectUniqueId.get(this), this._parsedTextInUse);
         this.cancelParsedTextReleaseTimer();
     }
     decrementParsedTextUsage() {
         this._parsedTextInUse = Math.max(0, this._parsedTextInUse - 1);
-        console.log("decrementParsedTextUsage", ObjectUniqueId.get(this), this._parsedTextInUse);
+        //console.log("decrementParsedTextUsage", ObjectUniqueId.get(this), this._parsedTextInUse);
         if (this._parsedTextInUse == 0) {
             this.cancelParsedTextReleaseTimer();
             this._parsedTextReleaseTimer = HeldCacheManager.addReleasableItem(() => {
                 this._parsedTextReleaseTimer = null;
                 if (this._parsedText != null) {
-                    console.log("releasing parsedText");
+                    //console.log("releasing parsedText");
                     this._parsedText.dispose();
                     this._parsedText = null;
                 }
@@ -909,6 +912,9 @@ export class ChannelMessageViewModel extends ObservableBase implements IDisposab
     }
 
     get parsedText() {
+        return this.parseResult.element;
+    }
+    get parseResult() {
         if (this._parsedText == null) {
             let effectiveText = this.text;
             if (this.type == ChannelMessageType.CHAT) {
@@ -916,6 +922,9 @@ export class ChannelMessageViewModel extends ObservableBase implements IDisposab
                     effectiveText = this.text.substring(4);
                 }
                 else if (this.text.startsWith("/me's ")) {
+                    effectiveText = this.text.substring(6);
+                }
+                else if (this.text.startsWith("/warn ")) {
                     effectiveText = this.text.substring(6);
                 }
             }
@@ -932,7 +941,7 @@ export class ChannelMessageViewModel extends ObservableBase implements IDisposab
             //registerCleanupDispose(this, parseResult);
             this._parsedText = parseResult;
         }
-        return this._parsedText.element;
+        return this._parsedText;
     }
 
     readonly containsPing: boolean;
@@ -941,6 +950,10 @@ export class ChannelMessageViewModel extends ObservableBase implements IDisposab
         if (this.suppressPing) {
             return false;
         }
+
+        if (!this.activeLoginViewModel.getConfigSettingById("allowPings", this.parent)) { return false; }
+        if (!this.activeLoginViewModel.getConfigSettingById("allowPings", { characterName: this.characterStatus.characterName })) { return false; }
+        if (this.type == ChannelMessageType.AD && !this.activeLoginViewModel.getConfigSettingById("allowPingsInAds", this.parent)) { return false; }
 
         const selfPingWord = this.activeLoginViewModel.getConfigSettingById("pingCharName", this.parent) ? [ this.parent!.activeLoginViewModel.characterName.value ] : [];
         const cfgPingWords = this.activeLoginViewModel.getConfigSettingById("pingWords", this.parent) as string[];
@@ -972,6 +985,12 @@ export class ChannelMessageViewModel extends ObservableBase implements IDisposab
         }
         return false;
     }
+
+    @observableProperty
+    isOversized: boolean | null = false;
+
+    @observableProperty
+    collapsed: boolean | null = true;
 
     serializeForLog(): SerializedChannelMessageViewModel {
         return {
@@ -1203,4 +1222,9 @@ export class MultiSelectChannelFilterOptionItem {
             }
         }
     }
+}
+
+export enum ChannelMessageDisplayStyle {
+    FCHAT = "fchat",
+    DISCORD = "discord"
 }

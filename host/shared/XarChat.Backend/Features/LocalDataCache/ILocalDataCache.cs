@@ -14,5 +14,9 @@ namespace XarChat.Backend.Features.LocalDataCache
             TimeSpan maxAge,
             JsonTypeInfo<T> jsonTypeInfo,
             CancellationToken cancellationToken);
+
+        Task EvictAsync(string cacheKey, CancellationToken cancellationToken);
+
+        Task AssignAsync<T>(string cacheKey, T value, JsonTypeInfo<T> jsonTypeInfo, TimeSpan duration, CancellationToken cancellationToken);
     }
 }

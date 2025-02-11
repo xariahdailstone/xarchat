@@ -10,6 +10,7 @@ import { FramePanelDialogViewModel } from "../viewmodel/dialogs/FramePanelDialog
 import { AsyncWebSocket } from "./AsyncWebSocket";
 import { CancellationToken, CancellationTokenSource } from "./CancellationTokenSource";
 import { SnapshottableMap } from "./collections/SnapshottableMap";
+import { SnapshottableSet } from "./collections/SnapshottableSet";
 import { IDisposable, EmptyDisposable, asDisposable } from "./Disposable";
 import { EventListenerUtil } from "./EventListenerUtil";
 import { XarHost2HostInteropEIconLoader } from "./HostInteropEIconLoader";
@@ -102,6 +103,10 @@ export interface IHostInterop {
 
     getEIconDataBlob(name: string, cancellationToken: CancellationToken): Promise<Blob>;
     submitEIconMetadata(name: string, contentLength: number, etag: string): Promise<void>;
+
+    setZoomLevel(value: number): Promise<void>;
+
+    getMemoAsync(account: string, getForChar: CharacterName, cancellationToken?: CancellationToken): Promise<string | null>;
 }
 
 export interface IXarHost2HostInterop extends IHostInterop {
@@ -187,6 +192,10 @@ class XarHost2Interop implements IXarHost2HostInterop {
         for (let sess of this.sessions) {
             sess.writeMessage = (msg) => this.writeToXCHostSocket(sess.prefix + msg);
         }
+
+        window.addEventListener("resize", () => {
+            this.doClientResize(window.innerWidth * window.devicePixelRatio, window.innerHeight * window.devicePixelRatio, false);
+        })
     }
 
     doDownloadStatusUpdate(data: any) {
@@ -392,6 +401,10 @@ class XarHost2Interop implements IXarHost2HostInterop {
         const cmd = rcmd.toLowerCase();
         const arg = spaceIdx == -1 ? "" : data.substring(spaceIdx + 1);
 
+        this._allResponseWaiters.forEachValueSnapshotted(x => {
+            x(cmd, arg);
+        })
+
         if (cmd == "clientresize") {
             const argo = JSON.parse(arg);
             this.doClientResize(argo[0], argo[1], false);
@@ -534,8 +547,36 @@ class XarHost2Interop implements IXarHost2HostInterop {
 
     private writeToXCHostSocket: (data: any) => void;
 
+    private async writeToXCHostSocketAndRead(data: any, onMessage: (cmd: string, data: string) => boolean): Promise<void> {
+        const ps = new PromiseSource();
+
+        const tw = (cmd: string, data: string) => {
+            let stopListening: boolean;
+            try {
+                stopListening = onMessage(cmd, data);
+            }
+            catch (e) {
+                stopListening = true;
+                this._allResponseWaiters.delete(tw);
+                ps.tryReject(e);
+            }
+            if (stopListening) {
+                this._allResponseWaiters.delete(tw);
+                ps.tryResolve(undefined);
+            }
+        };
+
+        this._allResponseWaiters.add(tw);
+
+        this.writeToXCHostSocket(data);
+
+        await ps.promise;
+    }
+
     private _nextMsgId: number = 1;
     private _responseWaiters: Map<number, { resolve: (data: any) => void, fail: (reason: string) => void, cancel: () => void }> = new Map();
+
+    private _allResponseWaiters: SnapshottableSet<(cmd: string, data: string) => void> = new SnapshottableSet();
 
     private dispatchReply(msgid: number, data: any) {
         const w = this._responseWaiters.get(msgid);
@@ -1133,6 +1174,50 @@ class XarHost2Interop implements IXarHost2HostInterop {
     //     const blob = await fetchResp.blob();
     //     return blob;
     // }
+
+    async setZoomLevel(value: number): Promise<void> {
+        this.writeToXCHostSocket("setZoomLevel " + JSON.stringify({
+            value: value
+        }));
+    }
+
+    async getMemoAsync(account: string, getForChar: CharacterName, cancellationToken?: CancellationToken): Promise<string | null> {
+        cancellationToken ??= CancellationToken.NONE;
+        const ps = new PromiseSource<string | null>();
+
+        await this.writeToXCHostSocketAndRead("getMemo " + JSON.stringify({
+                me: account,
+                char: getForChar.value
+            }), 
+            (cmd, arg) => {
+                if (cmd.toLowerCase() == "gotmemo") {
+                    var argObj = JSON.parse(arg);
+                    if (argObj.name == getForChar.value) {
+                        ps.tryResolve(argObj.note ?? null);
+                        return true;
+                    }
+                    else {
+                        return false;
+                    }
+                }
+                else if (cmd.toLowerCase() == "gotmemoerror") {
+                    var argObj = JSON.parse(arg);
+                    if (argObj.name == getForChar.value) {
+                        ps.tryReject(argObj.error);
+                        return true;
+                    }
+                    else {
+                        return false;
+                    }
+                }
+                else {
+                    return false;
+                }
+            });
+
+        const result = await ps.promise;
+        return result;
+    }
 }
 
 export type ChooseLocalFileOptions = {

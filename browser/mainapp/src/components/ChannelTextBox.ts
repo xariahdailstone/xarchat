@@ -36,10 +36,10 @@ export class ChannelTextBox extends ComponentBase<ChannelViewModel> {
                                 <x-iconimage src="assets/ui/textbox-toolbar/strikethrough.svg"></x-iconimage>
                             </div>
                             <div class="textbox-toolbar-separator"></div>
-                            <div class="textbox-toolbar-button" data-buttoncommand="subscript" title="Subscript (Ctrl+Down)">
+                            <div class="textbox-toolbar-button" data-buttoncommand="subscript" title="Subscript (Ctrl+Down or Ctrl+H)">
                                 <x-iconimage src="assets/ui/textbox-toolbar/subscript.svg"></x-iconimage>
                             </div>
-                            <div class="textbox-toolbar-button" data-buttoncommand="superscript" title="Superscript (Ctrl+Up)">
+                            <div class="textbox-toolbar-button" data-buttoncommand="superscript" title="Superscript (Ctrl+Up or Ctrl+Y)">
                                 <x-iconimage src="assets/ui/textbox-toolbar/superscript.svg"></x-iconimage>
                             </div>
                             <div class="textbox-toolbar-separator"></div>
@@ -168,6 +168,16 @@ export class ChannelTextBox extends ComponentBase<ChannelViewModel> {
                 elSendAd.classList.toggle("hidden", !showAdButton);
                 elSendChat.classList.toggle("hidden", !showChatButton);
             }
+        });
+
+        this.watchExpr(vm => vm instanceof ChatChannelViewModel ? vm.adSendWaitRemainingSec : null, remainSec => {
+            if (remainSec == null) {
+                elSendAd.innerText = "Send Ad";
+            }
+            else {
+                elSendAd.innerText = `Wait ${remainSec}s...`
+            }
+            updateDisableStates();
         });
 
         const pushTextbox = () => {

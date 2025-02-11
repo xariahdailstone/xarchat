@@ -3,6 +3,7 @@
     display: block;
     position: relative;
     overflow: hidden;
+    --ui-zoom-level: 1;
 }
 
 #elMain {

@@ -9,8 +9,10 @@ export interface ConfigSchemaItemDefinitionItem {
     scope?: ConfigSchemaScopeType[];
     title: string;
     description?: string;
+    descriptionByScope?: { [key in ConfigSchemaScopeType]: string };
     type: ConfigSchemaItemType;
     options?: ConfigSchemaOptionDefinition[];
+    selectOptions?: ConfigSchemaSelectOptionDefinition[];
     defaultValue: unknown;
     configBlockKey: string;
     items?: ConfigSchemaItemDefinition[];
@@ -28,6 +30,7 @@ export interface ConfigSchemaItemDefinitionSection {
     scope?: ConfigSchemaScopeType[];
     sectionTitle: string;
     description?: string;
+    descriptionByScope?: { [key in ConfigSchemaScopeType]: string };
     items: ConfigSchemaItemDefinition[];
 }
 
@@ -37,17 +40,23 @@ export interface ConfigSchemaOptionDefinition {
     prompt?: string;
     value?: unknown;
 }
+export interface ConfigSchemaSelectOptionDefinition {
+    value: string;
+    displayValue: string;
+}
 
 export type ConfigSchemaItemDefinition = (ConfigSchemaItemDefinitionItem | ConfigSchemaItemDefinitionSection);
 
-export type ConfigSchemaItemType = "text" | "boolean" | "text[]" | "radio" | "timespan" | "color" | "color-hs" | "notifroutes";
+export type ConfigSchemaItemType = "text" | "boolean" | "text[]" | "radio" | "timespan" | "color" | "color-hs" | "notifroutes" | "select";
 export type ConfigSchemaOptionItemType = "string" | "file";
 export type ConfigSchemaScopeType = "global" | "char" | "char.chancategory" | "char.chan" | "char.convo";
 export type ConfigSchemaScopeTypeSimple = "global" | "char" | "chan" | "convo";
 
 export type RoutedNotificationEventName = "errorGet" | "broadcastGet" | "systemMessageGet" | "friendAddRemove" | "friendRequest" | "bookmarkAddRemove" |
-    "interestAddRemove" | "ignoreAddRemove" | "serverOpAddRemove" | "meStatusUpdate" | "friendStatusUpdate" | "bookmarkStatusUpdate" |
-    "interestStatusUpdate" | "friendOnlineChange" | "bookmarkOnlineChange" | "interestOnlineChange" | "meKicked" | "otherKicked" | "chanOpChange" |
+    "interestAddRemove" | "ignoreAddRemove" | "serverOpAddRemove" | 
+    "meStatusUpdate" | "friendStatusUpdate" | "bookmarkStatusUpdate" | "interestStatusUpdate" | "otherStatusUpdate" |
+    "friendOnlineChange" | "bookmarkOnlineChange" | "interestOnlineChange" | "otherOnlineChange" | 
+    "meKicked" | "otherKicked" | "chanOpChange" |
     "chanInvited" | "noteGet";
 export function getFullRoutedNotificationConfigName(en: RoutedNotificationEventName) {
     return `notifrouting.${en}`;
@@ -116,6 +125,31 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     configBlockKey: "restoreStatusMessageOnLogin"
                 },
                 {
+                    id: "allowPings",
+                    scope: getScopeArray(["global", "char", "chan", "convo"]),
+                    title: "Allow Pings",
+                    description: "",
+                    descriptionByScope: {
+                        "global": "Allow pings from any source.",
+                        "char": "Allow pings from any source for a login session for \"$MYCHAR$\".",
+                        "char.chancategory": "Allow pings from any channels in the \"$CHANCATEGORY$\" category.",
+                        "char.chan": "Allow pings from this channel.",
+                        "char.convo": "Allow pings from any messages sent by \"$CONVOCHAR$\""
+                    },
+                    type: "boolean",
+                    defaultValue: true,
+                    configBlockKey: "allowPings"
+                },
+                {
+                    id: "allowPingsInAds",
+                    scope: getScopeArray(["global", "char", "chan"]),
+                    title: "Allow Pings in Ads",
+                    description: "Allow pings from roleplay ad messages.",
+                    type: "boolean",
+                    defaultValue: false,
+                    configBlockKey: "allowPingsInAds"
+                },
+                {
                     id: "pingCharName",
                     scope: getScopeArray(["global", "char", "chan"]),
                     title: "Ping On Your Character Name",
@@ -156,7 +190,14 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     id: "highlightMyMessages",
                     scope: getScopeArray(["global", "char", "chan", "convo"]),
                     title: "Highlight My Messages",
-                    description: "Highlight to messages from me with a lighter background color.",
+                    description: "",
+                    descriptionByScope: {
+                        "global": "Highlight messages sent by me with a lighter background color.",
+                        "char": "Highlight messages sent by me with a lighter background color.",
+                        "char.chancategory": "Highlight messages sent by me with a lighter background color.",
+                        "char.chan": "Highlight messages sent by me with a lighter background color.",
+                        "char.convo": "Highlight messages sent by me with a lighter background color in PM conversations with \"$CONVOCHAR$\"."
+                    },
                     type: "boolean",
                     defaultValue: true,
                     configBlockKey: "highlightMyMessages"
@@ -179,6 +220,56 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     defaultValue: true,
                     configBlockKey: "joinFriendsAndBookmarks"
                 },
+                {
+                    id: "messageDisplayStyle",
+                    scope: getScopeArray(["global", "char", "chan", "convo"]),
+                    title: "Message Display Style",
+                    description: "Select a display style for messages.",
+                    type: "select",
+                    selectOptions: [
+                        { value: "fchat", displayValue: "F-Chat" },
+                        { value: "discord", displayValue: "Discord" },
+                    ],
+                    defaultValue: "fchat",
+                    configBlockKey: "messageDisplayStyle"
+                },
+                {
+                    id: "chatFontSize",
+                    scope: getScopeArray(["global", "char", "chan", "convo"]),
+                    title: "Chat Font Size",
+                    description: "",
+                    descriptionByScope: {
+                        "global": "Change the size of the font in the chat message stream for channels and PM conversations. (You can change the size of everything with Ctrl+ScrollWheel.)",
+                        "char": "Change the size of the font in the chat message stream for channels and PM conversations. (You can change the size of everything with Ctrl+ScrollWheel.)",
+                        "char.chancategory": "Change the size of the font in the chat message stream for channels in this category. (You can change the size of everything with Ctrl+ScrollWheel.)",
+                        "char.chan": "Change the size of the font in the chat message stream for this channel. (You can change the size of everything with Ctrl+ScrollWheel.)",
+                        "char.convo": "Change the size of the font in the chat message stream for PM conversations with \"$CONVOCHAR$\". (You can change the size of everything with Ctrl+ScrollWheel.)"
+                    },
+                    type: "select",
+                    selectOptions: [
+                        { value: "9", displayValue: "9" },
+                        { value: "10", displayValue: "10" },
+                        { value: "11", displayValue: "11" },
+                        { value: "12", displayValue: "12" },
+                        { value: "13", displayValue: "13" },
+                        { value: "14", displayValue: "14" },
+                        { value: "15", displayValue: "15" },
+                        { value: "16", displayValue: "16" },
+                        { value: "17", displayValue: "17" },
+                        { value: "18", displayValue: "18" },
+                    ],
+                    defaultValue: "12",
+                    configBlockKey: "chatFontSize"
+                },
+                {
+                    id: "collapseAds",
+                    scope: getScopeArray(["global", "char", "chan"]),
+                    title: "Collapse Large Ads",
+                    description: "Show large ads in a collapsed format by default.",
+                    type: "boolean",
+                    defaultValue: "true",
+                    configBlockKey: "collapseAds"
+                }
                 // {
                 //     id: "submitNewEIcons",
                 //     scope: [ "global" ],
@@ -616,6 +707,18 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                 },
                 {
                     scope: getScopeArray(["global", "char"]),
+                    id: getFullRoutedNotificationConfigName("otherStatusUpdate"),
+                    title: "Anyone Else Status Updated",
+                    description: "Someone who is not a friend, bookmark, or interest updated their character status.",
+                    type: "notifroutes",
+                    defaultValue: "pmconvo",
+                    configBlockKey: getFullRoutedNotificationConfigName("otherStatusUpdate"),
+                    notifRouteOptions: {
+                        hasCharacterContext: true
+                    }
+                },
+                {
+                    scope: getScopeArray(["global", "char"]),
                     id: getFullRoutedNotificationConfigName("friendOnlineChange"),
                     title: "Friend Online/Offline",
                     description: "A friend came online or went offline.",
@@ -652,12 +755,12 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                 },
                 {
                     scope: getScopeArray(["global", "char"]),
-                    id: getFullRoutedNotificationConfigName("interestOnlineChange"),
+                    id: getFullRoutedNotificationConfigName("otherOnlineChange"),
                     title: "Anyone Else Online/Offline",
                     description: "Someone who is not a friend, bookmark, or interest came online or went offline.",
                     type: "notifroutes",
                     defaultValue: "pmconvo",
-                    configBlockKey: getFullRoutedNotificationConfigName("interestOnlineChange"),
+                    configBlockKey: getFullRoutedNotificationConfigName("otherOnlineChange"),
                     notifRouteOptions: {
                         hasCharacterContext: true
                     }

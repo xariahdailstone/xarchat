@@ -320,12 +320,12 @@ namespace MinimalWin32Test.UI
             }
         }
 
-        private void MaybeUpdateWindowSize()
+        private void MaybeUpdateWindowSize(bool force = false)
         {
             if (_webViewController != null && _webView != null && _appReady && !_destroyed)
             {
                 var clientRect = this.WindowHandle.ClientRect;
-                if (clientRect.Width != _lastNotifiedClientSize.Width || clientRect.Height != _lastNotifiedClientSize.Height)
+                if (force || clientRect.Width != _lastNotifiedClientSize.Width || clientRect.Height != _lastNotifiedClientSize.Height)
                 {
                     //if (_obm == null)
                     //{
@@ -345,7 +345,7 @@ namespace MinimalWin32Test.UI
                 }
 
                 var windowRect = this.WindowHandle.WindowRect;
-                if (windowRect.Width != _lastNotifiedWindowSize.Width || windowRect.Height != _lastNotifiedWindowSize.Height ||
+                if (force || windowRect.Width != _lastNotifiedWindowSize.Width || windowRect.Height != _lastNotifiedWindowSize.Height ||
                     windowRect.Top != _lastNotifiedWindowSize.Top || windowRect.Left != _lastNotifiedWindowSize.Left)
                 {
                     var desktopMetrics = GetDesktopMetricsString();
@@ -816,6 +816,15 @@ namespace MinimalWin32Test.UI
             });
         }
 
+        public void SetBrowserZoomLevel(float zoomLevel)
+        {
+            if (_webViewController is not null)
+            {
+                _webViewController.ZoomFactor = zoomLevel;
+                //MaybeUpdateWindowSize(true);
+            }
+        }
+
         public void Close()
         {
             User32.PostMessage(this.WindowHandle.Handle, StandardWindowMessages.WM_CLOSE, 0, 0);
@@ -970,6 +979,15 @@ namespace MinimalWin32Test.UI
             {
                 if (_browserWindow != null) { _browserWindow.StylesheetChanged(stylesheetPath); }
             });
+        }
+
+        public Task SetBrowserZoomLevelAsync(float zoomLevel)
+        {
+            InvokeInApplication(() =>
+            {
+                if (_browserWindow != null) { _browserWindow.SetBrowserZoomLevel(zoomLevel); }
+            });
+            return Task.CompletedTask;
         }
 
         public Task InvokeOnUIThread(Action action)

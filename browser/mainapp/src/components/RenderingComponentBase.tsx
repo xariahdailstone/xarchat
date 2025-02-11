@@ -15,7 +15,177 @@ import { CharacterGender } from "../shared/CharacterGender.js";
 import { HTMLUtils } from "../util/HTMLUtils.js";
 import { valueSyncModule } from "../util/snabbdom/valueSyncHook.js";
 
+export interface MakeRenderingComponentOptions {
+    render: () => (VNode | [VNode, IDisposable]);
+    afterRender?: () => (void | IDisposable | IDisposable[] | Iterable<IDisposable>);
+}
+export interface RenderingComponentFunctions {
+    readonly refreshDOM: () => void;
+    readonly stateHasChanged: () => void;
+}
+export function makeRenderingComponent<TViewModel>(
+    component: ComponentBase<TViewModel>,
+    options: MakeRenderingComponentOptions): RenderingComponentFunctions {
+
+    const patch = init([classListNewModule, propsModule, rawAttributesModule, styleModule, eventListenersModule, valueSyncModule /* , idModule */], undefined, {
+        experimental: {
+            fragments: true
+        }
+    });
+    HTMLUtils.assignStaticHTMLFragment(component.elMain, "<span id='elPlaceholder'></span>");
+    const initVNode = <div></div>;
+    let currentVNode = patch(component.$("elPlaceholder")!, initVNode);
+
+    let refreshing: number = 0;
+    let refreshDisposable: IDisposable | null = null;
+    let statehasChangedRegistration: number | null = null;
+    let currentDependencies: DependencySet = new DependencySet();
+
+    const addDependencyListener = (depSet: DependencySet, vm: any, propertyName: string) => {
+        if (component.isConnected && isObservable(vm)) {
+            depSet.maybeAddDependency(vm, propertyName, () => {
+                const newListener = (vm as Observable).addEventListener("propertychange", (e) => {
+                    if (e.propertyName == propertyName && depSet == currentDependencies) {
+                        stateHasChanged();
+                    }
+                })
+                return newListener;
+            });
+        }
+    }
+    const stateHasChanged = () => {
+        if (statehasChangedRegistration == null) {
+            statehasChangedRegistration = window.requestAnimationFrame(() => {
+                statehasChangedRegistration = null;
+                refreshDOM();
+            });
+        }
+    };
+    const refreshDOM = () => {
+        if (statehasChangedRegistration != null) {
+            window.cancelAnimationFrame(statehasChangedRegistration);
+            statehasChangedRegistration = null;
+        }
+
+        cleanupDependencyListeners();
+        const myDepSet = currentDependencies;
+
+        refreshing++;
+        const rmDisposable = Observable.addReadMonitor((vm, propName, propValue) => {
+            addDependencyListener(myDepSet, vm, propName);
+        });
+        try
+        {
+            if (refreshDisposable != null) {
+                refreshDisposable.dispose();
+                refreshDisposable = null;
+            }
+            const renderResult = options.render();
+            let newVNode: VNode;
+            if (renderResult instanceof Array) {
+                newVNode = renderResult[0];
+                refreshDisposable = renderResult[1];
+            }
+            else {
+                newVNode = renderResult;
+                refreshDisposable = null;
+            }
+            currentVNode = patch(currentVNode, newVNode);
+            
+            const afterRenderResult = options.afterRender ? options.afterRender() : null;
+            if (afterRenderResult) {
+                if (typeof (afterRenderResult as any)[Symbol.iterator] == "function") {
+                    const d = asDisposable(...afterRenderResult as Iterable<IDisposable>);
+                    refreshDisposable = asDisposable(refreshDisposable, d);
+                }
+                else if (afterRenderResult instanceof Array) {
+                    refreshDisposable = asDisposable(refreshDisposable, ...afterRenderResult)
+                }
+                else {
+                    refreshDisposable = asDisposable(refreshDisposable, afterRenderResult as IDisposable)
+                }
+            }
+        }
+        finally
+        {
+            rmDisposable.dispose();
+            refreshing--;
+        }
+    };
+    const cleanupDependencyListeners = () => {
+        currentDependencies.dispose();
+        currentDependencies = new DependencySet();
+    };
+
+    component.addEventListener("viewmodelchange", () => {
+        stateHasChanged();
+    });
+    component.addEventListener("connected", () => {
+        refreshDOM();
+    });
+    component.addEventListener("disconnected", () => {
+        cleanupDependencyListeners();
+        if (refreshDisposable != null) {
+            refreshDisposable.dispose();
+            refreshDisposable = null;
+        }
+    });
+
+    return {
+        refreshDOM: refreshDOM,
+        stateHasChanged: stateHasChanged
+    }
+}
+
 export abstract class RenderingComponentBase<TViewModel> extends ComponentBase<TViewModel> {
+    constructor() {
+        super();
+        this._rcFuncs = makeRenderingComponent(
+            this, {
+                render: () => this.render(),
+                afterRender: () => this.afterRender()
+            });
+    }
+
+    private readonly _rcFuncs: RenderingComponentFunctions;
+
+    protected abstract render(): (VNode | [VNode, IDisposable]);
+
+    protected afterRender(): (void | IDisposable | IDisposable[] | Iterable<IDisposable>) { }
+
+    refreshDOM() {
+        this._rcFuncs.refreshDOM();
+    }
+
+    stateHasChanged() {
+        this._rcFuncs.stateHasChanged();
+    }
+
+    protected getCharacterStatus(characterName: CharacterName | null | undefined): CharacterStatus {
+        let alvm: (ActiveLoginViewModel | null) = null;
+        let tvm = this.viewModel;
+
+        if (!characterName) {
+            return CharacterSet.emptyStatus(CharacterName.create(""));
+        }
+
+        while (tvm) {
+            if (tvm instanceof ActiveLoginViewModel) {
+                alvm = tvm;
+                break;
+            }
+            tvm = (tvm as any).parent;
+        }
+
+        if (alvm == null) {
+            return CharacterSet.emptyStatus(characterName);
+        }
+
+        return alvm.characterSet.getCharacterStatus(characterName);
+    }
+}
+
+export abstract class RenderingComponentBaseOld<TViewModel> extends ComponentBase<TViewModel> {
     constructor() {
         super();
 
