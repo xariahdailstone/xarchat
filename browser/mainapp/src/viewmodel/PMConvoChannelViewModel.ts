@@ -17,6 +17,7 @@ import { IDisposable } from "../util/Disposable.js";
 import { IterableUtils } from "../util/IterableUtils.js";
 import { ChannelFiltersViewModel } from "./ChannelFiltersViewModel.js";
 import { ObservableExpression } from "../util/ObservableExpression.js";
+import { CatchUtils } from "../util/CatchUtils.js";
 
 
 export class PMConvoChannelViewModelSortKey { 
@@ -260,6 +261,13 @@ export class PMConvoChannelViewModel extends ChannelViewModel {
     async sendTextboxInternalAsync(): Promise<void> {
         if (this.textBoxContent && this.textBoxContent != "") {
             const msgContent = this.textBoxContent;
+            try {
+                await this.parent.chatConnection.checkPrivateMessageSendAsync(this.character, msgContent);
+            }
+            catch (e) { 
+                this.addSystemMessage(new Date(), `Cannot send: ${CatchUtils.getMessage(e)}`, true);
+                return;
+            }
             this.textBoxContent = "";
 
             this.pendingSendsCount++;
