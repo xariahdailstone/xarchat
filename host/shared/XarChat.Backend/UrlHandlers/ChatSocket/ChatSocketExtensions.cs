@@ -256,7 +256,7 @@ namespace XarChat.Backend.UrlHandlers.ChatSocket
 
         private static async Task SocketToSocketLoop(WebSocket inSocket, WebSocket outSocket, CancellationToken cancellationToken)
         {
-            var buf = new byte[4096];
+            var buf = new byte[128 * 1024];
             while (true)
             {
                 var recvResult = await inSocket.ReceiveAsync(buf, cancellationToken);

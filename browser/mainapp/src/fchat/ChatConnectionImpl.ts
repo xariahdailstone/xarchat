@@ -188,11 +188,31 @@ export class ChatConnectionImpl implements ChatConnection {
         }
     }
 
+    async checkChannelSendMessageAsync(channel: ChannelName, message: string): Promise<void> {
+        if (message.length == 0) { throw new Error("You must supply a message."); }
+
+        const varChatMax = this._serverVariables.get("chat_max");
+        if (this._serverVariables.has("chat_max") 
+            && message.length > +varChatMax) { 
+            throw new Error(`Your message is too long.  Messages in channels cannot exceed ${(+varChatMax).toLocaleString()} characters.`); }
+    }
+
     async channelSendMessageAsync(channel: ChannelName, message: string): Promise<void> {
+        await this.checkChannelSendMessageAsync(channel, message);
         await this.bracketedSendAsync({ code: "MSG", body: { channel: channel.value, message: message }}, ERRAsFailure);
     }
 
+    async checkChannelAdMessageAsync(channel: ChannelName, message: string): Promise<void> {
+        if (message.length == 0) { throw new Error("You must supply an ad message."); }
+
+        const varLfrpMax = this._serverVariables.get("lfrp_max");
+        if (this._serverVariables.has("lfrp_max") 
+            && message.length > +varLfrpMax) { 
+            throw new Error(`Your message is too long.  Roleplay ads cannot exceed ${(+varLfrpMax).toLocaleString()} characters.`); }
+    }
+
     async channelAdMessageAsync(channel: ChannelName, message: string): Promise<void> {
+        await this.checkChannelAdMessageAsync(channel, message);
         await this.bracketedSendAsync({ code: "LRP", body: { channel: channel.value, message: message }}, ERRAsFailure);
     }
 
@@ -279,7 +299,17 @@ export class ChatConnectionImpl implements ChatConnection {
         await this.sendMessageRawAsync({ code: "TPN", body: { character: character.value, status: TypingStatusConvert.toString(typingStatus) }});
     }
 
+    async checkPrivateMessageSendAsync(character: CharacterName, message: string): Promise<void> {
+        if (message.length == 0) { throw new Error("You must supply a message."); }
+
+        const varPrivMax = this._serverVariables.get("priv_max");
+        if (this._serverVariables.has("priv_max") 
+            && message.length > +varPrivMax) { 
+            throw new Error(`Your message is too long.  Private messages cannot exceed ${(+varPrivMax).toLocaleString()} characters.`); }
+    }
+
     async privateMessageSendAsync(character: CharacterName, message: string): Promise<void> {
+        await this.checkPrivateMessageSendAsync(character, message);
         await this.bracketedSendAsync({ code: "PRI", body: { recipient: character.value, message: message }}, ERRAsFailure);
     }
 
@@ -1314,6 +1344,11 @@ export class ChatConnectionImpl implements ChatConnection {
     }
 
     async changeChannelDescriptionAsync(channel: ChannelName, description: string): Promise<void> {
+        const varCdsMax = this._serverVariables.get("cds_max");
+        if (this._serverVariables.has("cds_max") 
+            && description.length > +varCdsMax) { 
+            throw new Error(`That description is too long.  Channel descriptions cannot exceed ${(+varCdsMax).toLocaleString()} characters.`); }
+
         await this.bracketedSendAsync({
             code: "CDS", body: {
                 channel: channel.value,

@@ -500,6 +500,11 @@
             & .character-status-spacer { display: none; }
             & .character { display: none; }
             & .character-spacer { display: none; }
+            
+            & .timestamp { 
+                margin-top: 5px; 
+                margin-left: -18px; 
+            }
 
             & .message-content.emote,
             & .message-content.roll,

@@ -873,6 +873,11 @@ class ChannelStreamMessageViewRendererDiscord implements MessageRenderer {
         return res;
     }
 
+    private getTimestampDisplay(dt: Date) {
+        const tsText = ( areSameDate(new Date(), dt) ? ("Today at " + dtf.format(dt)) : (dtfDate.format(dt) + " at " + dtf.format(dt)) );        
+        return tsText;
+    }
+
     private renderStandardUserElement(vm: ChannelMessageViewModel, previousRMC: PreviousRenderedMessageContainer | null): [VNode | null, IDisposable, PreviousRenderedMessageContainer | null] {
         const resultDisposables: IDisposable[] = [];
 
@@ -895,11 +900,11 @@ class ChannelStreamMessageViewRendererDiscord implements MessageRenderer {
             !isImportant
             && (vm.type == ChannelMessageType.CHAT);
 
-        const rbody = this.renderStandardUserElementBody(vm, resultDisposables);
+        const rbody = this.renderStandardUserElementBody(vm, resultDisposables, canIncludeInPrevious ? previousRMC : null);
 
         if (canIncludeInPrevious) {
             previousRMC!.appendMessageContent(rbody);
-            return [null, asDisposable(...resultDisposables), previousRMC];
+            return [null, asDisposable(...resultDisposables), { ...previousRMC, lastTimestamp: vm.timestamp }];
         }
         else {
             const elIcon = <img key={`msg-${uniqueMessageId}-icon`} classList={["icon"]} attr-src={URLUtils.getAvatarImageUrl(vm.characterStatus.characterName)} attrs={{
@@ -907,7 +912,7 @@ class ChannelStreamMessageViewRendererDiscord implements MessageRenderer {
                 }} />;
 
             let copyText: string = "[" + ( areSameDate(new Date(), vm.timestamp) ? dtf.format(vm.timestamp) : dtfWithDate.format(vm.timestamp) ) + "]";
-            let tsText = ( areSameDate(new Date(), vm.timestamp) ? ("Today at " + dtf.format(vm.timestamp)) : (dtfDate.format(vm.timestamp) + " at " + dtf.format(vm.timestamp)) );
+            const tsText = this.getTimestampDisplay(vm.timestamp);
             const elTimestamp = <span key={`msg-${uniqueMessageId}-timestamp`} classList={["timestamp"]} attrs={{
                     "data-copycontent": ""
                 }}>{tsText}</span>
@@ -1037,13 +1042,14 @@ class ChannelStreamMessageViewRendererDiscord implements MessageRenderer {
                         speakingCharacterName: vm.characterStatus.characterName,
                         appendMessageContent: (vnode: VNode) => {
                             msgContainer.children!.push(vnode);
-                        }
+                        },
+                        lastTimestamp: vm.timestamp
                     } : null];
             }
         }
     }
 
-    private renderStandardUserElementBody(vm: ChannelMessageViewModel, resultDisposables: IDisposable[]): VNode {
+    private renderStandardUserElementBody(vm: ChannelMessageViewModel, resultDisposables: IDisposable[], previousRMC: PreviousRenderedMessageContainer | null): VNode {
         const mainClasses: string[] = [];
 
         let isSystemMessage = vm.type == ChannelMessageType.SYSTEM || vm.type == ChannelMessageType.SYSTEM_IMPORTANT;
@@ -1179,7 +1185,16 @@ class ChannelStreamMessageViewRendererDiscord implements MessageRenderer {
         copyPrefix.push("[/user]");
         copyPrefix.push(spacerText);
 
-        return <div classList={[ "message-content", ...mainClasses ]}><span classList={["header-info"]}>{copyPrefix.join("")}</span>{targetContainer}</div>;
+        let timestampHintNode: VNode | null = null;
+        if (previousRMC != null) {
+            const prevTSStr = this.getTimestampDisplay(previousRMC.lastTimestamp);
+            const thisTSStr = this.getTimestampDisplay(vm.timestamp);
+            if (thisTSStr != prevTSStr) {
+                timestampHintNode = <div classList={[ "timestamp" ]} attrs={{ "data-copycontent": "" }}>{thisTSStr}</div>;
+            }
+        }
+
+        return <div classList={[ "message-content", ...mainClasses ]}>{timestampHintNode}<span classList={["header-info"]}>{copyPrefix.join("")}</span>{targetContainer}</div>;
     }
 
     private createLogNavUserElement(vm: ChannelMessageViewModel, previousRMC: PreviousRenderedMessageContainer | null): [VNode, IDisposable, PreviousRenderedMessageContainer | null] {
@@ -1226,4 +1241,5 @@ class ChannelStreamMessageViewRendererDiscord implements MessageRenderer {
 interface PreviousRenderedMessageContainer {
     speakingCharacterName: CharacterName;
     appendMessageContent: (vnode: VNode) => void;
+    lastTimestamp: Date;
 }

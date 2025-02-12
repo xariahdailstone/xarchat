@@ -193,13 +193,22 @@ export class NullChatConnection implements ChatConnection {
     async leaveChannelAsync(channel: ChannelName): Promise<void> {
     }
 
+    async checkChannelSendMessageAsync(channel: ChannelName, message: string): Promise<void> {
+    }
+
     async channelSendMessageAsync(channel: ChannelName, message: string): Promise<void> {
+    }
+
+    async checkChannelAdMessageAsync(channel: ChannelName, message: string): Promise<void> {
     }
 
     async channelAdMessageAsync(channel: ChannelName, message: string): Promise<void> {
     }
 
     async setTypingStatusAsync(chanracter: CharacterName, typingStatus: TypingStatus): Promise<void> {
+    }
+
+    async checkPrivateMessageSendAsync(character: CharacterName, message: string): Promise<void> {
     }
 
     async privateMessageSendAsync(character: CharacterName, message: string): Promise<void> {

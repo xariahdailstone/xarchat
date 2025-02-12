@@ -164,6 +164,13 @@ export class ActiveLoginViewModel extends ObservableBase {
 
     get appViewModel() { return this.parent; }
 
+    private readonly _serverVariables: ObservableValue<{ [key: string]: any }> = new ObservableValue({});
+    get serverVariables() { return this._serverVariables.value; }
+    updateServerVariable(varName: string, varValue: any) {
+        const nv = {...this._serverVariables.value, [varName]: varValue};
+        this._serverVariables.value = nv;
+    }
+
     private readonly _miscTabs = new Collection<MiscTabViewModel>();
     get miscTabs(): ObservableCollection<MiscTabViewModel> { return this._miscTabs; }
 
