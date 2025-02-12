@@ -90,13 +90,15 @@ function tryHandleEditShortcutKey(textarea: HTMLTextAreaElement, ev: KeyboardEve
 }
 
 export class BBCodeUtils {
-    static pasteWithAutoUrlization(origText: string, selStart: number, selEnd: number, pasteText: string) {
+    static pasteWithAutoUrlization(origText: string, selStart: number, selEnd: number, pasteText: string): (null | [string, number | null]) {
         if (BBCodeUtils.isPastedUrl(pasteText)) {
             if (BBCodeUtils.isCursorAtAutoUrlLocation(origText, selStart)) {
-                return `[url=${pasteText}][/url]`;
+                const firstPart = `[url=${pasteText}]`;
+                const secondPart = "[/url]";
+                return [firstPart + secondPart, firstPart.length];
             }
         }
-        return pasteText;
+        return [pasteText, null];
     }
 
     private static isPastedUrl(pasteText: string) {
@@ -168,9 +170,13 @@ export class BBCodeUtils {
 
                     const effectivePaste = BBCodeUtils.pasteWithAutoUrlization(textarea.value, selStart, selEnd, pasteText);
                     //textarea.setSelectionRange(0, textarea.value.length, "forward");
-                    document.execCommand("insertText", false, effectivePaste);
-                    //textarea.setSelectionRange(res.newSelStart, res.newSelEnd, "forward");
-                    options.onTextChanged(textarea.value);
+                    if (effectivePaste) {
+                        document.execCommand("insertText", false, effectivePaste[0]);
+                        if (effectivePaste[1]) {
+                            textarea.setSelectionRange(selStart + effectivePaste[1], selStart + effectivePaste[1], "forward");
+                        }
+                        options.onTextChanged(textarea.value);
+                    }
                     ev.preventDefault();
                 }
             }
