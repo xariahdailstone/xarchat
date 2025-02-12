@@ -284,6 +284,7 @@ export class ChatViewModelSink implements ChatConnectionSink {
     }
 
     serverVariableSet(varName: string, varValue: any): void {
+        this.viewModel.updateServerVariable(varName, varValue);
     }
 
     serverHelloReceived(message: string): void {

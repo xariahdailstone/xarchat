@@ -22,6 +22,8 @@ import { IterableUtils } from "../util/IterableUtils.js";
 import { ChannelFiltersViewModel } from "./ChannelFiltersViewModel.js";
 import { ObservableExpression } from "../util/ObservableExpression.js";
 import { ObservableValue } from "../util/Observable.js";
+import { ServerError } from "../fchat/ChatConnectionImpl.js";
+import { CatchUtils } from "../util/CatchUtils.js";
 
 export class ChatChannelUserViewModel extends ObservableBase implements IDisposable {
     constructor(
@@ -885,6 +887,14 @@ export class ChatChannelViewModel extends ChannelViewModel {
     async sendTextboxInternalAsync(): Promise<void> {
         if (this.textBoxContent && this.textBoxContent != "") {
             const msgContent = this.textBoxContent;
+
+            try {
+                await this.parent.chatConnection.checkChannelSendMessageAsync(this.name, msgContent);
+            }
+            catch (e) {
+                this.addSystemMessage(new Date(), `Cannot send: ${CatchUtils.getMessage(e)}`, true);
+                return;
+            }
             this.textBoxContent = "";
 
             this.pendingSendsCount++;
@@ -906,7 +916,7 @@ export class ChatChannelViewModel extends ChannelViewModel {
                 onFailBeforeRetryAsync: async () => {
                     await TaskUtils.delay(1000);
                 },
-                onFailTerminalAsync: async () => {
+                onFailTerminalAsync: async (err) => {
                     this.addSystemMessage(new Date(), `Failed to send: ${msgContent}`, true);
                     this.pendingSendsCount--;
                 }
@@ -941,6 +951,14 @@ export class ChatChannelViewModel extends ChannelViewModel {
     async sendTextboxAsAdAsync(): Promise<void> {
         if (this.textBoxContent && this.textBoxContent != "" && this.canSendTextboxAsAd) {
             const msgContent = this.textBoxContent;
+            try {
+                await this.parent.chatConnection.checkChannelAdMessageAsync(this.name, msgContent);
+            }
+            catch (e) {
+                this.addSystemMessage(new Date(), `Cannot send: ${CatchUtils.getMessage(e)}`, true);
+                return;
+            }
+
             this.textBoxContent = "";
 
             this.pendingSendsCount++;

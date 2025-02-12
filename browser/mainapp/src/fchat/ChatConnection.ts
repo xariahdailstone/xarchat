@@ -23,7 +23,9 @@ export interface ChatConnection extends IDisposable {
     closeChannelTab(channel: ChannelName): Promise<void>;
     markChannelSeen(channel: ChannelName): Promise<void>;
 
+    checkChannelSendMessageAsync(channel: ChannelName, message: string): Promise<void>;
     channelSendMessageAsync(channel: ChannelName, message: string): Promise<void>;
+    checkChannelAdMessageAsync(channel: ChannelName, message: string): Promise<void>;
     channelAdMessageAsync(channel: ChannelName, message: string): Promise<void>;
     channelPerformRollAsync(channel: ChannelName, rollSpecification: string): Promise<void>;
     channelPerformBottleSpinAsync(channel: ChannelName): Promise<void>;
@@ -31,6 +33,7 @@ export interface ChatConnection extends IDisposable {
     setIdleStatusAsync(userState: IdleDetectionUserState, screenState: IdleDetectionScreenState): Promise<void>;
     setStatusAsync(status: OnlineStatus, statusMessage: string): Promise<void>;
     setTypingStatusAsync(chanracter: CharacterName, typingStatus: TypingStatus): Promise<void>;
+    checkPrivateMessageSendAsync(character: CharacterName, message: string): Promise<void>;
     privateMessageSendAsync(character: CharacterName, message: string): Promise<void>;
     privateMessagePerformRollAsync(character: CharacterName, rollSpecification: string): Promise<void>;
     openPrivateMessageTab(character: CharacterName): Promise<void>;
