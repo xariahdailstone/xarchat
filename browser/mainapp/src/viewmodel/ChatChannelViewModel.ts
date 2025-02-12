@@ -932,6 +932,26 @@ export class ChatChannelViewModel extends ChannelViewModel {
         await this.activeLoginViewModel.chatConnection.channelPerformBottleSpinAsync(this.name);
     }
 
+    override ensureSelectableFilterSelected() {
+        if (this.channelFilters) {
+            const selectableFiltersArray = 
+                IterableUtils.asQueryable(this.channelFilters.namedFilters).where(nf => 
+                    (nf.showInAdsOnlyChannel && this.messageMode == ChatChannelMessageMode.ADS_ONLY) ||
+                    (nf.showInChatOnlyChannel && this.messageMode == ChatChannelMessageMode.CHAT_ONLY) ||
+                    (nf.showInBothAdsAndChatChannel && this.messageMode == ChatChannelMessageMode.BOTH)).toArray();
+            const selectableFiltersSet = new Set(selectableFiltersArray);
+
+            const sf = this.channelFilters.selectedFilter;
+            let needReselect = true;
+            if (sf) {
+                if (selectableFiltersSet.has(sf)) { needReselect = false; }
+            }
+            if (needReselect && selectableFiltersArray.length > 0) {
+                this.channelFilters.selectedFilter = selectableFiltersArray[0];
+            }
+        }
+    }
+
     protected pingIfNecessary(message: ChannelMessageViewModel) {
         super.pingIfNecessary(message);
         if (message.containsPing && !this.isTabActive && message.characterStatus.characterName != this.parent.characterName) {
