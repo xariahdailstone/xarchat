@@ -606,7 +606,11 @@ export abstract class ChannelViewModel extends ObservableBase implements IDispos
         if (this.isTabActive) {
             this.hasPing = false;
             this.unseenMessageCount = 0;
+            this.ensureSelectableFilterSelected();
         }
+    }
+
+    ensureSelectableFilterSelected() {
     }
 
     protected pingIfNecessary(message: ChannelMessageViewModel) {

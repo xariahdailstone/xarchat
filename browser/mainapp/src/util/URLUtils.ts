@@ -130,14 +130,14 @@ export class URLUtils {
 const _blobObjectUrlFR = new FinalizationRegistry<{ url: string, disposed: boolean }>(url => {
     if (!url.disposed) {
         url.disposed = true;
-        console.log("URL.revokeObjectUrl", url.url);
+        //console.log("URL.revokeObjectUrl", url.url);
         URL.revokeObjectURL(url.url);
     }
 });
 export class BlobObjectURL implements IDisposable {
     constructor(blob: Blob) {
         const url = URL.createObjectURL(blob);
-        console.log("URL.createObjectUrl", url);
+        //console.log("URL.createObjectUrl", url);
         this._frInfo = { url: url, disposed: false };
         _blobObjectUrlFR.register(this, this._frInfo);
     }
@@ -150,7 +150,7 @@ export class BlobObjectURL implements IDisposable {
     dispose() {
         if (!this._frInfo.disposed) {
             this._frInfo.disposed = true;
-            console.log("URL.revokeObjectUrl", this._frInfo.url);
+            //console.log("URL.revokeObjectUrl", this._frInfo.url);
             URL.revokeObjectURL(this._frInfo.url);
         }
     }

@@ -16,4 +16,9 @@ export class ChannelFiltersEditPopupViewModel extends ContextPopupViewModel {
 
     @observableProperty
     filtersViewModel: ChannelFiltersViewModel;
+
+    override dismissed(): void {
+        super.dismissed();
+        this.filtersViewModel.channelViewModel.ensureSelectableFilterSelected();
+    }
 }

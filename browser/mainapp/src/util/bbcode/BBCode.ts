@@ -122,12 +122,12 @@ export class BBCodeParser {
             parseOptions: xoptions,
             disposables: [] as IDisposable[],
             isDisposed: false,
-            addDisposable(d: IDisposable) {
+            addDisposable(d: ConvertibleToDisposable) {
                 if (!this.isDisposed) {
                     this.disposables.push(asDisposable(d));
                 }
                 else {
-                    d.dispose();
+                    asDisposable(d).dispose();
                 }
             }
         };
