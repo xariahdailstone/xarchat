@@ -58,6 +58,9 @@ export interface RawSavedChatStateNamedFilterEntry {
     filterClasses: string[];
     canPing?: boolean;
     controlsUnseenDot?: boolean;
+    showInAdsOnlyChannel?: boolean;
+    showInChatOnlyChannel?: boolean;
+    showInBothAdsAndChatChannel?: boolean;
 }
 interface RawSavedChatStateHasNamedFilters {
     namedFilters?: RawSavedChatStateNamedFilterMap;

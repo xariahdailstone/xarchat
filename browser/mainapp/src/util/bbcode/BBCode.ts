@@ -119,7 +119,7 @@ export class BBCodeParser {
         xoptions.sink = options?.sink ?? { userClick: ()=>{}, sessionClick: ()=>{}, webpageClick: ()=>{} };
 
         let contextIsDisposed = false;
-        const parseContext: BBCodeParseContext = {
+        const parseContext = {
             parseOptions: xoptions,
             disposables: [] as IDisposable[],
             addDisposable(d: IDisposable) {

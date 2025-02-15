@@ -3,6 +3,7 @@ import { IDisposable } from "../util/Disposable";
 import { HTMLUtils } from "../util/HTMLUtils";
 import { ChannelFiltersViewModel } from "../viewmodel/ChannelFiltersViewModel";
 import { ChannelViewModel } from "../viewmodel/ChannelViewModel";
+import { ChatChannelMessageMode, ChatChannelViewModel } from "../viewmodel/ChatChannelViewModel";
 import { ChannelFiltersEditPopupViewModel } from "../viewmodel/popups/ChannelFiltersEditPopupViewModel";
 import { ComponentBase, componentElement } from "./ComponentBase";
 import { RenderingComponentBase } from "./RenderingComponentBase";
@@ -39,6 +40,12 @@ export class ChannelFiltersBar extends RenderingComponentBase<ChannelViewModel> 
         const results: VNode[] = [];
 
         for (let nf of vm.namedFilters) {
+            if (vm.channelViewModel instanceof ChatChannelViewModel) {
+                if (!nf.showInChatOnlyChannel && vm.channelViewModel.messageMode == ChatChannelMessageMode.CHAT_ONLY) { continue; }
+                if (!nf.showInAdsOnlyChannel && vm.channelViewModel.messageMode == ChatChannelMessageMode.ADS_ONLY) { continue; }
+                if (!nf.showInBothAdsAndChatChannel && vm.channelViewModel.messageMode == ChatChannelMessageMode.BOTH) { continue; }
+            }
+
             const isSelected = vm.selectedFilter == nf;
             results.push(<div classList={["filtertab", (isSelected ? "selected" : "")]} on={{
                 "click": () => { vm.selectedFilter = nf; }
