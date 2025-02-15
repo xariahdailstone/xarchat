@@ -105,7 +105,7 @@ export class LoginUtils {
 
                 const existingCh = ns.getChannel(channelName);
                 if (!existingCh || existingCh.presenceState != ChatChannelPresenceState.IN_CHANNEL) {
-                    logger.logInfo("auto joining channel", channelName, channelTitle);
+                    logger.logDebug("auto joining channel", channelName, channelTitle);
                     try {
                         await cc.joinChannelAsync(channelName, chp.title);
                     }

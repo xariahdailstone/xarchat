@@ -231,7 +231,7 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
 
     private setupDragDropHost(hostEl: HTMLElement): IDisposable {
         const disposables: IDisposable[] = [];
-        this.logger.logInfo("setupDragDropHost", hostEl);
+        this.logger.logDebug("setupDragDropHost", hostEl);
 
         let dragIndicatorPopup: ChannelDragIndicatorPopupViewModel | null = null;
 

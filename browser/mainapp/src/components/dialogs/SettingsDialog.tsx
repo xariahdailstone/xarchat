@@ -13,6 +13,7 @@ import { HostInterop } from "../../util/HostInterop";
 import { NotificationRouting, NotificationRoutingTargetSetting } from "../../configuration/NotificationRouting";
 import { ColorRGBSelectPopupViewModel } from "../../viewmodel/popups/ColorRGBSelectPopupViewModel";
 import { ThemeToggle } from "../ThemeToggle";
+import { Collection } from "../../util/ObservableCollection";
 
 @componentArea("dialogs")
 @componentElement("x-settingsdialog")
@@ -39,10 +40,42 @@ export class SettingsDialog extends DialogComponentBase<SettingsDialogViewModel>
                 <div classList={["tabstrip"]}>
                     { IterableUtils.asQueryable(vm.tabs).select(x => this.renderTab(x)).toArray() ?? "" }
                 </div>
-                <div classList={["tabpanel"]}>
-                    { vm.selectedTab ? this.renderTabPane(vm.selectedTab) : "" }
+                <div classList={[ "contentarea" ]}>
+                    <div classList={[ "treeview" ]}>
+                        { vm.selectedTab ? this.renderTreeViewPane(vm.selectedTab.settings) : "" }
+                    </div>
+                    <div classList={["tabpanel"]}>
+                        { vm.selectedTab ? this.renderTabPane(vm.selectedTab) : "" }
+                    </div>
                 </div>
             </div>;
+        }
+    }
+
+    private renderTreeViewPane(settings: Collection<SettingsDialogSettingViewModel>): VNode {
+        const items: VNode[] = [];
+
+        for (let settingsItem of settings) {
+            if (settingsItem instanceof SettingsDialogSectionViewModel) {
+                items.push(<div classList={[ "treeview-item", "treeview-item-group" ]}>
+                    <div classList={[ "treeview-item-group-title"]} on={{
+                        "click": () => {
+                            this.scrollToSection(settingsItem.title);
+                        }
+                    }}>{settingsItem.title}</div>
+                    { this.renderTreeViewPane(settingsItem.settings) }
+                </div>);
+            }
+        }
+
+        return <div classList={[ "treeview-item-group-items"]}>{items}</div>;
+    }
+
+    private scrollToSection(title: string) {
+        const tabpane = this.elMain.querySelector(".tabpane");
+        const el = this.elMain.querySelector(`*[data-sectiontitle='${title}']`);
+        if (el) {
+            el.scrollIntoView({ behavior: "smooth" });
         }
     }
 
@@ -107,7 +140,7 @@ export class SettingsDialog extends DialogComponentBase<SettingsDialogViewModel>
         if (setting.isDisabled) {
             settingClasses.push("setting-is-disabled");
         }
-        return <div classList={settingClasses} props={{ "inert": setting.isDisabled }}>
+        return <div classList={settingClasses} data-sectiontitle={setting.title} props={{ "inert": setting.isDisabled }}>
             <div classList={["setting-title"]}>{setting.title}</div>
             <div classList={["setting-description"]}>{setting.description}</div>
             { this.getInheritedInfoVNode(setting) }

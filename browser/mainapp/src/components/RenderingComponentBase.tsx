@@ -40,6 +40,7 @@ export function makeRenderingComponent<TViewModel>(
     let refreshDisposable: IDisposable | null = null;
     let statehasChangedRegistration: number | null = null;
     let currentDependencies: DependencySet = new DependencySet();
+    let isConnected = component.elMain.isConnected;
 
     const addDependencyListener = (depSet: DependencySet, vm: any, propertyName: string) => {
         if (component.isConnected && isObservable(vm)) {
@@ -66,20 +67,23 @@ export function makeRenderingComponent<TViewModel>(
             window.cancelAnimationFrame(statehasChangedRegistration);
             statehasChangedRegistration = null;
         }
+        if (!isConnected) { return; }
 
         cleanupDependencyListeners();
         const myDepSet = currentDependencies;
 
         refreshing++;
+
+        if (refreshDisposable != null) {
+            refreshDisposable.dispose();
+            refreshDisposable = null;
+        }
+
         const rmDisposable = Observable.addReadMonitor((vm, propName, propValue) => {
             addDependencyListener(myDepSet, vm, propName);
         });
         try
         {
-            if (refreshDisposable != null) {
-                refreshDisposable.dispose();
-                refreshDisposable = null;
-            }
             const renderResult = options.render();
             let newVNode: VNode;
             if (renderResult instanceof Array) {
@@ -121,14 +125,17 @@ export function makeRenderingComponent<TViewModel>(
         stateHasChanged();
     });
     component.addEventListener("connected", () => {
+        isConnected = true;
         refreshDOM();
     });
     component.addEventListener("disconnected", () => {
+        isConnected = false;
         cleanupDependencyListeners();
         if (refreshDisposable != null) {
             refreshDisposable.dispose();
             refreshDisposable = null;
         }
+        currentVNode = patch(currentVNode, <></>);
     });
 
     return {

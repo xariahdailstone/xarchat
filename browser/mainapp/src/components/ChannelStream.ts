@@ -155,15 +155,15 @@ export class ChannelStream extends ComponentBase<ChannelViewModel> {
             elScrolledUp.classList.toggle("shown", scrolledUp && !newMsgs);
         };
 
-        this.watch("newMessagesBelowNotify", v => {
+        this.watchExpr(vm => vm.newMessagesBelowNotify, v => {
             updateAlerts();
         });
-        this.watch("scrolledTo", (v) => {
+        this.watchExpr(vm => vm.scrolledTo, (v) => {
             //this.log("scrolledTo change, resetscroll");
-            this._scrollManager.scrolledTo = v;
+            this._scrollManager.scrolledTo = v ?? null;
             updateAlerts();
         });
-        this.watch("pendingSendsCount", len => {
+        this.watchExpr(vm => vm.pendingSendsCount, len => {
             len = len ?? 0;
             elSending.classList.toggle("shown", (len > 0));
         });
@@ -171,9 +171,26 @@ export class ChannelStream extends ComponentBase<ChannelViewModel> {
         this.watchExpr(vm => vm.getConfigSettingById("highlightMyMessages"), hmm => {
             elMessageContainer.classList.toggle("highlight-from-me", !!hmm);
         });
+
+        this.whenConnected(() => {
+            const resizeObserver = new ResizeObserverNice((entries) => {
+                this._scrollManager.resetScroll();
+            });
+            resizeObserver.observe(this.$("elMessageContainer") as HTMLDivElement);
+    
+            this.resumeScrollRecording(ScrollSuppressionReason.NotConnectedToDocument);
+        
+            return asDisposable(() => {
+                resizeObserver?.disconnect();
+        
+                this.suppressScrollRecording(ScrollSuppressionReason.NotConnectedToDocument);
+            });
+        });
     }
 
     private _previousCollapseHostRO: ResizeObserver | null = null;
+    private _roAnimHandle: number | null = null;
+    private _roAnimEntries: ResizeObserverEntry[] = [];
     updateCollapseHostMonitoring() {
         const vm = this.viewModel;
         const elMessageContainer = this.$("elMessageContainer") as HTMLDivElement;
@@ -185,14 +202,28 @@ export class ChannelStream extends ComponentBase<ChannelViewModel> {
         if (!vm) { return; }
 
         const ro = new ResizeObserver(entries => {
-            for (let entry of entries) {
-                const target = entry.target;
-                if (target.classList.contains("messageitem")) {
-                    const mheight = entry.contentRect.height;
-                    const mvm = (target as any)["__vm"] as ChannelMessageViewModel;
-                    const overflowHeight = +(window.getComputedStyle(target).getPropertyValue("--ad-collapse-max-height-numeric") ?? "40");
-                    mvm.isOversized = (mheight > overflowHeight);
-                }
+            this._roAnimEntries.push(...entries);
+            if (this._roAnimHandle == null) {
+                this._roAnimHandle = window.requestAnimationFrame(() => {
+                    this._roAnimHandle = null;
+                    const entries = this._roAnimEntries;
+                    this._roAnimEntries = [];
+                    for (let entry of entries) {
+                        const target = entry.target;
+                        if (target.classList.contains("messageitem")) {
+                            const mheight = entry.contentRect.height;
+                            if (mheight > 0) {
+                                const mvm = (target as any)["__vm"] as ChannelMessageViewModel;
+                                const overflowHeight = +(window.getComputedStyle(target).getPropertyValue("--ad-collapse-max-height-numeric") ?? "40");
+                                const isOversized = (mheight > overflowHeight);
+                                if (isOversized != mvm.isOversized) {
+                                    mvm.isOversized = (mheight > overflowHeight);
+                                    console.log("ad oversize changed", target, isOversized);
+                                }
+                            }
+                        }
+                    }
+                });
             }
         });
         this._previousCollapseHostRO = ro;
@@ -220,24 +251,6 @@ export class ChannelStream extends ComponentBase<ChannelViewModel> {
         if (sel?.type != "Range") return false;
 
         return true;
-    }
-
-    private _resizeObserver: ResizeObserver | null = null;
-
-    protected override connectedToDocument(): void {
-        this._resizeObserver = new ResizeObserverNice((entries) => {
-            this._scrollManager.resetScroll();
-        });
-        this._resizeObserver.observe(this.$("elMessageContainer") as HTMLDivElement);
-
-        this.resumeScrollRecording(ScrollSuppressionReason.NotConnectedToDocument);
-    }
-
-    protected override disconnectedFromDocument(): void {
-        this._resizeObserver?.disconnect();
-        this._resizeObserver = null;
-
-        this.suppressScrollRecording(ScrollSuppressionReason.NotConnectedToDocument);
     }
 
     private _suppressScrollRecording: number = 0;

@@ -270,6 +270,7 @@ export class ObservableValue<T> implements Observable {
 }
 
 export interface DependencySet extends IDisposable {
+    debug: boolean;
     addChangeListener(callback: () => any): IDisposable;
 }
 
@@ -288,12 +289,16 @@ class DependencySetImpl implements DependencySet {
                     depForProp.dispose();
                 }
             }
+            this._deps.clear();
+            this._changeListeners.clear();
         }
     }
 
     [Symbol.dispose]() { this.dispose(); }
 
     get isDisposed() { return this._disposed; }
+
+    debug: boolean = false;
 
     maybeAddDependency(vm: any, propertyName: string) {
         let depsForVm = this._deps.get(vm);
@@ -319,7 +324,9 @@ class DependencySetImpl implements DependencySet {
     }
 
     private stateHasChanged() {
-        this._changeListeners.forEachValueSnapshotted(v => {
+        const cl = this._changeListeners;
+        this.dispose();
+        cl.forEachValueSnapshotted(v => {
             try { v(); }
             catch { }
         });
@@ -327,11 +334,16 @@ class DependencySetImpl implements DependencySet {
 
     private readonly _changeListeners: SnapshottableMap<object, () => any> = new SnapshottableMap();
     addChangeListener(callback: () => any): IDisposable {
-        const myKey = {};
-        this._changeListeners.set(myKey, callback);
-        return asDisposable(() => {
-            this._changeListeners.delete(myKey);
-        });
+        if (!this._disposed) {
+            const myKey = {};
+            this._changeListeners.set(myKey, callback);
+            return asDisposable(() => {
+                this._changeListeners.delete(myKey);
+            });
+        }
+        else {
+            return EmptyDisposable;
+        }
     }
 }
 

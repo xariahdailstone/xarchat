@@ -1,3 +1,4 @@
+import { OnlineStatus, OnlineStatusConvert } from "../shared/OnlineStatus";
 import { ObservableExpression } from "../util/ObservableExpression";
 import { AppViewModel } from "./AppViewModel";
 
@@ -45,5 +46,27 @@ export class ColorThemeViewModel {
         setupGenderColor("cunt-boy");
         setupGenderColor("transgender");
         setupGenderColor("none");
+
+        const setupStatusColor = (status: OnlineStatus) => {
+            const statusStr = OnlineStatusConvert.toString(status).toLowerCase();
+            const oe = new ObservableExpression(
+                () => appViewModel.getConfigSettingById(`color.status.${statusStr}`),
+                (v) => {
+                    if (v) {
+                        document.body.style.setProperty(`--fg-status-${statusStr}`, v as string);
+                    }
+                },
+                (err) => {}
+            );
+        };
+
+        setupStatusColor(OnlineStatus.OFFLINE);
+        setupStatusColor(OnlineStatus.ONLINE);
+        setupStatusColor(OnlineStatus.IDLE);
+        setupStatusColor(OnlineStatus.AWAY);
+        setupStatusColor(OnlineStatus.DND);
+        setupStatusColor(OnlineStatus.BUSY);
+        setupStatusColor(OnlineStatus.LOOKING);
+        setupStatusColor(OnlineStatus.CROWN);
     }
 }

@@ -18,7 +18,7 @@ export class TweetPreviewPopup extends PopupBase<TweetPreviewPopupViewModel> {
         `);
         const elPlaceholder = this.elMain.querySelector("#elPlaceholder") as HTMLDivElement;
 
-        this.watch("element", v => {
+        this.watchExpr(vm => vm.element, v => {
             if (v) {
                 elPlaceholder!.style.width = v.style.width;
                 elPlaceholder!.style.height = v.style.height;

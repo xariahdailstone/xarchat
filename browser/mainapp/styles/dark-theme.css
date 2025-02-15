@@ -27,8 +27,13 @@ body {
 
     --bg-level-2-hover: hsl(var(--bg-base-hue), calc(var(--bg-base-sat) * 0.65), 27%);
     --fg-level-2-hover: white;
+    --bg-level-3-hover: hsl(var(--bg-base-hue), calc(var(--bg-base-sat) * 0.65), 30%);
+    --fg-level-2-hover: white;
+    --bg-level-4-hover: hsl(var(--bg-base-hue), calc(var(--bg-base-sat) * 0.65), 33%);
+    --fg-level-4-hover: white;
 
     --border-level-2: hsl(var(--bg-base-hue), var(--fg-base-sat), 25%); /* #b5bac1; */
+    --border-level-4: hsl(var(--bg-base-hue), var(--fg-base-sat), 31%); /* #b5bac1; */
 
     --dark-border-level-4: hsl(var(--bg-base-hue), var(--bg-base-sat), 15%); /* #232428; */
 
@@ -51,6 +56,15 @@ body {
     --fg-friend-gender-transgender: var(--fg-gender-transgender);
     --fg-friend-gender-shemale: var(--fg-gender-shemale);
     --fg-friend-gender-none: var(--fg-gender-none);
+
+    --fg-status-offline: #444;
+    --fg-status-online: #55f;
+    --fg-status-idle: #33a;
+    --fg-status-away: #aa4;
+    --fg-status-dnd: #c44; 
+    --fg-status-busy: #811;
+    --fg-status-looking: #8f8;
+    --fg-status-crown: #ff0;
 
     --bg-main-textbox: hsl(var(--bg-base-hue), var(--bg-base-sat), 24%); /* #383a40; */
     --fg-main-textbox: hsl(var(--bg-base-hue), var(--fg-base-sat), 87%); /* #dbdee1; */

@@ -36,7 +36,7 @@ export class ImagePreviewPopupViewModel extends ContextPopupViewModel {
                     imgEl.addEventListener("load", () => {
                         loadedPS.tryResolve();
                     });
-                    imgEl.src = value;
+                    imgEl.src = this.getImageProxyUrl(value);
 
                     await loadedPS.promise;
 
@@ -67,6 +67,16 @@ export class ImagePreviewPopupViewModel extends ContextPopupViewModel {
                 this.parent.popups.remove(this);
             }
         }
+    }
+
+    private getImageProxyUrl(url: string): string {
+        const u = new URL(url);
+        if (u.hostname == "i.4cdn.org") {
+            const fnParts = u.pathname.split('/');
+            const fn = fnParts[fnParts.length - 1];
+            url = `/api/proxyImageUrl/${fn}?url=${encodeURIComponent(url)}&loadAs=ssimage`;
+        }
+        return url;
     }
 
     private breakImageElement(el: HTMLImageElement) {

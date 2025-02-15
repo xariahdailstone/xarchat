@@ -1,3 +1,4 @@
+import { ConstructorOf } from "../components/dialogs/DialogFrame";
 
 export interface IDisposable {
     dispose(): void;
@@ -27,37 +28,127 @@ export function isDisposable(obj: any) {
 
 export type ConvertibleToDisposable = ((() => void) | IDisposable | Disposable | null | undefined);
 
-export function asDisposable(...funcs: ConvertibleToDisposable[]): (IDisposable & Disposable) {
-    let disposed = false;
-    return {
-        [Symbol.dispose]() {
-            this.dispose();
-        },
-        get isDisposed() {
-            return disposed;
-        },
-        dispose: () => {
-            if (!disposed) {
-                disposed = true;
-                for (let f of funcs) {
-                    try {
-                        if (f == null) {
-                        }
-                        if (isIDisposable(f)) {
-                            (f as IDisposable).dispose();
-                        }
-                        else if (isDisposable(f)) {
-                            (f as Disposable)[Symbol.dispose]();
-                        }
-                        else {
-                            (f as Function)();
-                        }
+class NamedDisposable implements IDisposable {
+    constructor(...funcs: ConvertibleToDisposable[]) {
+        // const cfuncs: ConvertibleToDisposable[] = [];
+        // const addDisposable = (f: ConvertibleToDisposable) => {
+        //     if (f instanceof NamedDisposable) {
+        //         for (let sf of f._funcs) {
+        //             addDisposable(sf);
+        //         }
+        //     }
+        //     else {
+        //         cfuncs.push(f);
+        //     }
+        // };
+        // for (let f of funcs) {
+        //     addDisposable(f);
+        // }
+        // this._funcs = cfuncs;
+        this._funcs = funcs;
+    }
+
+    private readonly _funcs: ConvertibleToDisposable[];
+    private _disposed = false;
+
+    get isDisposed() { return this._disposed; }
+
+    dispose() {
+        if (!this._disposed) {
+            this._disposed = true;
+            for (var f of this._funcs) {
+                try {
+                    if (f == null) {
                     }
+                    if (isIDisposable(f)) {
+                        (f as IDisposable).dispose();
+                    }
+                    else if (isDisposable(f)) {
+                        (f as Disposable)[Symbol.dispose]();
+                    }
+                    else {
+                        (f as Function)();
+                    }
+                }
+                catch { }
+            }
+        }
+    }
+
+    [Symbol.dispose]() {
+        this.dispose();
+    }
+}
+
+type DisposableRef = { disposable: IDisposable | null };
+const disposableOwnerFieldCleanup = new FinalizationRegistry<DisposableRef>(hv => {
+    if (hv.disposable) {
+        try { hv.disposable.dispose(); }
+        catch { }
+    }
+});
+export class DisposableOwnerField implements IDisposable {
+    constructor() {
+        disposableOwnerFieldCleanup.register(this, this._disposableRef, this._disposableRef);
+    }
+
+    private readonly _disposableRef: DisposableRef = { disposable: null };
+    private _isDisposed = false;
+
+    get isDisposed() { return this._isDisposed; }
+    dispose() {
+        if (!this._isDisposed) {
+            this._isDisposed = true;
+            disposableOwnerFieldCleanup.unregister(this._disposableRef);
+            this.value = null;
+        }
+    }
+    [Symbol.dispose]() {
+        this.dispose();
+    }
+
+    get value(): IDisposable | null { return this._disposableRef.disposable; }
+    set value(v: IDisposable | null) {
+        if (v !== this._disposableRef.disposable) {
+            if (this._disposableRef.disposable) {
+                const d = this._disposableRef.disposable;
+                this._disposableRef.disposable = null;
+                try { d.dispose(); }
+                catch { }
+            }
+            if (this._isDisposed && v) {
+                if (v) {
+                    try { v.dispose(); }
                     catch { }
                 }
             }
+            else {
+                this._disposableRef.disposable = v;
+            }
         }
-    };
+    }
+}
+
+const namedDisposableClasses: Map<string, ConstructorOf<NamedDisposable>> = new Map();
+function getNamedDisposableClass(name: string): ConstructorOf<NamedDisposable> {
+    let c = namedDisposableClasses.get(name);
+    if (!c) {
+        c = ({[name] : class extends NamedDisposable {}})[name];
+        //c = eval(`(function() { class ${name} extends NamedDisposable {}; return ${name}; })()`) as ConstructorOf<NamedDisposable>;
+        namedDisposableClasses.set(name, c);
+    }
+    return c;
+}
+export function asNamedDisposable(name: string, ...funcs: ConvertibleToDisposable[]): (IDisposable & Disposable) {
+    const c = getNamedDisposableClass(name);
+    return new c(...funcs);
+}
+(window as any)["__asNamedDisposable"] = asNamedDisposable;
+
+export function asDisposable(...funcs: ConvertibleToDisposable[]): (IDisposable & Disposable) {
+    funcs = funcs.filter(f => f != EmptyDisposable);
+    if (funcs.length == 0) { return EmptyDisposable; }
+    return new NamedDisposable(...funcs);
 }
 
 export function tryDispose(obj: any) {

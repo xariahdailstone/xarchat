@@ -132,7 +132,9 @@ export class LogSearch extends RenderingStageViewComponent<LogSearchViewModel> {
                         }} id="elSubmitSearch">Search</button>
                 </div>
 
-                <x-logsearchresultitemcollectionview attr-modelpath="results" id="elCollectionView" on={{
+                <x-logsearchresultitemcollectionview id="elCollectionView" props={{
+                        "viewModel": vm.results
+                    }} on={{
                         "updatedelements": (e: Event) => { this.executeScrollToCommand(); },
                         "connectedtodocument": (e: Event) => { this.executeScrollToCommand(); }
                     }}>

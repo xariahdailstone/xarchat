@@ -55,12 +55,12 @@ export class LoginDialog extends DialogComponentBase<LoginViewModel> {
                 <div class="charslist">
                     <div id="elCharsViewRecentContainer">
                         <div class="charslist-heading">Recently Used Characters</div>
-                        <x-charslist id="elCharsViewRecent" modelpath="recentCharacters" isrecent="true">
+                        <x-charslist id="elCharsViewRecent" isrecent="true">
                             <div id="elCharsListRecent"></div>
                         </x-charslist>
                         <div class="charslist-heading">All Characters</div>
                     </div>
-                    <x-charslist id="elCharsView" modelpath="characters">
+                    <x-charslist id="elCharsView">
                         <div id="elCharsList"></div>
                     </x-charslist>
                 </div>
@@ -94,18 +94,24 @@ export class LoginDialog extends DialogComponentBase<LoginViewModel> {
         const elAutoLoginCharacterContainer = this.$("elAutoLoginCharacterContainer") as HTMLDivElement;
         const elAutoLoginCharacter = this.$("elAutoLoginCharacter") as HTMLInputElement;
 
-        this.setupTwoWayBinding(elUsername, "accountName");
-        this.setupTwoWayBinding(elPassword, "password");
-        this.setupCheckboxTwoWayBinding(elRememberUsername, "rememberAccountName");
-        this.setupCheckboxTwoWayBinding(elRememberPassword, "rememberPassword");
-        this.setupCheckboxTwoWayBinding(elAutoLoginCharacter, "autoLogin");
+        this.setupTwoWayBinding(elUsername, vm => vm.accountName, (vm, v) => vm.accountName = v);
+        this.setupTwoWayBinding(elPassword, vm => vm.password, (vm, v) => vm.password = v);
+        this.setupCheckboxTwoWayBinding(elRememberUsername, vm => vm.rememberAccountName, (vm, v) => vm.rememberAccountName = v);
+        this.setupCheckboxTwoWayBinding(elRememberPassword, vm => vm.rememberPassword, (vm, v) => vm.rememberPassword = v);
+        this.setupCheckboxTwoWayBinding(elAutoLoginCharacter, vm => vm.autoLogin, (vm, v) => vm.autoLogin = v);
 
-        this.watch(".", v => {
-            elCharsView.loginViewModel = v;
-            elCharsViewRecent.loginViewModel = v;
+        this.watchExpr(vm => vm.recentCharacters, v => {
+            elCharsViewRecent.viewModel = v ?? null;
+        });
+        this.watchExpr(vm => vm.characters, v => {
+            elCharsView.viewModel = v ?? null;
+        });
+        this.watchViewModel(v => {
+            elCharsView.loginViewModel = v ?? null;
+            elCharsViewRecent.loginViewModel = v ?? null;
         });
         let flowStateCTS = new WhenChangeManager();
-        this.watch("flowState", v => {
+        this.watchExpr(vm => vm.flowState, v => {
             flowStateCTS.assign({ flowState: v }, args => {
                 const className = `state-${args.flowState}`;
                 this.elMain.classList.add(className);
@@ -114,7 +120,7 @@ export class LoginDialog extends DialogComponentBase<LoginViewModel> {
                 });
             });
         });
-        this.watch("failureMessage", v => {
+        this.watchExpr(vm => vm.failureMessage, v => {
             const msg = v != null ? v : "";
             elMessageDisplay.innerText = msg;
             elMessageDisplay2.innerText = msg;
@@ -128,7 +134,7 @@ export class LoginDialog extends DialogComponentBase<LoginViewModel> {
             }
         });
         let failureMessageSeverityWCM = new WhenChangeManager();
-        this.watch("failureMessageSeverity", v => {
+        this.watchExpr(vm => vm.failureMessageSeverity, v => {
             failureMessageSeverityWCM.assign({ severity: v }, (args) => {
                 if (args.severity) {
                     const className = `severity-${args.severity}`;
@@ -175,26 +181,26 @@ export class LoginDialog extends DialogComponentBase<LoginViewModel> {
         });
     }
 
-    private setupTwoWayBinding(el: HTMLInputElement, propertyPath: string) {
-        this.watch(propertyPath, v => {
+    private setupTwoWayBinding(el: HTMLInputElement, readExpr: (vm: LoginViewModel) => any, assignFunc: (vm: LoginViewModel, value: any) => void) {
+        this.watchExpr(readExpr, v => {
             el.value = v != null ? v : "";
         });
         const changeOrInput = () => {
             if (this.viewModel) {
-                (this.viewModel as any)[propertyPath] = el.value;
+                assignFunc(this.viewModel, el.value);
             }
         };
         el.addEventListener("change", changeOrInput);
         el.addEventListener("input", changeOrInput);
     }
 
-    private setupCheckboxTwoWayBinding(el: HTMLInputElement, propertyPath: string) {
-        this.watch(propertyPath, v => {
+    private setupCheckboxTwoWayBinding(el: HTMLInputElement, readExpr: (vm: LoginViewModel) => boolean, assignFunc: (vm: LoginViewModel, value: boolean) => void) {
+        this.watchExpr(readExpr, v => {
             el.checked = !!v;
         });
         const changeOrInput = () => {
             if (this.viewModel) {
-                (this.viewModel as any)[propertyPath] = el.checked;
+                assignFunc(this.viewModel, el.checked);
             }
         };
         el.addEventListener("change", changeOrInput);

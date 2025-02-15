@@ -98,7 +98,7 @@ export class LinkPreviewProvider {
         let mouseOutDispose: IDisposable | null = null;
 
         el.addEventListener("mouseover", async () => {
-            console.log("link mouseover");
+            //console.log("link mouseover");
             mouseStillOver = true;
             if (linkPreviewData === undefined) {
                 linkPreviewData = await LinkPreviewProvider.getLinkPreviewDataAsync(url, CancellationToken.NONE);
@@ -149,7 +149,7 @@ export class LinkPreviewProvider {
             }
         });
         el.addEventListener("mouseout", () => {
-            console.log("link mouseout");
+            //console.log("link mouseout");
             mouseStillOver = false;
             if (mouseOutDispose) {
                 mouseOutDispose.dispose();

@@ -1,5 +1,6 @@
 import { FocusMagnet } from "../util/FocusMagnet.js";
 import { HTMLUtils } from "../util/HTMLUtils.js";
+import { getValueReference } from "../util/ValueReference.js";
 import { ChannelViewModel } from "../viewmodel/ChannelViewModel.js";
 import { ChatChannelViewModel } from "../viewmodel/ChatChannelViewModel.js";
 import { ConsoleChannelViewModel } from "../viewmodel/ConsoleChannelViewModel.js";
@@ -7,6 +8,7 @@ import { PMConvoChannelViewModel } from "../viewmodel/PMConvoChannelViewModel.js
 import { ChannelStream } from "./ChannelStream.js";
 import { ChannelTextBox } from "./ChannelTextBox.js";
 import { ComponentBase, componentElement } from "./ComponentBase.js";
+import { SplitterHandle } from "./SplitterHandle.js";
 import { StageViewComponent, stageViewFor } from "./Stage.js";
 
 @componentElement("x-channelview")
@@ -21,15 +23,17 @@ export class ChannelView extends StageViewComponent<ChannelViewModel> {
             <x-channelheader class="header"></x-channelheader>
             <div class="contentarea" slot="a">
                 <x-channelstream class="stream" id="elChannelStream"></x-channelstream>
-                <x-splitterhandle class="casplitterhandle" target="elUserList" orientation="horizontal" min="200" max="500" modelpath="userListWidth" invert="true"></x-splitterhandle>
+                <x-splitterhandle id="elUserListSplitter" class="casplitterhandle" target="elUserList" orientation="horizontal" min="200" max="500" invert="true"></x-splitterhandle>
                 <x-channeluserlist class="userlist" id="elUserList"></x-channeluserlist>
             </div>
-            <x-splitterhandle class="tbsplitterhandle" target="elTextBox" orientation="vertical" min="50" max="200" modelpath="textBoxHeight" invert="true"></x-splitterhandle>
+            <x-splitterhandle id="elTextBoxSplitter" class="tbsplitterhandle" target="elTextBox" orientation="vertical" min="50" max="200" invert="true"></x-splitterhandle>
             <x-channeltextbox class="textbox" id="elTextBox" slot="b"></x-channeltextbox>
         `);
 
         const elChannelStream = this.$("elChannelStream") as ChannelStream;
         const elTextBox = this.$("elTextBox") as ChannelTextBox;
+        const elUserListSplitter = this.$("elUserListSplitter") as SplitterHandle;
+        const elTextBoxSplitter = this.$("elTextBoxSplitter") as SplitterHandle;
 
         this.addEventListener("mouseup", () => {
             if (!elChannelStream.hasTextSelection && FocusMagnet.instance.ultimateFocus == null) {
@@ -37,10 +41,12 @@ export class ChannelView extends StageViewComponent<ChannelViewModel> {
             }    
         });
 
-        this.watchExpr(vm => vm, vm => {
+        this.watchViewModel(vm => {
             this.elMain.classList.toggle("is-channel", (vm instanceof ChatChannelViewModel));
             this.elMain.classList.toggle("is-pmconvo", (vm instanceof PMConvoChannelViewModel));
             this.elMain.classList.toggle("is-console", (vm instanceof ConsoleChannelViewModel));
+            elUserListSplitter.viewModel = vm ? getValueReference(vm, "userListWidth") : null;
+            elTextBoxSplitter.viewModel = vm ? getValueReference(vm, "textBoxHeight") : null;
         });
 
         this.watchExpr(vm => vm.getConfigSettingById("chatFontSize"), cfs => {

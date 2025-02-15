@@ -26,7 +26,7 @@ export class MultiSelectPopup extends ContextPopupBase<MultiSelectPopupViewModel
 
         const elCollectionView = this.$("elCollectionView") as MultiSelectItemCollectionView;
 
-        this.watchExpr(vm => vm, vm => {
+        this.watchViewModel(vm => {
             if (vm) {
                 elCollectionView.viewModel = vm.items;
             }

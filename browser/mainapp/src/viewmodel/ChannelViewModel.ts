@@ -986,8 +986,9 @@ export class ChannelMessageViewModel extends ObservableBase implements IDisposab
         return false;
     }
 
-    @observableProperty
-    isOversized: boolean | null = false;
+    private readonly _isOversized: ObservableValue<boolean> = new ObservableValue(false);
+    get isOversized() { return this._isOversized.value; };
+    set isOversized(value) { this._isOversized.value = value; }
 
     @observableProperty
     collapsed: boolean | null = true;

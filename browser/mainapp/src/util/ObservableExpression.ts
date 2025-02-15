@@ -71,8 +71,9 @@ export class AwaitableObservableExpression<T> implements IDisposable, Disposable
     }
 }
 
+class ObservableExpressionNoValueClass {}
 export class ObservableExpression<T> implements IDisposable {
-    static NO_VALUE = undefined;
+    static NO_VALUE = new ObservableExpressionNoValueClass();
 
     constructor(
         private readonly expression: () => T,
@@ -95,21 +96,21 @@ export class ObservableExpression<T> implements IDisposable {
     get isDisposed() { return this._disposed; }
 
     private _disposed = false;
-    private _previousValue: (T | undefined) = ObservableExpression.NO_VALUE;
-    private _previousError: (any | undefined) = ObservableExpression.NO_VALUE;
+    private _previousValue: (T | undefined | ObservableExpressionNoValueClass) = ObservableExpression.NO_VALUE;
+    private _previousError: (any | undefined | ObservableExpressionNoValueClass) = ObservableExpression.NO_VALUE;
 
-    get hasValue() { return this._previousError != ObservableExpression.NO_VALUE; }
+    get hasValue() { return this._previousValue != ObservableExpression.NO_VALUE; }
     get value(): (T | undefined) {
-        return this._previousValue;
+        return this._previousValue instanceof ObservableExpressionNoValueClass ? undefined : this._previousValue;
     }
     get hasError() { return this._previousError != ObservableExpression.NO_VALUE; }
     get error(): (any | undefined) {
-        return this._previousError;
+        return this._previousError instanceof ObservableExpressionNoValueClass ? undefined : this._previousError;
     }
 
-    private setValueAndError(value: (T | undefined), error: (any | undefined)) {
+    private setValueAndError(value: (T | undefined | ObservableExpressionNoValueClass), error: (any | undefined | ObservableExpressionNoValueClass)) {
         if (!testEquality(value, this._previousValue)) {
-            this._previousValue = value;
+            this._previousValue = value instanceof ObservableExpressionNoValueClass ? undefined : value;
             this._previousError = undefined;
             Observable.enterObservableFireStack(() => {
                 try { this.onValueChanged(value as T); }
@@ -118,7 +119,7 @@ export class ObservableExpression<T> implements IDisposable {
         }
         if (!testEquality(error, this._previousError)) {
             this._previousValue = undefined;
-            this._previousError = error;
+            this._previousError = error instanceof ObservableExpressionNoValueClass ? undefined : error;
             Observable.enterObservableFireStack(() => {
                 if (this.onErrorChanged) {
                     try { this.onErrorChanged(error as any); }

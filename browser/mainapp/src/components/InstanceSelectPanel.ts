@@ -6,6 +6,7 @@ import { WhenChangeManager } from "../util/WhenChange.js";
 import { ActiveLoginViewModel } from "../viewmodel/ActiveLoginViewModel.js";
 import { AppViewModel } from "../viewmodel/AppViewModel.js";
 import { LoginViewModel } from "../viewmodel/dialogs/LoginViewModel.js";
+import { CollectionView2 } from "./CollectionView2.js";
 import { CollectionViewLightweight } from "./CollectionViewLightweight.js";
 import { ComponentBase, componentElement } from "./ComponentBase.js";
 
@@ -15,7 +16,7 @@ class InstanceSelectPanel extends ComponentBase<AppViewModel> {
         super();
 
         HTMLUtils.assignStaticHTMLFragment(this.elMain, `
-            <x-collectionview2 id="elInnerMain" modelpath="logins">
+            <x-collectionview2 id="elInnerMain">
                 <template>
                     <x-instanceselectpaneltab class="tab"></x-instanceselectpaneltab>
                 </template>
@@ -24,9 +25,14 @@ class InstanceSelectPanel extends ComponentBase<AppViewModel> {
             <button class="add-session" id="elAddSession" tabindex="-1">+</button>
         `);
 
+        const elInnerMain = this.$("elInnerMain") as CollectionView2<ActiveLoginViewModel>;
         const elAddSession = this.$("elAddSession") as HTMLButtonElement;
 
-        this.watch("logins.length", v => {
+        this.watchExpr(vm => vm.logins, v => {
+            elInnerMain.viewModel = v ?? null;
+        });
+        this.watchExpr(vm => vm.logins.length, v => {
+            v = v ?? 0;
             const count = v != null ? +v : 0;
             elAddSession.classList.toggle("hidden", v >= 3);
         });
@@ -56,7 +62,7 @@ class InstanceSelectPanelTab extends ComponentBase<ActiveLoginViewModel> {
 
         const elAddtl = this.$("elAddtl") as HTMLDivElement;
 
-        this.watch("characterName", (v: CharacterName) => {
+        this.watchExpr(vm => vm.characterName, v => {
             if (v) {
                 elAvatar.src = URLUtils.getAvatarImageUrl(v);
             }
@@ -64,7 +70,7 @@ class InstanceSelectPanelTab extends ComponentBase<ActiveLoginViewModel> {
                 elAvatar.src = URLUtils.getEmptyImageUrl();
             }
         });
-        this.watch("parent.currentlySelectedSession", v => {
+        this.watchExpr(vm => vm.parent.currentlySelectedSession, v => {
             if (this.viewModel != null && v == this.viewModel) {
                 elMain.classList.toggle("tab-active", true);
             }
