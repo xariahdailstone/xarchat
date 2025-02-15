@@ -118,12 +118,12 @@ export class BBCodeParser {
         };
         xoptions.sink = options?.sink ?? { userClick: ()=>{}, sessionClick: ()=>{}, webpageClick: ()=>{} };
 
+        let contextIsDisposed = false;
         const parseContext = {
             parseOptions: xoptions,
             disposables: [] as IDisposable[],
-            isDisposed: false,
-            addDisposable(d: ConvertibleToDisposable) {
-                if (!this.isDisposed) {
+            addDisposable(d: IDisposable) {
+                if (!contextIsDisposed) {
                     this.disposables.push(asDisposable(d));
                 }
                 else {
@@ -261,7 +261,7 @@ export class BBCodeParser {
                 return child;
             },
             dispose: () => {
-                parseContext.isDisposed = true;
+                contextIsDisposed = true;
                 for (let x of parseContext.disposables) {
                     try { x.dispose(); }
                     catch { }
@@ -271,7 +271,7 @@ export class BBCodeParser {
                 this.dispose();
             },
             get isDisposed() { 
-                return parseContext.isDisposed;
+                return contextIsDisposed;
             }
         };
         

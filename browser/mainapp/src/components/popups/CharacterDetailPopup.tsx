@@ -72,8 +72,14 @@ export class CharacterDetailPopup extends ContextPopupBase<CharacterDetailPopupV
             let statusMessageParseResult: BBCodeParseResult | null = null;
             if (hasStatusMessage) {
                 mainClasses.push("has-statusmessage");
-                const bbcodeParse = ChatBBCodeParser.parse(cs.statusMessage, {
-                    sink: vm.session.bbcodeSink
+                const bbcodeParse = ChatBBCodeParser.parse(cs.statusMessage, { 
+                    sink: vm.session.bbcodeSink, 
+                    addUrlDomains: true, 
+                    appViewModel: vm.session.appViewModel, 
+                    activeLoginViewModel: vm.session,
+                    channelViewModel: vm.channelViewModel ?? undefined,
+                    imagePreviewPopups: true,
+                    syncGifs: true
                 });
                 disposables.push(bbcodeParse);
                 statusMessageParseResult = bbcodeParse;

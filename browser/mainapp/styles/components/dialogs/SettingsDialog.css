@@ -14,22 +14,66 @@
     grid-template-columns: 1fr;
     grid-template-areas:
         "tabstrip"
-        "tabpanel";
+        "contentarea";
 
     --content-max-width: 800px;
 }
 .tabstrip { grid-area: tabstrip; }
+.contentarea { grid-area: contentarea; }
+
+.contentarea {
+    background-color: var(--bg-level-4);
+    color: var(--fg-level-4);
+
+    display: grid;
+    grid-template-rows: auto;
+    grid-template-columns: 1fr auto minmax(auto, var(--content-max-width)) 1fr;
+    grid-template-areas:
+        ". treeview tabpanel .";
+}
+
+.treeview { grid-area: treeview; }
 .tabpanel { grid-area: tabpanel; }
 
 .tabstrip {
     display: flex;
     flex-direction: row;
 
-    padding-left: calc(max(16px, 50% - (var(--content-max-width) / 2)));
-    padding-right: calc(max(16px, 50% - (var(--content-max-width) / 2)));
+    margin-left: auto;
+    margin-right: auto;
 
     background-color: var(--bg-level-3);
 }
+
+.treeview {
+    background-color: var(--bg-level-4);
+    color: var(--fg-level-4);
+
+    margin: 4px;
+    padding: 4px;
+    min-width: 150px;
+    border-right: 1px solid var(--border-level-4);
+
+    font-weight: bold;
+
+    & .treeview-item {
+        padding-top: 0.1em;
+        padding-bottom: 0.1em;
+
+        & .treeview-item-group-title:hover {
+            background-color: var(--bg-level-3-hover);
+            cursor: pointer;
+        }
+    }
+    & .treeview-item-group {
+        & .treeview-item-group {
+            margin-left: 6px;
+            font-size: 90%;
+            font-weight: normal;
+        }
+    }
+}
+
 .tabpanel {
     background-color: var(--bg-level-4);
     color: var(--fg-level-4);
@@ -67,6 +111,9 @@
 .setting-item {
     padding: 9px 15px;
 }
+.setting-item:first-child {
+    padding-top: 0;
+}
 
 .setting-item.setting-is-disabled {
     opacity: 0.5;
@@ -87,8 +134,14 @@
     margin-top: 2px;
 }
 
+.setting-group > .setting-title,
+.setting-group > .setting-description,
 .setting-group-container {
-    /* padding-left: 9px; */
+    margin-left: 15px;
+}
+.setting-group-container {
+    margin-top: 9px;
+    border-left: 1px solid var(--border-level-4);
 }
 
 

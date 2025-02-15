@@ -36,21 +36,6 @@ export class ChannelHeader extends ComponentBase<ChannelViewModel> {
                 </button>
             </div>
 
-            <!--
-            <x-channelheaderfilter id="elFilter"></x-channelheaderfilter>
-            -->
-
-            <!--
-            <div id="elFilter">
-                <x-iconimage id="elFilterIcon" src="assets/ui/filter-icon.svg"></x-iconimage>
-                <x-bindingselect id="elFilterDropdown" tabindex="-1" modelpath="filterMode2">
-                    <option value="ads">Ads Only</option>
-                    <option value="chat">Chat Only</option>
-                    <option value="both">Both</option>
-                </x-bindingselect>
-            </div>
-            -->
-
             <div id="elConfigIconContainer">
                 <x-iconimage id="elConfigIcon" src="assets/ui/config-button.svg"></x-iconimage>
             </div>
@@ -59,8 +44,6 @@ export class ChannelHeader extends ComponentBase<ChannelViewModel> {
         const elIcon = this.$("elIcon") as HTMLImageElement;
         const elTitle = this.$("elTitle") as HTMLDivElement;
         const elOnlineStatusContainer = this.$("elOnlineStatusContainer") as HTMLDivElement;
-        //const elFilter = this.$("elFilter") as ChannelHeaderFilter;
-        const elFilterDropdown = this.$("elFilterDropdown") as HTMLSelectElement;
         const elConfigIconContainer = this.$("elConfigIconContainer") as HTMLDivElement;
         const elDescriptionArea = this.$("elDescriptionArea") as HTMLDivElement;
         const elDescriptionText = this.$("elDescriptionText") as HTMLDivElement;
@@ -68,18 +51,18 @@ export class ChannelHeader extends ComponentBase<ChannelViewModel> {
 
         const elDescriptionShowMore = this.$("elDescriptionShowMore") as HTMLButtonElement;
 
-        this.watch(".", v => {
+        this.watchViewModel(v => {
             const elMain = this.elMain;
             elMain.classList.toggle("chatchannel", (v instanceof ChatChannelViewModel));
             elMain.classList.toggle("pmconvo", (v instanceof PMConvoChannelViewModel));
         });
-        this.watch("iconUrl", v => {
+        this.watchExpr(vm => vm.iconUrl, v => {
             elIcon.src = v ? v : URLUtils.getEmptyImageUrl();
         });
-        this.watch("title", v => {
+        this.watchExpr(vm => vm.title, v => {
             elTitle.innerText = v ? v : "(none)";
         });
-        this.watch("messageMode", v => {
+        this.watchExprTyped(ChatChannelViewModel, vm => vm.messageMode, v => {
             let mode: string;
             switch (v) {
                 case ChatChannelMessageMode.ADS_ONLY:
@@ -95,12 +78,7 @@ export class ChannelHeader extends ComponentBase<ChannelViewModel> {
                     mode = "none";
                     break;
             }
-            //elFilter.setAttribute("data-messagemode", mode);
         });
-
-        // this.watchExpr(vm => vm.filterOptions, fo => {
-        //     elFilter.viewModel = fo ?? null;
-        // });
 
         let pastDescription: IDisposable | null = null;
         const setDescription = (rawDescStr: string) => {
@@ -148,7 +126,7 @@ export class ChannelHeader extends ComponentBase<ChannelViewModel> {
         //     });
         // });
 
-        this.watch("character", v => {
+        this.watchExprTyped(PMConvoChannelViewModel, vm => vm.character, v => {
             if (this.viewModel instanceof PMConvoChannelViewModel && v) {
                 HTMLUtils.assignStaticHTMLFragment(elOnlineStatusContainer, `<div class="online-status-dot-container" id="elDotContainer"></div><div class="online-status-text" id="elStatusText"></div>`);
                 const elDotContainer = this.$("elDotContainer") as HTMLDivElement;

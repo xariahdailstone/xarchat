@@ -4,7 +4,7 @@ import { jsx, Fragment, VNode, init, propsModule, styleModule, eventListenersMod
 import { CharacterLinkUtils } from "../util/CharacterLinkUtils";
 import { KeyValuePair } from "../util/collections/KeyValuePair";
 import { ReadOnlyStdObservableCollection } from "../util/collections/ReadOnlyStdObservableCollection";
-import { asDisposable, IDisposable } from "../util/Disposable";
+import { asDisposable, asNamedDisposable, DisposableOwnerField, IDisposable } from "../util/Disposable";
 import { HTMLUtils } from "../util/HTMLUtils";
 import { IterableUtils } from "../util/IterableUtils";
 import { Observable } from "../util/Observable";
@@ -44,6 +44,8 @@ export class ChannelStreamMessageViewRenderer implements IDisposable {
         this._element = null;
         this._collection = null;
         this.refreshBindings();
+        this._previousCollObs.dispose();
+        this._previousRenderDisposable.dispose();
     }
     [Symbol.dispose]() {
         this.dispose();
@@ -124,15 +126,8 @@ export class ChannelStreamMessageViewRenderer implements IDisposable {
         }
     }
 
-    private _previousCollObs: IDisposable | null = null;
-    private _previousRenderDisposable: IDisposable | null = null;
-
-    private disposePreviousRender() {
-        if (this._previousRenderDisposable) {
-            this._previousRenderDisposable.dispose();
-            this._previousRenderDisposable = null;
-        }
-    }
+    private readonly _previousCollObs = new DisposableOwnerField();
+    private readonly _previousRenderDisposable = new DisposableOwnerField();
 
     private _lastRenderedElement: HTMLElement | null = null;
     private _performRenderHandle: number | null = null;
@@ -158,7 +153,7 @@ export class ChannelStreamMessageViewRenderer implements IDisposable {
                         this._lastRenderedElement = element;
                     }
         
-                    this.disposePreviousRender();
+                    this._previousRenderDisposable.value = null;
                     if (element && collection) {
 
                         let renderResult!: [VNode, IDisposable];
@@ -168,14 +163,17 @@ export class ChannelStreamMessageViewRenderer implements IDisposable {
                         const depChangeListener = depSet.addChangeListener(() => {
                             this.performRender();
                         });
-                        renderResult[1] = asDisposable(renderResult[1], depChangeListener, depSet);
+                        renderResult[1] = asNamedDisposable("ChannelStreamMessageViewRenderer_PreviousRenderDisposable", renderResult[1], depChangeListener, depSet);
 
-                        this._previousRenderDisposable = renderResult[1];
+                        this._previousRenderDisposable.value = renderResult[1];
                         if (!needEnd) {
                             this.onUpdatingElements();
                             needEnd = true;
                         }
                         this._currentVNode = this.patch(this._currentVNode, renderResult[0]);
+                    }
+                    else if (this._currentVNode) {
+                        this._currentVNode = this.patch(this._currentVNode, <></>);
                     }
                 }
                 finally {
@@ -191,16 +189,13 @@ export class ChannelStreamMessageViewRenderer implements IDisposable {
         const element = this.element;
         const collection = this.collection;
 
-        if (this._previousCollObs) {
-            this._previousCollObs.dispose();
-            this._previousCollObs = null;
-        }
+        this._previousCollObs.value = null;
 
         if (element && collection) {
             const collObs = collection?.addCollectionObserver(entries => {
                 this.performRender();
             });
-            this._previousCollObs = collObs;
+            this._previousCollObs.value = collObs;
         }
         
         this.performRender();

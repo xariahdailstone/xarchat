@@ -78,9 +78,9 @@ export class TooltipPopup extends ContextPopupBase<TooltipPopupViewModel> {
         const elTitle = this.$("elTitle") as HTMLDivElement;
         const elBody = this.$("elBody") as HTMLDivElement;
 
-        this.watch("title", v => {
+        this.watchExpr(vm => vm.title, v => {
             if (!StringUtils.isNullOrWhiteSpace(v))  {
-                elTitle.innerText = v;
+                elTitle.innerText = v ?? "";
                 elTitle.classList.remove("hidden");
             }
             else {
@@ -88,7 +88,7 @@ export class TooltipPopup extends ContextPopupBase<TooltipPopupViewModel> {
                 elTitle.classList.add("hidden");
             }
         });
-        this.watch("text", v => {
+        this.watchExpr(vm => vm.text, v => {
             elBody.innerText = (v != null) ? v : "";
         });
     }

@@ -8,7 +8,7 @@ import { ComponentBase, componentElement } from "./ComponentBase.js";
 import { RenderingComponentBase } from "./RenderingComponentBase.js";
 
 @componentElement("x-leftlistselectpanel")
-class LeftListSelectPanel extends RenderingComponentBase<ActiveLoginViewModel> {
+export class LeftListSelectPanel extends RenderingComponentBase<ActiveLoginViewModel> {
 
     render(): (VNode | [VNode, IDisposable]) {
         const vm = this.viewModel;
@@ -44,7 +44,7 @@ class LeftListSelectPanel extends RenderingComponentBase<ActiveLoginViewModel> {
                 watchListTabsNodes.push(<div classList={[ "tab", (isActive ? "tab-active" : "tab-inactive") ]}
                         id="elFriends" on={getTabEvents(LeftListSelectedPane.WATCHED)}>
                     <x-iconimage classList={[ "tab-icon" ]} attr-src="assets/ui/friends-icon.svg"></x-iconimage>
-                    <div classList={[ "tab-addtl" ]} id="elWatchedCount">{ vm.onlineWatchedChars.size.toString() }</div>
+                    <div classList={[ "tab-addtl" ]} id="elWatchedCount">{ vm.onlineWatchedChars?.size.toString() ?? "-" }</div>
                 </div>);
             }
             else {
@@ -52,12 +52,12 @@ class LeftListSelectPanel extends RenderingComponentBase<ActiveLoginViewModel> {
                 watchListTabsNodes.push(<div classList={[ "tab", (friendsIsActive ? "tab-active" : "tab-inactive") ]}
                         id="elFriends" on={getTabEvents(LeftListSelectedPane.FRIENDS)}>
                     <x-iconimage classList={[ "tab-icon" ]} attr-src="assets/ui/friends-icon.svg"></x-iconimage>
-                    <div classList={[ "tab-addtl" ]} id="elWatchedCount">{ vm.onlineFriends.size.toString() }</div>
+                    <div classList={[ "tab-addtl" ]} id="elWatchedCount">{ vm.onlineFriends?.size.toString() ?? "-" }</div>
                 </div>);
                 watchListTabsNodes.push(<div classList={[ "tab", (llSelPane == LeftListSelectedPane.BOOKMARKS ? "tab-active" : "tab-inactive") ]}
                         id="elBookmarks" on={getTabEvents(LeftListSelectedPane.BOOKMARKS)}>
                     <x-iconimage classList={[ "tab-icon" ]} attr-src="assets/ui/bookmarks-icon.svg"></x-iconimage>
-                    <div classList={[ "tab-addtl" ]} id="elWatchedCount">{ vm.onlineBookmarks.size.toString() }</div>
+                    <div classList={[ "tab-addtl" ]} id="elWatchedCount">{ vm.onlineBookmarks?.size.toString() ?? "-" }</div>
                 </div>);
             }
 
@@ -106,7 +106,7 @@ class LeftListSelectPanelOld extends ComponentBase<ActiveLoginViewModel> {
         const elHasPings = this.$("elHasPings") as HTMLDivElement;
         const elWatchedCount = this.$("elWatchedCount") as HTMLDivElement;
 
-        this.watch("leftListSelectedPane", v => {
+        this.watchExpr(vm => vm.leftListSelectedPane, v => {
             if (v) {
                 let activeEl: (HTMLElement | null) = null;
                 switch (v) {

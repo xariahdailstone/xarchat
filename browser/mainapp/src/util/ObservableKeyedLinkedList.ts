@@ -1,5 +1,6 @@
 import { EmptyDisposable, IDisposable, asDisposable } from "./Disposable";
-import { Observable, PropertyChangeEvent, PropertyChangeEventListener, ValueSubscription } from "./Observable";
+import { ObjectUniqueId } from "./ObjectUniqueId";
+import { Observable, ObservableValue, PropertyChangeEvent, PropertyChangeEventListener, ValueSubscription } from "./Observable";
 import { observableProperty, setupValueSubscription } from "./ObservableBase";
 import { CollectionChangeEventListener, KeyedCollection, ObservableCollection } from "./ObservableCollection";
 import { Predicate } from "./Predicate";
@@ -130,8 +131,16 @@ export class ObservableOrderedDictionaryImpl<TKey, TItem> implements ObservableK
     private readonly _btree: BTree<TKey, KeyValuePair<TKey, TItem>>;
 
     get(key: TKey): TItem | undefined {
-        const result = this._btree.get(key);
-        return result?.value;
+        if (this._btree.has(key)) {
+            const result = this._btree.get(key)!;
+            Observable.publishNamedRead(this.getHasEventName(key), true);
+            Observable.publishNamedRead(this.getValueEventName(key), result.value);
+            return result.value;
+        }
+        else {
+            Observable.publishNamedRead(this.getHasEventName(key), false);
+            Observable.publishNamedRead(this.getValueEventName(key), undefined);
+        }
     }
 
     add(value: TItem): void {
@@ -145,6 +154,7 @@ export class ObservableOrderedDictionaryImpl<TKey, TItem> implements ObservableK
     }
 
     private getHasEventName(key: TKey) { return `ObservableOrderedDictionaryImpl#${this._id}.has(${key})`; }
+    private getValueEventName(key: TKey) { return `ObservableOrderedDictionaryImpl#${this._id}.has(${key})`; }
 
     has(key: TKey): boolean {
         const result = this._btree.has(key);
@@ -181,25 +191,38 @@ export class ObservableOrderedDictionaryImpl<TKey, TItem> implements ObservableK
         }
     }
 
-    @observableProperty
-    get size(): number { return this._btree.size; }
+    private readonly _valuesVersion: ObservableValue<number> = new ObservableValue(0);
 
     @observableProperty
-    get length(): number { return this._btree.size; }
+    get size(): number { 
+        const v = this._valuesVersion;
+        const size = this._btree.size;
+        return size;
+    }
+
+    @observableProperty
+    get length(): number { 
+        const v = this._valuesVersion;
+        const size = this._btree.size;
+        return size;
+    }
 
     *values(): Iterable<TItem> {
+        const v = this._valuesVersion;
         for (let v of this._btree.values()) {
             yield v.value;
         }
     }
 
     *iterateValues(): Iterable<KeyValuePair<TKey, TItem>> {
+        const v = this._valuesVersion;
         for (let kvp of this._btree.values()) {
             yield kvp;
         }
     }
 
     minKey() {
+        const v = this._valuesVersion;
         return this._btree.minKey();
     }
 
@@ -269,11 +292,14 @@ export class ObservableOrderedDictionaryImpl<TKey, TItem> implements ObservableK
 
         this.raisePropertyChangeEvent(`item(${kvp.key})`, this.size);
         Observable.publishNamedUpdate(this.getHasEventName(kvp.key), type == DictionaryChangeType.ITEM_ADDED);
+        Observable.publishNamedUpdate(this.getValueEventName(kvp.key), type == DictionaryChangeType.ITEM_ADDED ? kvp.value : undefined);
+        this._valuesVersion.value = this._valuesVersion.value + 1;
     }
 
     private raiseLengthChangeEvent() {
         this.raisePropertyChangeEvent("size", this.size);
         this.raisePropertyChangeEvent("length", this.length);
+        this._valuesVersion.value = this._valuesVersion.value + 1;
     }
 
     raisePropertyChangeEvent(propertyName: string, propertyValue: unknown) {

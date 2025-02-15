@@ -3,7 +3,7 @@ import { CharacterStatus } from "../shared/CharacterSet.js";
 import { CancellationToken, CancellationTokenSource } from "../util/CancellationTokenSource.js";
 import { SnapshottableMap } from "../util/collections/SnapshottableMap.js";
 import { SnapshottableSet } from "../util/collections/SnapshottableSet.js";
-import { IDisposable, asDisposable, isDisposable } from "../util/Disposable.js";
+import { DisposableOwnerField, IDisposable, asDisposable, asNamedDisposable, isDisposable } from "../util/Disposable.js";
 import { testEquality } from "../util/Equality.js";
 import { EventListenerUtil } from "../util/EventListenerUtil.js";
 import { FastEventSource } from "../util/FastEventSource.js";
@@ -21,6 +21,7 @@ import { createStylesheet, setStylesheetAdoption, SharedStyleSheet } from "../ut
 import { TaskUtils } from "../util/TaskUtils.js";
 import { WhenChangeManager } from "../util/WhenChange.js";
 import { ActiveLoginViewModel } from "../viewmodel/ActiveLoginViewModel.js";
+import { ConstructorOf } from "./dialogs/DialogFrame.js";
 
 const NOW = () => (new Date()).getTime();
 
@@ -228,6 +229,7 @@ export abstract class ComponentBase<TViewModel> extends HTMLElement {
     private connectedCallback() {
         this._isComponentConnected = true;
         this.parentComponent = this.findParentComponent();
+        //console.log(`${this.constructor.name} connected`, this.parentComponent);
         this.viewModelContextUpdated();
         try { this.connectedToDocument(); } catch { }
         this.setupWhenConnecteds();
@@ -238,6 +240,7 @@ export abstract class ComponentBase<TViewModel> extends HTMLElement {
     protected disconnectedFromDocument() { }
 
     private disconnectedCallback() {
+        //console.log(`${this.constructor.name} disconnected`);
         this._isComponentConnected = false;
         this.parentComponent = null;
         this.viewModelContextUpdated();
@@ -281,25 +284,22 @@ export abstract class ComponentBase<TViewModel> extends HTMLElement {
     }
 
     private _parentComponent: ComponentBase<unknown> | null = null;
-    private _parentComponentViewModelChange: IDisposable | null = null;
+    private readonly _parentComponentViewModelChange = new DisposableOwnerField();
     private _explicitViewModel: any = ComponentBase.INHERITED_VIEW_MODEL;
 
     get parentComponent(): (ComponentBase<unknown> | null) { return this._parentComponent; }
     private set parentComponent(value: (ComponentBase<unknown> | null)) {
         if (value !== this._parentComponent) {
-            if (this._parentComponentViewModelChange) {
-                this._parentComponentViewModelChange.dispose();
-                this._parentComponentViewModelChange = null;
-            }
-
+            this._parentComponentViewModelChange.value = null;
             this._parentComponent = value;
-
             if (this._parentComponent) {
-                this._parentComponentViewModelChange = this._parentComponent.addEventListener("viewmodelchange", () => {
-                    this.viewModelContextUpdated();        
-                })!;
+                this._parentComponentViewModelChange.value = this._parentComponent.whenConnectedWithViewModel(vm => {
+                    this.viewModelContextUpdated();
+                });
             }
-            this.viewModelContextUpdated();
+            else {
+                this.viewModelContextUpdated();
+            }
         }
     }
 
@@ -427,17 +427,6 @@ export abstract class ComponentBase<TViewModel> extends HTMLElement {
 
     private viewModelChangedInternal() {
         this.dispatchEvent(new Event("viewmodelchange"));
-
-        // this._viewModelChangedListeners.forEachValueSnapshotted(h => {
-        //     try {
-        //         h(new Event("viewmodelchange"));
-        //     }
-        //     catch { }
-        // });
-
-        for (let reg of this._watches.values()) {
-            this.prepareWatchRegistration(reg);
-        }
         this.viewModelChanged();
     }
 
@@ -445,107 +434,48 @@ export abstract class ComponentBase<TViewModel> extends HTMLElement {
 
     private raiseConnectedEvent() {
         this.dispatchEvent(new Event("connected"));
-        // this._connectedListeners.forEachValueSnapshotted(handler => {
-        //     try {
-        //         handler(new Event("connected"));
-        //     }
-        //     catch { }
-        // });
     }
 
     private raiseDisconnectedEvent() {
         this.dispatchEvent(new Event("disconnected"));
-        // this._disconnectedListeners.forEachValueSnapshotted(handler => {
-        //     try {
-        //         handler(new Event("disconnected"));
-        //     }
-        //     catch { }
-        // });
-    }
-
-    private readonly _watches: Set<WatchRegistration> = new Set<WatchRegistration>();
-
-    watch(propertyPath: string, valueChanged: (value: any) => (void | IDisposable)): IDisposable {
-        const wcm = new WhenChangeManager();
-
-        const origValueChanged = valueChanged;
-        valueChanged = (value: any) => {
-            wcm.assign({ value: value }, () => origValueChanged(value));
-        };
-
-        if (propertyPath == ".") {
-            return EventListenerUtil.addDisposableEventListener(this, "viewmodelchange", () => { valueChanged(this.viewModel); });
-            //return this.addEventListener("viewmodelchange", () => { valueChanged(this.viewModel); });
-        }
-
-        const reg: WatchRegistration = {
-            propertyPath: propertyPath,
-            valueChanged: valueChanged,
-            subscription: null
-        };
-
-        this._watches.add(reg);
-        this.prepareWatchRegistration(reg);
-
-        return asDisposable(() => {
-            this._watches.delete(reg);
-            wcm.dispose();
-        });
     }
 
     watchExpr<T>(expr: (vm: TViewModel) => T, valueChanged: (value: (T | undefined)) => (void | IDisposable)): IDisposable {
         const result = this.whenConnectedWithViewModel((vm) => {
-            let lastReturnedDisposable: Disposable | null = null;
+            const lastReturnedDisposable = new DisposableOwnerField();
 
             const oexpr = new ObservableExpression(
                 () => expr(vm), 
                 v => {
                     const vcResult = valueChanged(v);
-                    if (lastReturnedDisposable && vcResult != lastReturnedDisposable) {
-                        lastReturnedDisposable[Symbol.dispose]();
-                        lastReturnedDisposable = null;
-                    }
-                    if (isDisposable(vcResult)) {
-                        lastReturnedDisposable = vcResult as Disposable;
-                    }
+                    lastReturnedDisposable.value = vcResult ?? null;
                 });
             
-            return asDisposable(() => {
-                if (lastReturnedDisposable) {
-                    lastReturnedDisposable[Symbol.dispose]();
-                    lastReturnedDisposable = null;
-                }
+            return asNamedDisposable(`${this.constructor.name}_watchExprRegistration`, () => {
+                lastReturnedDisposable.value = valueChanged(undefined) ?? null;
+                lastReturnedDisposable.dispose();
                 oexpr.dispose();
-                const vcResult = valueChanged(undefined);
-                if (isDisposable(vcResult)) {
-                    (vcResult as Disposable)[Symbol.dispose]();
-                }
             });
         });
         
         return result;
     }
 
-    private canAddValueSubscription(obj: any) {
-        return obj != null && typeof obj.addValueSubscription == "function";
+    watchExprTyped<TTypedViewModel, T>(type: ConstructorOf<TTypedViewModel>, expr: (vm: TTypedViewModel) => T, valueChanged: (value: (T | undefined)) => (void | IDisposable)): IDisposable {
+        return this.watchExpr(vm => vm instanceof type ? expr(vm) : undefined, valueChanged);
     }
 
-    private prepareWatchRegistration(reg: WatchRegistration) {
-        if (this.viewModel !== null && this.canAddValueSubscription(this.viewModel)) {
-            if (reg.subscription) {
-                reg.subscription.dispose();
-                reg.subscription = null;
-            }
-
-            const sub = (this.viewModel as Observable).addValueSubscription(reg.propertyPath, reg.valueChanged);
-            reg.subscription = sub;
-        }
-        else {
-            if (reg.subscription) {
-                reg.subscription.dispose();
-                reg.subscription = null;
-            }
-        }
+    watchViewModel(valueChanged: (value: TViewModel | null | undefined) => (void | IDisposable)): IDisposable {
+        const lastReturnedDisposable = new DisposableOwnerField();
+        const result = this.whenConnectedWithViewModel(vm => {
+            lastReturnedDisposable.value = valueChanged(vm) ?? null;
+            return lastReturnedDisposable;
+        });
+        return asDisposable(() => {
+            result.dispose();
+            lastReturnedDisposable.value = valueChanged(undefined) ?? null;
+            lastReturnedDisposable.dispose();
+        });
     }
 
     private readonly _whenConnectedFuncs: SnapshottableSet<() => Optional<IDisposable>> = new SnapshottableSet();
@@ -557,12 +487,12 @@ export abstract class ComponentBase<TViewModel> extends HTMLElement {
             try {
                 const d = createFunc();
                 if (d) {
-                    this._whenConnectedDisposables.set(createFunc, d);
+                    this._whenConnectedDisposables.set(createFunc, asNamedDisposable(`${this.constructor.name}_whenConnectedResult`, d));
                 }
             }
             catch { }
         }
-        return asDisposable(() => {
+        return asNamedDisposable(`${this.constructor.name}_whenConnectedRegistration`, () => {
             this._whenConnectedFuncs.delete(createFunc);
             if (this.isComponentConnected) {
                 const d = this._whenConnectedDisposables.get(createFunc);
@@ -597,49 +527,30 @@ export abstract class ComponentBase<TViewModel> extends HTMLElement {
     }
 
     whenConnectedWithViewModel(createFunc: (vm: TViewModel) => Optional<IDisposable>): IDisposable {
-        let runningDisposable: (IDisposable | null) = null;
+        let runningDisposable = new DisposableOwnerField();
         let lastExposedViewModel: (TViewModel | null) = null;
+        let lastExposedConnected: boolean = false;
 
         const maybeGo = () => {
-            if (this.viewModel != lastExposedViewModel) {
-                if (runningDisposable) {
-                    runningDisposable.dispose();
-                    runningDisposable = null;
-                }
-            }
+            const hasChanged = (this.viewModel != lastExposedViewModel || this.isComponentConnected != lastExposedConnected);
+            if (hasChanged) {
+                lastExposedViewModel = this.viewModel;
+                lastExposedConnected = this.isComponentConnected;
 
-            if (this.isComponentConnected && this.viewModel) {
-                runningDisposable = createFunc(this.viewModel) ?? null;
-            }
-            else {
-                if (runningDisposable) {
-                    runningDisposable.dispose();
-                    runningDisposable = null;
+                runningDisposable.value = null;
+
+                if (lastExposedViewModel && lastExposedConnected) {
+                    runningDisposable.value = createFunc(lastExposedViewModel) ?? null;    
                 }
             }
         };
 
-        const vmWatcher = EventListenerUtil.addDisposableEventListener(this, "viewmodelchange", () => {
-            maybeGo();
-        });
-        const connWatcher = this.whenConnected(() => {
-            maybeGo();
-            return asDisposable(() => {
-                if (runningDisposable) {
-                    runningDisposable.dispose();
-                    runningDisposable = null;
-                }
-            });
-        });
+        const vmWatcher = EventListenerUtil.addDisposableEventListener(this, "viewmodelchange", maybeGo);
+        const connWatcher = this.whenConnected(maybeGo);
+        maybeGo();
 
-        return asDisposable(vmWatcher, connWatcher, runningDisposable);
+        return asNamedDisposable(`${this.constructor.name}_whenConnectedWithViewModelRegistration`, vmWatcher, connWatcher, runningDisposable);
     }
-}
-
-interface WatchRegistration {
-    readonly propertyPath: string;
-    readonly valueChanged: (value: any) => void;
-    subscription: (ValueSubscription | null);
 }
 
 class ModelPathWatcher {

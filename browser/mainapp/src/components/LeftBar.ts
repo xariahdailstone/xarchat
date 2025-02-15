@@ -4,7 +4,10 @@ import { LeftListSelectedPane } from "../viewmodel/ActiveLoginViewModel.js";
 import { AppViewModel } from "../viewmodel/AppViewModel.js";
 import { ChatsList } from "./ChatsList.js";
 import { ComponentBase, componentElement } from "./ComponentBase.js";
+import { DisconnectedWarning } from "./DisconnectedWarning.js";
+import { LeftListSelectPanel } from "./LeftListSelectPanel.js";
 import { MiscTabsList } from "./MiscTabsList.js";
+import { MyCharacterPanel } from "./MyCharacterPanel.js";
 import { WatchedList, WatchedListShowType } from "./WatchedList.js";
 
 @componentElement("x-leftbar")
@@ -13,11 +16,21 @@ export class LeftBar extends ComponentBase<AppViewModel> {
         super();
 
         HTMLUtils.assignStaticHTMLFragment(this.elMain, `
-            <x-leftlistselectpanel id="elListSelectPanel" modelpath="currentlySelectedSession"></x-leftlistselectpanel>
-            <x-mycharacterpanel id="elCharPanel" modelpath="currentlySelectedSession"></x-mycharacterpanel>
-            <x-disconnectedwarning id="elDisconnectedWarning" modelpath="currentlySelectedSession"></x-disconnectedwarning>
+            <x-leftlistselectpanel id="elListSelectPanel"></x-leftlistselectpanel>
+            <x-mycharacterpanel id="elCharPanel"></x-mycharacterpanel>
+            <x-disconnectedwarning id="elDisconnectedWarning"></x-disconnectedwarning>
             <x-instanceselectpanel id="elInstanceSelectPanel"></x-instanceselectpanel>
         `);
+
+        const elListSelectPanel = this.$("elListSelectPanel") as LeftListSelectPanel;
+        const elCharPanel = this.$("elCharPanel") as MyCharacterPanel;
+        const elDisconnectedWarning = this.$("elDisconnectedWarning") as DisconnectedWarning;
+
+        this.watchExpr(vm => vm.currentlySelectedSession, v => { 
+            elListSelectPanel.viewModel = v ?? null; 
+            elCharPanel.viewModel = v ?? null;
+            elDisconnectedWarning.viewModel = v ?? null;
+        });
 
         this.watchExpr(vm => [vm.currentlySelectedSession?.leftListSelectedPane, !!vm.currentlySelectedSession?.getConfigSettingById("joinFriendsAndBookmarks")], v => {
             if (v) {

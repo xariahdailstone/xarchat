@@ -14,10 +14,15 @@ export class MiscTabsList extends ComponentBase<ActiveLoginViewModel> {
         super();
 
         HTMLUtils.assignStaticHTMLFragment(this.elMain, `
-            <x-misctabscollectionview modelpath="miscTabs" id="elCollectionView">
+            <x-misctabscollectionview id="elCollectionView">
                 <div class="misctabs"></div>
             </x-misctabscollectionview>
         `);
+
+        const elCollectionView = this.$("elCollectionView") as MiscTabsCollectionView;
+        this.watchExpr(vm => vm.miscTabs, v => {
+            elCollectionView.viewModel = v ?? null;
+        });
     }
 }
 

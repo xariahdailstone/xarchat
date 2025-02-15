@@ -1396,7 +1396,8 @@ export class ChatConnectionImpl implements ChatConnection {
                     roles: args.roles.length > 0 ? args.roles : undefined,
                     orientations: args.orientations.length > 0 ? args.orientations : undefined,
                     positions: args.positions.length > 0 ? args.positions : undefined,
-                    languages: args.languages.length > 0 ? args.languages : undefined
+                    languages: args.languages.length > 0 ? args.languages : undefined,
+                    furryprefs: args.furryprefs.length > 0 ? args.furryprefs : undefined
                 }
             },
             (recvMsg) => {
