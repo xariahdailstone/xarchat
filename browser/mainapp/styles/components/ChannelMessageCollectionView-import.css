@@ -370,7 +370,7 @@
 .messagecontainer .collapse-host:has(.ad) {
     background-color: rgba(0, 255, 100, 0.1);
 }
-.messagecontainer .collapse-host:has(.has-ping) {
+.collapse-host:not(:has(.messageitem.displaystyle-discordn)):has(.has-ping) {
     background-color: rgba(0, 0, 255, 0.2);
 }
 .messagecontainer .collapse-host:has(.important) {
@@ -466,6 +466,7 @@
             height: 42px;
             margin-right: 11px;
             user-select: none;
+            z-index: 2;
         }
         & .character-container {
             font-weight: bold;
@@ -504,6 +505,14 @@
             & .timestamp { 
                 margin-top: 5px; 
                 margin-left: -18px; 
+            }
+
+            & .message-content.has-ping {
+                background-color: rgba(0, 0, 255, 0.2);
+                margin-left: -90px;
+                padding-left: 90px;
+                margin-right: -40px;
+                padding-right: 40px;
             }
 
             & .message-content.emote,
