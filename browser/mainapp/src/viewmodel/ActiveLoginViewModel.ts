@@ -56,6 +56,10 @@ export class ActiveLoginViewModel extends ObservableBase {
 
         super();
 
+        this.addPropertyListener("pmConvosCollapsed", (e) => {
+            this.logger.logWarn("pmConvosCollapsed changed", e.propertyName, e.propertyValue);
+        })
+
         this._viewModelId = nextViewModelId++;
         this._logger = Logging.createLogger("ActiveLoginViewModel");
         this._logger.enterScope(`id#${this._viewModelId}`);

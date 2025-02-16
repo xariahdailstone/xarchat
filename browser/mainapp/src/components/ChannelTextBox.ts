@@ -2,6 +2,7 @@ import { TypingStatus } from "../shared/TypingStatus.js";
 import { BBCodeUtils } from "../util/BBCodeUtils.js";
 import { asDisposable } from "../util/Disposable.js";
 import { EL } from "../util/EL.js";
+import { FocusMagnet } from "../util/FocusMagnet.js";
 import { HTMLUtils } from "../util/HTMLUtils.js";
 import { KeyCodes } from "../util/KeyCodes.js";
 import { TextEditShortcutsHelper } from "../util/TextEditShortcutsHelper.js";
@@ -255,8 +256,11 @@ export class ChannelTextBox extends ComponentBase<ChannelViewModel> {
 
     focusTextBox() {
         window.requestAnimationFrame(() => {
+            console.log("focusTextBox");
             const elTextbox = this.$("elTextbox")! as HTMLTextAreaElement;
-            elTextbox.focus();
+            if (FocusMagnet.instance.ultimateFocus != elTextbox) {
+                elTextbox.focus();
+            }
         });
     }
 

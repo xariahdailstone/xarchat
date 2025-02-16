@@ -7,12 +7,12 @@ import { ChannelViewModel } from "./ChannelViewModel";
 export class ConsoleChannelViewModel extends ChannelViewModel {
     constructor(parent: ActiveLoginViewModel) {
         super(parent, "Console");
+
+        this.canClose = false;
+        this.canPin = false;
     }
 
     get collectiveName(): string { return `console`; }
-
-    canClose: boolean = false;
-    canPin: boolean = false;
 
     get description() { 
         const count = this.parent.characterSet.size;

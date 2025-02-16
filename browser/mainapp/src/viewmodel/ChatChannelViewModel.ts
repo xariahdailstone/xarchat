@@ -79,6 +79,8 @@ export class ChatChannelViewModel extends ChannelViewModel {
         this.name = name;
         this.title = title;
         this.showConfigButton = true;
+        this.canClose = true;
+        this.canPin = true;
 
         this.filterMode = ChatChannelMessageMode.BOTH;
 
@@ -217,12 +219,6 @@ export class ChatChannelViewModel extends ChannelViewModel {
 
     @observableProperty
     descriptionIsNew: boolean = false;
-
-    @observableProperty
-    override readonly canClose: boolean = true;
-
-    @observableProperty
-    override readonly canPin: boolean = true;
 
     private _sortKey!: ChatChannelViewModelSortKey;
     get sortKey() {
