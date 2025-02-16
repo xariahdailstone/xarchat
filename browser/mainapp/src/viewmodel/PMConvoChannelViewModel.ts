@@ -44,6 +44,8 @@ export class PMConvoChannelViewModel extends ChannelViewModel {
 
         this.character = character;
         this.showConfigButton = true;
+        this.canClose = true;
+        this.canPin = false;
 
         this.prefixMessages.add(
             ChannelMessageViewModel.createLogNavMessage(this, "Click here to see earlier messages in the Log Viewer", () => {
@@ -156,12 +158,6 @@ export class PMConvoChannelViewModel extends ChannelViewModel {
 
     @observableProperty
     get characterSet(): CharacterSet { return this.parent.characterSet; }
-
-    @observableProperty
-    override readonly canPin: boolean = false;
-
-    @observableProperty
-    override readonly canClose: boolean = true;
 
     @observableProperty
     get iconUrl() {

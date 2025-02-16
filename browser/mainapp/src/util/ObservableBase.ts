@@ -13,6 +13,23 @@ type ObservableReader = [string, (instance: any) => any];
 
 const obsPropsMetadata: Map<Function, ObservableReader[]> = new Map();
 
+let _idleIngestHandle: number | null = null;
+let _idleIngestCallbacks: (() => any)[] = [];
+function registerIdleIngest(func: () => any): number {
+    _idleIngestCallbacks.push(func);
+    if (_idleIngestHandle == null) {
+        _idleIngestHandle = window.requestIdleCallback(() => {
+            _idleIngestHandle = null;
+            const callbacks = _idleIngestCallbacks;
+            _idleIngestCallbacks = [];
+            for (let cb of callbacks) {
+                cb();
+            }
+        });
+    }
+    return _idleIngestHandle;
+}
+
 export abstract class ObservableBase implements Observable {
     constructor() {
         this.logger = Logging.createLogger(`${this.constructor.name}#${ObjectUniqueId.get(this)}`);
@@ -25,13 +42,47 @@ export abstract class ObservableBase implements Observable {
 
     protected logger: Logger;
 
-    addPropertyListener(propertyName: string, onChangeCallback: PropertyChangeEventListener): IDisposable {
-        let lset = this._propertyListeners.get(propertyName);
-        if (!lset) {
-            lset = new SnapshottableSet<PropertyChangeEventListener>();
-            this._propertyListeners.set(propertyName, lset);
+    private _pendingListenerChanges: { func: "add" | "remove", propertyName: string, onChangeCallback: PropertyChangeEventListener }[] = [];
+    private _pendingListenerChangesIngestHandle: number | null = null;
+
+    private ingestPendingListeners() {
+        for (let pl of this._pendingListenerChanges) {
+            if (pl.func == "add") {
+                let lset = this._propertyListeners.get(pl.propertyName);
+                if (!lset) {
+                    lset = new SnapshottableSet<PropertyChangeEventListener>();
+                    this._propertyListeners.set(pl.propertyName, lset);
+                }
+                lset.add(pl.onChangeCallback);    
+            }
+            else if (pl.func == "remove") {
+                let lset = this._propertyListeners.get(pl.propertyName);
+                if (lset) {
+                    lset.delete(pl.onChangeCallback);
+                    if (lset.size == 0) {
+                        this._propertyListeners.delete(pl.propertyName);
+                    }
+                }
+            }
         }
-        lset.add(onChangeCallback);
+        this._pendingListenerChanges = [];
+    }
+
+    addPropertyListener(propertyName: string, onChangeCallback: PropertyChangeEventListener): IDisposable {
+        this._pendingListenerChanges.push({ func: "add", propertyName: propertyName, onChangeCallback: onChangeCallback });
+        if (this._pendingListenerChangesIngestHandle == null) {
+            this._pendingListenerChangesIngestHandle = registerIdleIngest(() => {
+                this._pendingListenerChangesIngestHandle = null;
+                this.ingestPendingListeners();
+            });
+        }
+
+        // let lset = this._propertyListeners.get(propertyName);
+        // if (!lset) {
+        //     lset = new SnapshottableSet<PropertyChangeEventListener>();
+        //     this._propertyListeners.set(propertyName, lset);
+        // }
+        // lset.add(onChangeCallback);
 
         return asDisposable(() => {
             this.removePropertyListener(propertyName, onChangeCallback);
@@ -39,13 +90,21 @@ export abstract class ObservableBase implements Observable {
     }
 
     removePropertyListener(propertyName: string, onChangeCallback: PropertyChangeEventListener) {
-        let lset = this._propertyListeners.get(propertyName);
-        if (lset) {
-            lset.delete(onChangeCallback);
-            if (lset.size == 0) {
-                this._propertyListeners.delete(propertyName);
-            }
+        this._pendingListenerChanges.push({ func: "remove", propertyName: propertyName, onChangeCallback: onChangeCallback });
+        if (this._pendingListenerChangesIngestHandle == null) {
+            this._pendingListenerChangesIngestHandle = registerIdleIngest(() => {
+                this._pendingListenerChangesIngestHandle = null;
+                this.ingestPendingListeners();
+            });
         }
+
+        // let lset = this._propertyListeners.get(propertyName);
+        // if (lset) {
+        //     lset.delete(onChangeCallback);
+        //     if (lset.size == 0) {
+        //         this._propertyListeners.delete(propertyName);
+        //     }
+        // }
     }
 
     addEventListener(eventName: "propertychange", handler: PropertyChangeEventListener): IDisposable {
@@ -72,6 +131,28 @@ export abstract class ObservableBase implements Observable {
                     try { x(evt); }
                     catch { }
                 });
+            });
+        }
+
+        const pendingHighwater = this._pendingListenerChanges.length;
+        let pendingNotifySet: Set<PropertyChangeEventListener> | null = null;
+        for (let i = 0; i < pendingHighwater; i++) {
+            const item = this._pendingListenerChanges[i];
+            if (item.func == "add" && (item.propertyName == propertyName || item.propertyName == "*")) {
+                pendingNotifySet ??= new Set();
+                pendingNotifySet!.add(item.onChangeCallback);
+            }
+            else if (pendingNotifySet != null && item.func == "remove" && (item.propertyName == propertyName || item.propertyName == "*")) {
+                pendingNotifySet!.delete(item.onChangeCallback);
+            }
+        }
+        if (pendingNotifySet != null) {
+            Observable.enterObservableFireStack(() => {
+                const evt = new PropertyChangeEvent(propertyName, propValue);
+                for (let pn of pendingNotifySet?.values()) {
+                    try { pn(evt); }
+                    catch { }
+                }
             });
         }
 

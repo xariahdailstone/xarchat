@@ -120,6 +120,31 @@ export class Observable {
         const o = new DynamicNameObservable(name);
         o.raisePropertyChangeEvent("value", value);
     }
+
+    static createDependencySet(): DependencySet {
+        const result = new DependencySetImpl();
+        return result;
+    }
+
+    static createDependencySetOver<T>(
+        onExpire: () => any,
+        func: () => T): { dependencySet: DependencySet, result: T | undefined, error: any | undefined } {
+
+        const depSet = new DependencySetImpl();
+        depSet.addChangeListener(onExpire);
+        let result: T | undefined = undefined;
+        let error: any | undefined = undefined;
+        try {
+            using rm = Observable.addReadMonitor((observable, propertyName) => {
+                depSet.maybeAddDependency(observable, propertyName);
+            });
+            result = func();
+        }
+        catch (e) {
+            error = e;
+        }
+        return { dependencySet: depSet, result: result, error: error };
+    }
 }
 
 class DynamicNameObservable implements Observable {
@@ -271,7 +296,10 @@ export class ObservableValue<T> implements Observable {
 
 export interface DependencySet extends IDisposable {
     debug: boolean;
-    addChangeListener(callback: () => any): IDisposable;
+    readonly count: number;
+    readonly skippedDuplicateCount: number;
+    addChangeListener(callback: (observable?: any, propertyName?: string) => any): IDisposable;
+    maybeAddDependency(vm: any, propertyName: string): void;
 }
 
 class DependencySetImpl implements DependencySet {
@@ -279,6 +307,9 @@ class DependencySetImpl implements DependencySet {
     }
 
     private readonly _deps: Map<any, Map<string, IDisposable>> = new Map();
+
+    private _count: number = 0;
+    private _skippedDuplicateCount: number = 0;
 
     private _disposed: boolean = false;
     dispose() {
@@ -300,6 +331,9 @@ class DependencySetImpl implements DependencySet {
 
     debug: boolean = false;
 
+    get count() { return this._count; }
+    get skippedDuplicateCount() { return this._skippedDuplicateCount; }
+
     maybeAddDependency(vm: any, propertyName: string) {
         let depsForVm = this._deps.get(vm);
         if (!depsForVm) {
@@ -311,28 +345,32 @@ class DependencySetImpl implements DependencySet {
         if (!depForProp) {
             depForProp = this.attachToObservable(vm, propertyName);
             depsForVm.set(propertyName, depForProp);
+            this._count++;
+        }
+        else {
+            this._skippedDuplicateCount++;
         }
     }
 
     private attachToObservable(observable: any, propertyName: string): IDisposable {
         const newListener = (observable as Observable).addEventListener("propertychange", (e) => {
             if (e.propertyName == propertyName) {
-                this.stateHasChanged();
+                this.stateHasChanged(observable, propertyName);
             }
         })
         return newListener;
     }
 
-    private stateHasChanged() {
+    private stateHasChanged(observable: any, propertyName: string) {
         const cl = this._changeListeners;
-        this.dispose();
         cl.forEachValueSnapshotted(v => {
-            try { v(); }
+            try { v(observable, propertyName); }
             catch { }
         });
+        this.dispose();
     }
 
-    private readonly _changeListeners: SnapshottableMap<object, () => any> = new SnapshottableMap();
+    private readonly _changeListeners: SnapshottableMap<object, (observable?: any, propertyName?: string) => any> = new SnapshottableMap();
     addChangeListener(callback: () => any): IDisposable {
         if (!this._disposed) {
             const myKey = {};

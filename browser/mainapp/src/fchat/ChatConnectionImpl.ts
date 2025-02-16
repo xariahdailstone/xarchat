@@ -738,11 +738,13 @@ export class ChatConnectionImpl implements ChatConnection {
 
     private handleTPNMessage(msg: HandleableTypedChatMessage<ServerTPNMessage>) {
         if (CharacterName.equals(CharacterName.create(msg.body.character), this._identifiedCharacter)) {
-            this.logger.logDebug("my TPN change", msg.body.status);
+            // We skip updating our own typing status, since we use it as a messaging flag and don't want that to get exposed in the UI.
         }
-        this.sink.charactersStatusUpdated([
-            { characterName: CharacterName.create(msg.body.character), typingStatus: TypingStatusConvert.toTypingStatus(msg.body.status) ?? TypingStatus.NONE }
-        ], false, false);
+        else {
+            this.sink.charactersStatusUpdated([
+                { characterName: CharacterName.create(msg.body.character), typingStatus: TypingStatusConvert.toTypingStatus(msg.body.status) ?? TypingStatus.NONE }
+            ], false, false);
+        }
         msg.handled = true;
     }
 
@@ -977,7 +979,7 @@ export class ChatConnectionImpl implements ChatConnection {
                             asOf: (+msg.body.asof > 0) ? new Date(+msg.body.asof) : new Date(),
                             gender: CharacterGenderConvert.toCharacterGender(msg.body.characterGender) ?? undefined,
                             status: OnlineStatusConvert.toOnlineStatus(msg.body.characterStatus) ?? undefined,
-                            seen: msg.body.seen,
+                            seen: msg.body.seen || CharacterName.create(msg.body.character) == this._identifiedCharacter,
                             isHistorical: true
                         });
                         msg.handled = true;
@@ -1007,7 +1009,7 @@ export class ChatConnectionImpl implements ChatConnection {
                             asOf: (+msg.body.asof > 0) ? new Date(+msg.body.asof) : new Date(),
                             gender: CharacterGenderConvert.toCharacterGender(msg.body.characterGender) ?? undefined,
                             status: OnlineStatusConvert.toOnlineStatus(msg.body.characterStatus) ?? undefined,
-                            seen: msg.body.seen,
+                            seen: msg.body.seen || CharacterName.create(msg.body.character) == this._identifiedCharacter,
                             isHistorical: true
                         });
                         msg.handled = true;
@@ -1024,7 +1026,7 @@ export class ChatConnectionImpl implements ChatConnection {
                             asOf: (+msg.body.asof > 0) ? new Date(+msg.body.asof) : new Date(),
                             gender: CharacterGenderConvert.toCharacterGender(msg.body.characterGender) ?? undefined,
                             status: OnlineStatusConvert.toOnlineStatus(msg.body.characterStatus) ?? undefined,
-                            seen: msg.body.seen,
+                            seen: msg.body.seen || CharacterName.create(msg.body.character) == this._identifiedCharacter,
                             isHistorical: true
                         });
                         msg.handled = true;
@@ -1055,7 +1057,7 @@ export class ChatConnectionImpl implements ChatConnection {
                             asOf: (+msg.body.asof > 0) ? new Date(+msg.body.asof) : new Date(),
                             gender: CharacterGenderConvert.toCharacterGender(msg.body.characterGender) ?? undefined,
                             status: OnlineStatusConvert.toOnlineStatus(msg.body.characterStatus) ?? undefined,
-                            seen: msg.body.seen,
+                            seen: msg.body.seen || CharacterName.create(msg.body.character) == this._identifiedCharacter,
                             isHistorical: true
                         });
                         msg.handled = true;
@@ -1086,7 +1088,7 @@ export class ChatConnectionImpl implements ChatConnection {
                             asOf: (+msg.body.asof > 0) ? new Date(+msg.body.asof) : new Date(),
                             gender: CharacterGenderConvert.toCharacterGender(msg.body.characterGender) ?? undefined,
                             status: OnlineStatusConvert.toOnlineStatus(msg.body.characterStatus) ?? undefined,
-                            seen: msg.body.seen,
+                            seen: msg.body.seen || CharacterName.create(msg.body.character) == this._identifiedCharacter,
                             isHistorical: true
                         });
                         msg.handled = true;
