@@ -1,8 +1,9 @@
 import { HTMLUtils } from "../util/HTMLUtils";
+import { ValueReference } from "../util/ValueReference";
 import { ComponentBase, componentElement } from "./ComponentBase";
 
 @componentElement("x-bindingselect")
-export class BindingSelect extends ComponentBase<string> {
+export class BindingSelect extends ComponentBase<ValueReference<string>> {
     constructor() {
         super();
 
@@ -16,14 +17,14 @@ export class BindingSelect extends ComponentBase<string> {
         const elSelect = this.$("elSelect") as HTMLSelectElement;
         this.elSelect = elSelect;
 
-        this.watchExpr(vm => vm, vm => {
-            elSelect.value = vm ?? "";
+        this.watchExpr(vm => vm.read(), v => {
+            elSelect.value = v ?? "";
         });
 
         elSelect.addEventListener("change", () => {
-            if (this.canAssignToViewModel()) {
+            if (this.viewModel) {
                 const v = elSelect.value;
-                this.assignToViewModel(v);
+                this.viewModel.write(v);
             }
         });
     }

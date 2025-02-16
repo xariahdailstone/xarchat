@@ -1,7 +1,7 @@
 
 #elMain {
-    width: 500px;
-    height: 350px;
+    width: 520px;
+    height: 450px;
 
     display: grid;
     grid-template-rows: minmax(0, 100%);

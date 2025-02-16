@@ -1,7 +1,8 @@
+import { ValueReference } from "../util/ValueReference.js";
 import { ComponentBase, componentElement } from "./ComponentBase.js";
 
 @componentElement("x-splitterhandle")
-export class SplitterHandle extends ComponentBase<number> {
+export class SplitterHandle extends ComponentBase<ValueReference<number>> {
 
     static get observedAttributes() { return [...super.observedAttributes, "orientation", "min", "max", "target", "invert" ]};
 
@@ -188,7 +189,7 @@ export class SplitterHandle extends ComponentBase<number> {
     private _nonBoundValue: number = SplitterHandle.DEFAULT_MIN;
     get value() {
         if (this.viewModel) {
-            return +this.viewModel;
+            return +this.viewModel.read();
         }
         else {
             return this._nonBoundValue;
@@ -198,8 +199,8 @@ export class SplitterHandle extends ComponentBase<number> {
         value = Math.max(Math.min(value, this.max), this.min);
         if (value != this.value) {
             // TODO: add writing to viewModel
-            if (this.canAssignToViewModel()) {
-                this.assignToViewModel(value);
+            if (this.viewModel) {
+                this.viewModel.write(value);
             }
             else {
                 this._nonBoundValue = value;

@@ -6,6 +6,7 @@ import { PromiseSource } from "../../util/PromiseSource";
 import { TransitionUtils } from "../../util/TransitionUtils";
 import { WhenChangeManager } from "../../util/WhenChange";
 import { DialogButtonViewModel, DialogCaptionButtonViewModel, DialogViewModel } from "../../viewmodel/dialogs/DialogViewModel";
+import { CollectionView2 } from "../CollectionView2";
 import { ComponentBase, componentArea, componentElement } from "../ComponentBase";
 import { IconImage } from "../IconImage";
 
@@ -29,7 +30,7 @@ export class DialogFrame extends ComponentBase<DialogViewModel<any>> {
                 <div class="titlebar" id="elTitleBar">
                     <div class="titlebar-title" id="elTitlebarTitle"></div>
                     <div class="titlebar-captionbuttons" id="elTitlebarCaptionButtons">
-                        <x-collectionview2 modelpath="captionButtons">
+                        <x-collectionview2 id="elCaptionButtons">
                             <template>
                                 <x-dialogcaptionbutton></x-dialogcaptionbutton>
                             </template>
@@ -42,7 +43,7 @@ export class DialogFrame extends ComponentBase<DialogViewModel<any>> {
                 </div>
                 <div class="contentarea" id="elContentArea">
                 </div>
-                <x-collectionview2 modelpath="buttons">
+                <x-collectionview2 id="elDialogButtons">
                     <template>
                         <x-dialogbutton></x-dialogbutton>
                     </template>
@@ -55,9 +56,18 @@ export class DialogFrame extends ComponentBase<DialogViewModel<any>> {
         const elTitlebarClose = this.$("elTitlebarClose") as HTMLButtonElement;
         const elContentArea = this.$("elContentArea") as HTMLDivElement;
         const elButtonBar = this.$("elButtonBar") as HTMLDivElement;
+        const elCaptionButtons = this.$("elCaptionButtons") as CollectionView2<DialogCaptionButtonViewModel>;
+        const elDialogButtons = this.$("elDialogButtons") as CollectionView2<DialogButtonViewModel>;
+
+        this.watchExpr(vm => vm.captionButtons, v => {
+            elCaptionButtons.viewModel = v ?? null;
+        });
+        this.watchExpr(vm => vm.buttons, v => {
+            elDialogButtons.viewModel = v ?? null;
+        });
 
         const frameClassWCM = new WhenChangeManager();
-        this.watch(".", v => {
+        this.watchViewModel(v => {
             if (v) {
                 this._currentDialogComponent = null;
 
@@ -90,13 +100,13 @@ export class DialogFrame extends ComponentBase<DialogViewModel<any>> {
                 }
             }
         });
-        this.watch("title", v => {
+        this.watchExpr(vm => vm.title, v => {
             elTitlebarTitle.innerText = v != null ? v : "";
         });
-        this.watch("closeBoxResult", v => {
+        this.watchExpr(vm => vm.closeBoxResult, v => {
             elTitlebarClose.classList.toggle("hidden", v === undefined);
         });
-        this.watch("buttons.length", v => {
+        this.watchExpr(vm => vm.buttons.length, v => {
             const showButtonBar = (v != null && v > 0);
             elButtonBar.classList.toggle("hidden", !showButtonBar);
         });
@@ -213,10 +223,10 @@ class DialogButton extends ComponentBase<DialogButtonViewModel> {
 
         const elButton = this.$("elButton") as HTMLButtonElement;
 
-        this.watch("title", (v) => {
+        this.watchExpr(vm => vm.title, (v) => {
             elButton.innerText = v != null ? v : "";
         });
-        this.watch("style", (v) => {
+        this.watchExpr(vm => vm.style, (v) => {
             if (v) {
                 const className = `style-${v.toLowerCase()}`;
                 elButton.classList.add(className);
@@ -249,7 +259,7 @@ class DialogCaptionButton extends ComponentBase<DialogCaptionButtonViewModel> {
         const elButton = this.$("elButton") as HTMLButtonElement;
         const elIconImage = this.$("elIconImage") as IconImage;
 
-        this.watch("imageUrl", (v) => {
+        this.watchExpr(vm => vm.imageUrl, (v) => {
             elIconImage.src = v != null ? v : null;
         });
 

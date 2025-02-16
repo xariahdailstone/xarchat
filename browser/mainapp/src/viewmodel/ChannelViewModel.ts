@@ -81,10 +81,10 @@ export abstract class ChannelViewModel extends ObservableBase implements IDispos
     showSettingsDialogAsync() { }
 
     @observableProperty
-    readonly abstract canClose: boolean;
+    canClose: boolean = false;
 
     @observableProperty
-    readonly abstract canPin: boolean;
+    canPin: boolean = false;
 
     private _isPinned: boolean = false;
     @observableProperty
@@ -606,7 +606,11 @@ export abstract class ChannelViewModel extends ObservableBase implements IDispos
         if (this.isTabActive) {
             this.hasPing = false;
             this.unseenMessageCount = 0;
+            this.ensureSelectableFilterSelected();
         }
+    }
+
+    ensureSelectableFilterSelected() {
     }
 
     protected pingIfNecessary(message: ChannelMessageViewModel) {
@@ -633,6 +637,9 @@ export abstract class ChannelViewModel extends ObservableBase implements IDispos
     }
 
     @observableProperty
+    hasUnseenMessages: boolean = false;
+
+    @observableProperty
     get unseenMessageCount(): number {
         if (this.getConfigSettingById("unseenIndicator")) {
             return this._unseenMessageCount;
@@ -643,6 +650,7 @@ export abstract class ChannelViewModel extends ObservableBase implements IDispos
     }
     set unseenMessageCount(value: number) {
         this._unseenMessageCount = value;
+        this.hasUnseenMessages = value != 0;
     }
 
     @observableProperty
@@ -986,8 +994,9 @@ export class ChannelMessageViewModel extends ObservableBase implements IDisposab
         return false;
     }
 
-    @observableProperty
-    isOversized: boolean | null = false;
+    private readonly _isOversized: ObservableValue<boolean> = new ObservableValue(true);
+    get isOversized() { return this._isOversized.value; };
+    set isOversized(value) { this._isOversized.value = value; }
 
     @observableProperty
     collapsed: boolean | null = true;

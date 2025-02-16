@@ -231,7 +231,7 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
 
     private setupDragDropHost(hostEl: HTMLElement): IDisposable {
         const disposables: IDisposable[] = [];
-        this.logger.logInfo("setupDragDropHost", hostEl);
+        this.logger.logDebug("setupDragDropHost", hostEl);
 
         let dragIndicatorPopup: ChannelDragIndicatorPopupViewModel | null = null;
 
@@ -439,7 +439,7 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
             getHeaderDot: () => !isExpanded ? this.renderHeaderDot(
                     "unpinnedChannelsHeaderDot", 
                     vm.unpinnedChannels.filter(v => v.hasPing).length > 0,
-                    vm.unpinnedChannels.filter(v => v.unseenMessageCount > 0).length > 0) 
+                    vm.unpinnedChannels.filter(v => v.hasUnseenMessages).length > 0) 
                 : null,
             renderContent: () => { 
                 return <div classList={["sectionitems"]} attrs={{ "data-dragdrophost": "true" }}>
@@ -470,7 +470,7 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
             getHeaderDot: () => !isExpanded ? this.renderHeaderDot(
                     "pinnedChannelsHeaderDot", 
                     vm.pinnedChannels.filter(v => v.hasPing).length > 0,
-                    vm.pinnedChannels.filter(v => v.unseenMessageCount > 0).length > 0) 
+                    vm.pinnedChannels.filter(v => v.hasUnseenMessages).length > 0) 
                 : null,
             renderContent: () => { 
                 return <div classList={["sectionitems"]} attrs={{ "data-dragdrophost": "true" }}>
@@ -532,7 +532,7 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
         }
 
         const isSelected = cvm.activeLoginViewModel.selectedChannel == cvm;
-        const showUnseenDot = cvm.unseenMessageCount > 0;
+        const showUnseenDot = cvm.hasUnseenMessages;
         const pingNode = cvm.hasPing
             ? <x-iconimage classList={["sectionitems-item-titleicon-image"]} attr-src="assets/ui/channel-ping.svg"></x-iconimage>
             : null;

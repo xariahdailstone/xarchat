@@ -25,14 +25,14 @@
 .gender-none.char-is-friend { color: var(--fg-gfriend-ender-none) !important; }
 .gender-offline { opacity: 0.5; }
 
-.onlinestatus-offline { color: #444; }
-.onlinestatus-online { color: #55f; }
-.onlinestatus-idle { color: #33a; }
-.onlinestatus-away { color: #aa4; }
-.onlinestatus-dnd { color: #c44; }
-.onlinestatus-busy { color: #811; }
-.onlinestatus-looking { color: #8f8; }
-.onlinestatus-crown { color: #ff0; }
+.onlinestatus-offline { color: var(--fg-status-offline); }
+.onlinestatus-online { color: var(--fg-status-online); }
+.onlinestatus-idle { color: var(--fg-status-idle); }
+.onlinestatus-away { color: var(--fg-status-away); }
+.onlinestatus-dnd { color: var(--fg-status-dnd); }
+.onlinestatus-busy { color: var(--fg-status-busy); }
+.onlinestatus-looking { color: var(--fg-status-looking); }
+.onlinestatus-crown { color: var(--fg-status-crown); }
 
 .ignored { opacity: 0.4; }
 

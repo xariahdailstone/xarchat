@@ -8,7 +8,7 @@ import { RenderingComponentBase } from "./RenderingComponentBase.js";
 import { EmptyDisposable, IDisposable, asDisposable } from "../util/Disposable.js";
 
 @componentElement("x-mycharacterpanel")
-class MyCharacterPanel extends RenderingComponentBase<ActiveLoginViewModel> {
+export class MyCharacterPanel extends RenderingComponentBase<ActiveLoginViewModel> {
     constructor() {
         super();
     }
@@ -31,7 +31,7 @@ class MyCharacterPanel extends RenderingComponentBase<ActiveLoginViewModel> {
             const el = <>
                 <div id="elStatusArea" on={{ click: () => vm.showCharacterStatusPopup(this.$("elStatusArea")!) }}>
                     <img id="elAvatar" attr-src={this.viewModel?.characterName ? URLUtils.getAvatarImageUrl(this.viewModel.characterName) : URLUtils.getEmptyImageUrl() } />
-                    <div id="elName">{this.viewModel?.characterName.value ?? ""}</div>
+                    <div id="elName">{this.viewModel?.characterName?.value ?? ""}</div>
                     <div id="elStatusMessage"><x-bbcodedisplay props={{viewModel: parseCodeResult}}></x-bbcodedisplay></div>
                 </div>
                 <button id="elConfigButton" on={{ click: () => vm.showMainContextMenu(this.$("elConfigButton")!) }} attr-tabindex="-1">

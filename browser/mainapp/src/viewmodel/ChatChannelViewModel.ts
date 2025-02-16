@@ -79,6 +79,8 @@ export class ChatChannelViewModel extends ChannelViewModel {
         this.name = name;
         this.title = title;
         this.showConfigButton = true;
+        this.canClose = true;
+        this.canPin = true;
 
         this.filterMode = ChatChannelMessageMode.BOTH;
 
@@ -217,12 +219,6 @@ export class ChatChannelViewModel extends ChannelViewModel {
 
     @observableProperty
     descriptionIsNew: boolean = false;
-
-    @observableProperty
-    override readonly canClose: boolean = true;
-
-    @observableProperty
-    override readonly canPin: boolean = true;
 
     private _sortKey!: ChatChannelViewModelSortKey;
     get sortKey() {
@@ -930,6 +926,26 @@ export class ChatChannelViewModel extends ChannelViewModel {
 
     override async performBottleSpinAsync(): Promise<void> {
         await this.activeLoginViewModel.chatConnection.channelPerformBottleSpinAsync(this.name);
+    }
+
+    override ensureSelectableFilterSelected() {
+        if (this.channelFilters) {
+            const selectableFiltersArray = 
+                IterableUtils.asQueryable(this.channelFilters.namedFilters).where(nf => 
+                    (nf.showInAdsOnlyChannel && this.messageMode == ChatChannelMessageMode.ADS_ONLY) ||
+                    (nf.showInChatOnlyChannel && this.messageMode == ChatChannelMessageMode.CHAT_ONLY) ||
+                    (nf.showInBothAdsAndChatChannel && this.messageMode == ChatChannelMessageMode.BOTH)).toArray();
+            const selectableFiltersSet = new Set(selectableFiltersArray);
+
+            const sf = this.channelFilters.selectedFilter;
+            let needReselect = true;
+            if (sf) {
+                if (selectableFiltersSet.has(sf)) { needReselect = false; }
+            }
+            if (needReselect && selectableFiltersArray.length > 0) {
+                this.channelFilters.selectedFilter = selectableFiltersArray[0];
+            }
+        }
     }
 
     protected pingIfNecessary(message: ChannelMessageViewModel) {

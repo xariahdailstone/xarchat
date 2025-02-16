@@ -23,7 +23,7 @@ export class PopupFrame extends ComponentBase<PopupViewModel> {
         //this.elMain.innerHTML = ``;
 
         let view: PopupBase<any> | null = null;
-        this.watch(".", v => {
+        this.watchViewModel(v => {
             while (this.elMain.firstElementChild) {
                 this.elMain.firstElementChild.remove();
             }

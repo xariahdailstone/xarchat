@@ -72,7 +72,7 @@ export class ChannelDescriptionPopup extends PopupBase<ChannelDescriptionPopupVi
             catch (e) { }
         }
 
-        this.watch("popFromElement", (v) => {
+        this.watchExpr(vm => vm.popFromElement, (v) => {
             positionPopup();
         });
 

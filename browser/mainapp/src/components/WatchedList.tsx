@@ -96,7 +96,7 @@ export class WatchedListOld extends ComponentBase<ActiveLoginViewModel> {
                     <div class="sectiontitle-text">Friends/Bookmarks (<span id="elCount">0</span>)</div>
                 </div>
 
-                <x-characterscollectionview modelpath="watchedChars" id="elCollectionView">
+                <x-characterscollectionview id="elCollectionView">
                     <div class="sectionitems pmconvo" id="elWatchedChars"></div>
                 </x-characterscollectionview>
             </div>
@@ -108,8 +108,11 @@ export class WatchedListOld extends ComponentBase<ActiveLoginViewModel> {
         const elCount = this.$("elCount") as HTMLSpanElement;
         const elCollectionView = this.$("elCollectionView") as CharactersCollectionView;
 
-        this.watch(".", v => {
-            elCollectionView.activeLoginViewModel = v;
+        this.watchExpr(vm => vm.watchedChars, v => {
+            elCollectionView.viewModel = v ?? null;
+        });
+        this.watchViewModel(v => {
+            elCollectionView.activeLoginViewModel = v ?? null;
         });
 
         const updateCount = () => {
@@ -125,9 +128,9 @@ export class WatchedListOld extends ComponentBase<ActiveLoginViewModel> {
             elCount.innerText = msg;
         };
 
-        this.watch("watchedChars.size", updateCount);
-        this.watch("onlineWatchedChars.size", updateCount);
-        this.watch("showOnlineWatchedOnly", v => {
+        this.watchExpr(vm => vm.watchedChars.size, updateCount);
+        this.watchExpr(vm => vm.onlineWatchedChars.size, updateCount);
+        this.watchExpr(vm => vm.showOnlineWatchedOnly, v => {
             if (!!v) {
                 elCollectionView.modelPath = "onlineWatchedChars";
                 elFilterOnline.classList.add("selected");

@@ -25,7 +25,10 @@ export class ChannelFiltersViewModel extends ObservableBase {
                         filterClasses: IterableUtils.asQueryable(y.selectedCategories).select(x => x.code).toArray(),
                         name: y.name,
                         canPing: y.canPing,
-                        controlsUnseenDot: y.controlsUnseenDot
+                        controlsUnseenDot: y.controlsUnseenDot,
+                        showInAdsOnlyChannel: y.showInAdsOnlyChannel,
+                        showInChatOnlyChannel: y.showInChatOnlyChannel,
+                        showInBothAdsAndChatChannel: y.showInBothAdsAndChatChannel
                     };
                     res.push(item);
                 }
@@ -87,6 +90,21 @@ export class ChannelFiltersViewModel extends ObservableBase {
     addNamedFilter(name: string, selectedCategories: string[]) {
         const nf = new ChannelNamedFilterViewModel(this);
         nf.name = name;
+        if (name == "All") {
+            nf.showInChatOnlyChannel = false;
+            nf.showInAdsOnlyChannel = false;
+            nf.showInBothAdsAndChatChannel = true;
+        }
+        else if (name == "Ads") {
+            nf.showInChatOnlyChannel = false;
+            nf.showInAdsOnlyChannel = true;
+            nf.showInBothAdsAndChatChannel = true;
+        }
+        else if (name == "Chat") {
+            nf.showInChatOnlyChannel = true;
+            nf.showInAdsOnlyChannel = false;
+            nf.showInBothAdsAndChatChannel = true;
+        }
         for (let sc of selectedCategories) {
             for (let cc of this.availableCategories) {
                 if (cc.code == sc) {
@@ -109,6 +127,9 @@ export class ChannelFiltersViewModel extends ObservableBase {
                 }
                 nf.canPing = e.canPing ?? true;
                 nf.controlsUnseenDot = e.controlsUnseenDot ?? false;
+                nf.showInChatOnlyChannel = e.showInChatOnlyChannel ?? (e.name != "Ads" && e.name != "All");
+                nf.showInAdsOnlyChannel = e.showInAdsOnlyChannel ?? (e.name != "Chat" && e.name != "All");
+                nf.showInBothAdsAndChatChannel = e.showInBothAdsAndChatChannel ?? true;
             }
             if (selectedNf) {
                 this.selectedFilter = selectedNf;
@@ -199,6 +220,15 @@ export class ChannelNamedFilterViewModel extends ObservableBase {
     @observableProperty
     canPing: boolean = true;
 
+    @observableProperty
+    showInAdsOnlyChannel: boolean = true;
+
+    @observableProperty
+    showInChatOnlyChannel: boolean = true;
+
+    @observableProperty
+    showInBothAdsAndChatChannel: boolean = true;
+
     toggleControlsUnseenDot() {
         const setToValue = !this.controlsUnseenDot;
         if (setToValue) {
@@ -211,6 +241,15 @@ export class ChannelNamedFilterViewModel extends ObservableBase {
     }
     toggleCanPing() { 
         this.canPing = !this.canPing;
+    }
+    toggleShowInAdsOnlyChannel() {
+        this.showInAdsOnlyChannel = !this.showInAdsOnlyChannel;
+    }
+    toggleShowInChatOnlyChannel() {
+        this.showInChatOnlyChannel = !this.showInChatOnlyChannel;
+    }
+    toggleShowInBothAdsAndChatChannel() {
+        this.showInBothAdsAndChatChannel = !this.showInBothAdsAndChatChannel;
     }
 
     @observableProperty

@@ -10,8 +10,8 @@ export class DisconnectedWarning extends RenderingComponentBase<ActiveLoginViewM
     constructor() {
         super();
 
-        this.watch("connectionState", () => this.stateHasChanged());
-        this.watch("autoReconnectInSec", () => this.stateHasChanged());
+        this.watchExpr(vm => vm.connectionState, () => this.stateHasChanged());
+        this.watchExpr(vm => vm.autoReconnectInSec, () => this.stateHasChanged());
     }
 
     render(): VNode {

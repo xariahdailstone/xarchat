@@ -40,7 +40,7 @@ export class AddChannelsView extends StageViewComponent<AddChannelsViewModel> {
                                 <div class="chantype-section-list-th channellistitem-count sort-header" id="elHeaderPublicCount">Count</div>
                             </div>
                         </div>
-                        <x-addchannellist modelpath="publicChannelsSortedView" id="elPublicChannelsList">
+                        <x-addchannellist id="elPublicChannelsList">
                             <div class="chantype-section-list-tbody"></div>
                         </x-addchannellist>
                     </div>
@@ -57,7 +57,7 @@ export class AddChannelsView extends StageViewComponent<AddChannelsViewModel> {
                                 <div class="chantype-section-list-th channellistitem-count sort-header" id="elHeaderPrivateCount">Count</div>
                             </div>
                         </div>
-                        <x-addchannellist modelpath="privateChannelsSortedView" id="elPrivateChannelsList">
+                        <x-addchannellist id="elPrivateChannelsList">
                             <div class="chantype-section-list-tbody"></div>
                         </x-addchannellist>
                     </div>
@@ -73,6 +73,13 @@ export class AddChannelsView extends StageViewComponent<AddChannelsViewModel> {
         const elHeaderPublicCount = this.$("elHeaderPublicCount") as HTMLDivElement;
         const elHeaderPrivateTitle = this.$("elHeaderPrivateTitle") as HTMLDivElement;
         const elHeaderPrivateCount = this.$("elHeaderPrivateCount") as HTMLDivElement;
+
+        this.watchExpr(vm => vm.publicChannelsSortedView, x => {
+            elPublicChannelsList.viewModel = x ?? null;
+        });
+        this.watchExpr(vm => vm.privateChannelsSortedView, x => {
+            elPrivateChannelsList.viewModel = x ?? null;
+        });
 
         elHeaderPublicTitle.addEventListener("click", () => {
             if (this.viewModel) {
@@ -136,12 +143,14 @@ export class AddChannelsView extends StageViewComponent<AddChannelsViewModel> {
             }
         };
 
-        this.watch(".", () => {
-            elPublicChannelsList.activeLoginViewModel = this.viewModel?.activeLoginViewModel ?? null;
-            elPrivateChannelsList.activeLoginViewModel = this.viewModel?.activeLoginViewModel ?? null;
+        this.watchViewModel((vm) => {
+            elPublicChannelsList.activeLoginViewModel = vm?.activeLoginViewModel ?? null;
+            elPrivateChannelsList.activeLoginViewModel = vm?.activeLoginViewModel ?? null;
             updateHighlightedChannels();
         });
-        this.watch("parent.openChannels.length", () => updateHighlightedChannels());
+        this.watchExpr(vm => vm.parent.openChannels.length, () => {
+            updateHighlightedChannels();
+        });
 
         this.watchExpr(vm => [ vm.publicChannelSortField, vm.publicChannelSortDescending ], sx => {
             if (sx && sx[0]) {

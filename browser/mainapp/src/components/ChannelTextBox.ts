@@ -2,6 +2,7 @@ import { TypingStatus } from "../shared/TypingStatus.js";
 import { BBCodeUtils } from "../util/BBCodeUtils.js";
 import { asDisposable } from "../util/Disposable.js";
 import { EL } from "../util/EL.js";
+import { FocusMagnet } from "../util/FocusMagnet.js";
 import { HTMLUtils } from "../util/HTMLUtils.js";
 import { KeyCodes } from "../util/KeyCodes.js";
 import { TextEditShortcutsHelper } from "../util/TextEditShortcutsHelper.js";
@@ -9,6 +10,7 @@ import { WhenChangeManager } from "../util/WhenChange.js";
 import { ChatConnectionState } from "../viewmodel/ActiveLoginViewModel.js";
 import { ChannelViewModel } from "../viewmodel/ChannelViewModel.js";
 import { ChatChannelMessageMode, ChatChannelPresenceState, ChatChannelViewModel } from "../viewmodel/ChatChannelViewModel.js";
+import { ConsoleChannelViewModel } from "../viewmodel/ConsoleChannelViewModel.js";
 import { PMConvoChannelViewModel } from "../viewmodel/PMConvoChannelViewModel.js";
 import { EIconSearchDialogViewModel } from "../viewmodel/dialogs/EIconSearchDialogViewModel.js";
 import { ComponentBase, componentElement } from "./ComponentBase.js";
@@ -86,7 +88,8 @@ export class ChannelTextBox extends ComponentBase<ChannelViewModel> {
             const isConnectedToChat = (vm?.activeLoginViewModel?.connectionState ?? ChatConnectionState.DISCONNECTED_NORMALLY) == ChatConnectionState.CONNECTED;
             const actuallyInChannel = isConnectedToChat && (vm ? (vm instanceof ChatChannelViewModel ? vm.actuallyInChannel : true) : false);
             const canSendTextbox = actuallyInChannel && vm && vm.canSendTextbox;
-            const canSendTextboxAsChat = actuallyInChannel && vm && (vm instanceof ChatChannelViewModel) && vm.canSendTextboxAsChat;
+            const canSendTextboxAsChat = (actuallyInChannel && vm && (vm instanceof ChatChannelViewModel) && vm.canSendTextboxAsChat) ||
+                ((vm instanceof PMConvoChannelViewModel || vm instanceof ConsoleChannelViewModel) && canSendTextbox);
             const canSendTextboxAsAd = actuallyInChannel && vm && (vm instanceof ChatChannelViewModel) && vm.canSendTextboxAsAd;
 
             elTextbox.disabled = !canSendTextbox;
@@ -119,27 +122,39 @@ export class ChannelTextBox extends ComponentBase<ChannelViewModel> {
             });
         };
 
-        this.watch("activeLoginViewModel.connectionState", (v: (ChatConnectionState | null)) => {
+        this.watchViewModel(vm => {
+            if (vm instanceof PMConvoChannelViewModel) {
+                elSendChat.innerText = "Send PM";
+            }
+            else if (vm instanceof ConsoleChannelViewModel) {
+                elSendChat.innerText = "Send Command";
+            }
+            else {
+                elSendChat.innerText = "Send Chat";
+            }
+        });
+
+        this.watchExpr(vm => vm.activeLoginViewModel.connectionState, (v: (ChatConnectionState | null)) => {
             updateDisableStates();
         });
-        this.watch("actuallyInChannel", (v) => {
+        this.watchExprTyped(ChatChannelViewModel, vm => vm.actuallyInChannel, (v) => {
             updateDisableStates();
         });
-        this.watch("canSendTextbox", (v) => {
+        this.watchExpr(vm => vm.canSendTextbox, (v) => {
             updateDisableStates();
         });
-        this.watch("canSendTextboxAsChat", (v) => {
+        this.watchExprTyped(ChatChannelViewModel, vm => vm.canSendTextboxAsChat, (v) => {
             updateDisableStates();
         });
-        this.watch("canSendTextboxAsAd", (v) => {
+        this.watchExprTyped(ChatChannelViewModel, vm => vm.canSendTextboxAsAd, (v) => {
             updateDisableStates();
         });
-        this.watch("textBoxContent", (v) => {
+        this.watchExpr(vm => vm.textBoxContent, (v) => {
             if (v != elTextbox.value) {
                 elTextbox.value = v ?? "";
             }
         });
-        this.watch("messageMode", (v) => {
+        this.watchExpr(vm => vm instanceof ChatChannelViewModel ? vm.messageMode : null, (v) => {
             if (v === null || v === undefined) {
                 elSendChat.classList.remove("hidden");
                 elSendAd.classList.add("hidden");
@@ -241,8 +256,11 @@ export class ChannelTextBox extends ComponentBase<ChannelViewModel> {
 
     focusTextBox() {
         window.requestAnimationFrame(() => {
+            console.log("focusTextBox");
             const elTextbox = this.$("elTextbox")! as HTMLTextAreaElement;
-            elTextbox.focus();
+            if (FocusMagnet.instance.ultimateFocus != elTextbox) {
+                elTextbox.focus();
+            }
         });
     }
 
