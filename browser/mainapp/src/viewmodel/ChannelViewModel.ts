@@ -1,4 +1,5 @@
 import { ChannelView } from "../components/ChannelView.js";
+import { PingLineItemDefinition, PingLineItemMatchStyle } from "../configuration/ConfigSchemaItem.js";
 import { BottleSpinData, ChannelMessageData, RollData } from "../fchat/ChatConnectionSink.js";
 import { CharacterGender } from "../shared/CharacterGender.js";
 import { CharacterName } from "../shared/CharacterName.js";
@@ -19,8 +20,10 @@ import { ObjectUniqueId } from "../util/ObjectUniqueId.js";
 import { Observable, ObservableValue } from "../util/Observable.js";
 import { ObservableBase, observableProperty } from "../util/ObservableBase.js";
 import { Collection, ObservableCollection } from "../util/ObservableCollection.js";
+import { ObservableExpression } from "../util/ObservableExpression.js";
 import { ObservableKeyExtractedOrderedDictionary, ObservableOrderedDictionary, ObservableOrderedDictionaryImpl } from "../util/ObservableKeyedLinkedList.js";
 import { StringUtils } from "../util/StringUtils.js";
+import { WhenChangeManager } from "../util/WhenChange.js";
 import { ActiveLoginViewModel } from "./ActiveLoginViewModel.js";
 import { AppNotifyEventType, AppViewModel } from "./AppViewModel.js";
 import { ChannelFiltersViewModel } from "./ChannelFiltersViewModel.js";
@@ -53,6 +56,10 @@ export abstract class ChannelViewModel extends ObservableBase implements IDispos
             this.prefixMessages.clear();
             this.suffixMessages.clear();
             this.recalculateMessagesToShow();
+
+            if (this._pingWordSetOE != null) {
+                this._pingWordSetOE.dispose();
+            }
         }
     }
     get isDisposed() { return this._disposed; }
@@ -676,6 +683,77 @@ export abstract class ChannelViewModel extends ObservableBase implements IDispos
     getFirstConfigEntryHierarchical(keys: string[]): (unknown | null) {
         return this.appViewModel.getFirstConfigEntryHierarchical(keys, this.activeLoginViewModel, this);
     }
+
+    private _pingWordSetOE: ObservableExpression<(PingLineItemDefinition & { pattern: RegExp | null })[]> | null = null;
+    private _pingWordsConverted: (PingLineItemDefinition & { pattern: RegExp | null })[] = [];
+
+    private createPingRegexp(x: PingLineItemDefinition): RegExp | null {
+        if (x == null || StringUtils.isNullOrWhiteSpace(x.text)) {
+            return null;
+        }
+
+        switch (x.matchStyle) {
+            default:
+            case PingLineItemMatchStyle.CONTAINS:
+                {
+                    const pattern = new RegExp(StringUtils.regexpEscape(x.text), "i");
+                    return pattern;
+                }
+                break;
+            case PingLineItemMatchStyle.WHOLE_WORD:
+                {
+                    const pattern = new RegExp("\\b" + StringUtils.regexpEscape(x.text) + "\\b", "i");
+                    return pattern;
+                }
+                break;
+            case PingLineItemMatchStyle.REGEX:
+                {
+                    try {
+                        const pattern = new RegExp(x.text, "i");
+                        return pattern;
+                    }
+                    catch {
+                        return null;
+                    }
+                }
+                break;
+        }
+    }
+
+    getPingWordSet(): (PingLineItemDefinition & { pattern: RegExp | null })[] {
+        if (this._pingWordSetOE == null && !this._disposed) {
+            this._pingWordSetOE = new ObservableExpression(
+                () => {
+                    const selfPingWordRaw = this.activeLoginViewModel.getConfigSettingById("pingCharName", this.parent);
+                    const cfgPingWordsRaw = this.activeLoginViewModel.getConfigSettingById("pingWords", this.parent) as (string | PingLineItemDefinition)[];
+                    const oldPingWordsRaw = this.activeLoginViewModel.pingWords.map(x => x);
+                    
+                    const selfPingWord: PingLineItemDefinition[] = selfPingWordRaw 
+                        ? [ { text: this.activeLoginViewModel.characterName.value, matchStyle: PingLineItemMatchStyle.CONTAINS } ] 
+                        : [];
+                    const cfgPingWords = cfgPingWordsRaw.map(x => {
+                        if (typeof x == "string") {
+                            return { text: x, matchStyle: PingLineItemMatchStyle.CONTAINS };
+                        }
+                        else {
+                            return x;
+                        }
+                    })
+                    const oldPingWords = oldPingWordsRaw.map(x => {
+                        return { text: x, matchStyle: PingLineItemMatchStyle.CONTAINS };
+                    });
+                    const allPingWordsx = IterableUtils.asQueryable(cfgPingWords).concat(oldPingWords).concat(selfPingWord)
+                        .select(x => { return { text: x.text.toLowerCase(), matchStyle: x.matchStyle, pattern: this.createPingRegexp(x) }})
+                        .toArray();
+                    return allPingWordsx;
+                },
+                (v) => { this._pingWordsConverted = v ?? []; },
+                () => { }
+            );
+        }
+        
+        return this._pingWordsConverted;
+    }
 }
 
 export interface AddMessageOptions {
@@ -954,6 +1032,10 @@ export class ChannelMessageViewModel extends ObservableBase implements IDisposab
 
     readonly containsPing: boolean;
 
+    private getPingWordSet() {
+        return this.parent?.getPingWordSet() ?? [];
+    }
+
     private checkForPing(): boolean {
         if (this.suppressPing) {
             return false;
@@ -963,16 +1045,13 @@ export class ChannelMessageViewModel extends ObservableBase implements IDisposab
         if (!this.activeLoginViewModel.getConfigSettingById("allowPings", { characterName: this.characterStatus.characterName })) { return false; }
         if (this.type == ChannelMessageType.AD && !this.activeLoginViewModel.getConfigSettingById("allowPingsInAds", this.parent)) { return false; }
 
-        const selfPingWord = this.activeLoginViewModel.getConfigSettingById("pingCharName", this.parent) ? [ this.parent!.activeLoginViewModel.characterName.value ] : [];
-        const cfgPingWords = this.activeLoginViewModel.getConfigSettingById("pingWords", this.parent) as string[];
-        const oldPingWords = this.activeLoginViewModel.pingWords;
-        const allPingWords = IterableUtils.asQueryable(cfgPingWords).concat(oldPingWords).concat(selfPingWord).select(x => x.toLowerCase());
+        const allPingWords = this.getPingWordSet();
 
         let needPing = false;
-        const msgText = this.text.toLowerCase();
+        const msgText = this.text /* .toLowerCase() */;
         for (let x of allPingWords) {
-            if (x != null && x != "") {
-                if (msgText.indexOf(x) != -1) {
+            if (x != null && x.pattern != null) {
+                if (msgText.match(x.pattern)) {
                     needPing = true;
                     break;
                 }

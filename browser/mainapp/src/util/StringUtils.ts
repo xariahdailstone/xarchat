@@ -5,6 +5,19 @@ const intlNFCache: Map<string, Intl.NumberFormat> = new Map();
 
 let confusablesMap: Map<string, string> | undefined = undefined;
 
+const FIRST_DIGIT_OR_ASCII = /^[0-9a-z]/i;
+const SYNTAX_SOLIDUS = /^[$()*+./?[\\\]^{|}]/;
+const WHITESPACES = '\u0009\u000A\u000B\u000C\u000D\u0020\u00A0\u1680\u2000\u2001\u2002' +
+            '\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200A\u202F\u205F\u3000\u2028\u2029\uFEFF';
+const OTHER_PUNCTUATORS_AND_WHITESPACES = RegExp('^[!"#%&\',\\-:;<=>@`~' + WHITESPACES + ']');
+const ControlEscape: Record<string, string> = {
+    '\u0009': 't',
+    '\u000A': 'n',
+    '\u000B': 'v',
+    '\u000C': 'f',
+    '\u000D': 'r'
+};
+
 export class StringUtils {
     static isNullOrWhiteSpace(str: Optional<string>) {
         if (str === null) return true;
@@ -150,6 +163,42 @@ export class StringUtils {
             const days = Math.round(elapsedMs / (24 * 60 * 60 * 1000));
             return forFormat.replace("%", `${days}d`);
         }
+    }
+
+    private static regexpEscapeChar(chr: string): string {
+        var hex = chr.charCodeAt(0).toString(16);
+        return hex.length < 3 ? '\\x' + hex.padStart(2, '0') : '\\u' + hex.padStart(4, '0');
+    }
+
+    public static regexpEscape(str: string): string {
+        const length = str.length;
+        const result = [];
+        for (var i = 0; i < length; i++) {
+            const chr = str.charAt(i);
+            if (i == 0 && FIRST_DIGIT_OR_ASCII.exec(chr)) {
+                result.push(this.regexpEscapeChar(chr));
+            }
+            else if (ControlEscape[chr]) {
+                result.push("\\" + ControlEscape[chr]);
+            }
+            else if (SYNTAX_SOLIDUS.exec(chr)) {
+                result.push("\\" + chr);
+            }
+            else if (OTHER_PUNCTUATORS_AND_WHITESPACES.exec(chr)) {
+                result.push(this.regexpEscapeChar(chr));
+            }
+            else {
+                const charCode = chr.charCodeAt(0);
+                if ((charCode & 0xF800) !== 0xD800) { result.push(chr); }
+                else if (charCode >= 0xDC00 || i + 1 >= length || (str.charCodeAt(i + 1) & 0xFC00) !== 0xDC00) { result.push(this.regexpEscapeChar(chr)); }
+                else {
+                    result.push(chr);
+                    result[++i] = str.charAt(i);
+                }
+            }
+        }
+
+        return result.join("");
     }
 }
 

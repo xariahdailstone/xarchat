@@ -208,6 +208,36 @@
     margin-right: 4px;
 }
 
+/* pinglist */
+/* textlist */
+.setting-item:has(.setting-entry-pinglist) {
+    display: grid;
+    grid-template-columns: 100%;
+    grid-template-rows: auto auto auto auto;
+    grid-template-areas:
+        "title"
+        "description"
+        "inheritprompt"
+        "input";
+}
+.setting-entry-pinglist-item-container,
+.setting-entry-pinglist-item-container-add {
+    margin-top: 4px;
+}
+.setting-entry-pinglist-item-type {
+    margin-right: 4px;
+    background: var(--bg-main-textbox-btn);
+    color: var(--fg-main-textbox-btn);
+    font: inherit;
+    font-size: 80%;
+    border: none;
+    outline: none;
+}
+.setting-entry-pinglist-item-input {
+    margin-right: 4px;
+}
+
+/* radio */
 .setting-item:has(.setting-entry-radio-container) {
     display: grid;
     grid-template-columns: 100%;

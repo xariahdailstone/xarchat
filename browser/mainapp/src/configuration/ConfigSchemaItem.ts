@@ -45,9 +45,32 @@ export interface ConfigSchemaSelectOptionDefinition {
     displayValue: string;
 }
 
+export enum PingLineItemMatchStyle {
+    CONTAINS = "contains",
+    WHOLE_WORD = "whole-word",
+    REGEX = "regex"
+}
+export class PingLineItemMatchStyleConvert {
+    static toString(style: PingLineItemMatchStyle) {
+        switch (style) {
+            default:
+            case PingLineItemMatchStyle.CONTAINS:
+                return "Contains";
+            case PingLineItemMatchStyle.WHOLE_WORD:
+                return "Whole Word";
+            case PingLineItemMatchStyle.REGEX:
+                return "Regex";
+        }
+    }
+}
+export interface PingLineItemDefinition {
+    text: string;
+    matchStyle: PingLineItemMatchStyle;
+}
+
 export type ConfigSchemaItemDefinition = (ConfigSchemaItemDefinitionItem | ConfigSchemaItemDefinitionSection);
 
-export type ConfigSchemaItemType = "text" | "boolean" | "text[]" | "radio" | "timespan" | "color" | "color-hs" | "notifroutes" | "select";
+export type ConfigSchemaItemType = "text" | "boolean" | "text[]" | "pinglist" | "radio" | "timespan" | "color" | "color-hs" | "notifroutes" | "select";
 export type ConfigSchemaOptionItemType = "string" | "file";
 export type ConfigSchemaScopeType = "global" | "char" | "char.chancategory" | "char.chan" | "char.convo";
 export type ConfigSchemaScopeTypeSimple = "global" | "char" | "chan" | "convo";
@@ -186,7 +209,7 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                             scope: getScopeArray(["global", "char", "chan"]),
                             title: "Other Ping Words",
                             description: "Other words that will cause a message to get highlighted and generate a ping sound effect when seen in chat.",
-                            type: "text[]",
+                            type: "pinglist",
                             defaultValue: [],
                             configBlockKey: "pingWords"
                         }
