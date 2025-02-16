@@ -7,6 +7,11 @@ import { BBCodeTag } from "../BBCodeTag";
 
 export const BBCodeTagUser = new BBCodeTag("user", true, false, (context, arg, content) => {
     const contentText = getContentText(content);
+
+    if (content.rawCloseTag == "") {
+        return document.createTextNode(content.rawOpenTag + contentText);
+    }
+
     const x = EL("span", { 
         class: "bbcode-user", 
         "data-target": getContentText(content),

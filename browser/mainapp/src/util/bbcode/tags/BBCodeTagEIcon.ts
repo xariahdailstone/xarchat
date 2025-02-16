@@ -50,6 +50,10 @@ export const BBCodeTagEIcon = new BBCodeTag("eicon", true, false,
     (context, arg, content) => {
         const contentText = getContentText(content);
 
+        if (content.rawCloseTag == "") {
+            return document.createTextNode(content.rawOpenTag + contentText);
+        }
+
         let loadedEicon: LoadedEIcon | null = EIconLoadManager.getEIcon(contentText);
 
         const loadContentCTS = new CancellationTokenSource();
