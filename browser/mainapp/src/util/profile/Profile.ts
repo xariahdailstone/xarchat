@@ -28,6 +28,7 @@ export class Profile implements Omit<ProfileInfo, "kinks" | "infotags"> {
     get memo() { return this.pi.memo; }
     get name() { return this.pi.name; }
     get settings() { return this.pi.settings; }
+    get timezone() { return this.pi.timezone; }
     get updated_at() { return this.pi.updated_at; }
     get views() { return this.pi.views; }
 

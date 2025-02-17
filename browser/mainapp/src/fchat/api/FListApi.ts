@@ -89,6 +89,7 @@ export interface ProfileInfo {
     readonly memo: MemoInfo;
     readonly name: string;
     readonly settings: ProfileDisplaySettings;
+    readonly timezone?: number | null;
     readonly updated_at: number;
     readonly views: number;
 }
