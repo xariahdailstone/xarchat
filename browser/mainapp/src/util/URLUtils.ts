@@ -3,6 +3,7 @@ import { CharacterName } from "../shared/CharacterName";
 import { CancellationToken } from "./CancellationTokenSource";
 import { IDisposable } from "./Disposable";
 import { HostInterop } from "./HostInterop";
+import { Logging } from "./Logger";
 
 export class URLUtils {
 
@@ -127,17 +128,18 @@ export class URLUtils {
     }
 }
 
+const blobObjectUrlLogger = Logging.createLogger("blobObjectUrlManager");
 const _blobObjectUrlFR = new FinalizationRegistry<{ url: string, disposed: boolean }>(url => {
     if (!url.disposed) {
         url.disposed = true;
-        //console.log("URL.revokeObjectUrl", url.url);
+        blobObjectUrlLogger.logDebug("URL.revokeObjectUrl (finalization)", url.url);
         URL.revokeObjectURL(url.url);
     }
 });
 export class BlobObjectURL implements IDisposable {
     constructor(blob: Blob) {
         const url = URL.createObjectURL(blob);
-        //console.log("URL.createObjectUrl", url);
+        blobObjectUrlLogger.logDebug("URL.createObjectUrl", url);
         this._frInfo = { url: url, disposed: false };
         _blobObjectUrlFR.register(this, this._frInfo);
     }
@@ -150,7 +152,7 @@ export class BlobObjectURL implements IDisposable {
     dispose() {
         if (!this._frInfo.disposed) {
             this._frInfo.disposed = true;
-            //console.log("URL.revokeObjectUrl", this._frInfo.url);
+            blobObjectUrlLogger.logDebug("URL.revokeObjectUrl (disposal)", this._frInfo.url);
             URL.revokeObjectURL(this._frInfo.url);
         }
     }

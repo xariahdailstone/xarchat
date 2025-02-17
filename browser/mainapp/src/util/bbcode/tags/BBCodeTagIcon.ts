@@ -7,6 +7,11 @@ import { BBCodeTag } from "../BBCodeTag";
 export const BBCodeTagIcon = new BBCodeTag("icon", true, false, 
     (context, arg, content) => {
         const contentText = getContentText(content);
+
+        if (content.rawCloseTag == "") {
+            return document.createTextNode(content.rawOpenTag + contentText);
+        }
+        
         const el = EL("span", { class: "bbcode-icon", href: `http://www.f-list.net/c/${encodeURIComponent(contentText)}` }, [
             EL("img", { 
                 title: contentText, 

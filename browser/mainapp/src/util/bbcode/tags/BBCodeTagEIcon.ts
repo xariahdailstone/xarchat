@@ -4,7 +4,7 @@ import { EIconLoadManager, LoadedEIcon } from "../../EIconLoadManager";
 import { EL } from "../../EL";
 import { EventListenerUtil } from "../../EventListenerUtil";
 import { URLUtils } from "../../URLUtils";
-import { getContentText } from "../BBCode";
+import { BBCodeParseContext, getContentText } from "../BBCode";
 import { BBCodeTag } from "../BBCodeTag";
 
 let emptyImageUrl = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
@@ -16,7 +16,7 @@ let emptyImageImg = EL("img", { src: emptyImageUrl });
     emptyImageImg.src = url;
 })();
 
-export const syncGifs = (raisingEl: HTMLElement) => {
+export const syncGifs = (raisingEl: HTMLElement, context: BBCodeParseContext) => {
     let tel: (HTMLElement | null) = raisingEl;
     while (tel) {
         if (tel.classList.contains("bbcode-parsed")) {
@@ -31,6 +31,7 @@ export const syncGifs = (raisingEl: HTMLElement) => {
                             const tsrc = reloadEl.src;
                             reloadEl.src = '';
                             reloadEl.src = tsrc;
+                            //context.lateElementUpdate();
                             (reloadEl as any).__reloadedThisFrame = true;
                             window.requestAnimationFrame(() => {
                                 delete (reloadEl as any).__reloadedThisFrame;
@@ -49,6 +50,10 @@ let nextUniqueId = 1;
 export const BBCodeTagEIcon = new BBCodeTag("eicon", true, false, 
     (context, arg, content) => {
         const contentText = getContentText(content);
+
+        if (content.rawCloseTag == "") {
+            return document.createTextNode(content.rawOpenTag + contentText);
+        }
 
         let loadedEicon: LoadedEIcon | null = EIconLoadManager.getEIcon(contentText);
 
@@ -75,19 +80,28 @@ export const BBCodeTagEIcon = new BBCodeTag("eicon", true, false,
                 : ""),
             loadContentCTS.token).then(
                 (b) => {
-                    el.addEventListener("load", () => {
-                        el.classList.remove("bbcode-eicon-loading");
+                    el.addEventListener("load", (e) => {
+                        if ((e.target as HTMLImageElement).src != emptyImageUrl) {
+                            el.classList.remove("bbcode-eicon-loading");
+                            //context.lateElementUpdate();
+                        }
                     });
-                    el.addEventListener("error", () => {
-                        el.classList.remove("bbcode-eicon-loading");
-                        el.classList.add("bbcode-eicon-failedtoload");
+                    el.addEventListener("error", (e) => {
+                        if ((e.target as HTMLImageElement).src != emptyImageUrl) {
+                            el.classList.remove("bbcode-eicon-loading");
+                            el.classList.add("bbcode-eicon-failedtoload");
+                            //context.lateElementUpdate();
+                        }
                     });
 
                     if (context.parseOptions.syncGifs) {
-                        const lhandler = EventListenerUtil.addDisposableEventListener(el, "load", () => {
-                            lhandler.dispose();
-                            el.setAttribute("data-loaded", "true");
-                            syncGifs(el);
+                        const lhandler = EventListenerUtil.addDisposableEventListener(el, "load", (e: Event) => {
+                            if ((e.target as HTMLImageElement).src != emptyImageUrl) {
+                                lhandler.dispose();
+                                el.setAttribute("data-loaded", "true");
+                                //context.lateElementUpdate();
+                                syncGifs(el, context);
+                            }
                         });
             
                         let isIntersecting: (boolean | null) = null;
@@ -96,7 +110,7 @@ export const BBCodeTagEIcon = new BBCodeTag("eicon", true, false,
                                 if (e.target == el) {
                                     if (e.isIntersecting) {
                                         if (isIntersecting == null || isIntersecting == false) {
-                                            syncGifs(el);
+                                            syncGifs(el, context);
                                         }
                                         isIntersecting = e.isIntersecting;
                                     }
@@ -105,16 +119,19 @@ export const BBCodeTagEIcon = new BBCodeTag("eicon", true, false,
                         });
                         intersectObserver.observe(el);
                         context.addDisposable(() => {
-                                intersectObserver.disconnect();
+                            intersectObserver.disconnect();
                         });
                     }
 
                     el.src = b.url;
                     context.addDisposable(b);
+                    //context.lateElementUpdate();
                 },
                 () => {
                     el.classList.remove("bbcode-eicon-loading");
                     el.classList.add("bbcode-eicon-failedtoload");
+                    el.classList.add("bbcode-eicon-failedtoload-b");
+                    //context.lateElementUpdate();
                 }
             );
 

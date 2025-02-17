@@ -256,7 +256,7 @@ export class ChannelTextBox extends ComponentBase<ChannelViewModel> {
 
     focusTextBox() {
         window.requestAnimationFrame(() => {
-            console.log("focusTextBox");
+            this.logger.logDebug("focusTextBox");
             const elTextbox = this.$("elTextbox")! as HTMLTextAreaElement;
             if (FocusMagnet.instance.ultimateFocus != elTextbox) {
                 elTextbox.focus();

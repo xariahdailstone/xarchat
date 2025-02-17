@@ -1,4 +1,4 @@
-import { ConfigSchema, ConfigSchemaDefinition, ConfigSchemaItemDefinition, ConfigSchemaItemDefinitionItem, ConfigSchemaItemDefinitionSection, ConfigSchemaItemType, ConfigSchemaScopeType } from "../../configuration/ConfigSchemaItem";
+import { ConfigSchema, ConfigSchemaDefinition, ConfigSchemaItemDefinition, ConfigSchemaItemDefinitionItem, ConfigSchemaItemDefinitionSection, ConfigSchemaItemType, ConfigSchemaScopeType, PingLineItemDefinition } from "../../configuration/ConfigSchemaItem";
 import { ChannelName } from "../../shared/ChannelName";
 import { CharacterName } from "../../shared/CharacterName";
 import { IterableUtils } from "../../util/IterableUtils";
@@ -316,6 +316,9 @@ export class SettingsDialogItemViewModel extends SettingsDialogSettingViewModel 
                     case "text[]":
                         this.assignTextListValue(value);
                         break;
+                    case "pinglist":
+                        this.assignPingListValue(value);
+                        break;
                     case "text":
                     case "radio":
                     case "notifroutes":
@@ -333,6 +336,10 @@ export class SettingsDialogItemViewModel extends SettingsDialogSettingViewModel 
         }
     }
 
+    private readonly _scratchValue: ObservableValue<any> = new ObservableValue(null);
+    get scratchValue(): any { return this._scratchValue.value; }
+    set scratchValue(value: any) { this._scratchValue.value = value; }
+
     private assignStringValue(value: string) {
         const k = this.getAppConfigKey();
         this.scope.appViewModel.configBlock.set(k, value);
@@ -344,6 +351,11 @@ export class SettingsDialogItemViewModel extends SettingsDialogSettingViewModel 
     }
 
     private assignTextListValue(value: string[]) {
+        const k = this.getAppConfigKey();
+        this.scope.appViewModel.configBlock.set(k, value);
+    }
+
+    private assignPingListValue(value: (string | PingLineItemDefinition)[]) {
         const k = this.getAppConfigKey();
         this.scope.appViewModel.configBlock.set(k, value);
     }
