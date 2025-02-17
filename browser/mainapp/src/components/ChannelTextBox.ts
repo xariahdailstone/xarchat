@@ -204,6 +204,7 @@ export class ChannelTextBox extends ComponentBase<ChannelViewModel> {
         elTextbox.addEventListener("change", pushTextbox);
         BBCodeUtils.addEditingShortcuts(elTextbox, {
             appViewModelGetter: () => { return this.viewModel?.appViewModel ?? null; },
+            channelViewModelGetter: () => { return this.viewModel ?? null; },
             onKeyDownHandler: (ev, handleShortcuts) => {
                 if (ev.keyCode == 13 && !ev.shiftKey) {
                     ev.preventDefault();
