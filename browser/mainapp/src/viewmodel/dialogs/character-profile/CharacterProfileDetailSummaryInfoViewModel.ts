@@ -2,7 +2,6 @@ import { ProfileInfo, ProfileFieldsInfoList, MappingList, ProfileFieldsSectionLi
 import { ObservableBase, observableProperty } from "../../../util/ObservableBase";
 import { StringUtils } from "../../../util/StringUtils";
 
-
 export class CharacterProfileDetailSummaryInfoViewModel extends ObservableBase {
     constructor(
         private readonly profileInfo: ProfileInfo,
@@ -24,6 +23,11 @@ export class CharacterProfileDetailSummaryInfoViewModel extends ObservableBase {
         this.created = StringUtils.dateToString(createdAt, { dateStyle: 'medium', timeStyle: 'short' });
         this.lastUpdated = StringUtils.dateToString(updatedAt, { dateStyle: 'medium', timeStyle: 'short' });
         this.views = StringUtils.numberToString(profileInfo.views, {});
+        this.timezone = profileInfo.timezone ?
+            (profileInfo.timezone == 0 ? "GMT"
+                : profileInfo.timezone > 0 ? `GMT +${profileInfo.timezone}`
+                : `GMT -${Math.abs(profileInfo.timezone)}`)
+            : null;
 
         this.memo = profileInfo.memo?.memo;
     }
@@ -103,6 +107,9 @@ export class CharacterProfileDetailSummaryInfoViewModel extends ObservableBase {
 
     @observableProperty
     views: string | null = null;
+
+    @observableProperty
+    timezone: string | null;
 
     @observableProperty
     memo: string | null = null;
