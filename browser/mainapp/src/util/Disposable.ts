@@ -80,19 +80,19 @@ class NamedDisposable implements IDisposable {
     }
 }
 
-type DisposableRef = { disposable: IDisposable | null };
-const disposableOwnerFieldCleanup = new FinalizationRegistry<DisposableRef>(hv => {
+type DisposableRef<T extends IDisposable> = { disposable: T | null };
+const disposableOwnerFieldCleanup = new FinalizationRegistry<DisposableRef<any>>(hv => {
     if (hv.disposable) {
         try { hv.disposable.dispose(); }
         catch { }
     }
 });
-export class DisposableOwnerField implements IDisposable {
+export class DisposableOwnerField<T extends IDisposable = IDisposable> implements IDisposable {
     constructor() {
         disposableOwnerFieldCleanup.register(this, this._disposableRef, this._disposableRef);
     }
 
-    private readonly _disposableRef: DisposableRef = { disposable: null };
+    private readonly _disposableRef: DisposableRef<T> = { disposable: null };
     private _isDisposed = false;
 
     get isDisposed() { return this._isDisposed; }
@@ -107,8 +107,8 @@ export class DisposableOwnerField implements IDisposable {
         this.dispose();
     }
 
-    get value(): IDisposable | null { return this._disposableRef.disposable; }
-    set value(v: IDisposable | null) {
+    get value(): T | null { return this._disposableRef.disposable; }
+    set value(v: T | null) {
         if (v !== this._disposableRef.disposable) {
             if (this._disposableRef.disposable) {
                 const d = this._disposableRef.disposable;

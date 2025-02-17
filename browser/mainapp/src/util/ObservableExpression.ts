@@ -113,7 +113,8 @@ export class ObservableExpression<T> implements IDisposable {
             this._previousValue = value instanceof ObservableExpressionNoValueClass ? undefined : value;
             this._previousError = undefined;
             Observable.enterObservableFireStack(() => {
-                try { this.onValueChanged(value as T); }
+                const exposeValue = value instanceof ObservableExpressionNoValueClass ? undefined : value;
+                try { this.onValueChanged(exposeValue as T); }
                 catch { }
             });
         }
@@ -121,8 +122,9 @@ export class ObservableExpression<T> implements IDisposable {
             this._previousValue = undefined;
             this._previousError = error instanceof ObservableExpressionNoValueClass ? undefined : error;
             Observable.enterObservableFireStack(() => {
+                const exposeError = error instanceof ObservableExpressionNoValueClass ? undefined : error;
                 if (this.onErrorChanged) {
-                    try { this.onErrorChanged(error as any); }
+                    try { this.onErrorChanged(exposeError as any); }
                     catch { }
                 }
             });

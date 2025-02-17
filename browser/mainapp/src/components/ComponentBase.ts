@@ -188,7 +188,7 @@ export abstract class ComponentBase<TViewModel> extends HTMLElement {
     private static _nextUniqueId = 1;
     protected readonly uniqueId: number;
 
-    protected logger: Logger;
+    logger: Logger;
 
     protected log(logLevel: LogLevel, message: string, ...params: any[]) {
         const logId = this.getAttribute("logid");
@@ -241,12 +241,14 @@ export abstract class ComponentBase<TViewModel> extends HTMLElement {
 
     private disconnectedCallback() {
         //console.log(`${this.constructor.name} disconnected`);
+        this.logger.logDebug("disconnecting");
         this._isComponentConnected = false;
         this.parentComponent = null;
         this.viewModelContextUpdated();
         this.disconnectedFromDocument();
         this.teardownWhenConnecteds();
         this.raiseDisconnectedEvent();
+        this.logger.logDebug("disconnected");
     }
 
     private _inAttributeChangedCallback: boolean = false;
@@ -478,78 +480,67 @@ export abstract class ComponentBase<TViewModel> extends HTMLElement {
         });
     }
 
-    private readonly _whenConnectedFuncs: SnapshottableSet<() => Optional<IDisposable>> = new SnapshottableSet();
-    private _whenConnectedDisposables: SnapshottableMap<() => Optional<IDisposable>, IDisposable> = new SnapshottableMap();
+    private readonly _whenConnectedEntries: SnapshottableSet<{ invoke: (isConnected: boolean) => Optional<IDisposable>, lastResult: DisposableOwnerField }> = new SnapshottableSet();
 
     protected whenConnected(createFunc: () => Optional<IDisposable>): IDisposable {
-        this._whenConnectedFuncs.add(createFunc);
+        const lastResult = new DisposableOwnerField();
+        const reg = { 
+            invoke: (isConnected: boolean) => {
+                lastResult.value = null;
+                if (isConnected) {
+                    const tresult = createFunc();
+                    lastResult.value = tresult ?? null;
+                }
+            }, 
+            lastResult: lastResult };
+        this._whenConnectedEntries.add(reg);
+
         if (this.isComponentConnected) {
-            try {
-                const d = createFunc();
-                if (d) {
-                    this._whenConnectedDisposables.set(createFunc, asNamedDisposable(`${this.constructor.name}_whenConnectedResult`, d));
-                }
-            }
-            catch { }
+            reg.invoke(true);
         }
-        return asNamedDisposable(`${this.constructor.name}_whenConnectedRegistration`, () => {
-            this._whenConnectedFuncs.delete(createFunc);
-            if (this.isComponentConnected) {
-                const d = this._whenConnectedDisposables.get(createFunc);
-                if (d) {
-                    this._whenConnectedDisposables.delete(createFunc);
-                    d.dispose();
-                }
-            }
+
+        return asDisposable(() => {
+            this._whenConnectedEntries.delete(reg);
+            reg.lastResult.dispose();
         });
     }
     private setupWhenConnecteds() {
-        this._whenConnectedFuncs.forEachValueSnapshotted(cf => {
-            try {
-                const d = cf();
-                if (d) {
-                    this._whenConnectedDisposables.set(cf, d);
-                }
-            }
-            catch (e) {
-                this.logError("setupWhenConnecteds error", e);
-            }
+        this._whenConnectedEntries.forEachValueSnapshotted(reg => {
+            try { reg.invoke(true); }
+            catch { }
         });
     }
-
     private teardownWhenConnecteds() {
-        const wcd = this._whenConnectedDisposables;
-        this._whenConnectedDisposables = new SnapshottableMap();
-        wcd.forEachValueSnapshotted(x => {
-            try { x.dispose(); }
+        this._whenConnectedEntries.forEachValueSnapshotted(reg => {
+            try { reg.invoke(false); }
             catch { }
         });
     }
 
     whenConnectedWithViewModel(createFunc: (vm: TViewModel) => Optional<IDisposable>): IDisposable {
-        let runningDisposable = new DisposableOwnerField();
-        let lastExposedViewModel: (TViewModel | null) = null;
-        let lastExposedConnected: boolean = false;
+        const wcReg = this.whenConnected(() => {
+            const lastResult = new DisposableOwnerField();
 
-        const maybeGo = () => {
-            const hasChanged = (this.viewModel != lastExposedViewModel || this.isComponentConnected != lastExposedConnected);
-            if (hasChanged) {
-                lastExposedViewModel = this.viewModel;
-                lastExposedConnected = this.isComponentConnected;
-
-                runningDisposable.value = null;
-
-                if (lastExposedViewModel && lastExposedConnected) {
-                    runningDisposable.value = createFunc(lastExposedViewModel) ?? null;    
+            const vmChange = () => {
+                const vm = this.viewModel;
+                if (vm) {
+                    const r = createFunc(vm);
+                    lastResult.value = r ?? null;
                 }
-            }
-        };
+                else {
+                    lastResult.value = null;
+                }
+            };
 
-        const vmWatcher = EventListenerUtil.addDisposableEventListener(this, "viewmodelchange", maybeGo);
-        const connWatcher = this.whenConnected(maybeGo);
-        maybeGo();
+            const e = EventListenerUtil.addDisposableEventListener(this, "viewmodelchange", vmChange);
+            vmChange();
 
-        return asNamedDisposable(`${this.constructor.name}_whenConnectedWithViewModelRegistration`, vmWatcher, connWatcher, runningDisposable);
+            return asDisposable(() => {
+                e.dispose();
+                lastResult.dispose();
+            });
+        });
+        return wcReg;
     }
 }
 

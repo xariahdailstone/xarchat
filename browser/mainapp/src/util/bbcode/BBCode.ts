@@ -13,6 +13,7 @@ import { EL } from "../EL";
 import { EventListenerUtil } from "../EventListenerUtil";
 import { getRoot } from "../GetRoot";
 import { HostInterop } from "../HostInterop";
+import { ObservableValue } from "../Observable";
 import { BBCodeTag } from "./BBCodeTag";
 import { BBCodeTagB } from "./tags/BBCodeTagB";
 import { BBCodeTagBig } from "./tags/BBCodeTagBig";
@@ -119,7 +120,7 @@ export class BBCodeParser {
         xoptions.sink = options?.sink ?? { userClick: ()=>{}, sessionClick: ()=>{}, webpageClick: ()=>{} };
 
         let contextIsDisposed = false;
-        const parseContext = {
+        const parseContext: BBCodeParseContext = {
             parseOptions: xoptions,
             disposables: [] as IDisposable[],
             addDisposable(d: IDisposable) {

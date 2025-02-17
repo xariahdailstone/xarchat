@@ -27,6 +27,8 @@ export function makeRenderingComponent<TViewModel>(
     component: ComponentBase<TViewModel>,
     options: MakeRenderingComponentOptions): RenderingComponentFunctions {
 
+    const logger = component.logger;
+
     const patch = init([classListNewModule, propsModule, rawAttributesModule, styleModule, eventListenersModule, valueSyncModule /* , idModule */], undefined, {
         experimental: {
             fragments: true
@@ -66,11 +68,11 @@ export function makeRenderingComponent<TViewModel>(
         myDepSet.addChangeListener((obs, propName) => { 
             //console.log("RenderingComponentBase myDepSet.addChangeListener", component.constructor.name, obs, propName);
             if (curDepSet == myDepSet) { 
-                console.log("RenderingComponentBase myDepSet.addChangeListener match", component.constructor.name, obs, propName);
+                logger.logDebug("RenderingComponentBase myDepSet.addChangeListener match", component.constructor.name, obs, propName);
                 stateHasChanged(obs, propName); 
             } 
             else {
-                console.log("RenderingComponentBase myDepSet.addChangeListener mismatch", component.constructor.name, obs, propName);
+                logger.logDebug("RenderingComponentBase myDepSet.addChangeListener mismatch", component.constructor.name, obs, propName);
             }
         });
         currentDependencies.value = myDepSet;
@@ -123,7 +125,7 @@ export function makeRenderingComponent<TViewModel>(
             rmDisposable.dispose();
             refreshing--;
         }
-        console.debug("refresh dependency count", component.constructor.name, myDepSet.count, myDepSet.skippedDuplicateCount);
+        logger.logDebug("refresh dependency count", component.constructor.name, myDepSet.count, myDepSet.skippedDuplicateCount);
     };
 
     component.addEventListener("viewmodelchange", () => {

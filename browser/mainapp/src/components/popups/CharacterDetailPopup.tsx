@@ -1,7 +1,7 @@
 import { CharacterStatus, CharacterStatusWithLastChangedInfo } from "../../shared/CharacterSet";
 import { OnlineStatusConvert } from "../../shared/OnlineStatus";
 import { BBCodeParseResult, ChatBBCodeParser } from "../../util/bbcode/BBCode";
-import { IDisposable, asDisposable } from "../../util/Disposable";
+import { DisposableOwnerField, IDisposable, asDisposable } from "../../util/Disposable";
 import { URLUtils } from "../../util/URLUtils";
 import { WhenChangeManager } from "../../util/WhenChange";
 import { AlsoInChannelLineItem, CharacterDetailPopupViewModel } from "../../viewmodel/popups/CharacterDetailPopupViewModel";
@@ -29,7 +29,18 @@ export class CharacterDetailPopup extends ContextPopupBase<CharacterDetailPopupV
         });
 
         this.clickable = true;
+
+        this.whenConnectedWithViewModel(() => {
+            this.logInfo("connected");
+            return asDisposable(() => {
+                this.logInfo("no longer connected");
+                this._currentBBCodeParseResult.value = null;
+            });
+        });
     }
+
+    private readonly _statusMessageTextWCM: WhenChangeManager = new WhenChangeManager();
+    private _currentBBCodeParseResult: DisposableOwnerField<BBCodeParseResult> = new DisposableOwnerField();
 
     protected render(): (VNode | [VNode, IDisposable]) {
         const vm = this.viewModel;
@@ -72,18 +83,27 @@ export class CharacterDetailPopup extends ContextPopupBase<CharacterDetailPopupV
             let statusMessageParseResult: BBCodeParseResult | null = null;
             if (hasStatusMessage) {
                 mainClasses.push("has-statusmessage");
-                const bbcodeParse = ChatBBCodeParser.parse(cs.statusMessage, { 
-                    sink: vm.session.bbcodeSink, 
-                    addUrlDomains: true, 
-                    appViewModel: vm.session.appViewModel, 
-                    activeLoginViewModel: vm.session,
-                    channelViewModel: vm.channelViewModel ?? undefined,
-                    imagePreviewPopups: true,
-                    syncGifs: true
+                this._statusMessageTextWCM.assign({ statusMessage: cs.statusMessage }, (sm) => {
+                    this.logInfo("render statusmessage");
+                    const bbcodeParse = ChatBBCodeParser.parse(cs.statusMessage, { 
+                        sink: vm.session.bbcodeSink, 
+                        addUrlDomains: true, 
+                        appViewModel: vm.session.appViewModel, 
+                        activeLoginViewModel: vm.session,
+                        channelViewModel: vm.channelViewModel ?? undefined,
+                        imagePreviewPopups: true,
+                        syncGifs: true
+                    });
+                    this._currentBBCodeParseResult.value = bbcodeParse;
                 });
-                disposables.push(bbcodeParse);
-                statusMessageParseResult = bbcodeParse;
             }
+            else {
+                this._statusMessageTextWCM.assign({ statusMessage: null }, (sm) => {
+                    this.logInfo("blanked statusmessage");
+                    this._currentBBCodeParseResult.value = null;
+                });
+            }
+            statusMessageParseResult = this._currentBBCodeParseResult.value;
 
             const statusDotVNode = StatusDotVNodeBuilder.getStatusDotVNode(cs);
 
