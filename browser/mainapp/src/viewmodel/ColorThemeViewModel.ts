@@ -68,5 +68,15 @@ export class ColorThemeViewModel {
         setupStatusColor(OnlineStatus.BUSY);
         setupStatusColor(OnlineStatus.LOOKING);
         setupStatusColor(OnlineStatus.CROWN);
+
+        const ssz = new ObservableExpression(
+            () => appViewModel.getConfigSettingById("subtextSize"),
+            (v) => {
+                if (v) {
+                    document.body.style.setProperty("--subtext-size", v as string);
+                }
+            },
+            (err) => {}
+        );
     }
 }

@@ -575,6 +575,22 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     configBlockKey: "chatFontSize"
                 },
                 {
+                    id: "subtextSize",
+                    scope: getScopeArray(["global"]),
+                    title: "Sub/Sup Text Size",
+                    description: "Select sizing for text in [sub] and [sup] tags.",
+                    type: "select",
+                    selectOptions: [
+                        { value: "60%", displayValue: "60%" },
+                        { value: "70%", displayValue: "70%" },
+                        { value: "80%", displayValue: "80% (Normal)" },
+                        { value: "90%", displayValue: "90%" },
+                        { value: "100%", displayValue: "100% (Disabled)" }
+                    ],
+                    defaultValue: "80%",
+                    configBlockKey: "subtextSize"
+                },
+                {
                     id: "collapseAds",
                     scope: getScopeArray(["global", "char", "chan"]),
                     title: "Collapse Large Ads",
