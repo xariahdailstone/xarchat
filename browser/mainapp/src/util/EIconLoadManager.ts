@@ -1,6 +1,8 @@
 import { CancellationToken, CancellationTokenSource } from "./CancellationTokenSource";
 import { IDisposable } from "./Disposable";
 import { HostInterop } from "./HostInterop";
+import { Logger, Logging } from "./Logger";
+import { ObjectUniqueId } from "./ObjectUniqueId";
 import { PromiseSource } from "./PromiseSource";
 import { BlobObjectURL, URLUtils } from "./URLUtils";
 
@@ -21,7 +23,12 @@ class LoadedEIconUniqueBlobImpl implements LoadedEIconUniqueBlob {
         public readonly owner: LoadedEIconImpl,
         public readonly url: string,
         public readonly uniqueToken: string) {
+
+        this._logger = Logging.createLogger(`LoadedEIconUniqueBlobImpl#${uniqueToken}`);
+        this._logger.logDebug("created");
     }
+
+    private readonly _logger: Logger;
 
     public readonly unregisterToken: object = {};
 
@@ -30,6 +37,7 @@ class LoadedEIconUniqueBlobImpl implements LoadedEIconUniqueBlob {
     dispose() {
         if (!this._disposed) {
             this._disposed = true;
+            this._logger.logDebug("disposed");
             this.owner.dereference(this);
         }
     }
@@ -45,10 +53,14 @@ const allocatedEIconObjectUrls = new Set<string>();
 
 class LoadedEIconImpl implements LoadedEIcon {
     constructor(private readonly eiconName: string) {
+        this._logger = Logging.createLogger(`LoadedEIconImpl[${eiconName}]#${ObjectUniqueId.get(this)}`);
         this._fr = new FinalizationRegistry<string>(uniqueToken => {
             this.dereferenceInternal(uniqueToken);
         });
+        this._logger.logDebug("created");
     }
+
+    private readonly _logger: Logger;
 
     private _blob: Blob | null = null;
     private readonly _issuanceWaiters: Set<(blob: Blob) => void> = new Set();
@@ -92,6 +104,7 @@ class LoadedEIconImpl implements LoadedEIcon {
         }
 
         iui.refCount++;
+        this._logger.logDebug("referenced", uniqueToken, iui.refCount);
         const result = new LoadedEIconUniqueBlobImpl(this, iui.urlobj.url + `#canonicalUrl=${encodeURIComponent(URLUtils.getDirectEIconUrl(this.eiconName))}`, uniqueToken);
         this._fr.register(result, uniqueToken, result.unregisterToken);
         return result;
@@ -135,6 +148,7 @@ class LoadedEIconImpl implements LoadedEIcon {
         const iui = this._issuedUrls.get(uniqueToken);
         if (iui) {
             iui.refCount--;
+            this._logger.logDebug("dereferenced", uniqueToken, iui.refCount);
             if (iui.refCount == 0) {
                 this._issuedUrls.delete(uniqueToken);
                 iui.urlobj.dispose();

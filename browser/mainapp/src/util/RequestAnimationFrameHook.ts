@@ -1,3 +1,7 @@
+import { Logging } from "./Logger";
+
+const logger = Logging.createLogger("requestAnimationFrameHook");
+
 let isHooked = false;
 export function hookRequestAnimationFrame() {
     if (isHooked) { return; }
@@ -28,7 +32,7 @@ export function hookRequestAnimationFrame() {
         stopRegistrations();
 
         const myCallbacks = _waitingCallbacks.keys().toArray();
-        console.log("triggering requestAnimationFrame", myCallbacks.length);
+        logger.logDebug("triggering requestAnimationFrame", myCallbacks.length);
         for (let tkey of myCallbacks) {
             const tcallback = _waitingCallbacks.get(tkey);
             if (tcallback) {
