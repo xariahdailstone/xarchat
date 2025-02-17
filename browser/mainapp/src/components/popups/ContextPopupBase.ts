@@ -7,7 +7,7 @@ import { PopupBase } from "./PopupFrame";
 
 export type Size = { width: number; height: number; };
 export type Rect = { x: number; y: number; width: number; height: number; };
-export type PositionTestFunc = (viewportSize: Size, aroundRect: Rect, desiredSize: Size) => Rect;
+export type PositionTestFunc = (viewportSize: Size, aroundRect: Rect, desiredSize: Size) => Rect & { enforceSize?: boolean };
 function getRectOverlap(a: Rect, b: Rect): Rect {
     const top = Math.max(a.y, b.y);
     const left = Math.max(a.x, b.x);
@@ -187,7 +187,7 @@ export abstract class ContextPopupBase<TViewModel extends ContextPopupViewModel>
                     //const elRect = popFromElement.getClientRects().item(0)!;
                     const desiredSize = this.getMyDesiredSize();
                     const vpSize = viewportRect;
-                    let displayRect: (Rect | null) = null;
+                    let displayRect: ((Rect & { enforceSize?: boolean }) | null) = null;
                     let bestSizeSoFar: number = 0;
 
                     for (let strat of this.getPositionStrategies()) {
@@ -207,8 +207,10 @@ export abstract class ContextPopupBase<TViewModel extends ContextPopupViewModel>
                     if (this.freezePosition) {
                         this.positionFrozen = true;
                     }
-                    //this.style.maxWidth = `${displayRect?.width ?? vpSize.width}px`;
-                    //this.style.maxHeight = `${displayRect?.height ?? vpSize.height}px`;
+                    if (displayRect?.enforceSize) {
+                        this.style.maxWidth = `${displayRect?.width ?? vpSize.width}px`;
+                        this.style.maxHeight = `${displayRect?.height ?? vpSize.height}px`;
+                    }
                 }
             }
             finally {

@@ -169,6 +169,9 @@ document.addEventListener("keydown", (e) => {
             e.stopPropagation();
         }
     }
+    else if (e.keyCode == KeyCodes.KEY_P && e.ctrlKey) {
+        e.preventDefault();
+    }
 });
 
 async function loadDarkThemeCss() {

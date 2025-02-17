@@ -1,0 +1,11 @@
+
+.previewtitle {
+    color: white;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+.previewdata {
+    font-family: var(--chat-font-family);
+    font-size: var(--chat-font-size);
+    color: white;
+}
