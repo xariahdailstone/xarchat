@@ -100,12 +100,12 @@
 }
 
 .bbcode-sub {
-    font-size: smaller;
+    font-size: var(--subtext-size);
     vertical-align: baseline;
 }
 
 .bbcode-sup {
-    font-size: smaller;
+    font-size: var(--subtext-size);
     vertical-align: top;
 }
 
