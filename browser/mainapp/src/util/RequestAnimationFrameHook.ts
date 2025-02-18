@@ -59,6 +59,7 @@ export function hookRequestAnimationFrame() {
                 processRAFEvents(window.performance.now());
             }, 1000);
         }
+        return myNumber;
     };
     (window as any).cancelAnimationFrame = function(handle: number) {
         _waitingCallbacks.delete(handle);
