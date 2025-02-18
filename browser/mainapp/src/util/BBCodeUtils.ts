@@ -1,10 +1,16 @@
+import { MessagePreviewPopup } from "../components/popups/MessagePreviewPopup";
 import { AppViewModel } from "../viewmodel/AppViewModel";
+import { ChannelViewModel } from "../viewmodel/ChannelViewModel";
 import { EIconSearchDialogViewModel } from "../viewmodel/dialogs/EIconSearchDialogViewModel";
+import { MessagePreviewPopupViewModel } from "../viewmodel/popups/MessagePreviewPopupViewModel";
 import { ChatBBCodeParser } from "./bbcode/BBCode";
+import { EventListenerUtil } from "./EventListenerUtil";
 import { KeyCodes } from "./KeyCodes";
 import { TextEditShortcutsHelper } from "./TextEditShortcutsHelper";
 
 const urlPattern = new RegExp(/(.*?)(http(s)?\:\/\/(\S+))/, "ig");
+
+const CUR_POPUP_VM = Symbol();
 
 function tryHandleEditShortcutKey(textarea: HTMLTextAreaElement, ev: KeyboardEvent, options: AddEditingShortcutsOptions) {
     if (ev.ctrlKey) {
@@ -16,6 +22,33 @@ function tryHandleEditShortcutKey(textarea: HTMLTextAreaElement, ev: KeyboardEve
         let loadBack = false;
 
         switch (ev.keyCode) {
+            case KeyCodes.KEY_P:
+                {
+                    const curPopup = (textarea as any)[CUR_POPUP_VM] as (MessagePreviewPopupViewModel | undefined);
+                    if (!curPopup) {
+                        const cvm = options.channelViewModelGetter ? options.channelViewModelGetter() : null;
+                        if (cvm) {
+                            const pu = new MessagePreviewPopupViewModel(cvm, textarea);
+                            (textarea as any)[CUR_POPUP_VM] = pu;
+                            pu.rawText = textarea.value;
+                            cvm.activeLoginViewModel.appViewModel.popups.push(pu);
+                            const hinput = EventListenerUtil.addDisposableEventListener(textarea, "input", () => { pu.dismissed(); });
+                            const hblur = EventListenerUtil.addDisposableEventListener(textarea, "blur", () => { pu.dismissed(); });
+                            const hkeydown = EventListenerUtil.addDisposableEventListener(textarea, "keydown", () => { pu.dismissed(); });
+                            (async () => {
+                                await pu.waitForDismissalAsync();
+                                delete (textarea as any)[CUR_POPUP_VM];
+                                hinput.dispose();
+                                hblur.dispose();
+                                hkeydown.dispose();
+                            })();
+                        }
+                    }
+                    else {
+                        curPopup.dismissed();
+                    }
+                }
+                break;
             case KeyCodes.KEY_B:
                 tesh.bold();
                 loadBack = true;
@@ -186,6 +219,7 @@ export class BBCodeUtils {
 
 interface AddEditingShortcutsOptions {
     appViewModelGetter: () => AppViewModel | null,
+    channelViewModelGetter?: () => ChannelViewModel | null,
     onKeyDownHandler?: (ev: KeyboardEvent, handleShortcuts: (ev: KeyboardEvent) => boolean) => void;
     onTextChanged: (value: string) => void;
 }

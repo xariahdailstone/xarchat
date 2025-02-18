@@ -1,6 +1,6 @@
 import { CharacterStatus } from "../shared/CharacterSet.js";
 import { OnlineStatusConvert } from "../shared/OnlineStatus.js";
-import { ChatBBCodeParser } from "../util/bbcode/BBCode.js";
+import { BBCodeParseOptions, ChatBBCodeParser } from "../util/bbcode/BBCode.js";
 import { asDisposable, IDisposable } from "../util/Disposable.js";
 import { HTMLUtils } from "../util/HTMLUtils.js";
 import { ResizeObserverNice } from "../util/ResizeObserverNice.js";
@@ -90,15 +90,21 @@ export class ChannelHeader extends ComponentBase<ChannelViewModel> {
             const lfPos = trimmedRawDescStr.indexOf("\n");
             const strippedDescStr = lfPos != -1 ? trimmedRawDescStr.substring(0, lfPos) : trimmedRawDescStr;
 
-            const strippedDescx = ChatBBCodeParser.parse(strippedDescStr, { 
-                sink: this.viewModel!.activeLoginViewModel.bbcodeSink
-            });
+            const parseOptions: BBCodeParseOptions = { 
+                sink: this.viewModel!.activeLoginViewModel.bbcodeSink, 
+                addUrlDomains: true, 
+                appViewModel: this.viewModel!.appViewModel, 
+                activeLoginViewModel: this.viewModel!.activeLoginViewModel,
+                channelViewModel: this.viewModel ?? undefined,
+                imagePreviewPopups: true,
+                syncGifs: true
+            };
+
+            const strippedDescx = ChatBBCodeParser.parse(strippedDescStr, parseOptions);
             while (elDescriptionText.firstElementChild) { elDescriptionText.firstElementChild.remove(); }
             elDescriptionText.appendChild(strippedDescx.element);
 
-            const fullDescx = ChatBBCodeParser.parse(rawDescStr, {
-                sink: this.viewModel!.activeLoginViewModel.bbcodeSink
-            });
+            const fullDescx = ChatBBCodeParser.parse(rawDescStr, parseOptions);
             while (elDescriptionTextSizer.firstElementChild) { elDescriptionTextSizer.firstElementChild.remove(); }
             elDescriptionTextSizer.appendChild(fullDescx.element);
 
