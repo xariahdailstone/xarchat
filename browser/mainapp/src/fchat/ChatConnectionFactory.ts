@@ -154,6 +154,12 @@ export class NullChatConnection implements ChatConnection {
     constructor() {
     }
 
+    debug_injectReceivedMessage(message: string): void {
+    }
+
+    debug_outputMessage(message: string): void {
+    }
+
     async markChannelSeen(channel: ChannelName): Promise<void> {
     }
 

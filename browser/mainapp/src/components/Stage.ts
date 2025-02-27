@@ -31,7 +31,6 @@ export class Stage extends ComponentBase<ActiveLoginViewModel> {
             if (createdEl) {
                 createdEl.classList.add("actor");
                 createdEl.viewModel = st;
-                //createdEl.setAttribute("modelpath", "selectedTab");
                 this.elMain.appendChild(createdEl);
                 if (typeof (createdEl as any).viewActivated == "function") {
                     (createdEl as any).viewActivated();

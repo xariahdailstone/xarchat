@@ -100,11 +100,7 @@ export class StyleLoader {
 
 export abstract class ComponentBase<TViewModel> extends HTMLElement {
 
-    static readonly ATTR_MODELPATH = "modelpath";
-
-    static get observedAttributes() { 
-        return [ ComponentBase.ATTR_MODELPATH ];
-    };
+    static get observedAttributes(): string[] { return [ ]; };
 
     static readonly INHERITED_VIEW_MODEL = {};
 
@@ -276,9 +272,6 @@ export abstract class ComponentBase<TViewModel> extends HTMLElement {
         this._inAttributeChangedCallback = true;
         try
         {
-            if (name == ComponentBase.ATTR_MODELPATH) {
-                this.modelPath = newValue ? newValue : null;
-            }
         }
         finally{
             this._inAttributeChangedCallback = false;
@@ -305,7 +298,6 @@ export abstract class ComponentBase<TViewModel> extends HTMLElement {
         }
     }
 
-    private _modelPathWatcher: (ModelPathWatcher | null) = null;
     private viewModelContextUpdated() {
         const parentComponent = this.parentComponent;
         let vm: any = this._explicitViewModel;
@@ -316,30 +308,6 @@ export abstract class ComponentBase<TViewModel> extends HTMLElement {
             }
             else {
                 vm = null;
-            }
-        }
-
-        const needRebuild = 
-            // Rebuild if has watcher, but should not have a watcher
-            (this._modelPathWatcher && (!vm || !this.modelPath)) ||
-            // Rebuild if no watcher, but should have a watcher
-            (!this._modelPathWatcher && (vm && this.modelPath)) ||
-            // Rebuild if has watcher, but vm or modelPath changed
-            (this._modelPathWatcher && (this._modelPathWatcher.vm !== vm || this._modelPathWatcher.path !== this.modelPath));
-        
-        if (needRebuild) {
-            // Teardown model path watcher
-            if (this._modelPathWatcher) {
-                this._modelPathWatcher.dispose();
-                this._modelPathWatcher = null;
-            }
-
-            // Setup model path watcher
-            if (vm && this.modelPath) {
-                this._modelPathWatcher = new ModelPathWatcher(vm, this.modelPath);
-                this._modelPathWatcher.addEventListener("valuechange", e => {
-                    this.viewModelMaybeChanged();
-                });
             }
         }
 
@@ -366,24 +334,6 @@ export abstract class ComponentBase<TViewModel> extends HTMLElement {
         return null;
     }
 
-    private _modelPath: (string | null) = null;
-
-    get modelPath(): (string | null) { return this._modelPath; }
-    set modelPath(value: (string | null)) {
-        if (value !== this._modelPath) {
-            this._modelPath = value;
-
-            if (value) {
-                this.setAttribute(ComponentBase.ATTR_MODELPATH, value);
-            }
-            else {
-                this.removeAttribute(ComponentBase.ATTR_MODELPATH);
-            }
-
-            this.viewModelContextUpdated();
-        }
-    }
-
     get viewModel(): (TViewModel | null) { 
         return this._lastExposedViewModel;
     }
@@ -394,23 +344,10 @@ export abstract class ComponentBase<TViewModel> extends HTMLElement {
         }
     }
 
-    protected canAssignToViewModel(): boolean {
-        return !!this._modelPathWatcher;
-    }
-
-    protected assignToViewModel(value: any) {
-        if (this._modelPathWatcher) {
-            this._modelPathWatcher.assignValue(value);
-        }
-    }
-
     private _lastExposedViewModel: any = null;
     private viewModelMaybeChanged() {
         let newVm: any = null;
-        if (this._modelPathWatcher) {
-            newVm = this._modelPathWatcher.value;
-        }
-        else if (this._explicitViewModel === ComponentBase.INHERITED_VIEW_MODEL) {
+        if (this._explicitViewModel === ComponentBase.INHERITED_VIEW_MODEL) {
             const parentComponent = this.findParentComponent();
             if (parentComponent) {
                 newVm = parentComponent.viewModel;
@@ -442,7 +379,7 @@ export abstract class ComponentBase<TViewModel> extends HTMLElement {
         this.dispatchEvent(new Event("disconnected"));
     }
 
-    watchExpr<T>(expr: (vm: TViewModel) => T, valueChanged: (value: (T | undefined)) => (void | IDisposable)): IDisposable {
+    watchExpr<const T>(expr: (vm: TViewModel) => T, valueChanged: (value: (T | undefined)) => (void | IDisposable)): IDisposable {
         const result = this.whenConnectedWithViewModel((vm) => {
             const lastReturnedDisposable = new DisposableOwnerField();
 
@@ -541,67 +478,6 @@ export abstract class ComponentBase<TViewModel> extends HTMLElement {
             });
         });
         return wcReg;
-    }
-}
-
-class ModelPathWatcher {
-    constructor(
-        public readonly vm: Observable,
-        public readonly path: string) {
-
-        this._vmUpdateListener = vm.addEventListener("propertychange", e => {
-            if (e.propertyName == path) {
-                this.value = (vm as any)[path];
-            }
-        });
-        this.value = (vm as any)[path];
-    }
-
-    private readonly _vmUpdateListener: IDisposable;
-
-    private readonly _valueChangedListeners = new SnapshottableSet<ValueChangedHandler>();
-
-    addEventListener(eventType: "valuechange", handler: ValueChangedHandler): IDisposable {
-
-        if (eventType == "valuechange") {
-            this._valueChangedListeners.add(handler);
-        }
-
-        return asDisposable(() => {
-            this.removeEventListener(eventType, handler);
-        });
-    }
-
-    removeEventListener(eventType: "valuechange", handler: ValueChangedHandler) {
-        if (eventType == "valuechange") {
-            this._valueChangedListeners.delete(handler);
-        }
-    }
-
-    valueChanged() {
-        this._valueChangedListeners.forEachValueSnapshotted(h => {
-            try {
-                h(new Event("valuechange"));
-            }
-            catch { }
-        });
-    }
-
-    assignValue(value: any) {
-        (this.vm as any)[this.path] = value;
-    }
-
-    private _lastValue: any = undefined;
-    get value(): any { return this._lastValue; }
-    private set value(v: any) {
-        if (v !== this._lastValue) {
-            this._lastValue = v;
-            this.valueChanged();
-        }
-    }
-
-    dispose() {
-        this._vmUpdateListener.dispose();
     }
 }
 
@@ -722,27 +598,6 @@ export class ComponentCharacterStatusListener implements IDisposable {
 
 type ValueChangedHandler = (event: Event) => void;
 
-
-// export abstract class EventedComponentBase<TViewModel, TEvents> extends ComponentBase<TViewModel> {
-//     constructor() {
-//         super();
-//     }
-
-//     private readonly _listeners: Map<keyof TEvents, Set<EventHandler>> = new Map();
-
-//     addEventListener<T extends keyof TEvents>(type: T, listener: TEvents[T], options?: any): IDisposable;
-//     addEventListener(type: any, listener: any, options?: any): IDisposable;
-//     addEventListener(type: any, listener: any, options?: any): IDisposable {
-//         const result = super.addEventListener(type, listener, options);
-//         return result;
-//     }
-
-//     removeEventListener<T extends keyof TEvents>(type: T, listener: TEvents[T], options?: any): void;
-//     removeEventListener(type: any, listener: any, options?: any): void;
-//     removeEventListener(type: any, listener: any, options?: any): void {
-//         super.removeEventListener(type, listener, options);
-//     }
-// }
 
 export type EventHandler = (e: Event) => void;
 

@@ -192,8 +192,15 @@ export class ChatViewModelSink implements ChatConnectionSink {
         }
         if (nr.everywhere != "no") {
             for (let c of this.viewModel.openChannels) {
-                targets.set(c, targets.get(c) || nr.targetChannel == "important");
+                targets.set(c, targets.get(c) || nr.everywhere == "important");
             }
+            for (let c of this.viewModel.pmConversations) {
+                targets.set(c, targets.get(c) || nr.everywhere == "important");
+            }
+            if (this.viewModel.selectedChannel) {
+                targets.set(this.viewModel.selectedChannel, targets.get(this.viewModel.selectedChannel) || nr.everywhere == "important");
+            }
+            targets.set(this.viewModel.console, targets.get(this.viewModel.console) || nr.everywhere == "important");
         }
         for (let kvp of targets) {
             const chan = kvp[0];
