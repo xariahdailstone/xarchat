@@ -683,6 +683,7 @@ export class ActiveLoginViewModel extends ObservableBase {
             if (!this._pmConversations2.contains(chan) &&
                 !this._pinnedChannels2.contains(chan) &&
                 !this._unpinnedChannels2.contains(chan) &&
+                !(chan instanceof ConsoleChannelViewModel) &&
                 this.selectedTab != chan) {
 
                 chan.dispose();

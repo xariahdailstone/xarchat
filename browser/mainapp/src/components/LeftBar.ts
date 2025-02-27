@@ -32,10 +32,15 @@ export class LeftBar extends ComponentBase<AppViewModel> {
             elDisconnectedWarning.viewModel = v ?? null;
         });
 
-        this.watchExpr(vm => [vm.currentlySelectedSession?.leftListSelectedPane, !!vm.currentlySelectedSession?.getConfigSettingById("joinFriendsAndBookmarks")], v => {
+        this.watchExpr(vm => [
+            vm.currentlySelectedSession,
+            vm.currentlySelectedSession?.leftListSelectedPane, 
+            !!vm.currentlySelectedSession?.getConfigSettingById("joinFriendsAndBookmarks")],
+        v => {
             if (v) {
-                let selectedPane = v[0];
-                const joinFriendsAndBookmarks = v[1];
+                const currentlySelectedSession = v[0];
+                let selectedPane = v[1];
+                const joinFriendsAndBookmarks = v[2];
 
                 if (joinFriendsAndBookmarks) {
                     if (selectedPane == LeftListSelectedPane.FRIENDS || selectedPane == LeftListSelectedPane.BOOKMARKS) {
@@ -53,7 +58,7 @@ export class LeftBar extends ComponentBase<AppViewModel> {
                         {
                             const el = new ChatsList();
                             el.id = "elChatsList";
-                            el.modelPath = "currentlySelectedSession";
+                            el.viewModel = currentlySelectedSession;
                             el.classList.add("mainsection");
                             this.elMain.appendChild(el);
                             return asDisposable(() => { el.remove(); });
@@ -62,7 +67,7 @@ export class LeftBar extends ComponentBase<AppViewModel> {
                         {
                             const el = new WatchedList();
                             el.id = "elWatchedList";
-                            el.modelPath = "currentlySelectedSession";
+                            el.viewModel = currentlySelectedSession;
                             el.showType = WatchedListShowType.ALL;
                             el.classList.add("mainsection");
                             this.elMain.appendChild(el);
@@ -72,7 +77,7 @@ export class LeftBar extends ComponentBase<AppViewModel> {
                         {
                             const el = new WatchedList();
                             el.id = "elWatchedList";
-                            el.modelPath = "currentlySelectedSession";
+                            el.viewModel = currentlySelectedSession;
                             el.showType = WatchedListShowType.FRIENDS;
                             el.classList.add("mainsection");
                             this.elMain.appendChild(el);
@@ -82,7 +87,7 @@ export class LeftBar extends ComponentBase<AppViewModel> {
                         {
                             const el = new WatchedList();
                             el.id = "elWatchedList";
-                            el.modelPath = "currentlySelectedSession";
+                            el.viewModel = currentlySelectedSession;
                             el.showType = WatchedListShowType.BOOKMARKS;
                             el.classList.add("mainsection");
                             this.elMain.appendChild(el);
@@ -92,7 +97,7 @@ export class LeftBar extends ComponentBase<AppViewModel> {
                         {
                             const el = new MiscTabsList();
                             el.id = "elMiscTabsList";
-                            el.modelPath = "currentlySelectedSession";
+                            el.viewModel = currentlySelectedSession;
                             el.classList.add("mainsection");
                             this.elMain.appendChild(el);
                             return asDisposable(() => { el.remove(); });
