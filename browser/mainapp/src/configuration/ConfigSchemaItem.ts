@@ -151,8 +151,8 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                 {
                     id: "restoreStatusMessageOnLogin",
                     scope: getScopeArray(["global", "char"]),
-                    title: "Restore Status Message on Login",
-                    description: "Restore your previous status message when logging in or reconnecting.",
+                    title: "Restore Status on Login",
+                    description: "Restore your previous status when logging in or reconnecting.",
                     type: "boolean",
                     defaultValue: true,
                     configBlockKey: "restoreStatusMessageOnLogin"
