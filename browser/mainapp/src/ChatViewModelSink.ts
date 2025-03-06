@@ -643,6 +643,7 @@ export class ChatViewModelSink implements ChatConnectionSink {
                 if (s.characterName! == ns.characterName) {
                     if (!this.isLoggingIn && newStatus.status != OnlineStatus.OFFLINE) {
                         ns.savedChatState.statusMessage = newStatus.statusMessage;
+                        ns.savedChatState.onlineStatus = newStatus.status;
                     }
                     
                     const dispStatusChanged =

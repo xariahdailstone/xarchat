@@ -91,7 +91,7 @@ export class LoginUtils {
             if (charStatus.statusMessage == "" && savedChatState.statusMessage != "") {
                 // TODO: set character status
                 if (ns.getFirstConfigEntryHierarchical([ "restoreStatusMessageOnLogin" ])) {
-                    cc.setStatusAsync(OnlineStatus.ONLINE, savedChatState.statusMessage);
+                    cc.setStatusAsync(savedChatState.onlineStatus ?? OnlineStatus.ONLINE, savedChatState.statusMessage);
                 }
             }
 
@@ -181,7 +181,7 @@ export class LoginUtils {
             if (charStatus.statusMessage == "" && savedChatState.statusMessage != "") {
                 // TODO: set character status
                 if (activeLoginViewModel.getFirstConfigEntryHierarchical([ "restoreStatusMessageOnLogin" ])) {
-                    cc.setStatusAsync(OnlineStatus.ONLINE, savedChatState.statusMessage);
+                    cc.setStatusAsync(savedChatState.onlineStatus ?? OnlineStatus.ONLINE, savedChatState.statusMessage);
                 }
             }
         }
