@@ -1,3 +1,4 @@
+import { CallbackSet } from "../CallbackSet";
 import { SnapshottableSet } from "../collections/SnapshottableSet";
 import { IDisposable, asDisposable } from "../Disposable";
 
@@ -10,7 +11,7 @@ export interface NewObservable<T> {
     removeValueSubscription(callback: (value: T) => void): void;
 }
 
-type NewType<T> = SnapshottableSet<NewObservableSubscriptionCallback<T>>;
+type NewType<T> = CallbackSet<NewObservableSubscriptionCallback<T>>;
 
 export class NewObservableImpl<T> {
     constructor(initialValue: T) {
@@ -33,29 +34,24 @@ export class NewObservableImpl<T> {
 
     private notifySubscribers(newValue: T, oldValue: T) {
         if (this._subscribers) {
-            this._subscribers.forEachValueSnapshotted(subscriber => {
-                try { subscriber(newValue); }
-                catch { }
-            });
+            this._subscribers.invoke(newValue);
         }
     }
 
     addValueSubscription(callback: NewObservableSubscriptionCallback<T>): IDisposable {
         if (!this._subscribers) {
-            this._subscribers = new SnapshottableSet();
+            this._subscribers = new CallbackSet("NewObservableImpl-subscribers", () => {
+                if (this._subscribers?.size == 0) {
+                    this._subscribers = undefined;
+                }
+            });
         }
-        this._subscribers.add(callback);
-        return asDisposable(() => {
-            this.removeValueSubscription(callback);
-        });
+        return this._subscribers.add(callback);
     }
 
     removeValueSubscription(callback: NewObservableSubscriptionCallback<T>): void {
         if (this._subscribers) {
             this._subscribers.delete(callback);
-            if (this._subscribers.size == 0) {
-                this._subscribers = undefined;
-            }
         }
     }
 }
@@ -67,7 +63,7 @@ class NewObservableAggregate implements NewObservable<void> {
     
     get value(): void { return undefined; }
 
-    private _subcriptions?: SnapshottableSet<NewObservableSubscriptionCallback<void>> = undefined;
+    private _subcriptions?: CallbackSet<NewObservableSubscriptionCallback<void>> = undefined;
     private _innerSubs: IDisposable[] = [];
 
     private subscribeToInners() {
@@ -91,10 +87,7 @@ class NewObservableAggregate implements NewObservable<void> {
 
     private notifySubscribers() {
         if (this._subcriptions) {
-            this._subcriptions.forEachValueSnapshotted(tsubscriber => {
-                try { tsubscriber(); }
-                catch { }
-            });
+            this._subcriptions.invoke();
         }
         else {
             // should never get here, shouldn't have inner subs when no subscriptions
@@ -104,21 +97,18 @@ class NewObservableAggregate implements NewObservable<void> {
     addValueSubscription(callback: NewObservableSubscriptionCallback<void>): IDisposable {
         if (!this._subcriptions) {
             // TODO: subscribe to inners
-            this._subcriptions = new SnapshottableSet();
+            this._subcriptions = new CallbackSet("NewObservableAggregate", () => {
+                if (this._subcriptions?.size == 0) {
+                    this._subcriptions = undefined;
+                }
+            });
         }
-        this._subcriptions.add(callback);
-        return asDisposable(() => {
-            this.removeValueSubscription(callback);
-        })
+        return this._subcriptions.add(callback);
     }
 
     removeValueSubscription(callback: NewObservableSubscriptionCallback<void>): void {
         if (this._subcriptions) {
             this._subcriptions.delete(callback);
-            if (this._subcriptions.size == 0) {
-                // TODO: unsubscribe from inners
-                this._subcriptions = undefined;
-            }
         }
     }
 }
@@ -133,7 +123,7 @@ export class NewObservableExpression<T> implements NewObservable<T> {
     private _value: T;
     private _aggregateObservable!: NewObservableAggregate;
     private _aggregateSubscription?: IDisposable;
-    private _subscribers?: Set<NewObservableSubscriptionCallback<T>>;
+    private _subscribers?: CallbackSet<NewObservableSubscriptionCallback<T>>;
 
     private evaluateExpression(): T {
         const observables: Set<NewObservable<any>> = new Set();
@@ -162,22 +152,20 @@ export class NewObservableExpression<T> implements NewObservable<T> {
 
     addValueSubscription(callback: NewObservableSubscriptionCallback<T>): IDisposable {
         if (!this._subscribers) {
-            this._subscribers = new Set();
+            this._subscribers = new CallbackSet("NewObservableExpression-subscribers", () => {
+                if (this._subscribers?.size == 0) {
+                    this._subscribers = undefined;
+                    this.unhookFromAggregate();
+                }
+            });
             this.hookupToAggregate();
         }
-        this._subscribers.add(callback);
-        return asDisposable(() => {
-            this.removeValueSubscription(callback);
-        });
+        return this._subscribers.add(callback);
     }
 
     removeValueSubscription(callback: NewObservableSubscriptionCallback<T>): void {
         if (this._subscribers) {
             this._subscribers.delete(callback);
-            if (this._subscribers.size == 0) {
-                this._subscribers = undefined;
-                this.unhookFromAggregate();
-            }
         }
     }
 
@@ -198,14 +186,11 @@ export class NewObservableExpression<T> implements NewObservable<T> {
 export type DependencyWatcherCallback = (obs: NewObservable<any>) => void;
 
 export class NewObservableDependencyManager {
-    private static _watchers: Set<DependencyWatcherCallback> = new Set();
+    private static _watchers: CallbackSet<DependencyWatcherCallback> = new CallbackSet("NewObservableDependencyManager-watchers");
 
     static reportDependency(obs: NewObservable<any>) {
         if (this._watchers.size > 0) {
-            for (let watcher of this._watchers.values()) {
-                try { watcher(obs); }
-                catch { }
-            }
+            this._watchers.invoke(obs);
         }
     }
 

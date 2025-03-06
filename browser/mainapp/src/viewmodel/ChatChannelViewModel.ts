@@ -24,6 +24,7 @@ import { ObservableExpression } from "../util/ObservableExpression.js";
 import { ObservableValue } from "../util/Observable.js";
 import { ServerError } from "../fchat/ChatConnectionImpl.js";
 import { CatchUtils } from "../util/CatchUtils.js";
+import { CallbackSet } from "../util/CallbackSet.js";
 
 export class ChatChannelUserViewModel extends ObservableBase implements IDisposable {
     constructor(
@@ -415,22 +416,12 @@ export class ChatChannelViewModel extends ChannelViewModel {
         }
     }
 
-    private readonly _channelOpsListeners: SnapshottableSet<CharactersEventListener> = new SnapshottableSet();
+    private readonly _channelOpsListeners2: CallbackSet<CharactersEventListener> = new CallbackSet("ChatChannelViewModel-channelOpsListeners");
     addChannelOpsListener(callback: CharactersEventListener): IDisposable {
-        this._channelOpsListeners.add(callback);
-        let disposed = false;
-        return asDisposable(() => {
-            if (!disposed) {
-                disposed = true;
-                this._channelOpsListeners.delete(callback);
-            }
-        });
+        return this._channelOpsListeners2.add(callback);
     }
     private notifyChannelOpsListeners(characters: CharacterName[]) {
-        this._channelOpsListeners.forEachValueSnapshotted(w => {
-            try { w(characters); }
-            catch { }
-        });
+        this._channelOpsListeners2.invoke(characters);
     }
 
     isCharacterInChannel(character: CharacterName): boolean {

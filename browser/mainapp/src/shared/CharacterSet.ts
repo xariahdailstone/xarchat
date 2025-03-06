@@ -1,3 +1,4 @@
+import { NamedCallbackSet } from "../util/CallbackSet.js";
 import { SnapshottableMap } from "../util/collections/SnapshottableMap.js";
 import { SnapshottableSet } from "../util/collections/SnapshottableSet.js";
 import { asDisposable, IDisposable } from "../util/Disposable.js";
@@ -88,7 +89,7 @@ export class CharacterSet {
     private readonly _interestsSet: CharacterNameSet;
 
     private readonly _statuses: SnapshottableMap<CharacterName, CharacterStatusImpl> = new SnapshottableMap();
-    private readonly _statusListeners: Map<CharacterName, SnapshottableSet<CharacterStatusChangeHandler>> = new Map();
+    private readonly _statusListeners2: NamedCallbackSet<CharacterName, CharacterStatusChangeHandler> = new NamedCallbackSet("CharacterSet");
 
     private readonly _lingeringGenders: LingeringGenderSet = new LingeringGenderSet();
 
@@ -163,44 +164,12 @@ export class CharacterSet {
     }
 
     addStatusListenerDebug(reason: any, characterName: CharacterName, handler: CharacterStatusChangeHandler): IDisposable {
-        let set = this._statusListeners.get(characterName);
-        if (!set) {
-            set = new SnapshottableSet<CharacterStatusChangeHandler>();
-            this._statusListeners.set(characterName, set);
-        }
-        set.add(handler);
-
-        return asDisposable(() => {
-            let set = this._statusListeners.get(characterName);
-            if (set) {
-                set.delete(handler);
-                if (set.size == 0) {
-                    this._statusListeners.delete(characterName);
-                }
-            }
-            });
+        return this._statusListeners2.add(characterName, handler);
     }
 
     private characterStatusUpdated(newStatus: CharacterStatusWithLastChangedInfo, previousStatus: CharacterStatus) {
         const characterName = newStatus.characterName;
-        const listeners = this._statusListeners.get(characterName);
-        if (listeners) {
-            //const status = this.getCharacterStatus(characterName);
-            listeners.forEachValueSnapshotted(handler => {
-                try {
-                    if (handler) {
-                        handler(newStatus, previousStatus);
-                    }
-                    else {
-                        listeners.delete(handler);
-                        if (listeners.size == 0) {
-                            this._statusListeners.delete(characterName);
-                        }
-                    }
-                }
-                catch { }
-            });
-        }
+        this._statusListeners2.invoke(characterName, newStatus, previousStatus);
     }
 }
 

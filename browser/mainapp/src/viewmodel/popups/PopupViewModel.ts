@@ -1,3 +1,4 @@
+import { CallbackSet } from "../../util/CallbackSet";
 import { SnapshottableSet } from "../../util/collections/SnapshottableSet";
 import { ObservableBase } from "../../util/ObservableBase";
 import { PromiseSource } from "../../util/PromiseSource";
@@ -11,23 +12,22 @@ export abstract class PopupViewModel extends ObservableBase {
     get appViewModel() { return this.parent; }
 
     private _dismissed: boolean = false;
-    private _dismissalWaiters: SnapshottableSet<PromiseSource<void>> = new SnapshottableSet();
+    private _dismissalWaiters: CallbackSet<() => void> = new CallbackSet("PopupViewModel-dismissalWaiters");
 
     dismissed() { 
         if (!this._dismissed) {
             this._dismissed = true;
-            this._dismissalWaiters.forEachValueSnapshotted(w => {
-                try { w.tryResolve(); }
-                catch { }
-            });
+            this._dismissalWaiters.invoke();
         }
         this.appViewModel.popups.remove(this);
     }
 
-    waitForDismissalAsync(): Promise<void> {
+    async waitForDismissalAsync(): Promise<void> {
         const ps = new PromiseSource<void>();
-        this._dismissalWaiters.add(ps);
-        return ps.promise;
+        using dwreg = this._dismissalWaiters.add(() => {
+            ps.tryResolve();
+        })
+        await ps.promise;
     }
 }
 

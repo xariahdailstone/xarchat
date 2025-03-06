@@ -1,3 +1,4 @@
+import { CallbackSet } from "../../util/CallbackSet";
 import { SnapshottableSet } from "../../util/collections/SnapshottableSet";
 import { asDisposable, IDisposable } from "../../util/Disposable";
 import { KeyCodes } from "../../util/KeyCodes";
@@ -36,22 +37,12 @@ export abstract class DialogViewModel<TResult> extends ObservableBase {
         this.dialogResult = result;
         this.closed = true;
 
-        this._closeHandlers.forEachValueSnapshotted(h => {
-            try { h(result); }
-            catch { }
-        });
+        this._closeHandlers2.invoke(result);
     }
 
-    private readonly _closeHandlers: SnapshottableSet<CloseHandler<TResult>> = new SnapshottableSet();
+    private readonly _closeHandlers2: CallbackSet<CloseHandler<TResult>> = new CallbackSet("DialogViewModel-closeHandlers");
     addCloseListener(callback: CloseHandler<TResult>): IDisposable {
-        this._closeHandlers.add(callback);
-        let disposed = false;
-        return asDisposable(() => {
-            if (!disposed) {
-                disposed = true;
-                this._closeHandlers.delete(callback);
-            }
-        });
+        return this._closeHandlers2.add(callback);
     }
 }
 

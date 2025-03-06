@@ -8,6 +8,7 @@ import { OnlineStatus } from "../shared/OnlineStatus";
 import { AppViewModel } from "../viewmodel/AppViewModel";
 import { FramePanelDialogViewModel } from "../viewmodel/dialogs/FramePanelDialogViewModel";
 import { AsyncWebSocket } from "./AsyncWebSocket";
+import { CallbackSet } from "./CallbackSet";
 import { CancellationToken, CancellationTokenSource } from "./CancellationTokenSource";
 import { SnapshottableMap } from "./collections/SnapshottableMap";
 import { SnapshottableSet } from "./collections/SnapshottableSet";
@@ -334,10 +335,7 @@ class XarHost2Interop implements IXarHost2HostInterop {
     private setWindowState(value: HostWindowState) {
         if (value !== this._windowState) {
             this._windowState = value;
-            this._windowStateCallbacks.forEachValueSnapshotted(x => {
-                try { x(value); }
-                catch { }
-            });
+            this._windowStateCallbacks.invoke(value);
         }
     }
 
@@ -401,9 +399,7 @@ class XarHost2Interop implements IXarHost2HostInterop {
         const cmd = rcmd.toLowerCase();
         const arg = spaceIdx == -1 ? "" : data.substring(spaceIdx + 1);
 
-        this._allResponseWaiters.forEachValueSnapshotted(x => {
-            x(cmd, arg);
-        })
+        this._allResponseWaiters2.invoke(cmd, arg);
 
         if (cmd == "clientresize") {
             const argo = JSON.parse(arg);
@@ -557,16 +553,16 @@ class XarHost2Interop implements IXarHost2HostInterop {
             }
             catch (e) {
                 stopListening = true;
-                this._allResponseWaiters.delete(tw);
+                this._allResponseWaiters2.delete(tw);
                 ps.tryReject(e);
             }
             if (stopListening) {
-                this._allResponseWaiters.delete(tw);
+                this._allResponseWaiters2.delete(tw);
                 ps.tryResolve(undefined);
             }
         };
 
-        this._allResponseWaiters.add(tw);
+        this._allResponseWaiters2.add(tw);
 
         this.writeToXCHostSocket(data);
 
@@ -576,7 +572,7 @@ class XarHost2Interop implements IXarHost2HostInterop {
     private _nextMsgId: number = 1;
     private _responseWaiters: Map<number, { resolve: (data: any) => void, fail: (reason: string) => void, cancel: () => void }> = new Map();
 
-    private _allResponseWaiters: SnapshottableSet<(cmd: string, data: string) => void> = new SnapshottableSet();
+    private _allResponseWaiters2: CallbackSet<(cmd: string, data: string) => void> = new CallbackSet("XarHost2Interop-allResponseWaiters");
 
     private dispatchReply(msgid: number, data: any) {
         const w = this._responseWaiters.get(msgid);
@@ -935,38 +931,25 @@ class XarHost2Interop implements IXarHost2HostInterop {
         }
     }
 
-    private _windowStateCallbacks: SnapshottableMap<object, (windowState: HostWindowState) => void> = new SnapshottableMap();
+    private _windowStateCallbacks: CallbackSet<(windowState: HostWindowState) => void> = new CallbackSet("XarHost2Interop-windowStateCallbacks");
 
     registerWindowStateChangeCallback(callback: (windowState: HostWindowState) => void): IDisposable {
-        const myKey = {};
-        this._windowStateCallbacks.set(myKey, callback);
-        return asDisposable(() => {
-            this._windowStateCallbacks.delete(myKey);
-        })
+        return this._windowStateCallbacks.add(callback);
     }
 
-    private _windowBoundsChangeCallbacks: SnapshottableMap<object, (loc: RawSavedWindowLocation) => void> = new SnapshottableMap();
+    private _windowBoundsChangeCallbacks: CallbackSet<(loc: RawSavedWindowLocation) => void> = new CallbackSet("XarHost2Interop-windowBoundsChangeCallbacks");
 
     registerWindowBoundsChangeCallback(callback: (loc: RawSavedWindowLocation) => void): IDisposable {
-        const myKey = {};
-        this._windowBoundsChangeCallbacks.set(myKey, callback);
-        return asDisposable(() => {
-            this._windowBoundsChangeCallbacks.delete(myKey);
-        });
+        return this._windowBoundsChangeCallbacks.add(callback);
     }
 
     private doWindowBoundsChange(desktopMetrics: string, windowBounds: [number, number, number, number] ) {
-        this._windowBoundsChangeCallbacks.forEachValueSnapshotted(x => {
-            try {
-                x({
-                    desktopMetrics: desktopMetrics,
-                    windowX: windowBounds[0],
-                    windowY: windowBounds[1],
-                    windowWidth: windowBounds[2],
-                    windowHeight: windowBounds[3]
-                });
-            }
-            catch { }
+        this._windowBoundsChangeCallbacks.invoke({
+            desktopMetrics: desktopMetrics,
+            windowX: windowBounds[0],
+            windowY: windowBounds[1],
+            windowWidth: windowBounds[2],
+            windowHeight: windowBounds[3]
         });
     }
 
