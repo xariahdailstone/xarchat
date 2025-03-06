@@ -174,6 +174,18 @@ export class LoginUtils {
             "", "", activeLoginViewModel.characterName, true, cancellationToken);
         const cc = nscc.chatConnection;
 
+        // Restore status message
+        const savedChatState = activeLoginViewModel.appViewModel.appSettings.savedChatStates.getOrCreate(activeLoginViewModel.characterName);
+        if (savedChatState) {
+            const charStatus = activeLoginViewModel.characterSet.getCharacterStatus(activeLoginViewModel.characterName);
+            if (charStatus.statusMessage == "" && savedChatState.statusMessage != "") {
+                // TODO: set character status
+                if (activeLoginViewModel.getFirstConfigEntryHierarchical([ "restoreStatusMessageOnLogin" ])) {
+                    cc.setStatusAsync(OnlineStatus.ONLINE, savedChatState.statusMessage);
+                }
+            }
+        }
+
         // Reconnect pending channels
         logger.logDebug("reconnectAsync: reconnecting pending channels...");
         for (let ch of [...activeLoginViewModel.pinnedChannels, ...activeLoginViewModel.unpinnedChannels]) {
