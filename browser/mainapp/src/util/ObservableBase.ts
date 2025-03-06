@@ -1,3 +1,4 @@
+import { CallbackSet, NamedCallbackSet } from "./CallbackSet.js";
 import { SnapshottableSet } from "./collections/SnapshottableSet.js";
 import { asDisposable, EmptyDisposable, IDisposable, isDisposable } from "./Disposable.js";
 import { Logger, Logging } from "./Logger.js";
@@ -32,13 +33,15 @@ function registerIdleIngest(func: () => any): number {
 
 export abstract class ObservableBase implements Observable {
     constructor() {
-        this.logger = Logging.createLogger(`${this.constructor.name}#${ObjectUniqueId.get(this)}`);
+        const name = `${this.constructor.name}#${ObjectUniqueId.get(this)}`;
+        this.logger = Logging.createLogger(name);
+        this._propertyListeners2 = new NamedCallbackSet(name);
     }
 
     private readonly _disposeSentinel: object | null = null;
 
     private readonly _lastSeenProps: Map<string, any> = new Map();
-    private readonly _propertyListeners: Map<string, SnapshottableSet<PropertyChangeEventListener>> = new Map();
+    private readonly _propertyListeners2: NamedCallbackSet<string, PropertyChangeEventListener>;
 
     protected logger: Logger;
 
@@ -48,21 +51,10 @@ export abstract class ObservableBase implements Observable {
     private ingestPendingListeners() {
         for (let pl of this._pendingListenerChanges) {
             if (pl.func == "add") {
-                let lset = this._propertyListeners.get(pl.propertyName);
-                if (!lset) {
-                    lset = new SnapshottableSet<PropertyChangeEventListener>();
-                    this._propertyListeners.set(pl.propertyName, lset);
-                }
-                lset.add(pl.onChangeCallback);    
+                this._propertyListeners2.add(pl.propertyName, pl.onChangeCallback);
             }
             else if (pl.func == "remove") {
-                let lset = this._propertyListeners.get(pl.propertyName);
-                if (lset) {
-                    lset.delete(pl.onChangeCallback);
-                    if (lset.size == 0) {
-                        this._propertyListeners.delete(pl.propertyName);
-                    }
-                }
+                this._propertyListeners2.delete(pl.propertyName, pl.onChangeCallback);
             }
         }
         this._pendingListenerChanges = [];
@@ -77,13 +69,6 @@ export abstract class ObservableBase implements Observable {
             });
         }
 
-        // let lset = this._propertyListeners.get(propertyName);
-        // if (!lset) {
-        //     lset = new SnapshottableSet<PropertyChangeEventListener>();
-        //     this._propertyListeners.set(propertyName, lset);
-        // }
-        // lset.add(onChangeCallback);
-
         return asDisposable(() => {
             this.removePropertyListener(propertyName, onChangeCallback);
         });
@@ -97,14 +82,6 @@ export abstract class ObservableBase implements Observable {
                 this.ingestPendingListeners();
             });
         }
-
-        // let lset = this._propertyListeners.get(propertyName);
-        // if (lset) {
-        //     lset.delete(onChangeCallback);
-        //     if (lset.size == 0) {
-        //         this._propertyListeners.delete(propertyName);
-        //     }
-        // }
     }
 
     addEventListener(eventName: "propertychange", handler: PropertyChangeEventListener): IDisposable {
@@ -123,16 +100,10 @@ export abstract class ObservableBase implements Observable {
     }
 
     raisePropertyChangeEvent(propertyName: string, propValue: unknown): void {
-        const lset = this._propertyListeners.get(propertyName);
-        if (lset) {
-            Observable.enterObservableFireStack(() => {
-                const evt = new PropertyChangeEvent(propertyName, propValue);
-                lset.forEachValueSnapshotted(x => {
-                    try { x(evt); }
-                    catch { }
-                });
-            });
-        }
+        const evt = new PropertyChangeEvent(propertyName, propValue);
+        Observable.enterObservableFireStack(() => {
+            this._propertyListeners2.invoke(propertyName, evt);
+        });
 
         const pendingHighwater = this._pendingListenerChanges.length;
         let pendingNotifySet: Set<PropertyChangeEventListener> | null = null;
@@ -156,16 +127,9 @@ export abstract class ObservableBase implements Observable {
             });
         }
 
-        const lset2 = this._propertyListeners.get("*");
-        if (lset2) {
-            Observable.enterObservableFireStack(() => {
-                const evt = new PropertyChangeEvent(propertyName, propValue);
-                lset2.forEachValueSnapshotted(x => {
-                    try { x(evt); }
-                    catch { }
-                });
-            });
-        }
+        Observable.enterObservableFireStack(() => {
+            this._propertyListeners2.invoke("*", evt);
+        });
     }
 
     addValueSubscription(propertyPath: string, handler: (value: any) => any): ValueSubscription {
@@ -377,30 +341,23 @@ export function wrapModel<T extends object>(rawModel: T): (T & Observable) {
         }
     };
 
-    let propertyChangedListeners = new SnapshottableSet<PropertyChangeEventListener>();
+    let propertyChangedListeners2 = new CallbackSet<PropertyChangeEventListener>("wrappedModel-propertyChangedListeners");
 
     const addEventListener = (eventName: string, handler: PropertyChangeEventListener): IDisposable => {
         if (eventName == "propertychange") {
-            propertyChangedListeners.add(handler);
+            return propertyChangedListeners2.add(handler);
         }
-        return asDisposable(() => {
-            propertyChangedListeners.delete(handler);
-        });
+        return asDisposable();
     };
     const removeEventListener = (eventName: string, handler: PropertyChangeEventListener) => {
         if (eventName == "propertychange") {
-            propertyChangedListeners.delete(handler);
+            propertyChangedListeners2.delete(handler);
         }
     };
     const raisePropertyChangeEvent = (propertyName: string, propValue: unknown) => {
         Observable.enterObservableFireStack(() => {
-            propertyChangedListeners.forEachValueSnapshotted(v => {
-                try {
-                    v(new PropertyChangeEvent(propertyName, propValue));
-                }
-                catch {
-                }
-            });
+            const pce = new PropertyChangeEvent(propertyName, propValue);
+            propertyChangedListeners2.invoke(pce);
         });
         //Observable.publishRead(result, propertyName, (rawModel as any)[propertyName]);
     };

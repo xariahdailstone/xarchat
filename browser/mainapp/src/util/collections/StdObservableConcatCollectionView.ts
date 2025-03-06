@@ -1,4 +1,5 @@
 import { h } from "../../snabbdom/h";
+import { CallbackSet } from "../CallbackSet";
 import { IDisposable, asDisposable } from "../Disposable";
 import { Observable, PropertyChangeEvent, PropertyChangeEventListener, ValueSubscription } from "../Observable";
 import { setupValueSubscription } from "../ObservableBase";
@@ -126,24 +127,18 @@ export class StdObservableConcatCollectionView<TItem> implements ReadOnlyStdObse
 
     get isDisposed() { return this._disposed; }
 
-    private readonly _observers: SnapshottableSet<StdObservableCollectionObserver<TItem>> = new SnapshottableSet();
+    private readonly _observers2: CallbackSet<StdObservableCollectionObserver<TItem>> = new CallbackSet("StdObservableConcatCollectionView-observers");
 
     addCollectionObserver(observer: StdObservableCollectionObserver<TItem>): IDisposable {
-        this._observers.add(observer);
-        return asDisposable(() => {
-            this.removeCollectionObserver(observer);
-        });
+        return this._observers2.add(observer);
     }
 
     removeCollectionObserver(observer: StdObservableCollectionObserver<TItem>): void {
-        this._observers.delete(observer);
+        this._observers2.delete(observer);
     }
 
     private raiseChangeEvent(evt: StdObservableCollectionChange<TItem>): void {
-        this._observers.forEachValueSnapshotted(observer => {
-            try { observer([ evt ]); }
-            catch { }
-        });
+        this._observers2.invoke([ evt ]);
         this.raisePropertyChangeEvent("length", this.length);
     }
 
@@ -164,23 +159,17 @@ export class StdObservableConcatCollectionView<TItem> implements ReadOnlyStdObse
         return result;
     }
 
-    private readonly _propertyChangeListeners: SnapshottableSet<PropertyChangeEventListener> = new SnapshottableSet();
+    private readonly _propertyChangeListeners2: CallbackSet<PropertyChangeEventListener> = new CallbackSet("StdObservableConcatCollectionView-propertyChangeListeners");
 
     addEventListener(eventName: "propertychange", handler: PropertyChangeEventListener): IDisposable {
-        this._propertyChangeListeners.add(handler);
-        return asDisposable(() => {
-            this.removeEventListener(eventName, handler);
-        });
+        return this._propertyChangeListeners2.add(handler);
     }
     removeEventListener(eventName: "propertychange", handler: PropertyChangeEventListener): void {
-        this._propertyChangeListeners.delete(handler);
+        this._propertyChangeListeners2.delete(handler);
     }
     raisePropertyChangeEvent(propertyName: string, propValue: unknown): void {
         const pce = new PropertyChangeEvent(propertyName, propValue);
-        this._propertyChangeListeners.forEachValueSnapshotted(thandler => {
-            try { thandler(pce); }
-            catch { }
-        });
+        this._propertyChangeListeners2.invoke(pce);
     }
     addValueSubscription(propertyPath: string, handler: (value: any) => any): ValueSubscription {
         return setupValueSubscription(this, propertyPath, handler);

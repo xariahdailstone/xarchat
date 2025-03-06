@@ -1,4 +1,5 @@
 import { h } from "../snabbdom/h.js";
+import { CallbackSet, NamedCallbackSet } from "./CallbackSet.js";
 import { SnapshottableMap } from "./collections/SnapshottableMap.js";
 import { SnapshottableSet } from "./collections/SnapshottableSet.js";
 import { IDisposable, EmptyDisposable, asDisposable } from "./Disposable.js";
@@ -148,7 +149,7 @@ export class Observable {
 }
 
 class DynamicNameObservable implements Observable {
-    private static _listeners: Map<string, SnapshottableSet<PropertyChangeEventListener>> = new Map();
+    private static _listeners2: NamedCallbackSet<string, PropertyChangeEventListener> = new NamedCallbackSet("DynamicNameObservable");
 
     constructor(
         private readonly name: string) {
@@ -156,16 +157,7 @@ class DynamicNameObservable implements Observable {
 
     addEventListener(eventName: "propertychange", handler: PropertyChangeEventListener): IDisposable {
         if (eventName == "propertychange") {
-            let lx = DynamicNameObservable._listeners.get(this.name);
-            if (!lx) {
-                lx = new SnapshottableSet();
-                DynamicNameObservable._listeners.set(this.name, lx);
-            }
-
-            lx.add(handler);
-            return asDisposable(() => {
-                this.removeEventListener("propertychange", handler);
-            });
+            return DynamicNameObservable._listeners2.add(this.name, handler);
         }
         else {
             return asDisposable();
@@ -174,27 +166,15 @@ class DynamicNameObservable implements Observable {
 
     removeEventListener(eventName: "propertychange", handler: PropertyChangeEventListener): void {
         if (eventName == "propertychange") {
-            let lx = DynamicNameObservable._listeners.get(this.name);
-            if (lx) {
-                lx.delete(handler);
-                if (lx.size == 0) {
-                    DynamicNameObservable._listeners.delete(this.name);
-                }
-            }
+            DynamicNameObservable._listeners2.delete(this.name, handler);
         }
     }
 
     raisePropertyChangeEvent(propertyName: string, propValue: unknown): void {
-        const lx = DynamicNameObservable._listeners.get(this.name);
-        if (lx) {
-            Observable.enterObservableFireStack(() => {
-                const args = new PropertyChangeEvent(propertyName, propValue);
-                lx.forEachValueSnapshotted(h => {
-                    try { h(args); }
-                    catch { }
-                });
-            });
-        }
+        const args = new PropertyChangeEvent(propertyName, propValue);
+        Observable.enterObservableFireStack(() => {
+            DynamicNameObservable._listeners2.invoke(this.name, args);
+        });
     }
 
     addValueSubscription(propertyPath: string, handler: (value: any) => any): ValueSubscription {
@@ -228,20 +208,20 @@ export class ObservableValue<T> implements Observable {
 
     debug: boolean = false;
 
-    private _propertyChangeListeners: SnapshottableSet<PropertyChangeEventListener> | null = null;
+    private _propertyChangeListeners2: CallbackSet<PropertyChangeEventListener> | null = null;
 
     addEventListener(eventName: "propertychange", handler: PropertyChangeEventListener): IDisposable {
         if (this.debug) { let x = 1; }
         if (eventName == "propertychange") {
-            if (!this._propertyChangeListeners) {
-                this._propertyChangeListeners = new SnapshottableSet();
+            if (!this._propertyChangeListeners2) {
+                this._propertyChangeListeners2 = new CallbackSet("ObservableValue", () => {
+                    if (this._propertyChangeListeners2?.size == 0) {
+                        this._propertyChangeListeners2 = null;
+                    }
+                });
             }
 
-            this._propertyChangeListeners.add(handler);
-
-            return asDisposable(() => {
-                this.removeEventListener(eventName, handler);
-            });
+            return this._propertyChangeListeners2.add(handler);
         }
         else {
             return EmptyDisposable;
@@ -250,23 +230,17 @@ export class ObservableValue<T> implements Observable {
 
     removeEventListener(eventName: "propertychange", handler: PropertyChangeEventListener): void {
         if (this.debug) { let x = 1; }
-        if (this._propertyChangeListeners) {
-            this._propertyChangeListeners.delete(handler);
-            if (this._propertyChangeListeners.size == 0) {
-                this._propertyChangeListeners = null;
-            }
+        if (this._propertyChangeListeners2) {
+            this._propertyChangeListeners2.delete(handler);
         }
     }
 
     raisePropertyChangeEvent(propertyName: string, propValue: unknown): void {
         if (this.debug) { let x = 1; }
-        if (this._propertyChangeListeners) {
+        if (this._propertyChangeListeners2) {
             Observable.enterObservableFireStack(() => {
                 const pce = new PropertyChangeEvent(propertyName, propValue);
-                this._propertyChangeListeners!.forEachValueSnapshotted(l => {
-                    try { l(pce); }
-                    catch { }
-                });
+                this._propertyChangeListeners2?.invoke(pce);
             });
         }
     }

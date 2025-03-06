@@ -3,6 +3,7 @@ import { ChatConnectionFactory } from "../../fchat/ChatConnectionFactory";
 import { FListAuthenticatedApi } from "../../fchat/api/FListApi";
 import { SavedAccountCredentials, SavedAccountCredentialsMap } from "../../settings/AppSettings";
 import { CharacterName } from "../../shared/CharacterName";
+import { CallbackSet } from "../../util/CallbackSet";
 import { CancellationToken, CancellationTokenSource } from "../../util/CancellationTokenSource";
 import { CatchUtils } from "../../util/CatchUtils";
 import { IDisposable, asDisposable } from "../../util/Disposable";
@@ -309,20 +310,12 @@ export class LoginViewModel extends DialogViewModel<boolean> {
     }
 
     private setFocus(propertyName: string) {
-        this._focusListeners.forEachValueSnapshotted(handler => {
-            try {
-                handler(propertyName);
-            }
-            catch { }
-        });
+        this._focusListeners2.invoke(propertyName);
     }
 
-    private readonly _focusListeners: SnapshottableSet<FocusListener> = new SnapshottableSet();
+    private readonly _focusListeners2: CallbackSet<FocusListener> = new CallbackSet("LoginViewModel-focusListeners");
     addFocusListener(callback: FocusListener): IDisposable {
-        this._focusListeners.add(callback);
-        return asDisposable(() => {
-            this._focusListeners.delete(callback);
-        });
+        return this._focusListeners2.add(callback);
     }
 }
 
