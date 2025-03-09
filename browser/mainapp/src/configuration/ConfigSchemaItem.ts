@@ -70,7 +70,7 @@ export interface PingLineItemDefinition {
 
 export type ConfigSchemaItemDefinition = (ConfigSchemaItemDefinitionItem | ConfigSchemaItemDefinitionSection);
 
-export type ConfigSchemaItemType = "text" | "boolean" | "text[]" | "pinglist" | "radio" | "timespan" | "color" | "color-hs" | "notifroutes" | "select";
+export type ConfigSchemaItemType = "text" | "boolean" | "text[]" | "pinglist" | "radio" | "timespan" | "color" | "color-hs" | "bgcolorcontrol" | "notifroutes" | "select";
 export type ConfigSchemaOptionItemType = "string" | "file";
 export type ConfigSchemaScopeType = "global" | "char" | "char.chancategory" | "char.chan" | "char.convo";
 export type ConfigSchemaScopeTypeSimple = "global" | "char" | "chan" | "convo";
@@ -151,8 +151,8 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                 {
                     id: "restoreStatusMessageOnLogin",
                     scope: getScopeArray(["global", "char"]),
-                    title: "Restore Status Message on Login",
-                    description: "Restore your previous status message when logging in or reconnecting.",
+                    title: "Restore Status on Login",
+                    description: "Restore your previous status when logging in or reconnecting.",
                     type: "boolean",
                     defaultValue: true,
                     configBlockKey: "restoreStatusMessageOnLogin"
@@ -609,7 +609,7 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                             id: "backgroundcolor",
                             title: "Background",
                             description: "Background color throughout XarChat.",
-                            type: "color-hs",
+                            type: "bgcolorcontrol",
                             defaultValue: "225;7",
                             configBlockKey: "bgColor"
                         },

@@ -8,7 +8,6 @@ import { asDisposable, asNamedDisposable, DisposableOwnerField, IDisposable } fr
 import { HTMLUtils } from "../util/HTMLUtils";
 import { IterableUtils } from "../util/IterableUtils";
 import { Observable } from "../util/Observable";
-import { ObservableExpression } from "../util/ObservableExpression";
 import { classListNewModule } from "../util/snabbdom/classList-new";
 import { rawAttributesModule } from "../util/snabbdom/rawAttributes";
 import { valueSyncModule } from "../util/snabbdom/valueSyncHook";

@@ -11,6 +11,9 @@ export interface ChatConnection extends IDisposable {
     readonly isDisposed: boolean;
 
     readonly extendedFeaturesEnabled: boolean;
+
+    debug_injectReceivedMessage(message: string): void;
+    debug_outputMessage(message: string): void;
     
     identifyAsync(accountName: string, characterName: CharacterName, ticket: string): Promise<void>;
     disconnect(): Promise<void>;

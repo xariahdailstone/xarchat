@@ -92,9 +92,15 @@ export function makeRenderingComponent<TViewModel>(
                 myDepSet.maybeAddDependency(vm, propName);
             }
         });
-        try
-        {
-            const renderResult = options.render();
+        try {
+            let renderResult: (VNode | [VNode, IDisposable]);
+            try {
+                renderResult = options.render();
+            }
+            catch (e) {
+                logger.logError("Failed to render", component.constructor.name, e);
+                throw e;
+            }
             let newVNode: VNode;
             if (renderResult instanceof Array) {
                 newVNode = renderResult[0];

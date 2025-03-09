@@ -6,6 +6,7 @@ import { ActiveLoginViewModel } from "../viewmodel/ActiveLoginViewModel.js";
 import { ComponentBase, ComponentCharacterStatusListener, componentElement } from "./ComponentBase.js";
 import { RenderingComponentBase } from "./RenderingComponentBase.js";
 import { EmptyDisposable, IDisposable, asDisposable } from "../util/Disposable.js";
+import { StatusDotVNodeBuilder } from "./StatusDot.js";
 
 @componentElement("x-mycharacterpanel")
 export class MyCharacterPanel extends RenderingComponentBase<ActiveLoginViewModel> {
@@ -28,9 +29,12 @@ export class MyCharacterPanel extends RenderingComponentBase<ActiveLoginViewMode
                 syncGifs: true
             });
 
+            const statusDotNode = StatusDotVNodeBuilder.getStatusDotVNode(myStatus);
+
             const el = <>
                 <div id="elStatusArea" on={{ click: () => vm.showCharacterStatusPopup(this.$("elStatusArea")!) }}>
                     <img id="elAvatar" attr-src={this.viewModel?.characterName ? URLUtils.getAvatarImageUrl(this.viewModel.characterName) : URLUtils.getEmptyImageUrl() } />
+                    <div id="elStatusDotContainer">{statusDotNode}</div>
                     <div id="elName">{this.viewModel?.characterName?.value ?? ""}</div>
                     <div id="elStatusMessage"><x-bbcodedisplay props={{viewModel: parseCodeResult}}></x-bbcodedisplay></div>
                 </div>

@@ -62,7 +62,14 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
         let io: IntersectionObserver | null = null;
         const elementsNotVisibleAbove = new Map<HTMLElement, number>();
         const elementsNotVisibleBelow = new Map<HTMLElement, number>();
+        let lastHasAlertElements = new Set<HTMLElement>();
 
+        const getHasAlertElementsSet = () => {
+            const hasAlertEls = this.elMain.querySelectorAll("*[data-has-alert='true']");
+            const result: Set<HTMLElement> = new Set();
+            hasAlertEls.forEach(e => result.add(e as HTMLElement));
+            return result;
+        };
         const updateAlertNoticeVisibility = () => {
             this.cleanOutMissingElements(elementsNotVisibleAbove);
             this.cleanOutMissingElements(elementsNotVisibleBelow);
@@ -70,6 +77,7 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
             this.elMain.classList.toggle("has-alerts-below", elementsNotVisibleBelow.size > 0);
         };
         const recalculateAlertDisplay = () => {
+            this.logger.logInfo("recalculatingAlertDisplay");
             if (io) {
                 elementsNotVisibleAbove.clear();
                 elementsNotVisibleBelow.clear();
@@ -108,9 +116,11 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
                     threshold: [0, 0.25, 0.5, 0.75, 0.99]
                 });
 
-                this.elMain.querySelectorAll("*[data-has-alert='true']").forEach(el => {
+                const hasAlertEls = this.elMain.querySelectorAll("*[data-has-alert='true']");
+                hasAlertEls.forEach(el => {
                     io!.observe(el as HTMLElement);
                 });
+                this.logger.logInfo("recalculatingAlertDisplay watching element count", hasAlertEls.length);
             }
         };
         const scrollToNext = (map: Map<HTMLElement, number>, shouldTake: (curBound: number, maxBound: number) => boolean) => {
@@ -139,7 +149,11 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
         };
 
         const mo = new MutationObserver(entries => {
-            recalculateAlertDisplay();
+            const curHasAlertElementsSet = getHasAlertElementsSet();
+            if (curHasAlertElementsSet.symmetricDifference(lastHasAlertElements).size > 0) {
+                lastHasAlertElements = curHasAlertElementsSet;
+                recalculateAlertDisplay();
+            }
         });
         mo.observe(this.elMain, {
             subtree: true,

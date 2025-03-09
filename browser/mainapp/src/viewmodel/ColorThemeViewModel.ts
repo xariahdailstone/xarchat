@@ -1,4 +1,5 @@
 import { OnlineStatus, OnlineStatusConvert } from "../shared/OnlineStatus";
+import { IDisposable } from "../util/Disposable";
 import { ObservableExpression } from "../util/ObservableExpression";
 import { AppViewModel } from "./AppViewModel";
 
@@ -6,19 +7,21 @@ export class ColorThemeViewModel {
     constructor(
         public readonly appViewModel: AppViewModel) {
 
-        appViewModel.configBlock.observe("global.bgColor", (v: string) => {
+        this._disposables.push(appViewModel.configBlock.observe("global.bgColor", (v: string) => {
             if (!v) {
                 v = "225;7";
             }
             const parts = v.split(';');
             const hue = +parts[0];
             const sat = +parts[1];
+            const bf = parts.length > 2 ? +parts[2] : 1;
             document.body.style.setProperty("--bg-base-hue", hue.toString());
             document.body.style.setProperty("--bg-base-sat", sat.toString() + "%");
-        });
+            document.body.style.setProperty("--bg-brightness-scale", bf.toString());
+        }));
 
         const setupGenderColor = (gender: string) => {
-            const oe = new ObservableExpression(
+            this._disposables.push(new ObservableExpression(
                 () => [ 
                     appViewModel.getConfigSettingById(`color.gender.${gender}`), 
                     appViewModel.getConfigSettingById(`useFriendColor`),
@@ -35,7 +38,7 @@ export class ColorThemeViewModel {
                     }
                 },
                 (err) => {}
-            );
+            ));
         };
 
         setupGenderColor("male");
@@ -49,7 +52,7 @@ export class ColorThemeViewModel {
 
         const setupStatusColor = (status: OnlineStatus) => {
             const statusStr = OnlineStatusConvert.toString(status).toLowerCase();
-            const oe = new ObservableExpression(
+            this._disposables.push(new ObservableExpression(
                 () => appViewModel.getConfigSettingById(`color.status.${statusStr}`),
                 (v) => {
                     if (v) {
@@ -57,7 +60,7 @@ export class ColorThemeViewModel {
                     }
                 },
                 (err) => {}
-            );
+            ));
         };
 
         setupStatusColor(OnlineStatus.OFFLINE);
@@ -69,7 +72,7 @@ export class ColorThemeViewModel {
         setupStatusColor(OnlineStatus.LOOKING);
         setupStatusColor(OnlineStatus.CROWN);
 
-        const ssz = new ObservableExpression(
+        this._disposables.push(new ObservableExpression(
             () => appViewModel.getConfigSettingById("subtextSize"),
             (v) => {
                 if (v) {
@@ -77,6 +80,8 @@ export class ColorThemeViewModel {
                 }
             },
             (err) => {}
-        );
+        ));
     }
+
+    private readonly _disposables: IDisposable[] = [];
 }

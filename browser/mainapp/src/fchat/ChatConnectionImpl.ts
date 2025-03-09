@@ -118,6 +118,21 @@ export class ChatConnectionImpl implements ChatConnection {
 
     get extendedFeaturesEnabled(): boolean { return this._extendedFeaturesEnabled; }
 
+    debug_injectReceivedMessage(message: string): void {
+        this._incomingMessageBuffer.enqueue(message);
+    }
+
+    debug_outputMessage(message: string): void {
+        const spacePos = message.indexOf(' ');
+        const mcode = spacePos != -1 ? message.substring(0, spacePos) : message;
+        const mbody = spacePos != -1 ? JSON.parse(message.substring(spacePos + 1)) : undefined;
+        const cm: ChatMessage = {
+            code: mcode,
+            body: mbody,
+        }
+        this.sendMessageRawAsync(cm);
+    }
+
     async disconnect(): Promise<void> {
         this._requestedDisconnect = true;
         if (this._incomingDataLoopEnded) {
@@ -416,29 +431,34 @@ export class ChatConnectionImpl implements ChatConnection {
             while (true) { // TODO: exit condition
                 //this.logger.logDebug("readmsg", ++i);
                 const data = await this._incomingMessageBuffer.dequeueAsync(cancellationToken);
-                //this.logger.logDebug("gotmsg", i);
-                const msg = this.parseChatMessage(data);
-
                 try {
-                    if (msg.code == "PIN") {
-                        await this.sendMessageRawAsync({ code: "PIN" });
-                        msg.handled = true;
-                        continue;
-                    }
+                    //this.logger.logDebug("gotmsg", i);
+                    const msg = this.parseChatMessage(data);
 
-                    for (let tmsgsink of this._incomingMessageSinks) {
-                        await tmsgsink.handleAsync(msg);
-                        if (msg.handled) {
-                            break;
+                    try {
+                        if (msg.code == "PIN") {
+                            await this.sendMessageRawAsync({ code: "PIN" });
+                            msg.handled = true;
+                            continue;
+                        }
+
+                        for (let tmsgsink of this._incomingMessageSinks) {
+                            await tmsgsink.handleAsync(msg);
+                            if (msg.handled) {
+                                break;
+                            }
+                        }
+
+                        if (!msg.handled) {
+                            this.defaultMessageHandle(msg);
                         }
                     }
-
-                    if (!msg.handled) {
-                        this.defaultMessageHandle(msg);
+                    catch (e) {
+                        this._logger.logWarn("FAILED handling message", msg, e);
                     }
                 }
                 catch (e) {
-                    this._logger.logWarn("FAILED handling message", msg, e);
+                    this._logger.logError("FAILED parsing message", data);
                 }
             }
         }

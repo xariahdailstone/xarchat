@@ -1,4 +1,16 @@
+#elMain {
+    display: grid;
+    grid-template-rows: 1fr auto;
+    grid-template-columns: 1fr auto;
+
+    grid-template-areas:
+        "hsbsel bslider"
+        "hsbsel bslider";
+}
+
 .imgcontainer {
+    grid-area: hsbsel;
+
     position: relative;
     padding: 0;
     margin: 0;
@@ -14,4 +26,30 @@
     position: absolute;
     z-index: 2;
     pointer-events: none;
+}
+
+.brightnesscontainer { display: none; }
+.include-brightnessfactor .brightnesscontainer {
+    grid-area: bslider;
+
+    margin-left: 12px;
+    display: grid;
+    grid-template-columns: auto;
+    grid-template-rows: 1fr auto;
+    grid-template-areas:
+        "slider"
+        "icon";
+}
+.brightnessinput {
+    grid-area: slider;
+    writing-mode: vertical-lr;
+    direction: rtl;
+}
+.brightness-img {
+    grid-area: icon;
+    width: 20px;
+    height: 20px;
+    --iconimage-max-width: 20px;
+    --iconimage-max-height: 20px;
+    color: white;
 }

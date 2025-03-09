@@ -308,6 +308,7 @@ export class SettingsDialogItemViewModel extends SettingsDialogSettingViewModel 
                 switch (this.schema.type) {
                     case "color":
                     case "color-hs":
+                    case "bgcolorcontrol":
                         this.assignStringValue(value);
                         break;
                     case "boolean":
