@@ -482,7 +482,8 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions
         {
             if (changeMetadata is not null
                 && changeMetadata.TryGetValue(ChangeMetadataOriginatorKey.Value, out var originator)
-                && originator == this)
+                && originator is string ostr
+                && ostr == SetConfigDataCommandHandler.Originator)
             {
             }
             else

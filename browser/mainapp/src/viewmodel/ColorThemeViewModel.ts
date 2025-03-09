@@ -11,6 +11,7 @@ export class ColorThemeViewModel {
             if (!v) {
                 v = "225;7";
             }
+            console.log("global.bgColor", v);
             const parts = v.split(';');
             const hue = +parts[0];
             const sat = +parts[1];
