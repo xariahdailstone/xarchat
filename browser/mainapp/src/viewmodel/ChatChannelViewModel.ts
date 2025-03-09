@@ -138,9 +138,9 @@ export class ChatChannelViewModel extends ChannelViewModel {
             this.channelFilters.loadFromSCC(existingSCC.namedFilters, () => setupDefaultFilters());
         }
 
-        const ee = new ObservableExpression(() => this.channelFilters!.sccData,
+        this.ownedDisposables.add(new ObservableExpression(() => this.channelFilters!.sccData,
             (v) => { this._scc!.namedFilters = v ?? null; },
-            (err) => { });
+            (err) => { }));
 
         // if (existingSCC && existingSCC.filters) {
         //     this.showFilterClasses = existingSCC.filters

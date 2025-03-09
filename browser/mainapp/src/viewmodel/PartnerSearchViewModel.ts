@@ -7,7 +7,6 @@ import { CatchUtils } from "../util/CatchUtils";
 import { HostInterop } from "../util/HostInterop";
 import { ObservableBase, observableProperty } from "../util/ObservableBase";
 import { Collection } from "../util/ObservableCollection";
-import { ObservableExpression } from "../util/ObservableExpression";
 import { ActiveLoginViewModel } from "./ActiveLoginViewModel";
 import { AppViewModel } from "./AppViewModel";
 

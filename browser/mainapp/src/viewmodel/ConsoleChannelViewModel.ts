@@ -1,5 +1,3 @@
-import { observableProperty } from "../util/ObservableBase";
-import { ObservableExpression } from "../util/ObservableExpression";
 import { URLUtils } from "../util/URLUtils";
 import { ActiveLoginViewModel } from "./ActiveLoginViewModel";
 import { ChannelViewModel } from "./ChannelViewModel";

@@ -2,7 +2,6 @@ import { CancellationToken, CancellationTokenSource } from "../util/Cancellation
 import { IDisposable } from "../util/Disposable";
 import { ObservableBase, observableProperty } from "../util/ObservableBase";
 import { Collection } from "../util/ObservableCollection";
-import { ObservableExpression } from "../util/ObservableExpression";
 import { PromiseSource } from "../util/PromiseSource";
 import { TaskUtils } from "../util/TaskUtils";
 import { ActiveLoginViewModel } from "./ActiveLoginViewModel";
