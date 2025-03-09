@@ -40,6 +40,8 @@ export abstract class ChannelViewModel extends ObservableBase implements IDispos
         this.mainMessages = new ChannelMessageViewModelOrderedDictionary();
     }
 
+    readonly ownedDisposables: Set<IDisposable> = new Set();
+
     private _disposed: boolean = false;
     [Symbol.dispose]() { this.dispose(); }
     dispose() {
@@ -59,6 +61,13 @@ export abstract class ChannelViewModel extends ObservableBase implements IDispos
 
             if (this._pingWordSetOE != null) {
                 this._pingWordSetOE.dispose();
+            }
+            if (this.channelFilters != null) {
+                this.channelFilters.dispose();
+            }
+
+            for (let od of [...this.ownedDisposables]) {
+                od.dispose();
             }
         }
     }
@@ -632,32 +641,38 @@ export abstract class ChannelViewModel extends ObservableBase implements IDispos
         }
     }
 
-    private _hasPing: boolean = false;
-    private _unseenMessageCount: number = 0;
+    private readonly _hasPings: ObservableValue<boolean> = new ObservableValue(false);
+    private readonly _unseenMessagesCount: ObservableValue<number> = new ObservableValue(0);
 
     @observableProperty
     get hasPing(): boolean {
-        return this._hasPing;
+        if (this.getConfigSettingById("allowPings")) {
+            return this._hasPings.value
+        }
+        else {
+            return false;
+        }
     }
     set hasPing(value: boolean) {
-        this._hasPing = value;
+        this._hasPings.value = value;
     }
 
     @observableProperty
-    hasUnseenMessages: boolean = false;
+    get hasUnseenMessages() {
+        return this.unseenMessageCount > 0;
+    }
 
     @observableProperty
     get unseenMessageCount(): number {
         if (this.getConfigSettingById("unseenIndicator")) {
-            return this._unseenMessageCount;
+            return this._unseenMessagesCount.value
         }
         else {
             return 0;
         }
     }
     set unseenMessageCount(value: number) {
-        this._unseenMessageCount = value;
-        this.hasUnseenMessages = value != 0;
+        this._unseenMessagesCount.value = value;
     }
 
     @observableProperty

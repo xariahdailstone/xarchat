@@ -6,7 +6,7 @@ import { HostInteropConfigBlock } from "../../util/ConfigBlock";
 import { HostInterop } from "../../util/HostInterop";
 import { LoginUtils } from "../../util/LoginUtils";
 import { observableProperty } from "../../util/ObservableBase";
-import { AwaitableObservableExpression, ObservableExpression } from "../../util/ObservableExpression";
+import { AwaitableObservableExpression } from "../../util/ObservableExpression";
 import { OperationCancelledError } from "../../util/PromiseSource";
 import { UpdateCheckerState } from "../../util/UpdateCheckerClient";
 import { AppViewModel } from "../AppViewModel";

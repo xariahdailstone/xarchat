@@ -86,9 +86,9 @@ export class PMConvoChannelViewModel extends ChannelViewModel {
             this.channelFilters.loadFromSCC(this._scc.namedFilters, () => setupDefaultFilters());
         }
 
-        const ee = new ObservableExpression(() => this.channelFilters!.sccData,
+        this.ownedDisposables.add(new ObservableExpression(() => this.channelFilters!.sccData,
             (v) => { this._scc!.namedFilters = v ?? null; },
-            (err) => { });
+            (err) => { }));
 
         this._characterStatusListener = this.activeLoginViewModel.characterSet.addStatusListener(character, (cs) => {
             this.contrapartyTypingStatusUpdated(cs.typingStatus);

@@ -39,7 +39,7 @@ import { URLUtils } from "../util/URLUtils.js";
 import { SlashCommandViewModel } from "./SlashCommandViewModel.js";
 import { IdleDetection } from "../util/IdleDetection.js";
 import { StringUtils } from "../util/StringUtils.js";
-import { ObservableExpression } from "../util/ObservableExpression.js";
+import { NamedObservableExpression, ObservableExpression } from "../util/ObservableExpression.js";
 import { InAppToastViewModel } from "./InAppToastViewModel.js";
 import { InAppToastManagerViewModel } from "./InAppToastManagerViewModel.js";
 import { PartnerSearchViewModel } from "./PartnerSearchViewModel.js";
@@ -126,7 +126,8 @@ export class ActiveLoginViewModel extends ObservableBase {
             for (let change of changes) {
                 switch (change.changeType) {
                     case StdObservableCollectionChangeType.ITEM_ADDED:
-                        (change.item as any)[this._chanPropChangeSym] = new ObservableExpression(
+                        (change.item as any)[this._chanPropChangeSym] = new NamedObservableExpression(
+                                `${this.characterName.value}-${change.item.collectiveName}`,
                                 () => [ change.item.hasPing, change.item.unseenMessageCount ],
                                 () => { this.refreshPingMentionCount(); },
                                 () => { this.refreshPingMentionCount(); });

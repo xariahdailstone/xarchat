@@ -113,6 +113,9 @@ export class SettingsDialog extends DialogComponentBase<SettingsDialogViewModel>
                 case "color":
                     inner = this.renderSettingColor(setting);
                     break;
+                case "bgcolorcontrol":
+                    inner = this.renderSettingBgColorControl(setting);
+                    break;
                 case "color-hs":
                     inner = this.renderSettingColorHS(setting);
                     break;
@@ -219,23 +222,49 @@ export class SettingsDialog extends DialogComponentBase<SettingsDialogViewModel>
         }
     }
 
+    private renderSettingBgColorControl(setting: SettingsDialogItemViewModel): VNode {
+        const vparts = (setting.value as string).split(';');
+        if (vparts.length == 2) {
+            vparts.push("1");
+        }
+
+        const cssValue = `hsl(${+vparts[0]}, ${+vparts[1]}%, ${+vparts[2] * 50}%)`;
+        return <div classList={["setting-entry", "setting-entry-color"]}>
+            <div classList={[ "setting-entry-color-swatch" ]} style={{ "fontWeight": "bold", "backgroundColor": cssValue }}
+                on={{ "click": (e) => { this.showColorHSPicker(setting, true, e.target as HTMLElement); } }}></div>
+            <button classList={[ "setting-entry-color-btn-default", "theme-button" ]}
+                on={{ "click": () => { setting.value = null; } }}>Default</button>
+        </div>
+    }
+
     private renderSettingColorHS(setting: SettingsDialogItemViewModel): VNode {
         const vparts = (setting.value as string).split(';');
         const cssValue = `hsl(${+vparts[0]}, ${+vparts[1]}%, 50%)`;
         return <div classList={["setting-entry", "setting-entry-color"]}>
             <div classList={[ "setting-entry-color-swatch" ]} style={{ "fontWeight": "bold", "backgroundColor": cssValue }}
-                on={{ "click": (e) => { this.showColorHSPicker(setting, e.target as HTMLElement); } }}></div>
+                on={{ "click": (e) => { this.showColorHSPicker(setting, false, e.target as HTMLElement); } }}></div>
             <button classList={[ "setting-entry-color-btn-default", "theme-button" ]}
                 on={{ "click": () => { setting.value = null; } }}>Default</button>
         </div>
     }
-    private showColorHSPicker(setting: SettingsDialogItemViewModel, el: HTMLElement) {
+    private showColorHSPicker(setting: SettingsDialogItemViewModel, includeBrightnessFactor: boolean, el: HTMLElement) {
         if (this.viewModel){
             const vparts = (setting.value as string).split(';');
-            const vm = new ColorHSSelectPopupViewModel(this.viewModel.parent, el);
-            vm.setHueSaturation(+vparts[0], +vparts[1]);
-            vm.onChange = (h, s) => {
-                const v = `${h.toString()};${s.toString()}`;
+            const vm = new ColorHSSelectPopupViewModel(this.viewModel.parent, el, includeBrightnessFactor);
+            if (!includeBrightnessFactor) {
+                vm.setHueSaturation(+vparts[0], +vparts[1]);
+            }
+            else {
+                vm.setHueSaturation(+vparts[0], +vparts[1], +vparts[2]);
+            }
+            vm.onChange = (h, s, b) => {
+                let v: string;
+                if (!includeBrightnessFactor) {
+                    v = `${h.toString()};${s.toString()}`;
+                }
+                else {
+                    v = `${h.toString()};${s.toString()};${b.toString()}`;
+                }
                 setting.value = v;
             };
             this.viewModel.parent.popups.push(vm);

@@ -1,4 +1,5 @@
 import { RawSavedChatStateNamedFilterEntry, RawSavedChatStateNamedFilterMap, SavedChatStateJoinedChannelMap } from "../settings/AppSettings";
+import { IDisposable } from "../util/Disposable";
 import { IterableUtils } from "../util/IterableUtils";
 import { ObservableValue } from "../util/Observable";
 import { ObservableBase, observableProperty } from "../util/ObservableBase";
@@ -6,7 +7,7 @@ import { Collection } from "../util/ObservableCollection";
 import { ObservableExpression } from "../util/ObservableExpression";
 import { ChannelViewModel } from "./ChannelViewModel";
 
-export class ChannelFiltersViewModel extends ObservableBase {
+export class ChannelFiltersViewModel extends ObservableBase implements IDisposable {
     constructor(public readonly channelViewModel: ChannelViewModel) {
         super();
 
@@ -37,6 +38,20 @@ export class ChannelFiltersViewModel extends ObservableBase {
             (v) => { this.sccData = v ?? null; },
             (err) => { }
         )
+    }
+
+    private _disposed: boolean = false;
+    dispose(): void {
+        if (!this._disposed) {
+            this._disposed = true;
+
+            this._updateExpr.dispose();
+            this._fcExpr.dispose();
+        }
+    }
+    get isDisposed() { return this._disposed; }
+    [Symbol.dispose](): void {
+        this.dispose();
     }
 
     private readonly _fcExpr: ObservableExpression<string[]>;
