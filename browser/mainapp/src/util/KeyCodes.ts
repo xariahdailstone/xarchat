@@ -31,4 +31,6 @@ export enum KeyCodes {
     KEY_X = 88,
     KEY_Y = 89,
     KEY_Z = 90,
+
+    F1 = 112
 }

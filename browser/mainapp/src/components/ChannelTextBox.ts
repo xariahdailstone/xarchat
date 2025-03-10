@@ -13,6 +13,7 @@ import { ChatChannelMessageMode, ChatChannelPresenceState, ChatChannelViewModel 
 import { ConsoleChannelViewModel } from "../viewmodel/ConsoleChannelViewModel.js";
 import { PMConvoChannelViewModel } from "../viewmodel/PMConvoChannelViewModel.js";
 import { EIconSearchDialogViewModel } from "../viewmodel/dialogs/EIconSearchDialogViewModel.js";
+import { ChannelEditHelpPopupViewModel } from "../viewmodel/popups/ChannelEditHelpPopupViewModel.js";
 import { ComponentBase, componentElement } from "./ComponentBase.js";
 
 @componentElement("x-channeltextbox")
@@ -64,8 +65,8 @@ export class ChannelTextBox extends ComponentBase<ChannelViewModel> {
                                 <x-iconimage src="assets/ui/textbox-toolbar/noparse.svg"></x-iconimage>
                             </div>
                         </div>
-                        <div class="textbox-toolbar-toggle" title="Toggle Toolbar (Ctrl+T)">
-                            <x-iconimage src="assets/ui/toolbar-toggle.svg" id="elToggleToolbar"></x-iconimage>
+                        <div class="textbox-toolbar-toggle" title="Show Editing Help">
+                            <x-iconimage src="assets/ui/help-icon.svg" id="elShowEditHelp"></x-iconimage>
                         </div>
                     </div>
                     <textarea id="elTextbox" data-focusmagnet-strength="1"></textarea>
@@ -80,7 +81,7 @@ export class ChannelTextBox extends ComponentBase<ChannelViewModel> {
         const elSendAd = this.$("elSendAd")! as HTMLButtonElement;
 
         const elTextboxContainer = this.$("elTextboxContainer") as HTMLDivElement;
-        const elToggleToolbar = this.$("elToggleToolbar") as HTMLButtonElement;
+        const elShowEditHelp = this.$("elShowEditHelp") as HTMLButtonElement;
 
         const disableReasonWCM = new WhenChangeManager();
         const updateDisableStates = () => {
@@ -195,9 +196,14 @@ export class ChannelTextBox extends ComponentBase<ChannelViewModel> {
             updateDisableStates();
         });
 
+        let helpPopupVM: ChannelEditHelpPopupViewModel | null = null;
         const pushTextbox = () => {
             if (this.viewModel != null) {
                 this.viewModel.textBoxContent = elTextbox.value;
+            }
+            if (helpPopupVM != null) {
+                helpPopupVM.dismissed();
+                helpPopupVM = null;
             }
         }
         elTextbox.addEventListener("input", pushTextbox);
@@ -223,6 +229,16 @@ export class ChannelTextBox extends ComponentBase<ChannelViewModel> {
                     this.viewModel.textBoxToolbarShown = !this.viewModel.textBoxToolbarShown;
                     ev.preventDefault();
                 }
+                else if (ev.keyCode == KeyCodes.F1 && this.viewModel) {
+                    if (helpPopupVM != null) {
+                        helpPopupVM.dismissed();
+                        helpPopupVM = null;
+                    }
+                    else {
+                        helpPopupVM = new ChannelEditHelpPopupViewModel(this.viewModel.appViewModel, elShowEditHelp, () => { helpPopupVM = null; });
+                        this.viewModel.appViewModel.popups.push(helpPopupVM);
+                    }
+                }
                 else if (handleShortcuts(ev)) {
                     ev.preventDefault();
                 }
@@ -237,9 +253,10 @@ export class ChannelTextBox extends ComponentBase<ChannelViewModel> {
             elTextboxContainer.classList.toggle("no-toolbar", !tbs);
             elTextboxContainer.classList.toggle("toolbar-shown", !!tbs);
         });
-        elToggleToolbar.addEventListener("click", () => {
+        elShowEditHelp.addEventListener("click", () => {
             if (this.viewModel) {
-                this.viewModel.textBoxToolbarShown = !this.viewModel.textBoxToolbarShown;
+                helpPopupVM = new ChannelEditHelpPopupViewModel(this.viewModel.appViewModel, elShowEditHelp, () => { helpPopupVM = null; });
+                this.viewModel.appViewModel.popups.push(helpPopupVM);
             }
             elTextbox.focus();
         });

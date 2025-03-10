@@ -21,12 +21,14 @@ export class ChannelView extends StageViewComponent<ChannelViewModel> {
 
         HTMLUtils.assignStaticHTMLFragment(this.elMain, `
             <x-channelheader class="header"></x-channelheader>
-            <div class="contentarea" slot="a">
+            <div class="contentarea" slot="a" id="elContentArea">
                 <x-channelstream class="stream" id="elChannelStream"></x-channelstream>
                 <x-splitterhandle id="elUserListSplitter" class="casplitterhandle" target="elUserList" orientation="horizontal" min="200" max="500" invert="true"></x-splitterhandle>
                 <x-channeluserlist class="userlist" id="elUserList"></x-channeluserlist>
             </div>
-            <x-splitterhandle id="elTextBoxSplitter" class="tbsplitterhandle" target="elTextBox" orientation="vertical" min="50" max="200" invert="true"></x-splitterhandle>
+            <x-splitterhandle id="elTextBoxSplitter" class="tbsplitterhandle" target="elTextBox"
+                othertarget="elContentArea" othermin="100"
+                orientation="vertical" min="75" max="99999" invert="true"></x-splitterhandle>
             <x-channeltextbox class="textbox" id="elTextBox" slot="b"></x-channeltextbox>
         `);
 

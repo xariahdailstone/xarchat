@@ -1,0 +1,18 @@
+
+.title {
+    font-weight: bold;
+    margin-bottom: 4px;
+    margin-left: 2px;
+}
+td:nth-child(1) {
+    font-weight: bold;
+}
+table { border-collapse: collapse; }
+td {
+    padding: 2px;
+    color: var(--fg-level-3-highlight);
+}
+
+td.separator {
+    border-bottom: 1px solid var(--fg-level-3);
+}
