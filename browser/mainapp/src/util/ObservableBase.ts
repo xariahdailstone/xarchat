@@ -1,3 +1,4 @@
+import { CallbackSet, NamedCallbackSet } from "./CallbackSet.js";
 import { SnapshottableSet } from "./collections/SnapshottableSet.js";
 import { asDisposable, EmptyDisposable, IDisposable, isDisposable } from "./Disposable.js";
 import { Logger, Logging } from "./Logger.js";
@@ -13,25 +14,60 @@ type ObservableReader = [string, (instance: any) => any];
 
 const obsPropsMetadata: Map<Function, ObservableReader[]> = new Map();
 
+let _idleIngestHandle: number | null = null;
+let _idleIngestCallbacks: (() => any)[] = [];
+function registerIdleIngest(func: () => any): number {
+    _idleIngestCallbacks.push(func);
+    if (_idleIngestHandle == null) {
+        _idleIngestHandle = window.requestIdleCallback(() => {
+            _idleIngestHandle = null;
+            const callbacks = _idleIngestCallbacks;
+            _idleIngestCallbacks = [];
+            for (let cb of callbacks) {
+                cb();
+            }
+        });
+    }
+    return _idleIngestHandle;
+}
+
 export abstract class ObservableBase implements Observable {
     constructor() {
-        this.logger = Logging.createLogger(`${this.constructor.name}#${ObjectUniqueId.get(this)}`);
+        const name = `${this.constructor.name}#${ObjectUniqueId.get(this)}`;
+        this.logger = Logging.createLogger(name);
+        this._propertyListeners2 = new NamedCallbackSet(name);
     }
 
     private readonly _disposeSentinel: object | null = null;
 
     private readonly _lastSeenProps: Map<string, any> = new Map();
-    private readonly _propertyListeners: Map<string, SnapshottableSet<PropertyChangeEventListener>> = new Map();
+    private readonly _propertyListeners2: NamedCallbackSet<string, PropertyChangeEventListener>;
 
     protected logger: Logger;
 
-    addPropertyListener(propertyName: string, onChangeCallback: PropertyChangeEventListener): IDisposable {
-        let lset = this._propertyListeners.get(propertyName);
-        if (!lset) {
-            lset = new SnapshottableSet<PropertyChangeEventListener>();
-            this._propertyListeners.set(propertyName, lset);
+    private _pendingListenerChanges: { func: "add" | "remove", propertyName: string, onChangeCallback: PropertyChangeEventListener }[] = [];
+    private _pendingListenerChangesIngestHandle: number | null = null;
+
+    private ingestPendingListeners() {
+        for (let pl of this._pendingListenerChanges) {
+            if (pl.func == "add") {
+                this._propertyListeners2.add(pl.propertyName, pl.onChangeCallback);
+            }
+            else if (pl.func == "remove") {
+                this._propertyListeners2.delete(pl.propertyName, pl.onChangeCallback);
+            }
         }
-        lset.add(onChangeCallback);
+        this._pendingListenerChanges = [];
+    }
+
+    addPropertyListener(propertyName: string, onChangeCallback: PropertyChangeEventListener): IDisposable {
+        this._pendingListenerChanges.push({ func: "add", propertyName: propertyName, onChangeCallback: onChangeCallback });
+        if (this._pendingListenerChangesIngestHandle == null) {
+            this._pendingListenerChangesIngestHandle = registerIdleIngest(() => {
+                this._pendingListenerChangesIngestHandle = null;
+                this.ingestPendingListeners();
+            });
+        }
 
         return asDisposable(() => {
             this.removePropertyListener(propertyName, onChangeCallback);
@@ -39,12 +75,12 @@ export abstract class ObservableBase implements Observable {
     }
 
     removePropertyListener(propertyName: string, onChangeCallback: PropertyChangeEventListener) {
-        let lset = this._propertyListeners.get(propertyName);
-        if (lset) {
-            lset.delete(onChangeCallback);
-            if (lset.size == 0) {
-                this._propertyListeners.delete(propertyName);
-            }
+        this._pendingListenerChanges.push({ func: "remove", propertyName: propertyName, onChangeCallback: onChangeCallback });
+        if (this._pendingListenerChangesIngestHandle == null) {
+            this._pendingListenerChangesIngestHandle = registerIdleIngest(() => {
+                this._pendingListenerChangesIngestHandle = null;
+                this.ingestPendingListeners();
+            });
         }
     }
 
@@ -64,27 +100,36 @@ export abstract class ObservableBase implements Observable {
     }
 
     raisePropertyChangeEvent(propertyName: string, propValue: unknown): void {
-        const lset = this._propertyListeners.get(propertyName);
-        if (lset) {
+        const evt = new PropertyChangeEvent(propertyName, propValue);
+        Observable.enterObservableFireStack(() => {
+            this._propertyListeners2.invoke(propertyName, evt);
+        });
+
+        const pendingHighwater = this._pendingListenerChanges.length;
+        let pendingNotifySet: Set<PropertyChangeEventListener> | null = null;
+        for (let i = 0; i < pendingHighwater; i++) {
+            const item = this._pendingListenerChanges[i];
+            if (item.func == "add" && (item.propertyName == propertyName || item.propertyName == "*")) {
+                pendingNotifySet ??= new Set();
+                pendingNotifySet!.add(item.onChangeCallback);
+            }
+            else if (pendingNotifySet != null && item.func == "remove" && (item.propertyName == propertyName || item.propertyName == "*")) {
+                pendingNotifySet!.delete(item.onChangeCallback);
+            }
+        }
+        if (pendingNotifySet != null) {
             Observable.enterObservableFireStack(() => {
                 const evt = new PropertyChangeEvent(propertyName, propValue);
-                lset.forEachValueSnapshotted(x => {
-                    try { x(evt); }
+                for (let pn of pendingNotifySet?.values()) {
+                    try { pn(evt); }
                     catch { }
-                });
+                }
             });
         }
 
-        const lset2 = this._propertyListeners.get("*");
-        if (lset2) {
-            Observable.enterObservableFireStack(() => {
-                const evt = new PropertyChangeEvent(propertyName, propValue);
-                lset2.forEachValueSnapshotted(x => {
-                    try { x(evt); }
-                    catch { }
-                });
-            });
-        }
+        Observable.enterObservableFireStack(() => {
+            this._propertyListeners2.invoke("*", evt);
+        });
     }
 
     addValueSubscription(propertyPath: string, handler: (value: any) => any): ValueSubscription {
@@ -296,30 +341,23 @@ export function wrapModel<T extends object>(rawModel: T): (T & Observable) {
         }
     };
 
-    let propertyChangedListeners = new SnapshottableSet<PropertyChangeEventListener>();
+    let propertyChangedListeners2 = new CallbackSet<PropertyChangeEventListener>("wrappedModel-propertyChangedListeners");
 
     const addEventListener = (eventName: string, handler: PropertyChangeEventListener): IDisposable => {
         if (eventName == "propertychange") {
-            propertyChangedListeners.add(handler);
+            return propertyChangedListeners2.add(handler);
         }
-        return asDisposable(() => {
-            propertyChangedListeners.delete(handler);
-        });
+        return asDisposable();
     };
     const removeEventListener = (eventName: string, handler: PropertyChangeEventListener) => {
         if (eventName == "propertychange") {
-            propertyChangedListeners.delete(handler);
+            propertyChangedListeners2.delete(handler);
         }
     };
     const raisePropertyChangeEvent = (propertyName: string, propValue: unknown) => {
         Observable.enterObservableFireStack(() => {
-            propertyChangedListeners.forEachValueSnapshotted(v => {
-                try {
-                    v(new PropertyChangeEvent(propertyName, propValue));
-                }
-                catch {
-                }
-            });
+            const pce = new PropertyChangeEvent(propertyName, propValue);
+            propertyChangedListeners2.invoke(pce);
         });
         //Observable.publishRead(result, propertyName, (rawModel as any)[propertyName]);
     };

@@ -14,7 +14,9 @@
         "filtersbar"
         "messagecontainer";
 
-    background: var(--bg-level-4); 
+    background: var(--bg-level-4);
+
+    --ad-collapse-max-height-numeric: 40;
 }
 
 .filtersbar {
@@ -54,9 +56,6 @@
 }
 
 
-.highlight-from-me .from-me {
-    background-color: rgba(255, 255, 255, 0.05);
-}
 
 
 

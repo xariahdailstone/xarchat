@@ -2,6 +2,7 @@ import { TypingStatus } from "../shared/TypingStatus.js";
 import { BBCodeUtils } from "../util/BBCodeUtils.js";
 import { asDisposable } from "../util/Disposable.js";
 import { EL } from "../util/EL.js";
+import { FocusMagnet } from "../util/FocusMagnet.js";
 import { HTMLUtils } from "../util/HTMLUtils.js";
 import { KeyCodes } from "../util/KeyCodes.js";
 import { TextEditShortcutsHelper } from "../util/TextEditShortcutsHelper.js";
@@ -9,8 +10,10 @@ import { WhenChangeManager } from "../util/WhenChange.js";
 import { ChatConnectionState } from "../viewmodel/ActiveLoginViewModel.js";
 import { ChannelViewModel } from "../viewmodel/ChannelViewModel.js";
 import { ChatChannelMessageMode, ChatChannelPresenceState, ChatChannelViewModel } from "../viewmodel/ChatChannelViewModel.js";
+import { ConsoleChannelViewModel } from "../viewmodel/ConsoleChannelViewModel.js";
 import { PMConvoChannelViewModel } from "../viewmodel/PMConvoChannelViewModel.js";
 import { EIconSearchDialogViewModel } from "../viewmodel/dialogs/EIconSearchDialogViewModel.js";
+import { ChannelEditHelpPopupViewModel } from "../viewmodel/popups/ChannelEditHelpPopupViewModel.js";
 import { ComponentBase, componentElement } from "./ComponentBase.js";
 
 @componentElement("x-channeltextbox")
@@ -36,10 +39,10 @@ export class ChannelTextBox extends ComponentBase<ChannelViewModel> {
                                 <x-iconimage src="assets/ui/textbox-toolbar/strikethrough.svg"></x-iconimage>
                             </div>
                             <div class="textbox-toolbar-separator"></div>
-                            <div class="textbox-toolbar-button" data-buttoncommand="subscript" title="Subscript (Ctrl+Down)">
+                            <div class="textbox-toolbar-button" data-buttoncommand="subscript" title="Subscript (Ctrl+Down or Ctrl+H)">
                                 <x-iconimage src="assets/ui/textbox-toolbar/subscript.svg"></x-iconimage>
                             </div>
-                            <div class="textbox-toolbar-button" data-buttoncommand="superscript" title="Superscript (Ctrl+Up)">
+                            <div class="textbox-toolbar-button" data-buttoncommand="superscript" title="Superscript (Ctrl+Up or Ctrl+Y)">
                                 <x-iconimage src="assets/ui/textbox-toolbar/superscript.svg"></x-iconimage>
                             </div>
                             <div class="textbox-toolbar-separator"></div>
@@ -62,8 +65,8 @@ export class ChannelTextBox extends ComponentBase<ChannelViewModel> {
                                 <x-iconimage src="assets/ui/textbox-toolbar/noparse.svg"></x-iconimage>
                             </div>
                         </div>
-                        <div class="textbox-toolbar-toggle" title="Toggle Toolbar (Ctrl+T)">
-                            <x-iconimage src="assets/ui/toolbar-toggle.svg" id="elToggleToolbar"></x-iconimage>
+                        <div class="textbox-toolbar-toggle" title="Show Editing Help">
+                            <x-iconimage src="assets/ui/help-icon.svg" id="elShowEditHelp"></x-iconimage>
                         </div>
                     </div>
                     <textarea id="elTextbox" data-focusmagnet-strength="1"></textarea>
@@ -78,7 +81,7 @@ export class ChannelTextBox extends ComponentBase<ChannelViewModel> {
         const elSendAd = this.$("elSendAd")! as HTMLButtonElement;
 
         const elTextboxContainer = this.$("elTextboxContainer") as HTMLDivElement;
-        const elToggleToolbar = this.$("elToggleToolbar") as HTMLButtonElement;
+        const elShowEditHelp = this.$("elShowEditHelp") as HTMLButtonElement;
 
         const disableReasonWCM = new WhenChangeManager();
         const updateDisableStates = () => {
@@ -86,7 +89,8 @@ export class ChannelTextBox extends ComponentBase<ChannelViewModel> {
             const isConnectedToChat = (vm?.activeLoginViewModel?.connectionState ?? ChatConnectionState.DISCONNECTED_NORMALLY) == ChatConnectionState.CONNECTED;
             const actuallyInChannel = isConnectedToChat && (vm ? (vm instanceof ChatChannelViewModel ? vm.actuallyInChannel : true) : false);
             const canSendTextbox = actuallyInChannel && vm && vm.canSendTextbox;
-            const canSendTextboxAsChat = actuallyInChannel && vm && (vm instanceof ChatChannelViewModel) && vm.canSendTextboxAsChat;
+            const canSendTextboxAsChat = (actuallyInChannel && vm && (vm instanceof ChatChannelViewModel) && vm.canSendTextboxAsChat) ||
+                ((vm instanceof PMConvoChannelViewModel || vm instanceof ConsoleChannelViewModel) && canSendTextbox);
             const canSendTextboxAsAd = actuallyInChannel && vm && (vm instanceof ChatChannelViewModel) && vm.canSendTextboxAsAd;
 
             elTextbox.disabled = !canSendTextbox;
@@ -119,27 +123,39 @@ export class ChannelTextBox extends ComponentBase<ChannelViewModel> {
             });
         };
 
-        this.watch("activeLoginViewModel.connectionState", (v: (ChatConnectionState | null)) => {
+        this.watchViewModel(vm => {
+            if (vm instanceof PMConvoChannelViewModel) {
+                elSendChat.innerText = "Send PM";
+            }
+            else if (vm instanceof ConsoleChannelViewModel) {
+                elSendChat.innerText = "Send Command";
+            }
+            else {
+                elSendChat.innerText = "Send Chat";
+            }
+        });
+
+        this.watchExpr(vm => vm.activeLoginViewModel.connectionState, (v: (ChatConnectionState | null)) => {
             updateDisableStates();
         });
-        this.watch("actuallyInChannel", (v) => {
+        this.watchExprTyped(ChatChannelViewModel, vm => vm.actuallyInChannel, (v) => {
             updateDisableStates();
         });
-        this.watch("canSendTextbox", (v) => {
+        this.watchExpr(vm => vm.canSendTextbox, (v) => {
             updateDisableStates();
         });
-        this.watch("canSendTextboxAsChat", (v) => {
+        this.watchExprTyped(ChatChannelViewModel, vm => vm.canSendTextboxAsChat, (v) => {
             updateDisableStates();
         });
-        this.watch("canSendTextboxAsAd", (v) => {
+        this.watchExprTyped(ChatChannelViewModel, vm => vm.canSendTextboxAsAd, (v) => {
             updateDisableStates();
         });
-        this.watch("textBoxContent", (v) => {
+        this.watchExpr(vm => vm.textBoxContent, (v) => {
             if (v != elTextbox.value) {
                 elTextbox.value = v ?? "";
             }
         });
-        this.watch("messageMode", (v) => {
+        this.watchExpr(vm => vm instanceof ChatChannelViewModel ? vm.messageMode : null, (v) => {
             if (v === null || v === undefined) {
                 elSendChat.classList.remove("hidden");
                 elSendAd.classList.add("hidden");
@@ -170,15 +186,31 @@ export class ChannelTextBox extends ComponentBase<ChannelViewModel> {
             }
         });
 
+        this.watchExpr(vm => vm instanceof ChatChannelViewModel ? vm.adSendWaitRemainingSec : null, remainSec => {
+            if (remainSec == null) {
+                elSendAd.innerText = "Send Ad";
+            }
+            else {
+                elSendAd.innerText = `Wait ${remainSec}s...`
+            }
+            updateDisableStates();
+        });
+
+        let helpPopupVM: ChannelEditHelpPopupViewModel | null = null;
         const pushTextbox = () => {
             if (this.viewModel != null) {
                 this.viewModel.textBoxContent = elTextbox.value;
+            }
+            if (helpPopupVM != null) {
+                helpPopupVM.dismissed();
+                helpPopupVM = null;
             }
         }
         elTextbox.addEventListener("input", pushTextbox);
         elTextbox.addEventListener("change", pushTextbox);
         BBCodeUtils.addEditingShortcuts(elTextbox, {
             appViewModelGetter: () => { return this.viewModel?.appViewModel ?? null; },
+            channelViewModelGetter: () => { return this.viewModel ?? null; },
             onKeyDownHandler: (ev, handleShortcuts) => {
                 if (ev.keyCode == 13 && !ev.shiftKey) {
                     ev.preventDefault();
@@ -197,6 +229,16 @@ export class ChannelTextBox extends ComponentBase<ChannelViewModel> {
                     this.viewModel.textBoxToolbarShown = !this.viewModel.textBoxToolbarShown;
                     ev.preventDefault();
                 }
+                else if (ev.keyCode == KeyCodes.F1 && this.viewModel) {
+                    if (helpPopupVM != null) {
+                        helpPopupVM.dismissed();
+                        helpPopupVM = null;
+                    }
+                    else {
+                        helpPopupVM = new ChannelEditHelpPopupViewModel(this.viewModel.appViewModel, elShowEditHelp, () => { helpPopupVM = null; });
+                        this.viewModel.appViewModel.popups.push(helpPopupVM);
+                    }
+                }
                 else if (handleShortcuts(ev)) {
                     ev.preventDefault();
                 }
@@ -211,9 +253,10 @@ export class ChannelTextBox extends ComponentBase<ChannelViewModel> {
             elTextboxContainer.classList.toggle("no-toolbar", !tbs);
             elTextboxContainer.classList.toggle("toolbar-shown", !!tbs);
         });
-        elToggleToolbar.addEventListener("click", () => {
+        elShowEditHelp.addEventListener("click", () => {
             if (this.viewModel) {
-                this.viewModel.textBoxToolbarShown = !this.viewModel.textBoxToolbarShown;
+                helpPopupVM = new ChannelEditHelpPopupViewModel(this.viewModel.appViewModel, elShowEditHelp, () => { helpPopupVM = null; });
+                this.viewModel.appViewModel.popups.push(helpPopupVM);
             }
             elTextbox.focus();
         });
@@ -231,8 +274,11 @@ export class ChannelTextBox extends ComponentBase<ChannelViewModel> {
 
     focusTextBox() {
         window.requestAnimationFrame(() => {
+            this.logger.logDebug("focusTextBox");
             const elTextbox = this.$("elTextbox")! as HTMLTextAreaElement;
-            elTextbox.focus();
+            if (FocusMagnet.instance.ultimateFocus != elTextbox) {
+                elTextbox.focus();
+            }
         });
     }
 

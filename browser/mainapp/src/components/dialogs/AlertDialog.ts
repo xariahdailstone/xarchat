@@ -25,7 +25,7 @@ export class AlertDialog extends DialogComponentBase<AlertViewModel> {
             }
         };
 
-        this.watch("message", v => {
+        this.watchExpr(vm => vm.message, v => {
             updateMessageText();
         });
     }

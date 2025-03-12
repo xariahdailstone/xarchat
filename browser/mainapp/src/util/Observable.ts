@@ -1,4 +1,6 @@
 import { h } from "../snabbdom/h.js";
+import { CallbackSet, NamedCallbackSet } from "./CallbackSet.js";
+import { SnapshottableMap } from "./collections/SnapshottableMap.js";
 import { SnapshottableSet } from "./collections/SnapshottableSet.js";
 import { IDisposable, EmptyDisposable, asDisposable } from "./Disposable.js";
 import { setupValueSubscription, ValueSubscriptionImpl } from "./ObservableBase.js";
@@ -65,6 +67,30 @@ export class Observable {
         }
     }
 
+    static getDependenciesMonitor(func: () => any): DependencySet {
+        const ds = new DependencySetImpl();
+        let returned = false;
+        try {
+            const rm = Observable.addReadMonitor((observable, propertyName) => {
+                ds.maybeAddDependency(observable, propertyName);
+            });
+            try {
+                func();
+            }
+            finally {
+                rm.dispose();
+            }
+
+            returned = true;
+            return ds;
+        }
+        finally {
+            if (!returned) {
+                ds.dispose();
+            }
+        }
+    }
+
     static addReadMonitor(listener: ReadMonitorEventListener): (IDisposable & Disposable) {
 
         this._listeners.add(listener);
@@ -95,10 +121,35 @@ export class Observable {
         const o = new DynamicNameObservable(name);
         o.raisePropertyChangeEvent("value", value);
     }
+
+    static createDependencySet(): DependencySet {
+        const result = new DependencySetImpl();
+        return result;
+    }
+
+    static createDependencySetOver<T>(
+        onExpire: () => any,
+        func: () => T): { dependencySet: DependencySet, result: T | undefined, error: any | undefined } {
+
+        const depSet = new DependencySetImpl();
+        depSet.addChangeListener(onExpire);
+        let result: T | undefined = undefined;
+        let error: any | undefined = undefined;
+        try {
+            using rm = Observable.addReadMonitor((observable, propertyName) => {
+                depSet.maybeAddDependency(observable, propertyName);
+            });
+            result = func();
+        }
+        catch (e) {
+            error = e;
+        }
+        return { dependencySet: depSet, result: result, error: error };
+    }
 }
 
 class DynamicNameObservable implements Observable {
-    private static _listeners: Map<string, SnapshottableSet<PropertyChangeEventListener>> = new Map();
+    private static _listeners2: NamedCallbackSet<string, PropertyChangeEventListener> = new NamedCallbackSet("DynamicNameObservable");
 
     constructor(
         private readonly name: string) {
@@ -106,16 +157,7 @@ class DynamicNameObservable implements Observable {
 
     addEventListener(eventName: "propertychange", handler: PropertyChangeEventListener): IDisposable {
         if (eventName == "propertychange") {
-            let lx = DynamicNameObservable._listeners.get(this.name);
-            if (!lx) {
-                lx = new SnapshottableSet();
-                DynamicNameObservable._listeners.set(this.name, lx);
-            }
-
-            lx.add(handler);
-            return asDisposable(() => {
-                this.removeEventListener("propertychange", handler);
-            });
+            return DynamicNameObservable._listeners2.add(this.name, handler);
         }
         else {
             return asDisposable();
@@ -124,27 +166,15 @@ class DynamicNameObservable implements Observable {
 
     removeEventListener(eventName: "propertychange", handler: PropertyChangeEventListener): void {
         if (eventName == "propertychange") {
-            let lx = DynamicNameObservable._listeners.get(this.name);
-            if (lx) {
-                lx.delete(handler);
-                if (lx.size == 0) {
-                    DynamicNameObservable._listeners.delete(this.name);
-                }
-            }
+            DynamicNameObservable._listeners2.delete(this.name, handler);
         }
     }
 
     raisePropertyChangeEvent(propertyName: string, propValue: unknown): void {
-        const lx = DynamicNameObservable._listeners.get(this.name);
-        if (lx) {
-            Observable.enterObservableFireStack(() => {
-                const args = new PropertyChangeEvent(propertyName, propValue);
-                lx.forEachValueSnapshotted(h => {
-                    try { h(args); }
-                    catch { }
-                });
-            });
-        }
+        const args = new PropertyChangeEvent(propertyName, propValue);
+        Observable.enterObservableFireStack(() => {
+            DynamicNameObservable._listeners2.invoke(this.name, args);
+        });
     }
 
     addValueSubscription(propertyPath: string, handler: (value: any) => any): ValueSubscription {
@@ -178,20 +208,20 @@ export class ObservableValue<T> implements Observable {
 
     debug: boolean = false;
 
-    private _propertyChangeListeners: SnapshottableSet<PropertyChangeEventListener> | null = null;
+    private _propertyChangeListeners2: CallbackSet<PropertyChangeEventListener> | null = null;
 
     addEventListener(eventName: "propertychange", handler: PropertyChangeEventListener): IDisposable {
         if (this.debug) { let x = 1; }
         if (eventName == "propertychange") {
-            if (!this._propertyChangeListeners) {
-                this._propertyChangeListeners = new SnapshottableSet();
+            if (!this._propertyChangeListeners2) {
+                this._propertyChangeListeners2 = new CallbackSet("ObservableValue", () => {
+                    if (this._propertyChangeListeners2?.size == 0) {
+                        this._propertyChangeListeners2 = null;
+                    }
+                });
             }
 
-            this._propertyChangeListeners.add(handler);
-
-            return asDisposable(() => {
-                this.removeEventListener(eventName, handler);
-            });
+            return this._propertyChangeListeners2.add(handler);
         }
         else {
             return EmptyDisposable;
@@ -200,23 +230,17 @@ export class ObservableValue<T> implements Observable {
 
     removeEventListener(eventName: "propertychange", handler: PropertyChangeEventListener): void {
         if (this.debug) { let x = 1; }
-        if (this._propertyChangeListeners) {
-            this._propertyChangeListeners.delete(handler);
-            if (this._propertyChangeListeners.size == 0) {
-                this._propertyChangeListeners = null;
-            }
+        if (this._propertyChangeListeners2) {
+            this._propertyChangeListeners2.delete(handler);
         }
     }
 
     raisePropertyChangeEvent(propertyName: string, propValue: unknown): void {
         if (this.debug) { let x = 1; }
-        if (this._propertyChangeListeners) {
+        if (this._propertyChangeListeners2) {
             Observable.enterObservableFireStack(() => {
                 const pce = new PropertyChangeEvent(propertyName, propValue);
-                this._propertyChangeListeners!.forEachValueSnapshotted(l => {
-                    try { l(pce); }
-                    catch { }
-                });
+                this._propertyChangeListeners2?.invoke(pce);
             });
         }
     }
@@ -242,4 +266,100 @@ export class ObservableValue<T> implements Observable {
             this.raisePropertyChangeEvent("value", value);
         }
     }
+}
+
+export interface DependencySet extends IDisposable {
+    debug: boolean;
+    readonly count: number;
+    readonly skippedDuplicateCount: number;
+    addChangeListener(callback: (observable?: any, propertyName?: string) => any): IDisposable;
+    maybeAddDependency(vm: any, propertyName: string): void;
+}
+
+class DependencySetImpl implements DependencySet {
+    constructor() {
+    }
+
+    private readonly _deps: Map<any, Map<string, IDisposable>> = new Map();
+
+    private _count: number = 0;
+    private _skippedDuplicateCount: number = 0;
+
+    private _disposed: boolean = false;
+    dispose() {
+        if (!this._disposed) {
+            this._disposed = true;
+            for (let depsForVm of this._deps.values()) {
+                for (let depForProp of depsForVm.values()) {
+                    depForProp.dispose();
+                }
+            }
+            this._deps.clear();
+            this._changeListeners.clear();
+        }
+    }
+
+    [Symbol.dispose]() { this.dispose(); }
+
+    get isDisposed() { return this._disposed; }
+
+    debug: boolean = false;
+
+    get count() { return this._count; }
+    get skippedDuplicateCount() { return this._skippedDuplicateCount; }
+
+    maybeAddDependency(vm: any, propertyName: string) {
+        let depsForVm = this._deps.get(vm);
+        if (!depsForVm) {
+            depsForVm = new Map();
+            this._deps.set(vm, depsForVm);
+        }
+
+        let depForProp = depsForVm.get(propertyName);
+        if (!depForProp) {
+            depForProp = this.attachToObservable(vm, propertyName);
+            depsForVm.set(propertyName, depForProp);
+            this._count++;
+        }
+        else {
+            this._skippedDuplicateCount++;
+        }
+    }
+
+    private attachToObservable(observable: any, propertyName: string): IDisposable {
+        const newListener = (observable as Observable).addEventListener("propertychange", (e) => {
+            if (e.propertyName == propertyName) {
+                this.stateHasChanged(observable, propertyName);
+            }
+        })
+        return newListener;
+    }
+
+    private stateHasChanged(observable: any, propertyName: string) {
+        const cl = this._changeListeners;
+        cl.forEachValueSnapshotted(v => {
+            try { v(observable, propertyName); }
+            catch { }
+        });
+        this.dispose();
+    }
+
+    private readonly _changeListeners: SnapshottableMap<object, (observable?: any, propertyName?: string) => any> = new SnapshottableMap();
+    addChangeListener(callback: () => any): IDisposable {
+        if (!this._disposed) {
+            const myKey = {};
+            this._changeListeners.set(myKey, callback);
+            return asDisposable(() => {
+                this._changeListeners.delete(myKey);
+            });
+        }
+        else {
+            return EmptyDisposable;
+        }
+    }
+}
+
+interface Dependency {
+    target: any;
+    propertyName: string;
 }

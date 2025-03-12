@@ -8,8 +8,10 @@ import { OnlineStatus } from "../shared/OnlineStatus";
 import { AppViewModel } from "../viewmodel/AppViewModel";
 import { FramePanelDialogViewModel } from "../viewmodel/dialogs/FramePanelDialogViewModel";
 import { AsyncWebSocket } from "./AsyncWebSocket";
+import { CallbackSet } from "./CallbackSet";
 import { CancellationToken, CancellationTokenSource } from "./CancellationTokenSource";
 import { SnapshottableMap } from "./collections/SnapshottableMap";
+import { SnapshottableSet } from "./collections/SnapshottableSet";
 import { IDisposable, EmptyDisposable, asDisposable } from "./Disposable";
 import { EventListenerUtil } from "./EventListenerUtil";
 import { XarHost2HostInteropEIconLoader } from "./HostInteropEIconLoader";
@@ -104,6 +106,8 @@ export interface IHostInterop {
     submitEIconMetadata(name: string, contentLength: number, etag: string): Promise<void>;
 
     setZoomLevel(value: number): Promise<void>;
+
+    getMemoAsync(account: string, getForChar: CharacterName, cancellationToken?: CancellationToken): Promise<string | null>;
 }
 
 export interface IXarHost2HostInterop extends IHostInterop {
@@ -331,10 +335,7 @@ class XarHost2Interop implements IXarHost2HostInterop {
     private setWindowState(value: HostWindowState) {
         if (value !== this._windowState) {
             this._windowState = value;
-            this._windowStateCallbacks.forEachValueSnapshotted(x => {
-                try { x(value); }
-                catch { }
-            });
+            this._windowStateCallbacks.invoke(value);
         }
     }
 
@@ -397,6 +398,8 @@ class XarHost2Interop implements IXarHost2HostInterop {
         const rcmd = (spaceIdx == -1 ? data : data.substring(0, spaceIdx));
         const cmd = rcmd.toLowerCase();
         const arg = spaceIdx == -1 ? "" : data.substring(spaceIdx + 1);
+
+        this._allResponseWaiters2.invoke(cmd, arg);
 
         if (cmd == "clientresize") {
             const argo = JSON.parse(arg);
@@ -473,10 +476,10 @@ class XarHost2Interop implements IXarHost2HostInterop {
         }
         else if (cmd == "configchange") {
             const argo = JSON.parse(arg);
-            for (let ccl of this._configChangeListeners.values()) {
+            this._configChangeListeners.forEachValueSnapshotted(ccl => {
                 try { ccl(argo); }
                 catch { }
-            }
+            });
         }
         else if (cmd.startsWith("logsearch.")) {
             const argo = JSON.parse(arg);
@@ -540,8 +543,36 @@ class XarHost2Interop implements IXarHost2HostInterop {
 
     private writeToXCHostSocket: (data: any) => void;
 
+    private async writeToXCHostSocketAndRead(data: any, onMessage: (cmd: string, data: string) => boolean): Promise<void> {
+        const ps = new PromiseSource();
+
+        const tw = (cmd: string, data: string) => {
+            let stopListening: boolean;
+            try {
+                stopListening = onMessage(cmd, data);
+            }
+            catch (e) {
+                stopListening = true;
+                this._allResponseWaiters2.delete(tw);
+                ps.tryReject(e);
+            }
+            if (stopListening) {
+                this._allResponseWaiters2.delete(tw);
+                ps.tryResolve(undefined);
+            }
+        };
+
+        this._allResponseWaiters2.add(tw);
+
+        this.writeToXCHostSocket(data);
+
+        await ps.promise;
+    }
+
     private _nextMsgId: number = 1;
     private _responseWaiters: Map<number, { resolve: (data: any) => void, fail: (reason: string) => void, cancel: () => void }> = new Map();
+
+    private _allResponseWaiters2: CallbackSet<(cmd: string, data: string) => void> = new CallbackSet("XarHost2Interop-allResponseWaiters");
 
     private dispatchReply(msgid: number, data: any) {
         const w = this._responseWaiters.get(msgid);
@@ -811,11 +842,16 @@ class XarHost2Interop implements IXarHost2HostInterop {
         }
     }
 
+    private _lastAppBadgeAssign: { hasPings: boolean, hasUnseen: boolean } = { hasPings: false, hasUnseen: false };
+    get lastAppBadgeAssign() { return this._lastAppBadgeAssign; }
+
     updateAppBadge(hasPings: boolean, hasUnseen: boolean): void {
-        this.writeToXCHostSocket("updateAppBadge " + JSON.stringify({
+        this._lastAppBadgeAssign = {
             hasPings: hasPings,
             hasUnseen: hasUnseen
-        }));
+        };
+        this.logger.logInfo("updateAppBadge", this._lastAppBadgeAssign);
+        this.writeToXCHostSocket("updateAppBadge " + JSON.stringify(this._lastAppBadgeAssign));
     }
 
     // async getNewAppSettingsAsync(cancellationToken: CancellationToken): Promise<SqliteConnection> {
@@ -900,38 +936,25 @@ class XarHost2Interop implements IXarHost2HostInterop {
         }
     }
 
-    private _windowStateCallbacks: SnapshottableMap<object, (windowState: HostWindowState) => void> = new SnapshottableMap();
+    private _windowStateCallbacks: CallbackSet<(windowState: HostWindowState) => void> = new CallbackSet("XarHost2Interop-windowStateCallbacks");
 
     registerWindowStateChangeCallback(callback: (windowState: HostWindowState) => void): IDisposable {
-        const myKey = {};
-        this._windowStateCallbacks.set(myKey, callback);
-        return asDisposable(() => {
-            this._windowStateCallbacks.delete(myKey);
-        })
+        return this._windowStateCallbacks.add(callback);
     }
 
-    private _windowBoundsChangeCallbacks: SnapshottableMap<object, (loc: RawSavedWindowLocation) => void> = new SnapshottableMap();
+    private _windowBoundsChangeCallbacks: CallbackSet<(loc: RawSavedWindowLocation) => void> = new CallbackSet("XarHost2Interop-windowBoundsChangeCallbacks");
 
     registerWindowBoundsChangeCallback(callback: (loc: RawSavedWindowLocation) => void): IDisposable {
-        const myKey = {};
-        this._windowBoundsChangeCallbacks.set(myKey, callback);
-        return asDisposable(() => {
-            this._windowBoundsChangeCallbacks.delete(myKey);
-        });
+        return this._windowBoundsChangeCallbacks.add(callback);
     }
 
     private doWindowBoundsChange(desktopMetrics: string, windowBounds: [number, number, number, number] ) {
-        this._windowBoundsChangeCallbacks.forEachValueSnapshotted(x => {
-            try {
-                x({
-                    desktopMetrics: desktopMetrics,
-                    windowX: windowBounds[0],
-                    windowY: windowBounds[1],
-                    windowWidth: windowBounds[2],
-                    windowHeight: windowBounds[3]
-                });
-            }
-            catch { }
+        this._windowBoundsChangeCallbacks.invoke({
+            desktopMetrics: desktopMetrics,
+            windowX: windowBounds[0],
+            windowY: windowBounds[1],
+            windowWidth: windowBounds[2],
+            windowHeight: windowBounds[3]
         });
     }
 
@@ -1074,7 +1097,7 @@ class XarHost2Interop implements IXarHost2HostInterop {
         }));
     }
 
-    private readonly _configChangeListeners: Map<number, (value: ConfigKeyValue) => void> = new Map();
+    private readonly _configChangeListeners: SnapshottableMap<number, (value: ConfigKeyValue) => void> = new SnapshottableMap();
 
     registerConfigChangeCallback(callback: (value: ConfigKeyValue) => void): IDisposable {
         const myId = this._nextConfigWaiterId++;
@@ -1144,6 +1167,44 @@ class XarHost2Interop implements IXarHost2HostInterop {
         this.writeToXCHostSocket("setZoomLevel " + JSON.stringify({
             value: value
         }));
+    }
+
+    async getMemoAsync(account: string, getForChar: CharacterName, cancellationToken?: CancellationToken): Promise<string | null> {
+        cancellationToken ??= CancellationToken.NONE;
+        const ps = new PromiseSource<string | null>();
+
+        await this.writeToXCHostSocketAndRead("getMemo " + JSON.stringify({
+                me: account,
+                char: getForChar.value
+            }), 
+            (cmd, arg) => {
+                if (cmd.toLowerCase() == "gotmemo") {
+                    var argObj = JSON.parse(arg);
+                    if (argObj.name == getForChar.value) {
+                        ps.tryResolve(argObj.note ?? null);
+                        return true;
+                    }
+                    else {
+                        return false;
+                    }
+                }
+                else if (cmd.toLowerCase() == "gotmemoerror") {
+                    var argObj = JSON.parse(arg);
+                    if (argObj.name == getForChar.value) {
+                        ps.tryReject(argObj.error);
+                        return true;
+                    }
+                    else {
+                        return false;
+                    }
+                }
+                else {
+                    return false;
+                }
+            });
+
+        const result = await ps.promise;
+        return result;
     }
 }
 

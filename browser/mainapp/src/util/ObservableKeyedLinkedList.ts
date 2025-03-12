@@ -1,5 +1,7 @@
+import { CallbackSet } from "./CallbackSet";
 import { EmptyDisposable, IDisposable, asDisposable } from "./Disposable";
-import { Observable, PropertyChangeEvent, PropertyChangeEventListener, ValueSubscription } from "./Observable";
+import { ObjectUniqueId } from "./ObjectUniqueId";
+import { Observable, ObservableValue, PropertyChangeEvent, PropertyChangeEventListener, ValueSubscription } from "./Observable";
 import { observableProperty, setupValueSubscription } from "./ObservableBase";
 import { CollectionChangeEventListener, KeyedCollection, ObservableCollection } from "./ObservableCollection";
 import { Predicate } from "./Predicate";
@@ -66,26 +68,20 @@ export class ObservableOrderedSetImpl<TKey, TItem> implements ReadOnlyStdObserva
                 mappedChanges.push(new StdObservableCollectionChange<TItem>(change.changeType, change.item.value, 
                     change.before?.value, change.after?.value));
             }
-            this._observers.forEachValueSnapshotted(obs => {
-                try { obs(mappedChanges); }
-                catch { }
-            });
+            this._observers2.invoke(mappedChanges);
         });
     }
 
     private readonly _inner: ObservableOrderedDictionaryImpl<TKey, TItem>;
 
-    private readonly _observers: SnapshottableSet<StdObservableCollectionObserver<TItem>> = new SnapshottableSet();
+    private readonly _observers2: CallbackSet<StdObservableCollectionObserver<TItem>> = new CallbackSet("ObservableOrderedSetImpl-observers");
 
     addCollectionObserver(observer: StdObservableCollectionObserver<TItem>): IDisposable {
-        this._observers.add(observer);
-        return asDisposable(() => {
-            this.removeCollectionObserver(observer);
-        });
+        return this._observers2.add(observer);
     }
 
     removeCollectionObserver(observer: StdObservableCollectionObserver<TItem>): void {
-        this._observers.delete(observer);
+        this._observers2.delete(observer);
     }
 
     @observableProperty
@@ -130,8 +126,16 @@ export class ObservableOrderedDictionaryImpl<TKey, TItem> implements ObservableK
     private readonly _btree: BTree<TKey, KeyValuePair<TKey, TItem>>;
 
     get(key: TKey): TItem | undefined {
-        const result = this._btree.get(key);
-        return result?.value;
+        if (this._btree.has(key)) {
+            const result = this._btree.get(key)!;
+            Observable.publishNamedRead(this.getHasEventName(key), true);
+            Observable.publishNamedRead(this.getValueEventName(key), result.value);
+            return result.value;
+        }
+        else {
+            Observable.publishNamedRead(this.getHasEventName(key), false);
+            Observable.publishNamedRead(this.getValueEventName(key), undefined);
+        }
     }
 
     add(value: TItem): void {
@@ -145,6 +149,7 @@ export class ObservableOrderedDictionaryImpl<TKey, TItem> implements ObservableK
     }
 
     private getHasEventName(key: TKey) { return `ObservableOrderedDictionaryImpl#${this._id}.has(${key})`; }
+    private getValueEventName(key: TKey) { return `ObservableOrderedDictionaryImpl#${this._id}.has(${key})`; }
 
     has(key: TKey): boolean {
         const result = this._btree.has(key);
@@ -181,56 +186,63 @@ export class ObservableOrderedDictionaryImpl<TKey, TItem> implements ObservableK
         }
     }
 
-    @observableProperty
-    get size(): number { return this._btree.size; }
+    private readonly _valuesVersion: ObservableValue<number> = new ObservableValue(0);
 
     @observableProperty
-    get length(): number { return this._btree.size; }
+    get size(): number { 
+        const v = this._valuesVersion;
+        const size = this._btree.size;
+        return size;
+    }
+
+    @observableProperty
+    get length(): number { 
+        const v = this._valuesVersion;
+        const size = this._btree.size;
+        return size;
+    }
 
     *values(): Iterable<TItem> {
+        const v = this._valuesVersion;
         for (let v of this._btree.values()) {
             yield v.value;
         }
     }
 
     *iterateValues(): Iterable<KeyValuePair<TKey, TItem>> {
+        const v = this._valuesVersion;
         for (let kvp of this._btree.values()) {
             yield kvp;
         }
     }
 
     minKey() {
+        const v = this._valuesVersion;
         return this._btree.minKey();
     }
 
-    private readonly _dictionaryChangeCallbacks: SnapshottableSet<DictionaryChangeEventHandler<TKey, TItem>> = new SnapshottableSet();
-    private readonly _propertyChangeCallbacks: SnapshottableSet<((ev: Event) => void)> = new SnapshottableSet();
+    private readonly _dictionaryChangeCallbacks2: CallbackSet<DictionaryChangeEventHandler<TKey, TItem>> = new CallbackSet("ObservableOrderedDictionary-dictionaryChangeCallbacks");
+    private readonly _propertyChangeCallbacks2: CallbackSet<((ev: Event) => void)> = new CallbackSet("ObservableOrderedDictionary-propertyChangeCallbacks");
 
     addEventListener(eventName: "propertychange", callback: PropertyChangeEventListener): IDisposable;
     addEventListener(eventName: "dictionarychange", callback: DictionaryChangeEventHandler<TKey, TItem>): IDisposable;
     addEventListener(eventName: string, callback: any): IDisposable;
     addEventListener(eventName: string, callback: any): IDisposable {
         if (eventName == "dictionarychange") {
-            this._dictionaryChangeCallbacks.add(callback as any);
-            return asDisposable(() => {
-                this._dictionaryChangeCallbacks.delete(callback as any);
-            });
+            return this._dictionaryChangeCallbacks2.add(callback as any);
         }
         else if (eventName == "propertychange") {
-            this._propertyChangeCallbacks.add(callback as any);
-            return asDisposable(() => {
-                this._propertyChangeCallbacks.delete(callback as any);
-            });
+            return this._propertyChangeCallbacks2.add(callback as any);
         }
         return EmptyDisposable;
     }
 
     removeEventListener(eventName: string, callback: PropertyChangeEventListener): void {
         if (eventName == "dictionarychange") {
-            this._dictionaryChangeCallbacks.delete(callback as any);
+            this._dictionaryChangeCallbacks2.delete(callback as any);
         }
         else if (eventName == "propertychange") {
-            this._propertyChangeCallbacks.delete(callback as any);
+            this._propertyChangeCallbacks2.delete(callback as any);
         }
     }
 
@@ -238,19 +250,16 @@ export class ObservableOrderedDictionaryImpl<TKey, TItem> implements ObservableK
         const after = this._btree.nextLowerPair(kvp.key);
         const before = this._btree.nextHigherPair(kvp.key);
 
-        if (this._dictionaryChangeCallbacks.size > 0) {
+        if (this._dictionaryChangeCallbacks2.size > 0) {
             Observable.enterObservableFireStack(() => {
                 const ev = new DictionaryChangeEvent<TKey, TItem>(type, kvp.key, kvp.value, 
                     before?before[0]:undefined, before?before[1].value:undefined, 
                     after?after[0]:undefined, after?after[1].value:undefined);
 
-                this._dictionaryChangeCallbacks.forEachValueSnapshotted(handler => {
-                    try { handler(ev); }
-                    catch { }
-                });
+                this._dictionaryChangeCallbacks2.invoke(ev);
             });
         }
-        if (this._stdColObservers.size > 0) {
+        if (this._stdColObservers2.size > 0) {
             Observable.enterObservableFireStack(() => {
                 const changes = [
                     new StdObservableCollectionChange<KeyValuePair<TKey, TItem>>(
@@ -260,28 +269,26 @@ export class ObservableOrderedDictionaryImpl<TKey, TItem> implements ObservableK
                         after ? after[1] : undefined
                     )
                 ];
-                this._stdColObservers.forEachValueSnapshotted(handler => {
-                    try { handler(changes); }
-                    catch { }
-                });
+                this._stdColObservers2.invoke(changes);
             });
         }
 
         this.raisePropertyChangeEvent(`item(${kvp.key})`, this.size);
         Observable.publishNamedUpdate(this.getHasEventName(kvp.key), type == DictionaryChangeType.ITEM_ADDED);
+        Observable.publishNamedUpdate(this.getValueEventName(kvp.key), type == DictionaryChangeType.ITEM_ADDED ? kvp.value : undefined);
+        this._valuesVersion.value = this._valuesVersion.value + 1;
     }
 
     private raiseLengthChangeEvent() {
         this.raisePropertyChangeEvent("size", this.size);
         this.raisePropertyChangeEvent("length", this.length);
+        this._valuesVersion.value = this._valuesVersion.value + 1;
     }
 
     raisePropertyChangeEvent(propertyName: string, propertyValue: unknown) {
         Observable.enterObservableFireStack(() => {
-            this._propertyChangeCallbacks.forEachValueSnapshotted(handler => {
-                try { handler(new PropertyChangeEvent(propertyName, propertyValue)); }
-                catch { }
-            });
+            const pce = new PropertyChangeEvent(propertyName, propertyValue);
+            this._propertyChangeCallbacks2.invoke(pce);
         });
     }
 
@@ -290,16 +297,13 @@ export class ObservableOrderedDictionaryImpl<TKey, TItem> implements ObservableK
     }
 
 
-    private readonly _stdColObservers: SnapshottableSet<StdObservableCollectionObserver<KeyValuePair<TKey, TItem>>> = new SnapshottableSet();
+    private readonly _stdColObservers2: CallbackSet<StdObservableCollectionObserver<KeyValuePair<TKey, TItem>>> = new CallbackSet("ObservableOrderedDictionaryImpl-stdColObservers");
 
     addCollectionObserver(observer: StdObservableCollectionObserver<KeyValuePair<TKey, TItem>>): IDisposable {
-        this._stdColObservers.add(observer);
-        return asDisposable(() => {
-            this.removeCollectionObserver(observer);
-        });
+        return this._stdColObservers2.add(observer);
     }
     
     removeCollectionObserver(observer: StdObservableCollectionObserver<KeyValuePair<TKey, TItem>>): void {
-        this._stdColObservers.delete(observer);
+        this._stdColObservers2.delete(observer);
     }
 }

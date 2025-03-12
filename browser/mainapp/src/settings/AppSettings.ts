@@ -1,5 +1,6 @@
 import { ChannelName } from "../shared/ChannelName";
 import { CharacterName } from "../shared/CharacterName";
+import { OnlineStatus } from "../shared/OnlineStatus";
 import { HostInterop } from "../util/HostInterop";
 import { IterableUtils } from "../util/IterableUtils";
 import { Collection, CollectionChangeType } from "../util/ObservableCollection";
@@ -42,6 +43,7 @@ interface RawSavedChatState {
     pinnedChannels: string[];
     pmConvos: RawSavedChatStatePMConvo[];
     statusMessage: string;
+    onlineStatus: OnlineStatus;
 
     pinnedChannelSectionCollapsed: boolean;
     unpinnedChannelSectionCollapsed: boolean;
@@ -58,6 +60,9 @@ export interface RawSavedChatStateNamedFilterEntry {
     filterClasses: string[];
     canPing?: boolean;
     controlsUnseenDot?: boolean;
+    showInAdsOnlyChannel?: boolean;
+    showInChatOnlyChannel?: boolean;
+    showInBothAdsAndChatChannel?: boolean;
 }
 interface RawSavedChatStateHasNamedFilters {
     namedFilters?: RawSavedChatStateNamedFilterMap;
@@ -559,6 +564,7 @@ export class SavedChatState {
         this.pinnedChannels = new PinnedChannelsSet(this, item?.pinnedChannels ?? []);
         this.pmConvos = new PMConvosSet(this, item?.pmConvos ?? []);
         this._statusMessage = item?.statusMessage ?? "";
+        this._onlineStatus = item?.onlineStatus ?? OnlineStatus.ONLINE;
         
         this._pinnedChannelSectionCollapsed = item?.pinnedChannelSectionCollapsed ?? false;
         this._unpinnedChannelSectionCollapsed = item?.unpinnedChannelSectionCollapsed ?? false;
@@ -599,6 +605,16 @@ export class SavedChatState {
     set statusMessage(value) {
         if (value != this._statusMessage) {
             this._statusMessage = value;
+            this.updated();
+        }
+    }
+
+    private _onlineStatus: OnlineStatus = OnlineStatus.ONLINE;
+    
+    get onlineStatus() { return this._onlineStatus; }
+    set onlineStatus(value) {
+        if (value != this._onlineStatus) {
+            this._onlineStatus = value;
             this.updated();
         }
     }
@@ -660,7 +676,8 @@ export class SavedChatState {
             pinnedChannelSectionCollapsed: this._pinnedChannelSectionCollapsed,
             unpinnedChannelSectionCollapsed: this._unpinnedChannelSectionCollapsed,
             pmConvosSectionCollapsed: this._pmConvosSectionCollapsed,
-            statusMessage: this._statusMessage
+            statusMessage: this._statusMessage,
+            onlineStatus: this._onlineStatus
         };
         return result;
     }

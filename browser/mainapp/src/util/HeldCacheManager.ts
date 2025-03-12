@@ -1,3 +1,4 @@
+import { CallbackSet } from "./CallbackSet";
 import { asDisposable, IDisposable } from "./Disposable";
 
 export interface HeldCacheManager {

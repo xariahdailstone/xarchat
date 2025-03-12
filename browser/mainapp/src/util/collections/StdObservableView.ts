@@ -1,3 +1,4 @@
+import { CallbackSet } from "../CallbackSet";
 import { IDisposable, asDisposable } from "../Disposable";
 import BTree from "../btree/btree";
 import { ReadOnlyStdObservableCollection, StdObservableCollectionChange, StdObservableCollectionChangeType, StdObservableCollectionObserver } from "./ReadOnlyStdObservableCollection";
@@ -120,24 +121,18 @@ export class StdObservableList<T> implements ReadOnlyStdObservableCollection<T> 
         return undefined;
     }
 
-    private readonly _observers: SnapshottableSet<StdObservableCollectionObserver<T>> = new SnapshottableSet();
+    private readonly _observers2: CallbackSet<StdObservableCollectionObserver<T>> = new CallbackSet("StdObservableList-observers");
 
     protected onCollectionChange(changes: StdObservableCollectionChange<T>[]) {
-        this._observers.forEachValueSnapshotted(observer => {
-            try { observer(changes); }
-            catch { }
-        });
+        this._observers2.invoke(changes);
     }
 
     addCollectionObserver(observer: StdObservableCollectionObserver<T>): IDisposable {
-        this._observers.add(observer);
-        return asDisposable(() => {
-            this.removeCollectionObserver(observer);
-        });
+        return this._observers2.add(observer);
     }
 
     removeCollectionObserver(observer: StdObservableCollectionObserver<T>): void {
-        this._observers.delete(observer);
+        this._observers2.delete(observer);
     }
 
     *values(): Iterable<T> {
@@ -225,24 +220,18 @@ export class StdObservableSortedList<TSortKey, TItem extends object> implements 
 
     get length(): number { return this._btree.size; }
 
-    private readonly _observers: SnapshottableSet<StdObservableCollectionObserver<TItem>> = new SnapshottableSet();
+    private readonly _observers2: CallbackSet<StdObservableCollectionObserver<TItem>> = new CallbackSet("StdObservableSortedList-observers");
 
     private notifyObservers(entries: StdObservableCollectionChange<TItem>[]) {
-        this._observers.forEachValueSnapshotted(observer => {
-            try { observer(entries); }
-            catch { }
-        });
+        this._observers2.invoke(entries);
     }
 
     addCollectionObserver(observer: StdObservableCollectionObserver<TItem>): IDisposable {
-        this._observers.add(observer);
-        return asDisposable(() => {
-            this.removeCollectionObserver(observer);
-        })
+        return this._observers2.add(observer);
     }
 
     removeCollectionObserver(observer: StdObservableCollectionObserver<TItem>): void {
-        this._observers.delete(observer);
+        return this._observers2.delete(observer);
     }
 
     [Symbol.iterator](): Iterable<TItem> {
@@ -539,24 +528,18 @@ export class StdObservableMappedView<TOuter extends object, TInner extends objec
         }
     }
 
-    private readonly _observers: SnapshottableSet<StdObservableCollectionObserver<TOuter>> = new SnapshottableSet();
+    private readonly _observers2: CallbackSet<StdObservableCollectionObserver<TOuter>> = new CallbackSet("StdObservableMappedView-observers");
 
     addCollectionObserver(observer: StdObservableCollectionObserver<TOuter>): IDisposable {
-        this._observers.add(observer);
-        return asDisposable(() => {
-            this.removeCollectionObserver(observer);
-        });
+        return this._observers2.add(observer);
     }
 
     removeCollectionObserver(observer: StdObservableCollectionObserver<TOuter>): void {
-        this._observers.delete(observer);
+        return this._observers2.delete(observer);
     }
 
     private notifyObservers(entries: StdObservableCollectionChange<TOuter>[]) {
-        this._observers.forEachValueSnapshotted(observer => {
-            try { observer(entries); }
-            catch { }
-        });
+        this._observers2.invoke(entries);
     }
 
     [Symbol.iterator](): Iterable<TOuter> {
@@ -701,24 +684,18 @@ export class StdObservableFilteredView<T extends object> implements ReadOnlyStdO
         this.notifyObservers(resultEntries);
     }
 
-    private readonly _observers: SnapshottableSet<StdObservableCollectionObserver<T>> = new SnapshottableSet();
+    private readonly _observers2: CallbackSet<StdObservableCollectionObserver<T>> = new CallbackSet("StdObservableFilteredView-observers");
 
     private notifyObservers(entries: StdObservableCollectionChange<T>[]) {
-        this._observers.forEachValueSnapshotted(observer => {
-            try { observer(entries); }
-            catch { }
-        });
+        this._observers2.invoke(entries);
     }
 
     addCollectionObserver(observer: StdObservableCollectionObserver<T>): IDisposable {
-        this._observers.add(observer);
-        return asDisposable(() => {
-            this.removeCollectionObserver(observer);
-        });
+        return this._observers2.add(observer);
     }
 
     removeCollectionObserver(observer: StdObservableCollectionObserver<T>): void {
-        this._observers.delete(observer);
+        this._observers2.delete(observer);
     }
 
     [Symbol.iterator](): Iterable<T> {

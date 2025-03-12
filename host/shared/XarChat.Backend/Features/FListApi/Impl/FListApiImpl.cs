@@ -233,6 +233,8 @@ namespace XarChat.Backend.Features.FListApi.Impl
 
         internal string ApiUrlBase => "https://www.f-list.net/json/";
 
+        internal string WebsiteUrlBase => "https://www.f-list.net/";
+
         internal async Task<ValueWithCameFromCache<ApiTicket>> GetApiTicketAsync(string account, string? password, CancellationToken cancellationToken)
         {
             var cte = await _cache.GetOrCreateAsync<CachedApiTicketEntry>($"apiTicket-{account.ToLower()}", async () =>

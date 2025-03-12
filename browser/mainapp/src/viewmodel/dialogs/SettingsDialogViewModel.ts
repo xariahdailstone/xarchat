@@ -1,4 +1,4 @@
-import { ConfigSchema, ConfigSchemaDefinition, ConfigSchemaItemDefinition, ConfigSchemaItemDefinitionItem, ConfigSchemaItemDefinitionSection, ConfigSchemaItemType, ConfigSchemaScopeType } from "../../configuration/ConfigSchemaItem";
+import { ConfigSchema, ConfigSchemaDefinition, ConfigSchemaItemDefinition, ConfigSchemaItemDefinitionItem, ConfigSchemaItemDefinitionSection, ConfigSchemaItemType, ConfigSchemaScopeType, PingLineItemDefinition } from "../../configuration/ConfigSchemaItem";
 import { ChannelName } from "../../shared/ChannelName";
 import { CharacterName } from "../../shared/CharacterName";
 import { IterableUtils } from "../../util/IterableUtils";
@@ -308,6 +308,7 @@ export class SettingsDialogItemViewModel extends SettingsDialogSettingViewModel 
                 switch (this.schema.type) {
                     case "color":
                     case "color-hs":
+                    case "bgcolorcontrol":
                         this.assignStringValue(value);
                         break;
                     case "boolean":
@@ -316,10 +317,14 @@ export class SettingsDialogItemViewModel extends SettingsDialogSettingViewModel 
                     case "text[]":
                         this.assignTextListValue(value);
                         break;
+                    case "pinglist":
+                        this.assignPingListValue(value);
+                        break;
                     case "text":
                     case "radio":
                     case "notifroutes":
-                        this.assignStringValue(value);
+                    case "select":
+                            this.assignStringValue(value);
                         break;
                     default:
                         this.logger.logError(`don't know how to assign ${this.schema.type}`);
@@ -332,6 +337,10 @@ export class SettingsDialogItemViewModel extends SettingsDialogSettingViewModel 
         }
     }
 
+    private readonly _scratchValue: ObservableValue<any> = new ObservableValue(null);
+    get scratchValue(): any { return this._scratchValue.value; }
+    set scratchValue(value: any) { this._scratchValue.value = value; }
+
     private assignStringValue(value: string) {
         const k = this.getAppConfigKey();
         this.scope.appViewModel.configBlock.set(k, value);
@@ -343,6 +352,11 @@ export class SettingsDialogItemViewModel extends SettingsDialogSettingViewModel 
     }
 
     private assignTextListValue(value: string[]) {
+        const k = this.getAppConfigKey();
+        this.scope.appViewModel.configBlock.set(k, value);
+    }
+
+    private assignPingListValue(value: (string | PingLineItemDefinition)[]) {
         const k = this.getAppConfigKey();
         this.scope.appViewModel.configBlock.set(k, value);
     }

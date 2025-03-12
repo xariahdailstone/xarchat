@@ -1,0 +1,23 @@
+
+:host {
+    opacity: 0;
+    pointer-events: none !important;
+}
+
+#elMain {
+    --iframe-width: 1000px;
+    --iframe-height: 1000px;
+    --iframe-scale: 1;
+    pointer-events: none !important;
+    transform: scale(var(--iframe-scale));
+    transform-origin: top left;
+    width: calc(var(--iframe-width) * var(--iframe-scale));
+    height: calc(var(--iframe-height) * var(--iframe-scale));
+}
+
+#elMain > iframe {
+    border: 0;
+    width: var(--iframe-width);
+    height: var(--iframe-height);
+    pointer-events: none !important;
+}

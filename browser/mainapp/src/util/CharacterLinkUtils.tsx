@@ -11,7 +11,7 @@ import { IDisposable, asDisposable } from "./Disposable";
 import { EventListenerUtil } from "./EventListenerUtil";
 
 export class CharacterLinkUtils {
-    static createStaticCharacterLinkVNode(sess: ActiveLoginViewModel, char: CharacterName, csi: CharacterStatus, channelContext?: ChannelViewModel | null): VNode {
+    static createStaticCharacterLinkVNode(sess: ActiveLoginViewModel, char: CharacterName, csi: Omit<CharacterStatus, "equals">, channelContext?: ChannelViewModel | null): VNode {
         const vnode = <span classList={[ "character-link", `gender-${CharacterGenderConvert.toString(csi.gender)}` ]}
             on={{
                 "click": (ev: MouseEvent) => {
@@ -28,7 +28,7 @@ export class CharacterLinkUtils {
                         return false;
                     }
                 }
-            }}>{getEffectiveCharacterNameVNodes(char, sess)}</span>;
+            }}>{getEffectiveCharacterNameVNodes(char, channelContext ?? sess)}</span>;
         return vnode;
     }
 

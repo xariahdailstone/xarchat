@@ -19,18 +19,35 @@ export class ColorHSSelectPopup extends ContextPopupBase<ColorHSSelectPopupViewM
                 <img src="assets/ui/hslcircle.svg" id="elCircle" class="circle-img" style="width: ${CIRCLE_SIZE}px; height: ${CIRCLE_SIZE}px;" draggable="false" />
                 <div id="elDot" class="selection-dot" style="width: ${DOT_SIZE}px; height: ${DOT_SIZE}px;"></div>
             </div>
+            <div class="brightnesscontainer">
+                <input id="elBrightnessFactor" type="range" class="brightnessinput" />
+                <x-iconimage src="assets/ui/brightness-icon.svg" class="brightness-img"></x-iconimage>
+            </div>
         `);
         this.clickable = true;
 
         const elCircle = this.$("elCircle") as HTMLImageElement;
         const elDot =  this.$("elDot") as HTMLDivElement;
+        const elBrightnessFactor = this.$("elBrightnessFactor") as HTMLInputElement;
 
-        this.watchExpr(() => [this.viewModel?.hue, this.viewModel?.saturation], v => {
+        this.watchExpr(
+            () => [this.viewModel?.hue, this.viewModel?.saturation, this.viewModel?.brightnessFactor, this.viewModel?.minBrightnessFactor, this.viewModel?.maxBrightnessFactor], v => {
             const hue = v ? v[0]! : 0;
             const sat = (v ? v[1]! : 0) / 100;
             const xy = this.hueSatCoordToXYCoord(hue, sat, (CIRCLE_SIZE / 2), (CIRCLE_SIZE / 2), (CIRCLE_SIZE / 2));
             elDot.style.left = `${xy.x - (DOT_SIZE / 2)}px`;
             elDot.style.top = `${xy.y - (DOT_SIZE / 2)}px`;
+
+            const bf = v ? v[2]! : 1;
+            const minbf = v ? v[3]! : 0.25;
+            const maxbf = v ? v[4]! : 2;
+            elBrightnessFactor.step = "0.01";
+            elBrightnessFactor.min = minbf.toString();
+            elBrightnessFactor.max = maxbf.toString();
+            elBrightnessFactor.value = bf.toString();
+        });
+        this.watchExpr(vm => vm.includeBrightnessFactor, ibf => {
+            this.elMain.classList.toggle("include-brightnessfactor", !!ibf);
         });
 
         const handleMouseEvent = (e: MouseEvent) => {
@@ -65,6 +82,15 @@ export class ColorHSSelectPopup extends ContextPopupBase<ColorHSSelectPopupViewM
         elCircle.addEventListener("click", (e) => {
             handleMouseEvent(e);
         });
+
+        const handleBrightnessInputChange = () => {
+            if (this.viewModel) {
+                const selValue = +(elBrightnessFactor.value);
+                this.viewModel.setHueSaturation(this.viewModel.hue, this.viewModel.saturation, selValue);
+            }
+        }
+        elBrightnessFactor.addEventListener("input", handleBrightnessInputChange);
+        elBrightnessFactor.addEventListener("change", handleBrightnessInputChange);
     }
 
     // hue = 0-255

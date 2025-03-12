@@ -17,6 +17,7 @@ import { IDisposable } from "../util/Disposable.js";
 import { IterableUtils } from "../util/IterableUtils.js";
 import { ChannelFiltersViewModel } from "./ChannelFiltersViewModel.js";
 import { ObservableExpression } from "../util/ObservableExpression.js";
+import { CatchUtils } from "../util/CatchUtils.js";
 
 
 export class PMConvoChannelViewModelSortKey { 
@@ -43,6 +44,8 @@ export class PMConvoChannelViewModel extends ChannelViewModel {
 
         this.character = character;
         this.showConfigButton = true;
+        this.canClose = true;
+        this.canPin = false;
 
         this.prefixMessages.add(
             ChannelMessageViewModel.createLogNavMessage(this, "Click here to see earlier messages in the Log Viewer", () => {
@@ -83,9 +86,9 @@ export class PMConvoChannelViewModel extends ChannelViewModel {
             this.channelFilters.loadFromSCC(this._scc.namedFilters, () => setupDefaultFilters());
         }
 
-        const ee = new ObservableExpression(() => this.channelFilters!.sccData,
+        this.ownedDisposables.add(new ObservableExpression(() => this.channelFilters!.sccData,
             (v) => { this._scc!.namedFilters = v ?? null; },
-            (err) => { });
+            (err) => { }));
 
         this._characterStatusListener = this.activeLoginViewModel.characterSet.addStatusListener(character, (cs) => {
             this.contrapartyTypingStatusUpdated(cs.typingStatus);
@@ -155,12 +158,6 @@ export class PMConvoChannelViewModel extends ChannelViewModel {
 
     @observableProperty
     get characterSet(): CharacterSet { return this.parent.characterSet; }
-
-    @observableProperty
-    override readonly canPin: boolean = false;
-
-    @observableProperty
-    override readonly canClose: boolean = true;
 
     @observableProperty
     get iconUrl() {
@@ -260,6 +257,13 @@ export class PMConvoChannelViewModel extends ChannelViewModel {
     async sendTextboxInternalAsync(): Promise<void> {
         if (this.textBoxContent && this.textBoxContent != "") {
             const msgContent = this.textBoxContent;
+            try {
+                await this.parent.chatConnection.checkPrivateMessageSendAsync(this.character, msgContent);
+            }
+            catch (e) { 
+                this.addSystemMessage(new Date(), `Cannot send: ${CatchUtils.getMessage(e)}`, true);
+                return;
+            }
             this.textBoxContent = "";
 
             this.pendingSendsCount++;

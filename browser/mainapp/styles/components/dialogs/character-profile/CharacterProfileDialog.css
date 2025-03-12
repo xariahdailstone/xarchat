@@ -3,7 +3,8 @@
     width: calc(var(--main-interface-width) * 0.9);
     height: 100%;
 
-    font: var(--chat-font);
+    font-size: var(--chat-font-size);
+    font-family: var(--chat-font-family);
 
     --memo-bg: rgb(130, 119, 90);
     --memo-icon-fg: white;

@@ -1,6 +1,135 @@
 
 #elMain {
+    width: 520px;
+    height: 450px;
+
+    display: grid;
+    grid-template-rows: minmax(0, 100%);
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas: "list current";
+
+    overflow: hidden;
+
+    gap: 5px;
+}
+
+.namedfilterslist-container-outer {
+    grid-area: list;
+
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-rows: auto auto auto minmax(0, 1fr) auto auto;
+    grid-template-areas: 
+        "title title"
+        "moveup list"
+        "movedown list"
+        ". list"
+        ". addtab"
+        ". deletetab";
+
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 5px;
+
+    padding: 5px 5px;
+    gap: 5px;
+}
+.namedfilterlist-container-title {
+    grid-area: title; 
+    font-weight: bold;
+}
+.namedfilterlist-container { 
+    grid-area: list; 
+    overflow-y: scroll;
+    overflow-x: hidden;
+    background: var(--bg-level-2);
+    color: var(--fg-level-2);
+}
+.move-filter-up-button { grid-area: moveup; width: 30px; }
+.move-filter-down-button { grid-area: movedown; width: 30px; }
+.add-filter-button { grid-area: addtab; }
+.delete-filter-button { grid-area: deletetab; }
+
+.namedfilterslist-item {
     display: block;
-    width: 500px;
-    height: 350px;
+    padding: 3px 3px;
+}
+.namedfilterslist-item.namedfilterslist-item-selected {
+    background: var(--bg-level-3-highlight);
+    color: var(--fg-level-3-highlight);
+}
+
+.currentfilter-container-outer {
+    grid-area: current;
+
+    display: grid;
+    grid-template-columns: auto;
+    grid-template-rows: auto auto minmax(0, 1fr);
+    grid-template-areas:
+        "title"
+        "name"
+        "list";
+
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 5px;
+
+    padding: 5px;
+    gap: 5px;
+}
+.currentfilter-container-title { 
+    grid-area: title; 
+    font-weight: bold;
+}
+.currentfilter-container-name {
+    grid-area: name;
+    display: grid;
+    grid-template-rows: auto;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas: "label textbox";
+    gap: 5px;
+    align-items: center;
+}
+.currentfilter-container { 
+    grid-area: list; 
+
+    overflow-y: scroll;
+    overflow-x: hidden;
+    background: var(--bg-level-2);
+    color: var(--fg-level-2);
+}
+
+.currentfilter-container label { 
+    display: block; 
+    padding: 5px 5px;
+}
+.currentfilter-container label div { display: inline; }
+
+.currentfilter-optionset {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.currentfilter-optionset-title {
+    font-weight: bold;
+    margin-top: 5px;
+    margin-bottom: 3px;
+}
+
+.currentfilter-optionset-option {
+    display: grid;
+    grid-template-rows: auto;
+    grid-template-columns: auto 1fr;
+    grid-template-areas: "checkbox title";
+
+    font-size: 85%;
+}
+.currentfilter-optionset-option-checkbox { grid-area: checkbox; }
+.currentfilter-optionset-option-title { grid-area: title; }
+
+.currentfilter-optionset-option-checkbox {
+    align-self: baseline;
+}
+.currentfilter-optionset-option-title {
+    margin-left: 6px;
+    align-self: center;
 }

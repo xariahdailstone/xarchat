@@ -1,3 +1,4 @@
+import { CallbackSet } from "../CallbackSet";
 import { IDisposable, asDisposable } from "../Disposable";
 import { ObjectUniqueId } from "../ObjectUniqueId";
 import { Observable } from "../Observable";
@@ -194,25 +195,19 @@ export class StdObservableSortedView<TItem extends object, TSortKey> implements 
             this._changesCollector.push(...changes);
         }
         else {
-            this._collectionObservers.forEachValueSnapshotted(observer => {
-                try { observer(changes); }
-                catch { }
-            });
+            this._collectionObservers2.invoke(changes);
             Observable.publishNamedUpdate(this._updatesKey, this._updatesVersion++);
         }
     }
 
-    private readonly _collectionObservers: SnapshottableSet<StdObservableCollectionObserver<TItem>> = new SnapshottableSet();
+    private readonly _collectionObservers2: CallbackSet<StdObservableCollectionObserver<TItem>> = new CallbackSet("StdObservableSortedView-collectionObservers");
 
     addCollectionObserver(observer: StdObservableCollectionObserver<TItem>): IDisposable {
-        this._collectionObservers.add(observer);
-        return asDisposable(() => {
-            this.removeCollectionObserver(observer);
-        });
+        return this._collectionObservers2.add(observer);
     }
 
     removeCollectionObserver(observer: StdObservableCollectionObserver<TItem>): void {
-        this._collectionObservers.delete(observer);
+        this._collectionObservers2.delete(observer);
     }
     
     *iterateValues(): Iterable<TItem> {

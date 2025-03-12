@@ -1,23 +1,24 @@
 import { asDisposable } from "../util/Disposable.js";
 import { HTMLUtils } from "../util/HTMLUtils.js";
-import { SelectableTab, SelectedChannel } from "../viewmodel/ActiveLoginViewModel.js";
+import { ActiveLoginViewModel, SelectableTab, SelectedChannel } from "../viewmodel/ActiveLoginViewModel.js";
 import { AddChannelsViewModel } from "../viewmodel/AddChannelsViewModel.js";
 import { ChannelViewModel } from "../viewmodel/ChannelViewModel.js";
 import { ComponentBase, componentElement } from "./ComponentBase.js";
 import { RenderingComponentBase } from "./RenderingComponentBase.js";
 
 @componentElement("x-stage")
-export class Stage extends ComponentBase<SelectedChannel> {
+export class Stage extends ComponentBase<ActiveLoginViewModel> {
     constructor() {
         super();
 
         HTMLUtils.clearChildren(this.elMain);
 
-        this.watch("selectedTab", v => {
-            let createdEl: (HTMLElement | null) = null;
+        this.watchExpr(vm => vm.selectedTab, st => {
+            let createdEl: (ComponentBase<any> | null) = null;
+            this.logDebug("Stage viewModel change", st);
 
-            if (v) {
-                createdEl = StageViews.getComponentFor(v);
+            if (st) {
+                createdEl = StageViews.getComponentFor(st);
             }
     
             // if (v instanceof ChannelViewModel) {
@@ -29,7 +30,7 @@ export class Stage extends ComponentBase<SelectedChannel> {
 
             if (createdEl) {
                 createdEl.classList.add("actor");
-                createdEl.setAttribute("modelpath", "selectedTab");
+                createdEl.viewModel = st;
                 this.elMain.appendChild(createdEl);
                 if (typeof (createdEl as any).viewActivated == "function") {
                     (createdEl as any).viewActivated();

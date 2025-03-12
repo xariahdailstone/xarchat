@@ -71,7 +71,8 @@ namespace MinimalWin32Test.UI
                         var parts = valStr.Split(';');
                         var hue = Convert.ToDouble(parts[0]);
                         var sat = Convert.ToDouble(parts[1]);
-                        var hsvColor = new HslColor(hue, sat, 15d, 255);
+                        var brightnessFactor = parts.Length > 2 ? Convert.ToDouble(parts[2]) : 1d;
+                        var hsvColor = new HslColor(hue, sat, 15d * brightnessFactor, 255);
                         _app.Post(() =>
                         {
                             this.TitlebarColor = hsvColor.ToColor();

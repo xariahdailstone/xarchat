@@ -1,5 +1,9 @@
 
 #elMain {
+    padding: 6px;
+}
+
+.main-container {
     display: grid;
     grid-template-columns: auto 1fr auto;
     grid-template-rows: 1fr 1fr auto auto auto auto auto auto auto;
@@ -15,6 +19,7 @@
         "serveropbuttonbar serveropbuttonbar serveropbuttonbar";
 
     max-width: 300px;
+    min-width: 300px;
     font-size: 90%;
 }
 
@@ -28,8 +33,8 @@
 .character-buttonbar { grid-area: buttonbar; }
 
 .character-icon {
-    width: 36px;
-    height: 36px;
+    width: 64px;
+    height: 64px;
     margin-right: 8px;
 }
 .character-name {
@@ -153,14 +158,14 @@
 .character-button-chandemod { grid-area: chandemod; }
 .character-button-chanmakeowner { grid-area: chanmakeowner; }
 
-#elMain:not(.has-statusmessage) .character-statusmessage {
+.main-container:not(.has-statusmessage) .character-statusmessage {
     display: none;
 }
-#elMain:not(.has-statusmessage) .character-statusmessage-for {
+.main-container:not(.has-statusmessage) .character-statusmessage-for {
     display: none;
 }
 
-#elMain.has-statusmessage .character-statusmessage {
+.main-container.has-statusmessage .character-statusmessage {
     background-color: var(--bg-level-2);
     color: var(--fg-level-2);
     margin-left: -4px;
@@ -168,7 +173,7 @@
     padding: 4px 4px;
     margin-top: 4px;
 }
-#elMain.has-statusmessage .character-statusmessage-for {
+.main-container.has-statusmessage .character-statusmessage-for {
     font-size: 75%;
     margin-bottom: 4px;
 }

@@ -1,3 +1,4 @@
+import { HTMLUtils } from "../../util/HTMLUtils";
 import { ImagePreviewPopupViewModel } from "../../viewmodel/popups/ImagePreviewPopupViewModel";
 import { componentArea, componentElement } from "../ComponentBase";
 import { ContextPopupBase } from "./ContextPopupBase";
@@ -10,12 +11,18 @@ export class ImagePreviewPopup extends PopupBase<ImagePreviewPopupViewModel> {
     constructor() {
         super();
 
-        this.watch("imageElement", v => {
-            if (v) {
-                this.elMain.appendChild(v);
-            }
-            else {
-                this.elMain.firstElementChild?.remove();
+        this.watchExpr(vm => [vm.imageElement, vm.videoElement], vels => {
+            HTMLUtils.clearChildren(this.elMain);
+            if (vels) {
+                if (vels[0]) {
+                    this.elMain.appendChild(vels[0]);
+                }
+                else if (vels[1]) {
+                    this.elMain.appendChild(vels[1]);
+                }
+                else {
+                    HTMLUtils.clearChildren(this.elMain);    
+                }
             }
         });
     }

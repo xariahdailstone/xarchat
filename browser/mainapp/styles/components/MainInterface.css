@@ -92,12 +92,6 @@
     pointer-events: all;
 }
 
-/*
-            <x-titlebar class="titlebar" id="elTitleBar"></x-titlebar>
-            <x-leftbar slot="a" class="leftbar" id="elLeftBar"></x-leftbar>
-            <x-splitterhandle class="splitterhandle" target="elLeftBar" orientation="horizontal" min="200" max="500" modelpath="leftBarWidth"></<x-splitterhandle>
-            <x-stage slot="b" class="stage" modelpath="currentlySelectedSession"></x-stage>
-            */
 
 .leftbar {
     height: 100%;

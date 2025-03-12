@@ -56,12 +56,16 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.ConfigData
 
     internal class SetConfigDataCommandHandler : AsyncXCHostCommandHandlerBase<ConfigKeyValue>
     {
+        public const string Originator = "client";
+
         private readonly IAppConfiguration _appConfiguration;
 
         public SetConfigDataCommandHandler(IAppConfiguration appConfiguration)
         {
             _appConfiguration = appConfiguration;
         }
+
+        protected override bool RunInSerial => true;
 
         protected override async Task HandleCommandAsync(ConfigKeyValue args, CancellationToken cancellationToken)
         {
@@ -73,7 +77,7 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.ConfigData
             var appConfig = _appConfiguration;
             var changeMetadata = new Dictionary<string, object?>
             {
-                { ChangeMetadataOriginatorKey.Value, this }
+                { ChangeMetadataOriginatorKey.Value, SetConfigDataCommandHandler.Originator }
             };
 
             await appConfig.SetArbitraryValueAsync(key, value, changeMetadata, cancellationToken);

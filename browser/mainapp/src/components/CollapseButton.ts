@@ -73,12 +73,7 @@ export class CollapseButton extends ComponentBase<boolean> {
     set collapsed(value: boolean) {
         //debugger;
         if (value != this.collapsed) {
-            if (this.canAssignToViewModel()) {
-                this.assignToViewModel(value);
-            }
-            else {
-                this._noVmValue = !!value;
-            }
+            this._noVmValue = !!value;
             this.updateState();
         }
     }

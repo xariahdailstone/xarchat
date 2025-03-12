@@ -1,10 +1,16 @@
+import { MessagePreviewPopup } from "../components/popups/MessagePreviewPopup";
 import { AppViewModel } from "../viewmodel/AppViewModel";
+import { ChannelViewModel } from "../viewmodel/ChannelViewModel";
 import { EIconSearchDialogViewModel } from "../viewmodel/dialogs/EIconSearchDialogViewModel";
+import { MessagePreviewPopupViewModel } from "../viewmodel/popups/MessagePreviewPopupViewModel";
 import { ChatBBCodeParser } from "./bbcode/BBCode";
+import { EventListenerUtil } from "./EventListenerUtil";
 import { KeyCodes } from "./KeyCodes";
 import { TextEditShortcutsHelper } from "./TextEditShortcutsHelper";
 
 const urlPattern = new RegExp(/(.*?)(http(s)?\:\/\/(\S+))/, "ig");
+
+const CUR_POPUP_VM = Symbol();
 
 function tryHandleEditShortcutKey(textarea: HTMLTextAreaElement, ev: KeyboardEvent, options: AddEditingShortcutsOptions) {
     if (ev.ctrlKey) {
@@ -16,6 +22,33 @@ function tryHandleEditShortcutKey(textarea: HTMLTextAreaElement, ev: KeyboardEve
         let loadBack = false;
 
         switch (ev.keyCode) {
+            case KeyCodes.KEY_P:
+                {
+                    const curPopup = (textarea as any)[CUR_POPUP_VM] as (MessagePreviewPopupViewModel | undefined);
+                    if (!curPopup) {
+                        const cvm = options.channelViewModelGetter ? options.channelViewModelGetter() : null;
+                        if (cvm) {
+                            const pu = new MessagePreviewPopupViewModel(cvm, textarea);
+                            (textarea as any)[CUR_POPUP_VM] = pu;
+                            pu.rawText = textarea.value;
+                            cvm.activeLoginViewModel.appViewModel.popups.push(pu);
+                            const hinput = EventListenerUtil.addDisposableEventListener(textarea, "input", () => { pu.dismissed(); });
+                            const hblur = EventListenerUtil.addDisposableEventListener(textarea, "blur", () => { pu.dismissed(); });
+                            const hkeydown = EventListenerUtil.addDisposableEventListener(textarea, "keydown", () => { pu.dismissed(); });
+                            (async () => {
+                                await pu.waitForDismissalAsync();
+                                delete (textarea as any)[CUR_POPUP_VM];
+                                hinput.dispose();
+                                hblur.dispose();
+                                hkeydown.dispose();
+                            })();
+                        }
+                    }
+                    else {
+                        curPopup.dismissed();
+                    }
+                }
+                break;
             case KeyCodes.KEY_B:
                 tesh.bold();
                 loadBack = true;
@@ -47,10 +80,12 @@ function tryHandleEditShortcutKey(textarea: HTMLTextAreaElement, ev: KeyboardEve
                 loadBack = true;
                 break;
             case KeyCodes.UP_ARROW:
+            case KeyCodes.KEY_Y:
                 tesh.superscript();
                 loadBack = true;
                 break;
             case KeyCodes.DOWN_ARROW:
+            case KeyCodes.KEY_H:
                 tesh.subscript();
                 loadBack = true;
                 break;
@@ -88,13 +123,15 @@ function tryHandleEditShortcutKey(textarea: HTMLTextAreaElement, ev: KeyboardEve
 }
 
 export class BBCodeUtils {
-    static pasteWithAutoUrlization(origText: string, selStart: number, selEnd: number, pasteText: string) {
+    static pasteWithAutoUrlization(origText: string, selStart: number, selEnd: number, pasteText: string): (null | [string, number | null]) {
         if (BBCodeUtils.isPastedUrl(pasteText)) {
             if (BBCodeUtils.isCursorAtAutoUrlLocation(origText, selStart)) {
-                return `[url]${pasteText}[/url]`;
+                const firstPart = `[url=${pasteText}]`;
+                const secondPart = "[/url]";
+                return [firstPart + secondPart, firstPart.length];
             }
         }
-        return pasteText;
+        return [pasteText, null];
     }
 
     private static isPastedUrl(pasteText: string) {
@@ -166,9 +203,13 @@ export class BBCodeUtils {
 
                     const effectivePaste = BBCodeUtils.pasteWithAutoUrlization(textarea.value, selStart, selEnd, pasteText);
                     //textarea.setSelectionRange(0, textarea.value.length, "forward");
-                    document.execCommand("insertText", false, effectivePaste);
-                    //textarea.setSelectionRange(res.newSelStart, res.newSelEnd, "forward");
-                    options.onTextChanged(textarea.value);
+                    if (effectivePaste) {
+                        document.execCommand("insertText", false, effectivePaste[0]);
+                        if (effectivePaste[1]) {
+                            textarea.setSelectionRange(selStart + effectivePaste[1], selStart + effectivePaste[1], "forward");
+                        }
+                        options.onTextChanged(textarea.value);
+                    }
                     ev.preventDefault();
                 }
             }
@@ -178,6 +219,7 @@ export class BBCodeUtils {
 
 interface AddEditingShortcutsOptions {
     appViewModelGetter: () => AppViewModel | null,
+    channelViewModelGetter?: () => ChannelViewModel | null,
     onKeyDownHandler?: (ev: KeyboardEvent, handleShortcuts: (ev: KeyboardEvent) => boolean) => void;
     onTextChanged: (value: string) => void;
 }

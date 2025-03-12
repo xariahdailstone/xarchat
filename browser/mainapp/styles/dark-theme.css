@@ -3,33 +3,44 @@ body {
     font-family: 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
     --normal-font-size: 14pt;
 
-    --chat-font: 12px Verdana, Tahoma, Geneva, sans-serif;
+    --chat-font-size: 12px;
+    --chat-font-family: Verdana, Tahoma, Geneva, sans-serif;
 
     --bg-base-hue: 225;
     --bg-base-sat: 7%;
     --fg-base-sat: calc(var(--bg-base-sat) * 0.35);
-    --bg-level-1: hsl(var(--bg-base-hue), var(--bg-base-sat), 0%);  /* black; */
-    --bg-level-2: hsl(var(--bg-base-hue), var(--bg-base-sat), 15%); /* #232428; */
-    --bg-level-3: hsl(var(--bg-base-hue), var(--bg-base-sat), 18%); /* #2b2d31; */
-    --bg-level-4: hsl(var(--bg-base-hue), var(--bg-base-sat), 21%); /* #313338; */
+    --bg-brightness-scale: 1;
+    --fg-brightness-scale: 1;
 
-    --fg-level-1: hsl(var(--bg-base-hue), var(--fg-base-sat), 73%); /* #b5bac1; */
-    --fg-level-2: hsl(var(--bg-base-hue), var(--fg-base-sat), 73%); /* #b5bac1; */
-    --fg-level-3: hsl(var(--bg-base-hue), var(--fg-base-sat), 50%); /* #757e8a; */
-    --fg-level-4: hsl(var(--bg-base-hue), var(--fg-base-sat), 87%); /* #dbdee1; */
+    --bg-level-1: hsl(var(--bg-base-hue), var(--bg-base-sat), calc(0% * var(--bg-brightness-scale)));  /* black; */
+    --bg-level-2: hsl(var(--bg-base-hue), var(--bg-base-sat), calc(15% * var(--bg-brightness-scale))); /* #232428; */
+    --bg-level-3: hsl(var(--bg-base-hue), var(--bg-base-sat), calc(18% * var(--bg-brightness-scale))); /* #2b2d31; */
+    --bg-level-4: hsl(var(--bg-base-hue), var(--bg-base-sat), calc(21% * var(--bg-brightness-scale))); /* #313338; */
 
-    --bg-level-2-highlight: hsl(var(--bg-base-hue), var(--bg-base-sat), 24%);
-    --fg-level-2-highlight: white;
+    --fg-level-1: hsl(var(--bg-base-hue), var(--fg-base-sat), calc(73% * var(--fg-brightness-scale))); /* #b5bac1; */
+    --fg-level-2: hsl(var(--bg-base-hue), var(--fg-base-sat), calc(73% * var(--fg-brightness-scale))); /* #b5bac1; */
+    --fg-level-3: hsl(var(--bg-base-hue), var(--fg-base-sat), calc(50% * var(--fg-brightness-scale))); /* #757e8a; */
+    --fg-level-4: hsl(var(--bg-base-hue), var(--fg-base-sat), calc(87% * var(--fg-brightness-scale))); /* #dbdee1; */
 
-    --bg-level-3-highlight: hsl(var(--bg-base-hue), var(--bg-base-sat), 27%); /* #404249; */
-    --fg-level-3-highlight: white;
+    --bg-level-2-highlight: hsl(var(--bg-base-hue), var(--bg-base-sat), calc(24% * var(--bg-brightness-scale)));
+    --fg-level-2-highlight: hsl(var(--bg-base-hue), var(--bg-base-sat), calc(100% * var(--fg-brightness-scale)));
 
-    --bg-level-2-hover: hsl(var(--bg-base-hue), calc(var(--bg-base-sat) * 0.65), 27%);
-    --fg-level-2-hover: white;
+    --bg-level-3-highlight: hsl(var(--bg-base-hue), var(--fg-base-sat), calc(27% * var(--bg-brightness-scale))); /* #404249; */
+    --fg-level-3-highlight: hsl(var(--bg-base-hue), var(--fg-base-sat), calc(100% * var(--fg-brightness-scale)));
 
-    --border-level-2: hsl(var(--bg-base-hue), var(--fg-base-sat), 25%); /* #b5bac1; */
+    --bg-level-2-hover: hsl(var(--bg-base-hue), calc(var(--bg-base-sat) * 0.65), calc(27% * var(--bg-brightness-scale)));
+    --fg-level-2-hover: hsl(var(--bg-base-hue), var(--fg-base-sat), calc(100% * var(--fg-brightness-scale)));
+    --bg-level-3-hover: hsl(var(--bg-base-hue), calc(var(--bg-base-sat) * 0.65), calc(30% * var(--bg-brightness-scale)));
+    --fg-level-2-hover: hsl(var(--bg-base-hue), var(--fg-base-sat), calc(100% * var(--fg-brightness-scale)));
+    --bg-level-4-hover: hsl(var(--bg-base-hue), calc(var(--bg-base-sat) * 0.65), calc(33% * var(--bg-brightness-scale)));
+    --fg-level-4-hover: hsl(var(--bg-base-hue), var(--fg-base-sat), calc(100% * var(--fg-brightness-scale)));
 
-    --dark-border-level-4:  hsl(var(--bg-base-hue), var(--bg-base-sat), 15%); /* #232428; */
+    --border-level-2: hsl(var(--bg-base-hue), var(--fg-base-sat), calc(25% * var(--bg-brightness-scale))); /* #b5bac1; */
+    --border-level-4: hsl(var(--bg-base-hue), var(--fg-base-sat), calc(31% * var(--bg-brightness-scale))); /* #b5bac1; */
+
+    --dark-border-level-4: hsl(var(--bg-base-hue), var(--bg-base-sat), calc(15% * var(--bg-brightness-scale))); /* #232428; */
+
+    --tooltip-border: hsl(var(--bg-base-hue), var(--bg-base-sat), calc(35% * var(--bg-brightness-scale))); /* #232428; */
 
     --fg-gender-male: #6699FF;
     --fg-gender-male-herm: #007FFF;
@@ -49,40 +60,49 @@ body {
     --fg-friend-gender-shemale: var(--fg-gender-shemale);
     --fg-friend-gender-none: var(--fg-gender-none);
 
-    --bg-main-textbox: hsl(var(--bg-base-hue), var(--bg-base-sat), 24%); /* #383a40; */
-    --fg-main-textbox: hsl(var(--bg-base-hue), var(--fg-base-sat), 87%); /* #dbdee1; */
+    --fg-status-offline: #444;
+    --fg-status-online: #55f;
+    --fg-status-idle: #33a;
+    --fg-status-away: #aa4;
+    --fg-status-dnd: #c44; 
+    --fg-status-busy: #811;
+    --fg-status-looking: #8f8;
+    --fg-status-crown: #ff0;
+
+    --bg-main-textbox: hsl(var(--bg-base-hue), var(--bg-base-sat), calc(24% * var(--bg-brightness-scale))); /* #383a40; */
+    --fg-main-textbox: hsl(var(--bg-base-hue), var(--fg-base-sat), calc(87% * var(--fg-brightness-scale))); /* #dbdee1; */
     --highlight-main-textbox: #CC66FF;
 
-    --bg-main-textbox-btn: hsl(var(--bg-base-hue), var(--bg-base-sat), 33%); /* #4e5058; */
-    --fg-main-textbox-btn: white;
-    --bg-main-textbox-btn-hover: hsl(var(--bg-base-hue), var(--bg-base-sat), 40%); /* #60626c; */
-    --fg-main-textbox-btn-hover: white;
+    --bg-main-textbox-btn: hsl(var(--bg-base-hue), var(--bg-base-sat), calc(33% * var(--bg-brightness-scale))); /* #4e5058; */
+    --fg-main-textbox-btn: hsl(var(--bg-base-hue), var(--fg-base-sat), calc(100% * var(--fg-brightness-scale)));
+    --bg-main-textbox-btn-hover: hsl(var(--bg-base-hue), var(--bg-base-sat), calc(40% * var(--bg-brightness-scale))); /* #60626c; */
+    --fg-main-textbox-btn-hover: hsl(var(--bg-base-hue), var(--fg-base-sat), calc(100% * var(--fg-brightness-scale)));
 
     --bg-main-textbox-default-btn: #9B30FF;
-    --fg-main-textbox-default-btn: white;
+    --fg-main-textbox-default-btn: hsl(var(--bg-base-hue), var(--fg-base-sat), calc(100% * var(--fg-brightness-scale)));
     --bg-main-textbox-default-btn-hover: #ab52ff;
-    --fg-main-textbox-default-btn-hover: white;
+    --fg-main-textbox-default-btn-hover: hsl(var(--bg-base-hue), var(--fg-base-sat), calc(100% * var(--fg-brightness-scale)));
 
     --bg-main-textbox-backoff-btn: transparent;
-    --fg-main-textbox-backoff-btn: white;
+    --fg-main-textbox-backoff-btn: hsl(var(--bg-base-hue), var(--fg-base-sat), calc(100% * var(--fg-brightness-scale)));
     --bg-main-textbox-backoff-btn-hover: rgba(255, 255, 255, 0.1);
-    --fg-main-textbox-backoff-btn: white;
+    --fg-main-textbox-backoff-btn: hsl(var(--bg-base-hue), var(--fg-base-sat), calc(100% * var(--fg-brightness-scale)));
 
     --bg-main-textbox-warning-btn: maroon;
-    --fg-main-textbox-warning-btn: white;
+    --fg-main-textbox-warning-btn: hsl(var(--bg-base-hue), var(--fg-base-sat), calc(100% * var(--fg-brightness-scale)));
     --bg-main-textbox-warning-btn-hover: rgb(183, 24, 24);
-    --fg-main-textbox-warning-btn-hover: white;
+    --fg-main-textbox-warning-btn-hover: hsl(var(--bg-base-hue), var(--fg-base-sat), calc(100% * var(--fg-brightness-scale)));
 
-    --bg-scrolldown-message: hsl(var(--bg-base-hue), var(--bg-base-sat), 33%); /* #4e5058; */
-    --fg-scrolldown-message: white;
+    --bg-scrolldown-message: hsl(var(--bg-base-hue), var(--bg-base-sat), calc(33% * var(--bg-brightness-scale))); /* #4e5058; */
+    --fg-scrolldown-message: hsl(var(--bg-base-hue), var(--fg-base-sat), calc(100% * var(--fg-brightness-scale)));
     --bg-scrolldown-alert: #9e007f;
-    --fg-scrolldown-alert: #ffffff;
+    --fg-scrolldown-alert: hsl(var(--bg-base-hue), var(--fg-base-sat), calc(100% * var(--fg-brightness-scale)));
 
-    --fg-unseen-dot: white;
+    --fg-unseen-dot: hsl(var(--bg-base-hue), var(--fg-base-sat), calc(100% * var(--fg-brightness-scale)));
     --ping-icon-fill: red;
 
     --bg-warning-message: #9e002f;
-    --fg-warning-message: white;
+    --fg-warning-message: hsl(var(--bg-base-hue), var(--fg-base-sat), calc(100% * var(--fg-brightness-scale)));
 
     --titlebar-height: 28px;
 }

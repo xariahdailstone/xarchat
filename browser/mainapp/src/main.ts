@@ -13,6 +13,7 @@ import { HostInteropConfigBlock } from "./util/ConfigBlock.js";
 import { HostInterop } from "./util/HostInterop.js";
 import { KeyCodes } from "./util/KeyCodes.js";
 import { ObservableBase } from "./util/ObservableBase.js";
+import { hookRequestAnimationFrame } from "./util/RequestAnimationFrameHook.js";
 import { polyfillRequestIdleCallback } from "./util/RequestIdleCallbackPolyfill.js";
 import { setStylesheetAdoption } from "./util/StyleSheetPolyfill.js";
 import { ActiveLoginViewModel } from "./viewmodel/ActiveLoginViewModel.js";
@@ -23,6 +24,7 @@ import { AppInitializeViewModel } from "./viewmodel/dialogs/AppInitializeViewMod
 import { LoginViewModel } from "./viewmodel/dialogs/LoginViewModel.js";
 
 
+hookRequestAnimationFrame();
 
 function onReady(func: Function) {
     if (/complete|interactive|loaded/.test(document.readyState)) {
@@ -148,6 +150,11 @@ onReady(async () => {
     
 });
 
+window.addEventListener("resize", (e) => {
+    document.body.style.setProperty("--device-pixel-ratio", window.devicePixelRatio.toString());
+});
+document.body.style.setProperty("--device-pixel-ratio", window.devicePixelRatio.toString());
+
 document.addEventListener("keydown", (e) => {
     if (e.keyCode == KeyCodes.KEY_R) {
         if (e.ctrlKey) {
@@ -161,6 +168,9 @@ document.addEventListener("keydown", (e) => {
             e.preventDefault();
             e.stopPropagation();
         }
+    }
+    else if (e.keyCode == KeyCodes.KEY_P && e.ctrlKey) {
+        e.preventDefault();
     }
 });
 

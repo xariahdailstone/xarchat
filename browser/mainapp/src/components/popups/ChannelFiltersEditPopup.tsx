@@ -2,11 +2,15 @@ import { jsx, Fragment, VNode } from "../../snabbdom/index";
 import { IDisposable } from "../../util/Disposable";
 import { HTMLUtils } from "../../util/HTMLUtils";
 import { ChannelFiltersViewModel, ChannelNamedFilterViewModel } from "../../viewmodel/ChannelFiltersViewModel";
+import { ChatChannelViewModel } from "../../viewmodel/ChatChannelViewModel";
 import { ChannelFiltersEditPopupViewModel } from "../../viewmodel/popups/ChannelFiltersEditPopupViewModel";
 import { componentArea, componentElement } from "../ComponentBase";
-import { RenderingComponentBase } from "../RenderingComponentBase";
+import { makeRenderingComponent, RenderingComponentBase } from "../RenderingComponentBase";
 import { ContextPopupBase } from "./ContextPopupBase";
 import { popupViewFor } from "./PopupFrame";
+
+const UP_ARROW: string = "\u2191";
+const DOWN_ARROW: string = "\u2193";
 
 @componentArea("popups")
 @componentElement("x-channelfilterseditpopup")
@@ -14,21 +18,12 @@ import { popupViewFor } from "./PopupFrame";
 export class ChannelFiltersEditPopup extends ContextPopupBase<ChannelFiltersEditPopupViewModel> {
     constructor() {
         super();
+        makeRenderingComponent(this, {
+            render: () => this.render()
+        });
 
-        HTMLUtils.assignStaticHTMLFragment(this.elMain, '<x-channelfilterseditrenderingpopup></x-channelfilterseditrenderingpopup>');
         this.clickable = true;
         this.freezePosition = true;
-    }
-}
-
-const UP_ARROW: string = "\u2191";
-const DOWN_ARROW: string = "\u2193";
-
-@componentArea("popups")
-@componentElement("x-channelfilterseditrenderingpopup")
-export class ChannelFiltersEditRenderingPopup extends RenderingComponentBase<ChannelFiltersEditPopupViewModel> {
-    constructor() {
-        super();
     }
 
     render(): (VNode | [VNode, IDisposable]) {
@@ -53,6 +48,21 @@ export class ChannelFiltersEditRenderingPopup extends RenderingComponentBase<Cha
             const toggleCanPing = () => {
                 if (vm.filtersViewModel.selectedFilter) {
                     vm.filtersViewModel.selectedFilter.toggleCanPing();
+                }
+            };
+            const toggleShowInAdsOnlyChannel = () => {
+                if (vm.filtersViewModel.selectedFilter) {
+                    vm.filtersViewModel.selectedFilter.toggleShowInAdsOnlyChannel();
+                }
+            };
+            const toggleShowInChatOnlyChannel = () => {
+                if (vm.filtersViewModel.selectedFilter) {
+                    vm.filtersViewModel.selectedFilter.toggleShowInChatOnlyChannel();
+                }
+            };
+            const toggleShowInBothAdsAndChatChannel = () => {
+                if (vm.filtersViewModel.selectedFilter) {
+                    vm.filtersViewModel.selectedFilter.toggleShowInBothAdsAndChatChannel();
                 }
             };
             
@@ -115,6 +125,37 @@ export class ChannelFiltersEditRenderingPopup extends RenderingComponentBase<Cha
                                 Messages in this filter can ping.
                             </div>
                         </label>
+                        { vm.filtersViewModel.channelViewModel instanceof ChatChannelViewModel ?
+                            <>
+                                <label classList={[ "currentfilter-optionset-option" ]}>
+                                    <input attr-type="checkbox" classList={[ "currentfilter-optionset-option-checkbox" ]}
+                                        props={{ "checked": vm.filtersViewModel.selectedFilter?.showInAdsOnlyChannel ?? false }} on={{
+                                            "change": toggleShowInAdsOnlyChannel
+                                        }}></input>
+                                    <div classList={[ "currentfilter-optionset-option-title" ]}>
+                                        Show filter in an Ads-Only channel.
+                                    </div>
+                                </label>
+                                <label classList={[ "currentfilter-optionset-option" ]}>
+                                    <input attr-type="checkbox" classList={[ "currentfilter-optionset-option-checkbox" ]}
+                                        props={{ "checked": vm.filtersViewModel.selectedFilter?.showInChatOnlyChannel ?? false }} on={{
+                                            "change": toggleShowInChatOnlyChannel
+                                        }}></input>
+                                    <div classList={[ "currentfilter-optionset-option-title" ]}>
+                                        Show filter in a Chat-Only channel.
+                                    </div>
+                                </label>
+                                <label classList={[ "currentfilter-optionset-option" ]}>
+                                    <input attr-type="checkbox" classList={[ "currentfilter-optionset-option-checkbox" ]}
+                                        props={{ "checked": vm.filtersViewModel.selectedFilter?.showInBothAdsAndChatChannel ?? false }} on={{
+                                            "change": toggleShowInBothAdsAndChatChannel
+                                        }}></input>
+                                    <div classList={[ "currentfilter-optionset-option-title" ]}>
+                                        Show filter in an Ads-or-Chat channel.
+                                    </div>
+                                </label>
+                            </>
+                            : <></> }
                     </div>
                 </div>
             </>;

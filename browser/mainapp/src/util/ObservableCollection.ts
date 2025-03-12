@@ -1,3 +1,4 @@
+import { CallbackSet } from "./CallbackSet.js";
 import { IDisposable, asDisposable } from "./Disposable.js";
 import { Observable, ObservableValue, PropertyChangeEvent, PropertyChangeEventListener, ValueSubscription } from "./Observable.js";
 import { setupValueSubscription } from "./ObservableBase.js";
@@ -334,18 +335,18 @@ export class Collection<T> implements ObservableCollection<T>, Observable {
         }
     }
 
-    private readonly _collectionChangeHandlers = new SnapshottableSet<CollectionChangeEventListener<T>>();
-    private readonly _propertyChangeHandlers = new SnapshottableSet<PropertyChangeEventListener>();
+    private readonly _collectionChangeHandlers2 = new CallbackSet<CollectionChangeEventListener<T>>("ObservableCollection-collectionChangeHandlers");
+    private readonly _propertyChangeHandlers2 = new CallbackSet<PropertyChangeEventListener>("ObservableCollection-propertyChangeHandlers");
 
     addEventListener(eventName: "propertychange", handler: PropertyChangeEventListener): IDisposable;
     addEventListener(eventName: "collectionchange", handler: CollectionChangeEventListener<T>): IDisposable;
     addEventListener(eventName: string, handler: Function): IDisposable;
     addEventListener(eventName: string, handler: Function): IDisposable {
         if (eventName == "collectionchange") {
-            this._collectionChangeHandlers.add(handler as CollectionChangeEventListener<T>);
+            return this._collectionChangeHandlers2.add(handler as CollectionChangeEventListener<T>);
         }
         else if (eventName == "propertychange") {
-            this._propertyChangeHandlers.add(handler as PropertyChangeEventListener);
+            return this._propertyChangeHandlers2.add(handler as PropertyChangeEventListener);
         }
 
         let disposed = false;
@@ -362,10 +363,10 @@ export class Collection<T> implements ObservableCollection<T>, Observable {
     removeEventListener(eventName: string, handler: Function): void;
     removeEventListener(eventName: string, handler: Function): void {
         if (eventName == "collectionchange") {
-            this._collectionChangeHandlers.delete(handler as CollectionChangeEventListener<T>);
+            this._collectionChangeHandlers2.delete(handler as CollectionChangeEventListener<T>);
         }
         else if (eventName == "propertychange") {
-            this._propertyChangeHandlers.delete(handler as PropertyChangeEventListener);
+            this._propertyChangeHandlers2.delete(handler as PropertyChangeEventListener);
         }
     }
 
@@ -376,15 +377,11 @@ export class Collection<T> implements ObservableCollection<T>, Observable {
     protected raiseCollectionChangeEvent(type: CollectionChangeType, index?: number, count?: number, removedItem?: T): void {
         this._itemsLength.value = this._items.length;
         this._itemsEnumerated.value = {};
-        if (this._collectionChangeHandlers.size > 0) {
-            this._collectionChangeHandlers.forEachValueSnapshotted(f => {
-                try {
-                    f(new CollectionChangeEvent(type, index, count, removedItem));
-                }
-                catch { }
-            });
+        if (this._collectionChangeHandlers2.size > 0) {
+            const cce = new CollectionChangeEvent(type, index, count, removedItem);
+            this._collectionChangeHandlers2.invoke(cce);
         }
-        if (this._stdColObservers.size > 0) {
+        if (this._stdColObservers2.size > 0) {
             const changes: StdObservableCollectionChange<T>[] = [];
 
             switch (type) {
@@ -491,41 +488,28 @@ export class Collection<T> implements ObservableCollection<T>, Observable {
                     break;
             }
 
-            if (this._stdColObservers.size > 0) {
-                Observable.enterObservableFireStack(() => {
-                    this._stdColObservers.forEachValueSnapshotted(f => {
-                        try { f(changes); }
-                        catch { }
-                    });
-                });
-            }
+            Observable.enterObservableFireStack(() => {
+                this._stdColObservers2.invoke(changes);
+            });
         }
     }
 
     raisePropertyChangeEvent(propertyName: string, propertyValue: unknown) {
         Observable.enterObservableFireStack(() => {
-            this._propertyChangeHandlers.forEachValueSnapshotted(v => {
-                try {
-                    v(new PropertyChangeEvent(propertyName, propertyValue));
-                }
-                catch {
-                }
-            });
+            const pce = new PropertyChangeEvent(propertyName, propertyValue);
+            this._propertyChangeHandlers2.invoke(pce);
         });
         //Observable.publishRead(this, propertyName, propertyValue);
     };
 
-    private readonly _stdColObservers: SnapshottableSet<StdObservableCollectionObserver<T>> = new SnapshottableSet();
+    private readonly _stdColObservers2: CallbackSet<StdObservableCollectionObserver<T>> = new CallbackSet("Collection-stdColObservers");
 
     addCollectionObserver(observer: StdObservableCollectionObserver<T>): IDisposable {
-        this._stdColObservers.add(observer);
-        return asDisposable(() => {
-            this.removeCollectionObserver(observer);
-        });
+        return this._stdColObservers2.add(observer);
     }
     
     removeCollectionObserver(observer: StdObservableCollectionObserver<T>): void {
-        this._stdColObservers.delete(observer);
+        this._stdColObservers2.delete(observer);
     }
 
     *iterateValues(): Iterable<T> {

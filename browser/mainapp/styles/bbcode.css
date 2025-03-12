@@ -7,6 +7,7 @@
 .bbcode-parsed {
     /* display: contents; */
     /* background: inherit; */
+    white-space-collapse: preserve;
 }
 
 .bbcode-b {
@@ -99,12 +100,12 @@
 }
 
 .bbcode-sub {
-    font-size: smaller;
+    font-size: var(--subtext-size);
     vertical-align: baseline;
 }
 
 .bbcode-sup {
-    font-size: smaller;
+    font-size: var(--subtext-size);
     vertical-align: top;
 }
 

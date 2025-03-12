@@ -91,7 +91,7 @@ export class LoginUtils {
             if (charStatus.statusMessage == "" && savedChatState.statusMessage != "") {
                 // TODO: set character status
                 if (ns.getFirstConfigEntryHierarchical([ "restoreStatusMessageOnLogin" ])) {
-                    cc.setStatusAsync(OnlineStatus.ONLINE, savedChatState.statusMessage);
+                    cc.setStatusAsync(savedChatState.onlineStatus ?? OnlineStatus.ONLINE, savedChatState.statusMessage);
                 }
             }
 
@@ -105,7 +105,7 @@ export class LoginUtils {
 
                 const existingCh = ns.getChannel(channelName);
                 if (!existingCh || existingCh.presenceState != ChatChannelPresenceState.IN_CHANNEL) {
-                    logger.logInfo("auto joining channel", channelName, channelTitle);
+                    logger.logDebug("auto joining channel", channelName, channelTitle);
                     try {
                         await cc.joinChannelAsync(channelName, chp.title);
                     }
@@ -173,6 +173,18 @@ export class LoginUtils {
         const nscc = await this.getLoggedInChatConnectionAsync(activeLoginViewModel.appViewModel, activeLoginViewModel,
             "", "", activeLoginViewModel.characterName, true, cancellationToken);
         const cc = nscc.chatConnection;
+
+        // Restore status message
+        const savedChatState = activeLoginViewModel.appViewModel.appSettings.savedChatStates.getOrCreate(activeLoginViewModel.characterName);
+        if (savedChatState) {
+            const charStatus = activeLoginViewModel.characterSet.getCharacterStatus(activeLoginViewModel.characterName);
+            if (charStatus.statusMessage == "" && savedChatState.statusMessage != "") {
+                // TODO: set character status
+                if (activeLoginViewModel.getFirstConfigEntryHierarchical([ "restoreStatusMessageOnLogin" ])) {
+                    cc.setStatusAsync(savedChatState.onlineStatus ?? OnlineStatus.ONLINE, savedChatState.statusMessage);
+                }
+            }
+        }
 
         // Reconnect pending channels
         logger.logDebug("reconnectAsync: reconnecting pending channels...");

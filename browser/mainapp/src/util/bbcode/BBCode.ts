@@ -13,6 +13,7 @@ import { EL } from "../EL";
 import { EventListenerUtil } from "../EventListenerUtil";
 import { getRoot } from "../GetRoot";
 import { HostInterop } from "../HostInterop";
+import { ObservableValue } from "../Observable";
 import { BBCodeTag } from "./BBCodeTag";
 import { BBCodeTagB } from "./tags/BBCodeTagB";
 import { BBCodeTagBig } from "./tags/BBCodeTagBig";
@@ -118,16 +119,16 @@ export class BBCodeParser {
         };
         xoptions.sink = options?.sink ?? { userClick: ()=>{}, sessionClick: ()=>{}, webpageClick: ()=>{} };
 
-        const parseContext = {
+        let contextIsDisposed = false;
+        const parseContext: BBCodeParseContext = {
             parseOptions: xoptions,
             disposables: [] as IDisposable[],
-            isDisposed: false,
             addDisposable(d: IDisposable) {
-                if (!this.isDisposed) {
+                if (!contextIsDisposed) {
                     this.disposables.push(asDisposable(d));
                 }
                 else {
-                    d.dispose();
+                    asDisposable(d).dispose();
                 }
             }
         };
@@ -261,7 +262,7 @@ export class BBCodeParser {
                 return child;
             },
             dispose: () => {
-                parseContext.isDisposed = true;
+                contextIsDisposed = true;
                 for (let x of parseContext.disposables) {
                     try { x.dispose(); }
                     catch { }
@@ -271,7 +272,7 @@ export class BBCodeParser {
                 this.dispose();
             },
             get isDisposed() { 
-                return parseContext.isDisposed;
+                return contextIsDisposed;
             }
         };
         
@@ -435,12 +436,20 @@ export class BBCodeParser {
                     sourceText: postText
                 });
             }
+            endedAt += m[0].length;
         }
         if (result.length == 0) {
             result.push({
                 type: "text",
                 text: raw,
                 sourceText: raw
+            });
+        }
+        else if (endedAt < raw.length) {
+            result.push({
+                type: "text",
+                text: raw.substring(endedAt),
+                sourceText: raw.substring(endedAt)
             });
         }
 

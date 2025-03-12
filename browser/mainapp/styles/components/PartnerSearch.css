@@ -198,7 +198,8 @@
     padding: 4px 4px;
     border-bottom: 1px solid var(--border-level-2);
 
-    font: var(--chat-font);
+    font-size: var(--chat-font-size);
+    font-family: var(--chat-font-family);
 }
 .results-list-item-avatar { grid-area: icon; }
 .results-list-item-name { grid-area: name; }

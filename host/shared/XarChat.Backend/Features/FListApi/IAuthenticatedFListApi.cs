@@ -20,6 +20,8 @@ namespace XarChat.Backend.Features.FListApi
 
         Task RemoveBookmarkAsync(string name, CancellationToken cancellationToken);
 
+        Task<GetAllMemosResponseItem> GetMemoAsync(string name, CancellationToken cancellationToken);
+
         Task<SaveMemoResponse> SaveMemoAsync(string name, string memo, CancellationToken cancellationToken);
 
         Task<ProfileInfo> GetCharacterProfileAsync(string name, bool bypassCache, CancellationToken cancellationToken);

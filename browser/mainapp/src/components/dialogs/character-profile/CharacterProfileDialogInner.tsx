@@ -203,6 +203,7 @@ export class CharacterProfileDialogInner extends RenderingComponentBase<Characte
                 {addSummaryInfoRow("Created", pd?.created)}
                 {addSummaryInfoRow("Last Updated", pd?.lastUpdated)}
                 {addSummaryInfoRow("Views", pd?.views)}
+                {addSummaryInfoRow("Timezone", pd?.timezone)}
             </table>
         </div>;
     }

@@ -21,6 +21,10 @@ import { SlashCommandViewModel } from "./SlashCommandViewModel.js";
 import { IterableUtils } from "../util/IterableUtils.js";
 import { ChannelFiltersViewModel } from "./ChannelFiltersViewModel.js";
 import { ObservableExpression } from "../util/ObservableExpression.js";
+import { ObservableValue } from "../util/Observable.js";
+import { ServerError } from "../fchat/ChatConnectionImpl.js";
+import { CatchUtils } from "../util/CatchUtils.js";
+import { CallbackSet } from "../util/CallbackSet.js";
 
 export class ChatChannelUserViewModel extends ObservableBase implements IDisposable {
     constructor(
@@ -76,6 +80,8 @@ export class ChatChannelViewModel extends ChannelViewModel {
         this.name = name;
         this.title = title;
         this.showConfigButton = true;
+        this.canClose = true;
+        this.canPin = true;
 
         this.filterMode = ChatChannelMessageMode.BOTH;
 
@@ -132,9 +138,9 @@ export class ChatChannelViewModel extends ChannelViewModel {
             this.channelFilters.loadFromSCC(existingSCC.namedFilters, () => setupDefaultFilters());
         }
 
-        const ee = new ObservableExpression(() => this.channelFilters!.sccData,
+        this.ownedDisposables.add(new ObservableExpression(() => this.channelFilters!.sccData,
             (v) => { this._scc!.namedFilters = v ?? null; },
-            (err) => { });
+            (err) => { }));
 
         // if (existingSCC && existingSCC.filters) {
         //     this.showFilterClasses = existingSCC.filters
@@ -215,12 +221,6 @@ export class ChatChannelViewModel extends ChannelViewModel {
     @observableProperty
     descriptionIsNew: boolean = false;
 
-    @observableProperty
-    override readonly canClose: boolean = true;
-
-    @observableProperty
-    override readonly canPin: boolean = true;
-
     private _sortKey!: ChatChannelViewModelSortKey;
     get sortKey() {
         if (!this._sortKey) {
@@ -280,6 +280,15 @@ export class ChatChannelViewModel extends ChannelViewModel {
     set messageMode(value: ChatChannelMessageMode) {
         if (value != this._messageMode) {
             this._messageMode = value;
+
+            if (value == ChatChannelMessageMode.CHAT_ONLY) {
+                this._cantSendAsAdReasons.value =
+                    [CantSendAsAdReasons.ChannelDoesntAllowAds, ...this._cantSendAsAdReasons.value.filter(r => r != CantSendAsAdReasons.ChannelDoesntAllowAds)];
+            }
+            else {
+                this._cantSendAsAdReasons.value =this._cantSendAsAdReasons.value.filter(r => r != CantSendAsAdReasons.ChannelDoesntAllowAds);
+            }
+
             this.updateFilterOptions();
         }
     }
@@ -407,22 +416,12 @@ export class ChatChannelViewModel extends ChannelViewModel {
         }
     }
 
-    private readonly _channelOpsListeners: SnapshottableSet<CharactersEventListener> = new SnapshottableSet();
+    private readonly _channelOpsListeners2: CallbackSet<CharactersEventListener> = new CallbackSet("ChatChannelViewModel-channelOpsListeners");
     addChannelOpsListener(callback: CharactersEventListener): IDisposable {
-        this._channelOpsListeners.add(callback);
-        let disposed = false;
-        return asDisposable(() => {
-            if (!disposed) {
-                disposed = true;
-                this._channelOpsListeners.delete(callback);
-            }
-        });
+        return this._channelOpsListeners2.add(callback);
     }
     private notifyChannelOpsListeners(characters: CharacterName[]) {
-        this._channelOpsListeners.forEachValueSnapshotted(w => {
-            try { w(characters); }
-            catch { }
-        });
+        this._channelOpsListeners2.invoke(characters);
     }
 
     isCharacterInChannel(character: CharacterName): boolean {
@@ -703,6 +702,16 @@ export class ChatChannelViewModel extends ChannelViewModel {
                     return "";
                 }
             ),
+            new SlashCommandViewModel(
+                ["warn"],
+                "Send a Warning Message",
+                "Sends a message to the channel, highlighted as a warning message (requires channel op status).",
+                ["!text"],
+                async (context, args) => {
+                    await this.sendAsWarningMessageAsync();
+                    return "";
+                }
+            )
         ]
     }
 
@@ -857,11 +866,22 @@ export class ChatChannelViewModel extends ChannelViewModel {
     @observableProperty
     canSendTextboxAsChat: boolean = true;
 
+    @observableProperty
+    adSendWaitRemainingSec: number | null = null;
+
     private readonly _sendQueue: SendQueue = new SendQueue();
 
     async sendTextboxInternalAsync(): Promise<void> {
         if (this.textBoxContent && this.textBoxContent != "") {
             const msgContent = this.textBoxContent;
+
+            try {
+                await this.parent.chatConnection.checkChannelSendMessageAsync(this.name, msgContent);
+            }
+            catch (e) {
+                this.addSystemMessage(new Date(), `Cannot send: ${CatchUtils.getMessage(e)}`, true);
+                return;
+            }
             this.textBoxContent = "";
 
             this.pendingSendsCount++;
@@ -883,7 +903,7 @@ export class ChatChannelViewModel extends ChannelViewModel {
                 onFailBeforeRetryAsync: async () => {
                     await TaskUtils.delay(1000);
                 },
-                onFailTerminalAsync: async () => {
+                onFailTerminalAsync: async (err) => {
                     this.addSystemMessage(new Date(), `Failed to send: ${msgContent}`, true);
                     this.pendingSendsCount--;
                 }
@@ -899,6 +919,26 @@ export class ChatChannelViewModel extends ChannelViewModel {
         await this.activeLoginViewModel.chatConnection.channelPerformBottleSpinAsync(this.name);
     }
 
+    override ensureSelectableFilterSelected() {
+        if (this.channelFilters) {
+            const selectableFiltersArray = 
+                IterableUtils.asQueryable(this.channelFilters.namedFilters).where(nf => 
+                    (nf.showInAdsOnlyChannel && this.messageMode == ChatChannelMessageMode.ADS_ONLY) ||
+                    (nf.showInChatOnlyChannel && this.messageMode == ChatChannelMessageMode.CHAT_ONLY) ||
+                    (nf.showInBothAdsAndChatChannel && this.messageMode == ChatChannelMessageMode.BOTH)).toArray();
+            const selectableFiltersSet = new Set(selectableFiltersArray);
+
+            const sf = this.channelFilters.selectedFilter;
+            let needReselect = true;
+            if (sf) {
+                if (selectableFiltersSet.has(sf)) { needReselect = false; }
+            }
+            if (needReselect && selectableFiltersArray.length > 0) {
+                this.channelFilters.selectedFilter = selectableFiltersArray[0];
+            }
+        }
+    }
+
     protected pingIfNecessary(message: ChannelMessageViewModel) {
         super.pingIfNecessary(message);
         if (message.containsPing && !this.isTabActive && message.characterStatus.characterName != this.parent.characterName) {
@@ -910,12 +950,22 @@ export class ChatChannelViewModel extends ChannelViewModel {
         }
     }
 
+    private readonly _cantSendAsAdReasons: ObservableValue<CantSendAsAdReasons[]> = new ObservableValue([]);
+
     @observableProperty
-    canSendTextboxAsAd: boolean = true;
+    get canSendTextboxAsAd() { return this._cantSendAsAdReasons.value.length == 0; }
 
     async sendTextboxAsAdAsync(): Promise<void> {
-        if (this.textBoxContent && this.textBoxContent != "") {
+        if (this.textBoxContent && this.textBoxContent != "" && this.canSendTextboxAsAd) {
             const msgContent = this.textBoxContent;
+            try {
+                await this.parent.chatConnection.checkChannelAdMessageAsync(this.name, msgContent);
+            }
+            catch (e) {
+                this.addSystemMessage(new Date(), `Cannot send: ${CatchUtils.getMessage(e)}`, true);
+                return;
+            }
+
             this.textBoxContent = "";
 
             this.pendingSendsCount++;
@@ -923,6 +973,21 @@ export class ChatChannelViewModel extends ChannelViewModel {
                 maxRetries: 3,
                 onAttemptAsync: async () => {
                     await this.parent.chatConnection.channelAdMessageAsync(this.name, msgContent);
+
+                    this._cantSendAsAdReasons.value =
+                        [CantSendAsAdReasons.WaitingOnAdThrottle, ...this._cantSendAsAdReasons.value.filter(r => r != CantSendAsAdReasons.WaitingOnAdThrottle)];
+
+                    const canSendAgainAt = (new Date()).getTime() + (1000 * 60 * 10);
+
+                    const tick = window.setInterval(() => { 
+                        const timeRemaining = Math.floor(Math.max(0, canSendAgainAt - (new Date()).getTime()) / 1000);
+                        this.adSendWaitRemainingSec = timeRemaining;
+                    }, 1000);
+                    window.setTimeout(() => {
+                        window.clearInterval(tick);
+                        this.adSendWaitRemainingSec = null;
+                        this._cantSendAsAdReasons.value = this._cantSendAsAdReasons.value.filter(r => r != CantSendAsAdReasons.WaitingOnAdThrottle);
+                    }, 1000 * 60 * 10);
                 },
                 onSuccessAsync: async () => {
                     this.addAdMessage({
@@ -1078,6 +1143,16 @@ export class ChatChannelViewModel extends ChannelViewModel {
         this.verifyCurrentlyEffectiveOp();
         await this.activeLoginViewModel.chatConnection.changeChannelPrivacyStatusAsync(this.name, status);
     }
+
+    async sendAsWarningMessageAsync() {
+        this.verifyCurrentlyEffectiveOp();
+        this.sendTextboxInternalAsync();
+    }
+}
+
+enum CantSendAsAdReasons {
+    ChannelDoesntAllowAds,
+    WaitingOnAdThrottle
 }
 
 export enum ChatChannelPresenceState {

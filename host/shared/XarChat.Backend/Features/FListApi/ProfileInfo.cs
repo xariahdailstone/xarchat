@@ -52,6 +52,9 @@ namespace XarChat.Backend.Features.FListApi
         [JsonPropertyName("settings")]
         public ProfileInfoDisplaySettings Settings { get; set; }
 
+        [JsonPropertyName("timezone")]
+        public decimal? Timezone { get; set; }
+
         [JsonPropertyName("updated_at")]
         public long UpdatedAt { get; set; }
 

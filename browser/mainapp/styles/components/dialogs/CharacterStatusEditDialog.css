@@ -55,7 +55,8 @@
     border: none;
     background: var(--bg-level-2);
     color: var(--fg-level-2);
-    font: var(--chat-font);
+    font-size: var(--chat-font-size);
+    font-family: var(--chat-font-family);
     padding: 4px 4px;
     border-radius: 4px;
     resize: none;
@@ -83,6 +84,7 @@
 .status-preview {
     background: var(--bg-level-3);
     color: var(--fg-level-3);
-    font: var(--chat-font);
+    font-size: var(--chat-font-size);
+    font-family: var(--chat-font-family);
     margin-top: 6px;
 }

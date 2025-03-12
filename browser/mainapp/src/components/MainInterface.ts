@@ -10,10 +10,15 @@ import { CharacterDetailPopupViewModel } from "../viewmodel/popups/CharacterDeta
 import { CollectionView2 } from "./CollectionView2.js";
 import { CollectionViewLightweight } from "./CollectionViewLightweight.js";
 import { ComponentBase, componentElement } from "./ComponentBase.js";
+import { LeftBar } from "./LeftBar.js";
+import { SplitterHandle } from "./SplitterHandle.js";
+import { Stage } from "./Stage.js";
 import { TitleBar } from "./TitleBar.js";
 import { DialogFrame } from "./dialogs/DialogFrame.js";
 import { CharacterDetailPopup } from "./popups/CharacterDetailPopup.js";
 import { PopupFrame } from "./popups/PopupFrame.js";
+import { getValueReference, ValueReference } from "../util/ValueReference.js";
+import { PopupViewModel } from "../viewmodel/popups/PopupViewModel.js";
 
 @componentElement("x-maininterface")
 export class MainInterface extends ComponentBase<AppViewModel> {
@@ -25,17 +30,17 @@ export class MainInterface extends ComponentBase<AppViewModel> {
             <div class="clientarea" id="elClientArea">
                 <div class="chatui not-loaded" id="elChatUi">
                     <x-leftbar slot="a" class="leftbar" id="elLeftBar"></x-leftbar>
-                    <x-splitterhandle class="splitterhandle" target="elLeftBar" orientation="horizontal" min="200" max="500" modelpath="leftBarWidth"></x-splitterhandle>
-                    <x-stage slot="b" class="stage" id="elStage" modelpath="currentlySelectedSession"></x-stage>
+                    <x-splitterhandle id="elLeftBarSplitter" class="splitterhandle" target="elLeftBar" orientation="horizontal" min="200" max="500"></x-splitterhandle>
+                    <x-stage slot="b" class="stage" id="elStage"></x-stage>
                 </div>
-                <x-collectionview2 modelpath="popups" id="elPopupCollectionView">
+                <x-collectionview2 id="elPopupCollectionView">
                     <template>
                         <x-popupframe></x-popupframe>
                     </template>
                     <div slot="container" class="popupframe" id="elPopupFrame"></div>
                 </x-collectionview2>
 
-                <x-dialogstackcollectionview modelpath="dialogs" id="elDialogCollectionView">
+                <x-dialogstackcollectionview id="elDialogCollectionView">
                     <div class="dialogstack" id="elDialogStack"></div>
                 </x-dialogstackcollectionview>
             </div>
@@ -46,55 +51,36 @@ export class MainInterface extends ComponentBase<AppViewModel> {
         const elChatUi = this.$("elChatUi") as HTMLDivElement;
         const elDialogCollectionView = this.$("elDialogCollectionView") as DialogStackCollectionView;
         const elPopupFrame = this.$("elPopupFrame") as HTMLDivElement;
+        const elStage = this.$("elStage") as Stage;
+        const elLeftBarSplitter = this.$("elLeftBarSplitter") as SplitterHandle;
+        const elPopupCollectionView = this.$("elPopupCollectionView") as CollectionView2<PopupViewModel>;
 
-        // elDialogCollectionView.oncreateelementcontent = (cel, vm) => {
-        //     const elDf = new DialogFrame();
-        //     elDf.classList.add("dialogframe");
-        //     cel.appendChild(elDf);
-        // };
-        // elDialogCollectionView.oncreatedelement = (cel, vm) => {
-        //     const el = cel.firstElementChild as HTMLElement;
-        //     //this.log("createdelement", el);
-        //     if (el instanceof DialogFrame) {
-        //         //this.log("doing DF animate in");
-        //         el.viewModel = vm;
-        //         el.animateOpen();
-        //     }
-        //     else {
-        //         //this.log("doing default animate in");
-        //         el.classList.add("new");
-        //         window.requestIdleCallback(() => {
-        //             el.classList.remove("new");
-        //         });
-        //     }
-        //     this.updateDialogsState();
-        // };
-        // elDialogCollectionView.ontearingdownelement = (cel, vm) => {
-        //     const el = cel.firstElementChild as HTMLElement;
-        //     if (el instanceof DialogFrame) {
-        //         return new Promise<void>(async (resolve) => {
-        //             try {
-        //                 await el.animateCloseAsync();
-        //                 this.updateDialogsState();
-        //             }
-        //             finally {
-        //                 resolve();
-        //             }
-        //         });
-        //     }
-        //     else {
-        //         return new Promise<void>((resolve) => {
-        //             TransitionUtils.onTransitionEndOrTimeout(el, 1000, () => {
-        //                 this.updateDialogsState();
-        //                 resolve();
-        //             });
-        //             el.classList.add("closed");
-        //         });
-        //     }
-        // };
+        this.watchExpr(vm => vm.dialogs, v => {
+            elDialogCollectionView.viewModel = v ?? null;
+        });
+        this.watchExpr(vm => vm.popups, v => {
+            elPopupCollectionView.viewModel = v ?? null;
+        });
+        this.watchExpr(vm => vm.currentlySelectedSession, v => {
+            elStage.viewModel = v ?? null;
+        });
+        this.watchViewModel(vm => {
+            if (vm) {
+                elLeftBarSplitter.viewModel = getValueReference(vm, "leftBarWidth");
+            }
+            else {
+                elLeftBarSplitter.viewModel = null;
+            }
+        })
 
+        elDialogCollectionView.addEventListener("updatedelements", () => {
+            this.updateDialogsState();
+        });
         elDialogCollectionView.addEventListener("delayedremovecomplete", (e: Event) => {
             this.updateDialogsState();
+        });
+        elPopupCollectionView.addEventListener("updatedelements", () => {
+            this.updatePopupsState();
         });
 
         const updateChatUiVisibility = () => {
@@ -111,7 +97,7 @@ export class MainInterface extends ComponentBase<AppViewModel> {
         this.watchExpr(vm => vm.initialized, initialized => {
             updateChatUiVisibility();
         });
-        this.watch("logins.length", v => {
+        this.watchExpr(vm => vm.logins.length, v => {
             updateChatUiVisibility();
         })
 
@@ -146,7 +132,7 @@ export class MainInterface extends ComponentBase<AppViewModel> {
             }
         });
 
-        this.watch("showTitlebar", v => {
+        this.watchExpr(vm => vm.showTitlebar, v => {
             if (!!v) {
                 elTitleBar.classList.remove("hidden");
             }
@@ -154,12 +140,14 @@ export class MainInterface extends ComponentBase<AppViewModel> {
                 elTitleBar.classList.add("hidden");
             }
         });
-        this.watch("dialogs.length", v => {
-            this.updateDialogsState();
-        });
-        this.watch("popups.length", v => {
-            this.updatePopupsState();
-        });
+        // this.watchExpr(vm => vm.dialogs.length, v => {
+        //     console.log("vm.dialogs.length", v);
+        //     this.updateDialogsState();
+        // });
+        // this.watchExpr(vm => vm.popups.length, v => {
+        //     console.log("vm.popups.length", v);
+        //     this.updatePopupsState();
+        // });
 
         // this.watch("popup", v => {
         //     while (elPopupFrame.firstElementChild) {

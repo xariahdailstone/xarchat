@@ -1,3 +1,4 @@
+import { CallbackSet } from "./CallbackSet";
 import { SnapshottableSet } from "./collections/SnapshottableSet";
 import { EmptyDisposable, IDisposable, asDisposable } from "./Disposable";
 import { OperationCancelledError } from "./PromiseSource";
@@ -42,31 +43,22 @@ class CancellationTokenImpl implements CancellationToken {
     private readonly _abortController: AbortController = new AbortController();
     readonly signal: AbortSignal;
 
-    private readonly _registeredHandlers: SnapshottableSet<CancellationEventHandler> = new SnapshottableSet();
+    private readonly _registeredHandlers2: CallbackSet<CancellationEventHandler> = new CallbackSet("CancellationTokenImpl");
+
     register(callback: CancellationEventHandler): (IDisposable & Disposable) {
         if (this.isCancellationRequested) {
             try { callback(); }
             catch { }
         }
 
-        this._registeredHandlers.add(callback);
-
-        let disposed = false;
-        return asDisposable(() => {
-            if (!disposed) {
-                this._registeredHandlers.delete(callback);
-            }
-        });
+        return this._registeredHandlers2.add(callback);
     }
 
     cancel() {
         if (!this.isCancellationRequested) {
             this.isCancellationRequested = true;
             this._abortController.abort();
-            this._registeredHandlers.forEachValueSnapshotted(handler => {
-                try { handler(); }
-                catch { }
-            });
+            this._registeredHandlers2.invoke();
         }
     }
 }

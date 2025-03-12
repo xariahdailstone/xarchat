@@ -24,7 +24,7 @@ export class AppInitializeDialog extends DialogComponentBase<AppInitializeViewMo
             this.viewModel!.cancel();
         });
 
-        this.watch("action", (v: (string | null)) => {
+        this.watchExpr(vm => vm.action, (v: (string | null)) => {
             elAction.innerText = (v != null) ? v : "Please wait...";
         });
         this.watchExpr(vm => vm.cancelButtonText, cbt => {

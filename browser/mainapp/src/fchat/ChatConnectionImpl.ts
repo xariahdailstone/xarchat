@@ -118,6 +118,21 @@ export class ChatConnectionImpl implements ChatConnection {
 
     get extendedFeaturesEnabled(): boolean { return this._extendedFeaturesEnabled; }
 
+    debug_injectReceivedMessage(message: string): void {
+        this._incomingMessageBuffer.enqueue(message);
+    }
+
+    debug_outputMessage(message: string): void {
+        const spacePos = message.indexOf(' ');
+        const mcode = spacePos != -1 ? message.substring(0, spacePos) : message;
+        const mbody = spacePos != -1 ? JSON.parse(message.substring(spacePos + 1)) : undefined;
+        const cm: ChatMessage = {
+            code: mcode,
+            body: mbody,
+        }
+        this.sendMessageRawAsync(cm);
+    }
+
     async disconnect(): Promise<void> {
         this._requestedDisconnect = true;
         if (this._incomingDataLoopEnded) {
@@ -188,11 +203,31 @@ export class ChatConnectionImpl implements ChatConnection {
         }
     }
 
+    async checkChannelSendMessageAsync(channel: ChannelName, message: string): Promise<void> {
+        if (message.length == 0) { throw new Error("You must supply a message."); }
+
+        const varChatMax = this._serverVariables.get("chat_max");
+        if (this._serverVariables.has("chat_max") 
+            && message.length > +varChatMax) { 
+            throw new Error(`Your message is too long.  Messages in channels cannot exceed ${(+varChatMax).toLocaleString()} characters.`); }
+    }
+
     async channelSendMessageAsync(channel: ChannelName, message: string): Promise<void> {
+        await this.checkChannelSendMessageAsync(channel, message);
         await this.bracketedSendAsync({ code: "MSG", body: { channel: channel.value, message: message }}, ERRAsFailure);
     }
 
+    async checkChannelAdMessageAsync(channel: ChannelName, message: string): Promise<void> {
+        if (message.length == 0) { throw new Error("You must supply an ad message."); }
+
+        const varLfrpMax = this._serverVariables.get("lfrp_max");
+        if (this._serverVariables.has("lfrp_max") 
+            && message.length > +varLfrpMax) { 
+            throw new Error(`Your message is too long.  Roleplay ads cannot exceed ${(+varLfrpMax).toLocaleString()} characters.`); }
+    }
+
     async channelAdMessageAsync(channel: ChannelName, message: string): Promise<void> {
+        await this.checkChannelAdMessageAsync(channel, message);
         await this.bracketedSendAsync({ code: "LRP", body: { channel: channel.value, message: message }}, ERRAsFailure);
     }
 
@@ -279,7 +314,17 @@ export class ChatConnectionImpl implements ChatConnection {
         await this.sendMessageRawAsync({ code: "TPN", body: { character: character.value, status: TypingStatusConvert.toString(typingStatus) }});
     }
 
+    async checkPrivateMessageSendAsync(character: CharacterName, message: string): Promise<void> {
+        if (message.length == 0) { throw new Error("You must supply a message."); }
+
+        const varPrivMax = this._serverVariables.get("priv_max");
+        if (this._serverVariables.has("priv_max") 
+            && message.length > +varPrivMax) { 
+            throw new Error(`Your message is too long.  Private messages cannot exceed ${(+varPrivMax).toLocaleString()} characters.`); }
+    }
+
     async privateMessageSendAsync(character: CharacterName, message: string): Promise<void> {
+        await this.checkPrivateMessageSendAsync(character, message);
         await this.bracketedSendAsync({ code: "PRI", body: { recipient: character.value, message: message }}, ERRAsFailure);
     }
 
@@ -386,29 +431,34 @@ export class ChatConnectionImpl implements ChatConnection {
             while (true) { // TODO: exit condition
                 //this.logger.logDebug("readmsg", ++i);
                 const data = await this._incomingMessageBuffer.dequeueAsync(cancellationToken);
-                //this.logger.logDebug("gotmsg", i);
-                const msg = this.parseChatMessage(data);
-
                 try {
-                    if (msg.code == "PIN") {
-                        await this.sendMessageRawAsync({ code: "PIN" });
-                        msg.handled = true;
-                        continue;
-                    }
+                    //this.logger.logDebug("gotmsg", i);
+                    const msg = this.parseChatMessage(data);
 
-                    for (let tmsgsink of this._incomingMessageSinks) {
-                        await tmsgsink.handleAsync(msg);
-                        if (msg.handled) {
-                            break;
+                    try {
+                        if (msg.code == "PIN") {
+                            await this.sendMessageRawAsync({ code: "PIN" });
+                            msg.handled = true;
+                            continue;
+                        }
+
+                        for (let tmsgsink of this._incomingMessageSinks) {
+                            await tmsgsink.handleAsync(msg);
+                            if (msg.handled) {
+                                break;
+                            }
+                        }
+
+                        if (!msg.handled) {
+                            this.defaultMessageHandle(msg);
                         }
                     }
-
-                    if (!msg.handled) {
-                        this.defaultMessageHandle(msg);
+                    catch (e) {
+                        this._logger.logWarn("FAILED handling message", msg, e);
                     }
                 }
                 catch (e) {
-                    this._logger.logWarn("FAILED handling message", msg, e);
+                    this._logger.logError("FAILED parsing message", data);
                 }
             }
         }
@@ -708,11 +758,13 @@ export class ChatConnectionImpl implements ChatConnection {
 
     private handleTPNMessage(msg: HandleableTypedChatMessage<ServerTPNMessage>) {
         if (CharacterName.equals(CharacterName.create(msg.body.character), this._identifiedCharacter)) {
-            this.logger.logDebug("my TPN change", msg.body.status);
+            // We skip updating our own typing status, since we use it as a messaging flag and don't want that to get exposed in the UI.
         }
-        this.sink.charactersStatusUpdated([
-            { characterName: CharacterName.create(msg.body.character), typingStatus: TypingStatusConvert.toTypingStatus(msg.body.status) ?? TypingStatus.NONE }
-        ], false, false);
+        else {
+            this.sink.charactersStatusUpdated([
+                { characterName: CharacterName.create(msg.body.character), typingStatus: TypingStatusConvert.toTypingStatus(msg.body.status) ?? TypingStatus.NONE }
+            ], false, false);
+        }
         msg.handled = true;
     }
 
@@ -947,7 +999,7 @@ export class ChatConnectionImpl implements ChatConnection {
                             asOf: (+msg.body.asof > 0) ? new Date(+msg.body.asof) : new Date(),
                             gender: CharacterGenderConvert.toCharacterGender(msg.body.characterGender) ?? undefined,
                             status: OnlineStatusConvert.toOnlineStatus(msg.body.characterStatus) ?? undefined,
-                            seen: msg.body.seen,
+                            seen: msg.body.seen || CharacterName.create(msg.body.character) == this._identifiedCharacter,
                             isHistorical: true
                         });
                         msg.handled = true;
@@ -977,7 +1029,7 @@ export class ChatConnectionImpl implements ChatConnection {
                             asOf: (+msg.body.asof > 0) ? new Date(+msg.body.asof) : new Date(),
                             gender: CharacterGenderConvert.toCharacterGender(msg.body.characterGender) ?? undefined,
                             status: OnlineStatusConvert.toOnlineStatus(msg.body.characterStatus) ?? undefined,
-                            seen: msg.body.seen,
+                            seen: msg.body.seen || CharacterName.create(msg.body.character) == this._identifiedCharacter,
                             isHistorical: true
                         });
                         msg.handled = true;
@@ -994,7 +1046,7 @@ export class ChatConnectionImpl implements ChatConnection {
                             asOf: (+msg.body.asof > 0) ? new Date(+msg.body.asof) : new Date(),
                             gender: CharacterGenderConvert.toCharacterGender(msg.body.characterGender) ?? undefined,
                             status: OnlineStatusConvert.toOnlineStatus(msg.body.characterStatus) ?? undefined,
-                            seen: msg.body.seen,
+                            seen: msg.body.seen || CharacterName.create(msg.body.character) == this._identifiedCharacter,
                             isHistorical: true
                         });
                         msg.handled = true;
@@ -1025,7 +1077,7 @@ export class ChatConnectionImpl implements ChatConnection {
                             asOf: (+msg.body.asof > 0) ? new Date(+msg.body.asof) : new Date(),
                             gender: CharacterGenderConvert.toCharacterGender(msg.body.characterGender) ?? undefined,
                             status: OnlineStatusConvert.toOnlineStatus(msg.body.characterStatus) ?? undefined,
-                            seen: msg.body.seen,
+                            seen: msg.body.seen || CharacterName.create(msg.body.character) == this._identifiedCharacter,
                             isHistorical: true
                         });
                         msg.handled = true;
@@ -1056,7 +1108,7 @@ export class ChatConnectionImpl implements ChatConnection {
                             asOf: (+msg.body.asof > 0) ? new Date(+msg.body.asof) : new Date(),
                             gender: CharacterGenderConvert.toCharacterGender(msg.body.characterGender) ?? undefined,
                             status: OnlineStatusConvert.toOnlineStatus(msg.body.characterStatus) ?? undefined,
-                            seen: msg.body.seen,
+                            seen: msg.body.seen || CharacterName.create(msg.body.character) == this._identifiedCharacter,
                             isHistorical: true
                         });
                         msg.handled = true;
@@ -1314,6 +1366,11 @@ export class ChatConnectionImpl implements ChatConnection {
     }
 
     async changeChannelDescriptionAsync(channel: ChannelName, description: string): Promise<void> {
+        const varCdsMax = this._serverVariables.get("cds_max");
+        if (this._serverVariables.has("cds_max") 
+            && description.length > +varCdsMax) { 
+            throw new Error(`That description is too long.  Channel descriptions cannot exceed ${(+varCdsMax).toLocaleString()} characters.`); }
+
         await this.bracketedSendAsync({
             code: "CDS", body: {
                 channel: channel.value,
@@ -1361,7 +1418,8 @@ export class ChatConnectionImpl implements ChatConnection {
                     roles: args.roles.length > 0 ? args.roles : undefined,
                     orientations: args.orientations.length > 0 ? args.orientations : undefined,
                     positions: args.positions.length > 0 ? args.positions : undefined,
-                    languages: args.languages.length > 0 ? args.languages : undefined
+                    languages: args.languages.length > 0 ? args.languages : undefined,
+                    furryprefs: args.furryprefs.length > 0 ? args.furryprefs : undefined
                 }
             },
             (recvMsg) => {

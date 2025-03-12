@@ -1,8 +1,8 @@
 import { ComponentBase, componentElement } from "./ComponentBase.js";
 import { Fragment, init, jsx, VNode, styleModule, toVNode, propsModule, eventListenersModule } from "../snabbdom/index.js";
-import { Observable, isObservable } from "../util/Observable.js";
+import { DependencySet, Observable, isObservable } from "../util/Observable.js";
 import { ObservableBase } from "../util/ObservableBase.js";
-import { IDisposable, asDisposable } from "../util/Disposable.js";
+import { DisposableOwnerField, IDisposable, asDisposable } from "../util/Disposable.js";
 import { CharacterName } from "../shared/CharacterName.js";
 import { ActiveLoginViewModel } from "../viewmodel/ActiveLoginViewModel.js";
 import { CharacterSet, CharacterStatus } from "../shared/CharacterSet.js";
@@ -15,131 +15,171 @@ import { CharacterGender } from "../shared/CharacterGender.js";
 import { HTMLUtils } from "../util/HTMLUtils.js";
 import { valueSyncModule } from "../util/snabbdom/valueSyncHook.js";
 
-export abstract class RenderingComponentBase<TViewModel> extends ComponentBase<TViewModel> {
-    constructor() {
-        super();
+export interface MakeRenderingComponentOptions {
+    render: () => (VNode | [VNode, IDisposable]);
+    afterRender?: () => (void | IDisposable | IDisposable[] | Iterable<IDisposable>);
+}
+export interface RenderingComponentFunctions {
+    readonly refreshDOM: () => void;
+    readonly stateHasChanged: () => void;
+}
+export function makeRenderingComponent<TViewModel>(
+    component: ComponentBase<TViewModel>,
+    options: MakeRenderingComponentOptions): RenderingComponentFunctions {
 
-        this.patch = init([classListNewModule, propsModule, rawAttributesModule, styleModule, eventListenersModule, valueSyncModule /* , idModule */], undefined, {
-            experimental: {
-                fragments: true
-            }
-        });
-        HTMLUtils.assignStaticHTMLFragment(this.elMain, "<span id='elPlaceholder'></span>");
+    const logger = component.logger;
 
-        const initVNode = <div></div>;
-        this._currentVNode = this.patch(this.$("elPlaceholder")!, initVNode);
-    }
-
-    private readonly patch: any;
-    private _currentVNode: VNode | Element;
-
-    override get viewModel(): (TViewModel | null) { return super.viewModel; }
-    override set viewModel(value: (TViewModel | null)) { super.viewModel = value; }
-
-    protected override viewModelChanged(): void {
-        this.stateHasChanged();
-    }
-
-    protected override connectedToDocument(): void {
-        this.refreshDOM();
-    }
-    protected override disconnectedFromDocument(): void {
-        this.cleanupDependencyListeners();
-        if (this._refreshDisposable != null) {
-            this._refreshDisposable.dispose();
-            this._refreshDisposable = null;
+    const patch = init([classListNewModule, propsModule, rawAttributesModule, styleModule, eventListenersModule, valueSyncModule /* , idModule */], undefined, {
+        experimental: {
+            fragments: true
         }
-    }
+    });
+    HTMLUtils.assignStaticHTMLFragment(component.elMain, "<span id='elPlaceholder'></span>");
+    const initVNode = <div></div>;
+    let currentVNode = patch(component.$("elPlaceholder")!, initVNode);
 
-    private _stateHasChangedRegistration: (number | null) = null;
-    stateHasChanged(): void {
-        if (this._stateHasChangedRegistration == null) {
-            this._stateHasChangedRegistration = window.requestAnimationFrame(() => {
-                this._stateHasChangedRegistration = null;
-                this.refreshDOM();
+    let refreshing: number = 0;
+    let refreshDisposable: IDisposable | null = null;
+    let statehasChangedRegistration: number | null = null;
+
+    let currentDependencies = new DisposableOwnerField();
+    
+    let isConnected = component.elMain.isConnected;
+
+    const stateHasChanged = (obs?: any, propName?: string) => {
+        if (statehasChangedRegistration == null) {
+            statehasChangedRegistration = window.requestAnimationFrame(() => {
+                statehasChangedRegistration = null;
+                refreshDOM();
             });
         }
-    }
+    };
+    let curDepSet: DependencySet | null = null;
+    const refreshDOM = () => {
+        if (statehasChangedRegistration != null) {
+            window.cancelAnimationFrame(statehasChangedRegistration);
+            statehasChangedRegistration = null;
+        }
+        if (!isConnected) { return; }
 
-    private _refreshing: number = 0;
-    private _refreshDisposable: IDisposable | null = null;
+        currentDependencies.value = null;
+        const myDepSet = Observable.createDependencySet();
+        curDepSet = myDepSet;
+        myDepSet.addChangeListener((obs, propName) => { 
+            //console.log("RenderingComponentBase myDepSet.addChangeListener", component.constructor.name, obs, propName);
+            if (curDepSet == myDepSet) { 
+                logger.logDebug("RenderingComponentBase myDepSet.addChangeListener match", component.constructor.name, obs, propName);
+                stateHasChanged(obs, propName); 
+            } 
+            else {
+                logger.logDebug("RenderingComponentBase myDepSet.addChangeListener mismatch", component.constructor.name, obs, propName);
+            }
+        });
+        currentDependencies.value = myDepSet;
 
-    refreshDOM(): void {
-        if (this._stateHasChangedRegistration != null) {
-            window.cancelAnimationFrame(this._stateHasChangedRegistration);
-            this._stateHasChangedRegistration = null;
+        refreshing++;
+
+        if (refreshDisposable != null) {
+            refreshDisposable.dispose();
+            refreshDisposable = null;
         }
 
-        this.cleanupDependencyListeners();
-        const myDepSet = this._currentDependencies;
-
-        this._refreshing++;
         const rmDisposable = Observable.addReadMonitor((vm, propName, propValue) => {
-            this.addDependencyListener(myDepSet, vm, propName);
-        });
-        try
-        {
-            if (this._refreshDisposable != null) {
-                this._refreshDisposable.dispose();
-                this._refreshDisposable = null;
+            if (/*component.isConnected && */ isObservable(vm)) {
+                // if (vm instanceof ActiveLoginViewModel && propName == "pmConvosCollapsed") {
+                //     debugger;
+                // }
+                myDepSet.maybeAddDependency(vm, propName);
             }
-            const renderResult = this.render();
+        });
+        try {
+            let renderResult: (VNode | [VNode, IDisposable]);
+            try {
+                renderResult = options.render();
+            }
+            catch (e) {
+                logger.logError("Failed to render", component.constructor.name, e);
+                throw e;
+            }
             let newVNode: VNode;
             if (renderResult instanceof Array) {
                 newVNode = renderResult[0];
-                this._refreshDisposable = renderResult[1];
+                refreshDisposable = renderResult[1];
             }
             else {
                 newVNode = renderResult;
-                this._refreshDisposable = null;
+                refreshDisposable = null;
             }
-            this._currentVNode = this.patch(this._currentVNode, newVNode);
+            currentVNode = patch(currentVNode, newVNode);
             
-            const afterRenderResult = this.afterRender();
+            const afterRenderResult = options.afterRender ? options.afterRender() : null;
             if (afterRenderResult) {
                 if (typeof (afterRenderResult as any)[Symbol.iterator] == "function") {
                     const d = asDisposable(...afterRenderResult as Iterable<IDisposable>);
-                    this._refreshDisposable = asDisposable(this._refreshDisposable, d);
+                    refreshDisposable = asDisposable(refreshDisposable, d);
                 }
                 else if (afterRenderResult instanceof Array) {
-                    this._refreshDisposable = asDisposable(this._refreshDisposable, ...afterRenderResult)
+                    refreshDisposable = asDisposable(refreshDisposable, ...afterRenderResult)
                 }
                 else {
-                    this._refreshDisposable = asDisposable(this._refreshDisposable, afterRenderResult as IDisposable)
+                    refreshDisposable = asDisposable(refreshDisposable, afterRenderResult as IDisposable)
                 }
             }
         }
-        finally {
+        finally
+        {
             rmDisposable.dispose();
-            this._refreshing--;
+            refreshing--;
         }
+        logger.logDebug("refresh dependency count", component.constructor.name, myDepSet.count, myDepSet.skippedDuplicateCount);
+    };
+
+    component.addEventListener("viewmodelchange", () => {
+        stateHasChanged();
+    });
+    component.addEventListener("connected", () => {
+        isConnected = true;
+        refreshDOM();
+    });
+    component.addEventListener("disconnected", () => {
+        isConnected = false;
+        currentDependencies.value = null;
+        if (refreshDisposable != null) {
+            refreshDisposable.dispose();
+            refreshDisposable = null;
+        }
+        currentVNode = patch(currentVNode, <></>);
+    });
+
+    return {
+        refreshDOM: refreshDOM,
+        stateHasChanged: stateHasChanged
     }
+}
 
-    protected afterRender(): (void | IDisposable | IDisposable[] | Iterable<IDisposable>) {
-    }
-
-//    private _dependencyListeners: Map<object, Map<string, Disposable>> = new Map();
-    private _currentDependencies: DependencySet = new DependencySet();
-
-    private addDependencyListener(depSet: DependencySet, vm: any, propertyName: string) {
-        if (this.isComponentConnected && isObservable(vm)) {
-            depSet.maybeAddDependency(vm, propertyName, () => {
-                const newListener = (vm as Observable).addEventListener("propertychange", (e) => {
-                    if (e.propertyName == propertyName && depSet == this._currentDependencies) {
-                        this.stateHasChanged();
-                    }
-                })
-                return newListener;
+export abstract class RenderingComponentBase<TViewModel> extends ComponentBase<TViewModel> {
+    constructor() {
+        super();
+        this._rcFuncs = makeRenderingComponent(
+            this, {
+                render: () => this.render(),
+                afterRender: () => this.afterRender()
             });
-        }
     }
 
-    private cleanupDependencyListeners() {
-        this._currentDependencies.dispose();
-        this._currentDependencies = new DependencySet();
+    private readonly _rcFuncs: RenderingComponentFunctions;
+
+    protected abstract render(): (VNode | [VNode, IDisposable]);
+
+    protected afterRender(): (void | IDisposable | IDisposable[] | Iterable<IDisposable>) { }
+
+    refreshDOM() {
+        this._rcFuncs.refreshDOM();
     }
 
-    private readonly P_CHARNAME = {};
+    stateHasChanged() {
+        this._rcFuncs.stateHasChanged();
+    }
 
     protected getCharacterStatus(characterName: CharacterName | null | undefined): CharacterStatus {
         let alvm: (ActiveLoginViewModel | null) = null;
@@ -163,51 +203,240 @@ export abstract class RenderingComponentBase<TViewModel> extends ComponentBase<T
 
         return alvm.characterSet.getCharacterStatus(characterName);
     }
-
-    abstract render(): (VNode | [VNode, IDisposable]);
 }
 
-class DependencySet implements IDisposable {
-    constructor() {
-    }
+// export abstract class RenderingComponentBaseOld<TViewModel> extends ComponentBase<TViewModel> {
+//     constructor() {
+//         super();
 
-    private readonly _deps: Map<any, Map<string, IDisposable>> = new Map();
+//         this.patch = init([classListNewModule, propsModule, rawAttributesModule, styleModule, eventListenersModule, valueSyncModule /* , idModule */], undefined, {
+//             experimental: {
+//                 fragments: true
+//             }
+//         });
+//         HTMLUtils.assignStaticHTMLFragment(this.elMain, "<span id='elPlaceholder'></span>");
 
-    private _disposed: boolean = false;
-    dispose() {
-        if (!this._disposed) {
-            this._disposed = true;
-            for (let depsForVm of this._deps.values()) {
-                for (let depForProp of depsForVm.values()) {
-                    depForProp.dispose();
-                }
-            }
-        }
-    }
+//         const initVNode = <div></div>;
+//         this._currentVNode = this.patch(this.$("elPlaceholder")!, initVNode);
+//     }
 
-    [Symbol.dispose]() { this.dispose(); }
+//     private readonly patch: any;
+//     private _currentVNode: VNode | Element;
 
-    get isDisposed() { return this._disposed; }
+//     override get viewModel(): (TViewModel | null) { return super.viewModel; }
+//     override set viewModel(value: (TViewModel | null)) { super.viewModel = value; }
 
-    maybeAddDependency(vm: any, propertyName: string, setupFunc: () => IDisposable) {
-        let depsForVm = this._deps.get(vm);
-        if (!depsForVm) {
-            depsForVm = new Map();
-            this._deps.set(vm, depsForVm);
-        }
+//     protected override viewModelChanged(): void {
+//         this.stateHasChanged();
+//     }
 
-        let depForProp = depsForVm.get(propertyName);
-        if (!depForProp) {
-            depForProp = setupFunc();
-            depsForVm.set(propertyName, depForProp);
-        }
-    }
-}
+//     protected override connectedToDocument(): void {
+//         this.refreshDOM();
+//     }
+//     protected override disconnectedFromDocument(): void {
+//         this.cleanupDependencyListeners();
+//         if (this._refreshDisposable != null) {
+//             this._refreshDisposable.dispose();
+//             this._refreshDisposable = null;
+//         }
+//     }
 
-interface Dependency {
-    target: any;
-    propertyName: string;
-}
+//     private _stateHasChangedRegistration: (number | null) = null;
+//     stateHasChanged(): void {
+//         if (this._stateHasChangedRegistration == null) {
+//             this._stateHasChangedRegistration = window.requestAnimationFrame(() => {
+//                 this._stateHasChangedRegistration = null;
+//                 this.refreshDOM();
+//             });
+//         }
+//     }
+
+//     private _refreshing: number = 0;
+//     private _refreshDisposable: IDisposable | null = null;
+
+//     refreshDOM(): void {
+//         if (this._stateHasChangedRegistration != null) {
+//             window.cancelAnimationFrame(this._stateHasChangedRegistration);
+//             this._stateHasChangedRegistration = null;
+//         }
+
+//         this.cleanupDependencyListeners();
+//         const myDepSet = this._currentDependencies;
+
+//         this._refreshing++;
+//         const rmDisposable = Observable.addReadMonitor((vm, propName, propValue) => {
+//             this.addDependencyListener(myDepSet, vm, propName);
+//         });
+//         try
+//         {
+//             if (this._refreshDisposable != null) {
+//                 this._refreshDisposable.dispose();
+//                 this._refreshDisposable = null;
+//             }
+//             const renderResult = this.render();
+//             let newVNode: VNode;
+//             if (renderResult instanceof Array) {
+//                 newVNode = renderResult[0];
+//                 this._refreshDisposable = renderResult[1];
+//             }
+//             else {
+//                 newVNode = renderResult;
+//                 this._refreshDisposable = null;
+//             }
+//             this._currentVNode = this.patch(this._currentVNode, newVNode);
+            
+//             const afterRenderResult = this.afterRender();
+//             if (afterRenderResult) {
+//                 if (typeof (afterRenderResult as any)[Symbol.iterator] == "function") {
+//                     const d = asDisposable(...afterRenderResult as Iterable<IDisposable>);
+//                     this._refreshDisposable = asDisposable(this._refreshDisposable, d);
+//                 }
+//                 else if (afterRenderResult instanceof Array) {
+//                     this._refreshDisposable = asDisposable(this._refreshDisposable, ...afterRenderResult)
+//                 }
+//                 else {
+//                     this._refreshDisposable = asDisposable(this._refreshDisposable, afterRenderResult as IDisposable)
+//                 }
+//             }
+//         }
+//         finally {
+//             rmDisposable.dispose();
+//             this._refreshing--;
+//         }
+//     }
+
+//     protected afterRender(): (void | IDisposable | IDisposable[] | Iterable<IDisposable>) {
+//     }
+
+// //    private _dependencyListeners: Map<object, Map<string, Disposable>> = new Map();
+//     private _currentDependencies: DependencySet = new DependencySet();
+
+//     private addDependencyListener(depSet: DependencySet, vm: any, propertyName: string) {
+//         if (this.isComponentConnected && isObservable(vm)) {
+//             depSet.maybeAddDependency(vm, propertyName, () => {
+//                 const newListener = (vm as Observable).addEventListener("propertychange", (e) => {
+//                     if (e.propertyName == propertyName && depSet == this._currentDependencies) {
+//                         this.stateHasChanged();
+//                     }
+//                 })
+//                 return newListener;
+//             });
+//         }
+//     }
+
+//     private cleanupDependencyListeners() {
+//         this._currentDependencies.dispose();
+//         this._currentDependencies = new DependencySet();
+//     }
+
+//     private readonly P_CHARNAME = {};
+
+//     protected getCharacterStatus(characterName: CharacterName | null | undefined): CharacterStatus {
+//         let alvm: (ActiveLoginViewModel | null) = null;
+//         let tvm = this.viewModel;
+
+//         if (!characterName) {
+//             return CharacterSet.emptyStatus(CharacterName.create(""));
+//         }
+
+//         while (tvm) {
+//             if (tvm instanceof ActiveLoginViewModel) {
+//                 alvm = tvm;
+//                 break;
+//             }
+//             tvm = (tvm as any).parent;
+//         }
+
+//         if (alvm == null) {
+//             return CharacterSet.emptyStatus(characterName);
+//         }
+
+//         return alvm.characterSet.getCharacterStatus(characterName);
+//     }
+
+//     abstract render(): (VNode | [VNode, IDisposable]);
+// }
+
+// class DependencySet implements IDisposable {
+//     static createOver<T>(name: string, onExpire: () => any, func: () => T): { dependencySet: DependencySet, result: T | undefined, error: any | undefined } {
+//         const depSet = new DependencySet(name, onExpire);
+//         let result: T | undefined = undefined;
+//         let error: any | undefined = undefined;
+//         {
+//             using readMonitor = Observable.addReadMonitor((observable: unknown, propertyName: string, gotValue: unknown) => {
+//                 depSet.maybeAddDependency(observable, propertyName);
+//             });
+//             try {
+//                 result = func();
+//             }
+//             catch (e) {
+//                 result = undefined;
+//                 error = e;
+//             }
+//         }
+//         return { dependencySet: depSet, result: result, error: error };
+//     }
+
+//     constructor(
+//         public readonly name: string,
+//         onExpire: () => any) {
+
+//         this._onExpire = onExpire;
+//     }
+
+//     private readonly _deps: Map<any, Map<string, IDisposable>> = new Map();
+//     private _count: number = 0;
+//     private _duplicatesDroppedCount: number = 0;
+
+//     private _disposed: boolean = false;
+//     dispose() {
+//         if (!this._disposed) {
+//             this._disposed = true;
+//             for (let depsForVm of this._deps.values()) {
+//                 for (let depForProp of depsForVm.values()) {
+//                     depForProp.dispose();
+//                 }
+//             }
+//         }
+//     }
+
+//     [Symbol.dispose]() { this.dispose(); }
+
+//     get isDisposed() { return this._disposed; }
+
+//     get count() { return this._count; }
+//     get duplicatesDroppedCount() { return this._duplicatesDroppedCount; }
+
+//     private readonly _onExpire: () => any;
+
+//     maybeAddDependency(vm: any, propertyName: string) {
+//         let depsForVm = this._deps.get(vm);
+//         if (!depsForVm) {
+//             depsForVm = new Map();
+//             this._deps.set(vm, depsForVm);
+//         }
+
+//         let depForProp = depsForVm.get(propertyName);
+//         if (!depForProp) {
+//             const newListener = (vm as Observable).addEventListener("propertychange", (e) => {
+//                 if (e.propertyName == propertyName) {
+//                     this._onExpire();
+//                 }
+//             })
+
+//             this._count++;
+//             depsForVm.set(propertyName, newListener);
+//         }
+//         else {
+//             this._duplicatesDroppedCount++;
+//         }
+//     }
+// }
+
+// interface Dependency {
+//     target: any;
+//     propertyName: string;
+// }
 
 export class TestRenderViewModel extends ObservableBase {
     characterName: string | null = null;

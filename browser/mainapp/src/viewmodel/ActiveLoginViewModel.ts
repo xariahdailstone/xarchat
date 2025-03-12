@@ -39,7 +39,7 @@ import { URLUtils } from "../util/URLUtils.js";
 import { SlashCommandViewModel } from "./SlashCommandViewModel.js";
 import { IdleDetection } from "../util/IdleDetection.js";
 import { StringUtils } from "../util/StringUtils.js";
-import { ObservableExpression } from "../util/ObservableExpression.js";
+import { NamedObservableExpression, ObservableExpression } from "../util/ObservableExpression.js";
 import { InAppToastViewModel } from "./InAppToastViewModel.js";
 import { InAppToastManagerViewModel } from "./InAppToastManagerViewModel.js";
 import { LogSearch2ViewModel } from "./newlogsearch/LogSearch2ViewModel.js";
@@ -56,6 +56,10 @@ export class ActiveLoginViewModel extends ObservableBase {
         public readonly savedChatState: SavedChatState) {
 
         super();
+
+        this.addPropertyListener("pmConvosCollapsed", (e) => {
+            this.logger.logWarn("pmConvosCollapsed changed", e.propertyName, e.propertyValue);
+        })
 
         this._viewModelId = nextViewModelId++;
         this._logger = Logging.createLogger("ActiveLoginViewModel");
@@ -125,7 +129,8 @@ export class ActiveLoginViewModel extends ObservableBase {
             for (let change of changes) {
                 switch (change.changeType) {
                     case StdObservableCollectionChangeType.ITEM_ADDED:
-                        (change.item as any)[this._chanPropChangeSym] = new ObservableExpression(
+                        (change.item as any)[this._chanPropChangeSym] = new NamedObservableExpression(
+                                `${this.characterName.value}-${change.item.collectiveName}`,
                                 () => [ change.item.hasPing, change.item.unseenMessageCount ],
                                 () => { this.refreshPingMentionCount(); },
                                 () => { this.refreshPingMentionCount(); });
@@ -168,6 +173,13 @@ export class ActiveLoginViewModel extends ObservableBase {
     private readonly _logSearchViewModel2: LogSearch2ViewModel;
 
     get appViewModel() { return this.parent; }
+
+    private readonly _serverVariables: ObservableValue<{ [key: string]: any }> = new ObservableValue({});
+    get serverVariables() { return this._serverVariables.value; }
+    updateServerVariable(varName: string, varValue: any) {
+        const nv = {...this._serverVariables.value, [varName]: varValue};
+        this._serverVariables.value = nv;
+    }
 
     private readonly _miscTabs = new Collection<MiscTabViewModel>();
     get miscTabs(): ObservableCollection<MiscTabViewModel> { return this._miscTabs; }
@@ -677,6 +689,7 @@ export class ActiveLoginViewModel extends ObservableBase {
             if (!this._pmConversations2.contains(chan) &&
                 !this._pinnedChannels2.contains(chan) &&
                 !this._unpinnedChannels2.contains(chan) &&
+                !(chan instanceof ConsoleChannelViewModel) &&
                 this.selectedTab != chan) {
 
                 chan.dispose();

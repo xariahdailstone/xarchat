@@ -70,6 +70,7 @@ using XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.GetFileData;
 using XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.ConfigData;
 using XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.EIconSearch;
 using XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.ZoomLevel;
+using XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.GetMemo;
 
 namespace XarChat.Backend
 {
@@ -344,6 +345,7 @@ namespace XarChat.Backend
             services.AddXCHostCommandHandler<SetConfigDataCommandHandler>("setconfig");
             services.AddXCHostCommandHandler<SubmitEIconMetadataCommandHandler>("submiteiconmetadata");
             services.AddXCHostCommandHandler<SetZoomLevelCommandHandler>("setZoomLevel");
+            services.AddXCHostCommandHandler<GetMemoCommandHandler>("getMemo");
         }
 
         private object _concurrentCountLock = new object();

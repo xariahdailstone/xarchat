@@ -1,4 +1,5 @@
 import { RawSavedChatStateNamedFilterEntry, RawSavedChatStateNamedFilterMap, SavedChatStateJoinedChannelMap } from "../settings/AppSettings";
+import { IDisposable } from "../util/Disposable";
 import { IterableUtils } from "../util/IterableUtils";
 import { ObservableValue } from "../util/Observable";
 import { ObservableBase, observableProperty } from "../util/ObservableBase";
@@ -6,7 +7,7 @@ import { Collection } from "../util/ObservableCollection";
 import { ObservableExpression } from "../util/ObservableExpression";
 import { ChannelViewModel } from "./ChannelViewModel";
 
-export class ChannelFiltersViewModel extends ObservableBase {
+export class ChannelFiltersViewModel extends ObservableBase implements IDisposable {
     constructor(public readonly channelViewModel: ChannelViewModel) {
         super();
 
@@ -25,7 +26,10 @@ export class ChannelFiltersViewModel extends ObservableBase {
                         filterClasses: IterableUtils.asQueryable(y.selectedCategories).select(x => x.code).toArray(),
                         name: y.name,
                         canPing: y.canPing,
-                        controlsUnseenDot: y.controlsUnseenDot
+                        controlsUnseenDot: y.controlsUnseenDot,
+                        showInAdsOnlyChannel: y.showInAdsOnlyChannel,
+                        showInChatOnlyChannel: y.showInChatOnlyChannel,
+                        showInBothAdsAndChatChannel: y.showInBothAdsAndChatChannel
                     };
                     res.push(item);
                 }
@@ -34,6 +38,20 @@ export class ChannelFiltersViewModel extends ObservableBase {
             (v) => { this.sccData = v ?? null; },
             (err) => { }
         )
+    }
+
+    private _disposed: boolean = false;
+    dispose(): void {
+        if (!this._disposed) {
+            this._disposed = true;
+
+            this._updateExpr.dispose();
+            this._fcExpr.dispose();
+        }
+    }
+    get isDisposed() { return this._disposed; }
+    [Symbol.dispose](): void {
+        this.dispose();
     }
 
     private readonly _fcExpr: ObservableExpression<string[]>;
@@ -87,6 +105,21 @@ export class ChannelFiltersViewModel extends ObservableBase {
     addNamedFilter(name: string, selectedCategories: string[]) {
         const nf = new ChannelNamedFilterViewModel(this);
         nf.name = name;
+        if (name == "All") {
+            nf.showInChatOnlyChannel = false;
+            nf.showInAdsOnlyChannel = false;
+            nf.showInBothAdsAndChatChannel = true;
+        }
+        else if (name == "Ads") {
+            nf.showInChatOnlyChannel = false;
+            nf.showInAdsOnlyChannel = true;
+            nf.showInBothAdsAndChatChannel = true;
+        }
+        else if (name == "Chat") {
+            nf.showInChatOnlyChannel = true;
+            nf.showInAdsOnlyChannel = false;
+            nf.showInBothAdsAndChatChannel = true;
+        }
         for (let sc of selectedCategories) {
             for (let cc of this.availableCategories) {
                 if (cc.code == sc) {
@@ -109,6 +142,9 @@ export class ChannelFiltersViewModel extends ObservableBase {
                 }
                 nf.canPing = e.canPing ?? true;
                 nf.controlsUnseenDot = e.controlsUnseenDot ?? false;
+                nf.showInChatOnlyChannel = e.showInChatOnlyChannel ?? (e.name != "Ads" && e.name != "All");
+                nf.showInAdsOnlyChannel = e.showInAdsOnlyChannel ?? (e.name != "Chat" && e.name != "All");
+                nf.showInBothAdsAndChatChannel = e.showInBothAdsAndChatChannel ?? true;
             }
             if (selectedNf) {
                 this.selectedFilter = selectedNf;
@@ -199,6 +235,15 @@ export class ChannelNamedFilterViewModel extends ObservableBase {
     @observableProperty
     canPing: boolean = true;
 
+    @observableProperty
+    showInAdsOnlyChannel: boolean = true;
+
+    @observableProperty
+    showInChatOnlyChannel: boolean = true;
+
+    @observableProperty
+    showInBothAdsAndChatChannel: boolean = true;
+
     toggleControlsUnseenDot() {
         const setToValue = !this.controlsUnseenDot;
         if (setToValue) {
@@ -211,6 +256,15 @@ export class ChannelNamedFilterViewModel extends ObservableBase {
     }
     toggleCanPing() { 
         this.canPing = !this.canPing;
+    }
+    toggleShowInAdsOnlyChannel() {
+        this.showInAdsOnlyChannel = !this.showInAdsOnlyChannel;
+    }
+    toggleShowInChatOnlyChannel() {
+        this.showInChatOnlyChannel = !this.showInChatOnlyChannel;
+    }
+    toggleShowInBothAdsAndChatChannel() {
+        this.showInBothAdsAndChatChannel = !this.showInBothAdsAndChatChannel;
     }
 
     @observableProperty
