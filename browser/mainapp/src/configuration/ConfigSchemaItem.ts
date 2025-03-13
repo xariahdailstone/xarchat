@@ -693,7 +693,7 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                         },
                         {
                             scope: getScopeArray(["global"]),
-                            sectionTitle: "Friends",
+                            sectionTitle: "Friends and Bookmarks",
                             items: [
                                 {
                                     id: "useFriendColor",
@@ -712,6 +712,24 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                                     type: "color",
                                     defaultValue: "#00FF00",
                                     configBlockKey: "color.friend"
+                                },
+                                {
+                                    id: "useBookmarkColor",
+                                    scope: getScopeArray(["global"]),
+                                    title: "Use Bookmark Color",
+                                    description: "Colorize bookmarks' names with a distinct 'Bookmark' color.",
+                                    type: "boolean",
+                                    defaultValue: false,
+                                    configBlockKey: "useBookmarkColor"
+                                },
+                                {
+                                    scope: getScopeArray(["global"]),
+                                    id: "color.bookmark",
+                                    title: "Bookmark",
+                                    description: "",
+                                    type: "color",
+                                    defaultValue: "#FCBA03",
+                                    configBlockKey: "color.bookmark"
                                 }
                             ]
                         },

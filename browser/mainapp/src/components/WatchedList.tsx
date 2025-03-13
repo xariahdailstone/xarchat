@@ -162,6 +162,7 @@ export class CharactersCollectionView extends CollectionViewLightweight<KeyValue
                     elName.innerText = cs.characterName.value;
                     const className = `gender-${CharacterGenderConvert.toString(cs.gender).toLowerCase()}`;
                     elName.classList.add(className);
+                    elName.classList.toggle("char-is-bookmark", this.activeLoginViewModel!.bookmarks.has(cs.characterName));
                     elName.classList.toggle("char-is-friend", this.activeLoginViewModel!.friends.has(cs.characterName));
 
                     let subText = OnlineStatusConvert.toString(cs.status);
