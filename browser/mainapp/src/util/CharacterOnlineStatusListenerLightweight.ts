@@ -60,6 +60,10 @@ export function addCharacterGenderListenerLightweight(
                 lastAssignedClasses.push(`gender-${CharacterGenderConvert.toString(status.gender).toLowerCase()}`);
             }
 
+            if (status.isBookmark) {
+                lastAssignedClasses ??= [];
+                lastAssignedClasses.push("char-is-bookmark");
+            }
             if (status.isFriend) {
                 lastAssignedClasses ??= [];
                 lastAssignedClasses.push("char-is-friend");

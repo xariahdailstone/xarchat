@@ -26,16 +26,21 @@ export class ColorThemeViewModel {
                 () => [ 
                     appViewModel.getConfigSettingById(`color.gender.${gender}`), 
                     appViewModel.getConfigSettingById(`useFriendColor`),
-                    appViewModel.getConfigSettingById(`color.friend`)
+                    appViewModel.getConfigSettingById(`color.friend`),
+                    appViewModel.getConfigSettingById(`useBookmarkColor`),
+                    appViewModel.getConfigSettingById(`color.bookmark`),
                 ],
                 (v) => {
                     if (v) {
                         const rawColor = v[0] as string;
                         const useFriendColor = v[1] as boolean;
                         const friendColor = v[2] as string;
+                        const useBookmarkColor = v[3] as boolean;
+                        const bookmarkColor = v[4] as string;
 
                         document.body.style.setProperty(`--fg-gender-${gender}`, rawColor);
                         document.body.style.setProperty(`--fg-friend-gender-${gender}`, useFriendColor ? friendColor : rawColor);
+                        document.body.style.setProperty(`--fg-bookmark-gender-${gender}`, useBookmarkColor ? bookmarkColor : rawColor);
                     }
                 },
                 (err) => {}
