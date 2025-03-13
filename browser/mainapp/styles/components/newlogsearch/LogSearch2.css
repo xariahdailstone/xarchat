@@ -3,16 +3,22 @@
     height: 100%;
     
     display: grid;
-    grid-template-rows: 1fr;
-    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-columns: 100%;
     grid-template-areas:
+        "searchcriteria"
         "resultview";
+
+    .search-criteria { grid-area: searchcriteria; }
+    .result-view { grid-area: resultview; }
 }
 
 .result-view {
-    grid-area: resultview;
     top: 0;
     left: 0;
     right: 0;
     bottom: 0;
+
+    font-size: var(--chat-font-size);
+    font-family: var(--chat-font-family);
 }

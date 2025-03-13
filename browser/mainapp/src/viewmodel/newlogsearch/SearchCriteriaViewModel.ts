@@ -8,6 +8,7 @@ export class SearchCriteriaViewModel extends ObservableBase {
     constructor(public readonly activeLoginViewModel: ActiveLoginViewModel) {
         super();
         this.speakingCharacter = new SuggestTextboxViewModel(
+            activeLoginViewModel.appViewModel,
             async (v, ct) => { 
                 // TODO:
                 await TaskUtils.delay(2000, ct);

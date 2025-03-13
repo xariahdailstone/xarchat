@@ -18,8 +18,16 @@ export class LogSearch2 extends RenderingComponentBase<LogSearch2ViewModel> {
     override render(): (VNode | [VNode, IDisposable]) {
         if (this.viewModel) {
             const vm = this.viewModel;
+            const disposables: IDisposable[] = [];
 
-            return <x-vscrollarea classList={[ "result-view" ]} props={{ viewModel: vm.resultView }}></x-vscrollarea>;
+            const renderedCriteria = this.renderCriteria(vm);
+            disposables.push(renderedCriteria[1]);
+
+            const resultNode: VNode = <>
+                { renderedCriteria[0] }
+                <x-vscrollarea classList={[ "result-view" ]} props={{ viewModel: vm.resultView }}></x-vscrollarea>
+            </>;
+            return [resultNode, asDisposable(...disposables)];
         }
         else {
             return <></>;

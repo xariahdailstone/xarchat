@@ -1,13 +1,24 @@
 import { CancellationTokenSource } from "../../util/CancellationTokenSource";
+import { IDisposable } from "../../util/Disposable";
 import { HTMLUtils } from "../../util/HTMLUtils";
 import { observableProperty } from "../../util/ObservableBase";
 import { PromiseSource } from "../../util/PromiseSource";
 import { ContextPopupViewModel, PopupViewModel } from "./PopupViewModel";
 
 
-export class ImagePreviewPopupViewModel extends ContextPopupViewModel {
+export class ImagePreviewPopupViewModel extends ContextPopupViewModel implements IDisposable {
 
     private _loadCTS: CancellationTokenSource | null = null;
+
+    private _disposed: boolean = false;
+    get isDisposed() { return this._disposed; }
+    dispose() {
+        if (!this._disposed) {
+            this._disposed = true;
+            this.dismissed();
+        }
+    }
+    [Symbol.dispose]() { this.dispose(); }
 
     private _imageUrl: string | null = null;
     @observableProperty
@@ -60,7 +71,7 @@ export class ImagePreviewPopupViewModel extends ContextPopupViewModel {
                 this.breakImageElement(this._imageElement);
             }
             this._imageElement = value;
-            if (value) {
+            if (value && !this._disposed) {
                 this.parent.popups.push(this);
             }
             else {
@@ -158,7 +169,7 @@ export class ImagePreviewPopupViewModel extends ContextPopupViewModel {
                 this.breakVideoElement(this._videoElement);
             }
             this._videoElement = value;
-            if (value) {
+            if (value && !this._disposed) {
                 this.parent.popups.push(this);
             }
             else {

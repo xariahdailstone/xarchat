@@ -157,6 +157,7 @@ export class LinkPreviewProvider {
             }
             if (popupViewModel) {
                 popupViewModel.dismissed();
+                popupViewModel.dispose();
                 popupViewModel = null;
             }
         });
