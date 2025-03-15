@@ -13,6 +13,9 @@ export interface ConfigSchemaItemDefinitionItem {
     type: ConfigSchemaItemType;
     options?: ConfigSchemaOptionDefinition[];
     selectOptions?: ConfigSchemaSelectOptionDefinition[];
+    allowEmpty?: boolean;
+    min?: number;
+    max?: number;
     defaultValue: unknown;
     configBlockKey: string;
     items?: ConfigSchemaItemDefinition[];
@@ -70,7 +73,7 @@ export interface PingLineItemDefinition {
 
 export type ConfigSchemaItemDefinition = (ConfigSchemaItemDefinitionItem | ConfigSchemaItemDefinitionSection);
 
-export type ConfigSchemaItemType = "text" | "boolean" | "text[]" | "pinglist" | "radio" | "timespan" | "color" | "color-hs" | "bgcolorcontrol" | "notifroutes" | "select";
+export type ConfigSchemaItemType = "text" | "boolean" | "integer" | "text[]" | "pinglist" | "radio" | "timespan" | "color" | "color-hs" | "bgcolorcontrol" | "notifroutes" | "select";
 export type ConfigSchemaOptionItemType = "string" | "file";
 export type ConfigSchemaScopeType = "global" | "char" | "char.chancategory" | "char.chan" | "char.convo";
 export type ConfigSchemaScopeTypeSimple = "global" | "char" | "chan" | "convo";
@@ -102,6 +105,14 @@ function getScopeArray(def: ConfigSchemaScopeTypeSimple[]): ConfigSchemaScopeTyp
         result.push("char.convo");
     }
     return result;
+}
+
+function generateNumericOptions(min: number, max: number): ConfigSchemaSelectOptionDefinition[] {
+    const results: ConfigSchemaSelectOptionDefinition[] = [];
+    for (let i = min; i <= max; i++) {
+        results.push({ value: i.toString(), displayValue: i.toString() });
+    }
+    return results;
 }
 
 export const ConfigSchema: ConfigSchemaDefinition = {
@@ -813,6 +824,88 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                         }
                     ]
                 },
+                {
+                    scope: getScopeArray(["global", "char", "chan", "convo"]),
+                    sectionTitle: "Profiles",
+                    items: [
+                        {
+                            id: "profileLimitIndent",
+                            scope: getScopeArray(["global", "char"]),
+                            title: "Limit Indentation",
+                            description: "Limit excessive indentation in profiles.",
+                            type: "boolean",
+                            defaultValue: true,
+                            configBlockKey: "profileLimitIndent"
+                        }
+                    ]
+                },
+                {
+                    scope: getScopeArray(["global", "char", "chan", "convo"]),
+                    sectionTitle: "EIcons",
+                    items: [
+                        {
+                            id: "eiconDisplaySize",
+                            scope: getScopeArray(["global", "char", "chan", "convo"]),
+                            title: "EIcon Display Size",
+                            description: "",
+                            descriptionByScope: {
+                                "global": "Select a size to display eicon images.",
+                                "char": "Select a size to display eicon images when signed in as \"$MYCHAR$\".",
+                                "char.chancategory": "Select a size to display eicon images for channels in the \"$CHANCATEGORY$\" category.",
+                                "char.chan": "Select a size to display eicon images in this channel.",
+                                "char.convo": "Select a size to display eicon images in PM conversations with \"$CONVOCHAR$\"."
+                            },
+                            type: "select",
+                            selectOptions: [
+                                { value: "small", displayValue: "Small" },
+                                { value: "normal", displayValue: "Normal" },
+                                { value: "large", displayValue: "Large" }
+                            ],
+                            defaultValue: "normal",
+                            configBlockKey: "eiconDisplaySize"
+                        },
+                        // {
+                        //     id: "eiconMaxCountChat",
+                        //     scope: getScopeArray(["global", "char", "chan", "convo"]),
+                        //     title: "Maximum EIcons per Message",
+                        //     description: "",
+                        //     descriptionByScope: {
+                        //         "global": "Maximum number of eicons to show per message.",
+                        //         "char": "Maximum number of eicons to show per message when signed in as \"$MYCHAR$\".",
+                        //         "char.chancategory": "Maximum number of eicons to show per message for channels in the \"$CHANCATEGORY$\" category.",
+                        //         "char.chan": "Maximum number of eicons to show per message in this channel.",
+                        //         "char.convo": "Maximum number of eicons to show per message in PM conversations with \"$CONVOCHAR$\"."
+                        //     },
+                        //     type: "select",
+                        //     selectOptions: [
+                        //         { value: "none", displayValue: "No Limit" },
+                        //         ...generateNumericOptions(0, 20)
+                        //     ],
+                        //     defaultValue: "none",
+                        //     configBlockKey: "eiconMaxCountChat"
+                        // },
+                        // {
+                        //     id: "eiconMaxCountAd",
+                        //     scope: getScopeArray(["global", "char", "chan"]),
+                        //     title: "Maximum EIcons per Ad",
+                        //     description: "",
+                        //     descriptionByScope: {
+                        //         "global": "Maximum number of eicons to show per ad.",
+                        //         "char": "Maximum number of eicons to show per ad when signed in as \"$MYCHAR$\".",
+                        //         "char.chancategory": "Maximum number of eicons to show per ad for channels in the \"$CHANCATEGORY$\" category.",
+                        //         "char.chan": "Maximum number of eicons to show per ad in this channel.",
+                        //         "char.convo": "INVALID"
+                        //     },
+                        //     type: "select",
+                        //     selectOptions: [
+                        //         { value: "none", displayValue: "No Limit" },
+                        //         ...generateNumericOptions(0, 20)
+                        //     ],
+                        //     defaultValue: "none",
+                        //     configBlockKey: "eiconMaxCountAd"
+                        // }
+                    ]
+                }
             ]
         },
         {

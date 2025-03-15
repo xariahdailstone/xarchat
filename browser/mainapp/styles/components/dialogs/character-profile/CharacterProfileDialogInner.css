@@ -206,7 +206,12 @@
     vertical-align: text-top;
 }
 .profile-summaryinfo td:nth-child(2) {
+    display: block;
     padding-right: 10px;
+    text-overflow: ellipsis;
+    max-width: 20vw;
+    white-space: nowrap;
+    overflow: hidden;
 }
 
 .profile-memo {
@@ -488,6 +493,18 @@
 .profile-main-alts-item-name,
 .profile-main-friends-item-name {
     text-wrap: nowrap;
+}
+
+.profile-main-friendsmessage {
+    display: grid;
+    grid-template-rows: 1fr auto 3fr;
+    grid-template-columns: 1fr auto 1fr;
+    grid-template-areas: 
+        ". . ."
+        ". message ."
+        ". . .";
+
+    .profile-main-friendsmessage-message { grid-area: message; }
 }
 
 .profile-main-guestbook {
