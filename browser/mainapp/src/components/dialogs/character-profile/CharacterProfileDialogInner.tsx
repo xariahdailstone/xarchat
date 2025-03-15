@@ -1,6 +1,7 @@
 import { jsx } from "../../../snabbdom/jsx";
 import { VNode } from "../../../snabbdom/vnode";
 import { BBCodeParseResult, ProfileBBCodeParser } from "../../../util/bbcode/BBCode";
+import { CatchUtils } from "../../../util/CatchUtils";
 import { getEffectiveCharacterNameVNodes } from "../../../util/CharacterNameIcons";
 import { asDisposable } from "../../../util/Disposable";
 import { ObservableValue } from "../../../util/Observable";
@@ -391,22 +392,36 @@ export class CharacterProfileDialogInner extends RenderingComponentBase<Characte
     }
 
     private renderFriends(vm: CharacterProfileDialogViewModel): ViewTabInfo | null {
-        if (vm.profileDetails == null || vm.profileDetails.friends.length == 0) {
+        if (vm.profileDetails == null || !vm.profileDetails.showFriends) {
             return null;
         }
         else {
-            const elFriends = <div classList="profile-main-friends"></div>;
-            for (let tfriend of vm.profileDetails.friends) {
-                const elThisFriend = <div classList="profile-main-friends-item"
-                    on={{ "click": (e) => { tfriend.click(e.target as HTMLElement); } }}>
-                    <img classList="profile-main-friends-item-image" src={URLUtils.getAvatarImageUrl(tfriend.characterName)} />
-                    <div classList="profile-main-friends-item-name">{getEffectiveCharacterNameVNodes(tfriend.characterName, vm.activeLoginViewModel)}</div>
-                </div>;
-                elFriends.children!.push(elThisFriend);
+            let elFriends: VNode;
+            let friendCount: string = "";
+            if (vm.profileDetails.loadingFriends) {
+                friendCount = "...";
+                elFriends = <div classList="profile-main-friendsmessage"><div classList="profile-main-friendsmessage-message">Loading...</div></div>;
             }
+            else if (vm.profileDetails.friendsLoadError) {
+                friendCount = "!!";
+                elFriends = <div classList="profile-main-friendsmessage-message"><div classList="profile-main-friendsmessage-message">Failed to load friends list: ${CatchUtils.getMessage(vm.profileDetails.friendsLoadError)}</div></div>;
+            }
+            else {
+                elFriends = <div classList="profile-main-friends"></div>;
+                for (let tfriend of vm.profileDetails.friends) {
+                    const elThisFriend = <div classList="profile-main-friends-item"
+                        on={{ "click": (e) => { tfriend.click(e.target as HTMLElement); } }}>
+                        <img classList="profile-main-friends-item-image" src={URLUtils.getAvatarImageUrl(tfriend.characterName)} />
+                        <div classList="profile-main-friends-item-name">{getEffectiveCharacterNameVNodes(tfriend.characterName, vm.activeLoginViewModel)}</div>
+                    </div>;
+                    elFriends.children!.push(elThisFriend);
+                }
+                friendCount = vm.profileDetails.friends.length.toString();
+            }
+
             return {
                 id: "friends",
-                title: `Friends (${vm.profileDetails.friends.length})`,
+                title: `Friends (${friendCount})`,
                 vnode: elFriends
             };
         }

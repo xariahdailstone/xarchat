@@ -58,6 +58,12 @@ export class ChannelView extends StageViewComponent<ChannelViewModel> {
             }
             this.elMain.style.setProperty("--chat-font-size", `${ncfs}px`);
         });
+
+        this.watchExpr(vm => vm.getConfigSettingById("eiconDisplaySize"), dsize => {
+            this.elMain.classList.toggle(`bbcode-eicons-small`, dsize == "small");
+            this.elMain.classList.toggle(`bbcode-eicons-normal`, dsize == "normal");
+            this.elMain.classList.toggle(`bbcode-eicons-large`, dsize == "large");
+        });
     }
 
     override viewActivated(): void {

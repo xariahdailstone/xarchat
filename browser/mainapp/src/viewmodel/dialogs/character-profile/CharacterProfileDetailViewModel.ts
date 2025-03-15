@@ -38,9 +38,18 @@ export class CharacterProfileDetailViewModel extends ObservableBase {
             mypix = pix;
         }
 
-        const frx = session.authenticatedApi.getCharacterFriendsAsync(character, cancellationToken);
+        const frx2 = (async () => {
+            const cpinfo = await pix;
+            if (cpinfo.settings.show_friends) {
+                const fresult = await session.authenticatedApi.getCharacterFriendsAsync(character, cancellationToken);
+                return fresult;
+            }
+            else {
+                return null;
+            }
+        })();
 
-        return new CharacterProfileDetailViewModel(parent, session, character, await atx, await mlx, await pfx, await klx, await pix, await mypix, await frx);
+        return new CharacterProfileDetailViewModel(parent, session, character, await atx, await mlx, await pfx, await klx, await pix, await mypix, frx2);
     }
 
     private constructor(
@@ -53,7 +62,7 @@ export class CharacterProfileDetailViewModel extends ObservableBase {
         kinksList: KinkList,
         public readonly profileInfo: ProfileInfo,
         myProfileInfo: ProfileInfo,
-        profileFriendsInfo: ProfileFriendsInfo | null) {
+        profileFriendsInfoPromise: Promise<ProfileFriendsInfo | null>) {
 
         super();
 
@@ -86,11 +95,27 @@ export class CharacterProfileDetailViewModel extends ObservableBase {
             this.alts.push(altVm);
         }
 
-        if (profileFriendsInfo && profileFriendsInfo.friends) {
-            for (let friendInfo of profileFriendsInfo.friends) {
-                const friendVm = new CharacterProfileFriendsViewModel(this, CharacterName.create(friendInfo.name));
-                this.friends.push(friendVm);
-            }
+        if (profileInfo.settings.show_friends) {
+            this.showFriends = true;
+            this.loadingFriends = true;
+            (async () => {
+                try {
+                    const profileFriendsInfo = await profileFriendsInfoPromise;
+                    if (profileFriendsInfo) {
+                        for (let friendInfo of profileFriendsInfo.friends) {
+                            const friendVm = new CharacterProfileFriendsViewModel(this, CharacterName.create(friendInfo.name));
+                            this.friends.push(friendVm);
+                        }
+                    }
+                    this.friendsLoadError = null;
+                }
+                catch (e) {
+                    this.friendsLoadError = e;
+                }
+                finally {
+                    this.loadingFriends = false;
+                }
+            })();
         }
 
         if (profileInfo.settings.guestbook) {
@@ -151,7 +176,16 @@ export class CharacterProfileDetailViewModel extends ObservableBase {
     canBookmark: boolean = true;
 
     @observableProperty
+    showFriends: boolean = false;
+
+    @observableProperty
     friends: Collection<CharacterProfileFriendsViewModel> = new Collection();
+
+    @observableProperty
+    loadingFriends: boolean = false;
+
+    @observableProperty
+    friendsLoadError: any = null;
 
     @observableProperty
     guestbook: CharacterGuestbookViewModel | null = null;

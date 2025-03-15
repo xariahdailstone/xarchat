@@ -28,22 +28,32 @@
 
 .bbcode-eicon-outershell {
     position: relative;
-    width: 50px;
-    height: 50px;
+    width: var(--eicon-size);
+    height: var(--eicon-size);
     display: inline-block;
     /* background: black; */
 }
 
 .bbcode-eicon,
 .bbcode-icon img {
-    width: 50px;
-    height: 50px;
-    max-width: 50px;
-    max-height: 50px;
+    width: var(--eicon-size);
+    height: var(--eicon-size);
+    max-width: var(--eicon-size);
+    max-height: var(--eicon-size);
     vertical-align: top;
     /* background: inherit; */
     /* will-change: transform; */
     contain: paint;
+}
+
+.bbcode-eicons-small {
+    --eicon-size: 25px;
+}
+body, .bbcode-eicons-normal {
+    --eicon-size: 50px;
+}
+.bbcode-eicons-large {
+    --eicon-size: 100px;
 }
 
 .bbcode-eicon-loading {
@@ -237,6 +247,9 @@
 
 .bbcode-indent {
     padding-left: 3em;
+}
+.bbcode-indentlimit .bbcode-indent .bbcode-indent .bbcode-indent {
+    padding-left: 0;
 }
 
 .bbcode-hr {
