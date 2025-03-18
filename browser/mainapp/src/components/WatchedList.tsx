@@ -13,7 +13,8 @@ import { URLUtils } from "../util/URLUtils";
 import { WhenChangeManager } from "../util/WhenChange";
 import { ChatBBCodeParser } from "../util/bbcode/BBCode";
 import { KeyValuePair } from "../util/collections/KeyValuePair";
-import { ActiveLoginViewModel } from "../viewmodel/ActiveLoginViewModel";
+import { ActiveLoginViewModel, WatchedListFilterType } from "../viewmodel/ActiveLoginViewModel";
+import { CharacterNameSet } from "../viewmodel/CharacterNameSet";
 import { PMConvoChannelViewModel } from "../viewmodel/PMConvoChannelViewModel";
 import { CharacterDetailPopupViewModel } from "../viewmodel/popups/CharacterDetailPopupViewModel";
 import { CollectionViewLightweight } from "./CollectionViewLightweight";
@@ -37,18 +38,38 @@ export class WatchedList extends RenderingComponentBase<ActiveLoginViewModel> {
             const onlineListModel = this.showType == WatchedListShowType.ALL ? vm.onlineWatchedChars
                 : this.showType == WatchedListShowType.FRIENDS ? vm.onlineFriends
                 : vm.onlineBookmarks;
+            const lookingListModel = this.showType == WatchedListShowType.ALL ? vm.lookingWatchedChars
+                : this.showType == WatchedListShowType.FRIENDS ? vm.lookingFriends
+                : vm.lookingBookmarks;
 
-            const countText = (vm.showOnlineWatchedOnly ? `${onlineListModel.length} of ${listModel.length}` : listModel.length)
-            const boundList = (vm.showOnlineWatchedOnly ? onlineListModel : listModel);
+            let countText: string;
+            let boundList: CharacterNameSet;
+            switch (vm.watchedListFilter) {
+                case WatchedListFilterType.ALL:
+                    countText = listModel.length.toString();
+                    boundList = listModel;
+                    break;
+                case WatchedListFilterType.ONLINE:
+                    countText = `${onlineListModel.length} of ${listModel.length}`;
+                    boundList = onlineListModel;
+                    break;
+                case WatchedListFilterType.LOOKING:
+                    countText =`${lookingListModel.length} of ${listModel.length}`;
+                    boundList = lookingListModel;
+                    break;
+            }
 
             return <>
                 <div classList={["filter-button-container"]}>
-                    <button classList={["filter-button", (!vm.showOnlineWatchedOnly ? "selected" : "not-selected") ]} id="elFilterAll" on={{
-                        "click": () => { vm.showOnlineWatchedOnly = false; }
+                    <button classList={["filter-button", (vm.watchedListFilter == WatchedListFilterType.ALL ? "selected" : "not-selected") ]} id="elFilterAll" on={{
+                        "click": () => { vm.watchedListFilter = WatchedListFilterType.ALL; }
                     }}>All</button>
-                    <button classList={["filter-button", (vm.showOnlineWatchedOnly ? "selected" : "not-selected") ]} id="elFilterOnline" on={{
-                        "click": () => { vm.showOnlineWatchedOnly = true; }
+                    <button classList={["filter-button", (vm.watchedListFilter == WatchedListFilterType.ONLINE ? "selected" : "not-selected") ]} id="elFilterOnline" on={{
+                        "click": () => { vm.watchedListFilter = WatchedListFilterType.ONLINE; }
                     }}>Online</button>
+                    <button classList={["filter-button", (vm.watchedListFilter == WatchedListFilterType.LOOKING ? "selected" : "not-selected") ]} id="elFilterLooking" on={{
+                        "click": () => { vm.watchedListFilter = WatchedListFilterType.LOOKING; }
+                    }}>Looking</button>
                 </div>
                 <div id="elSection" classList={["section"]}>
                     <div classList={["sectiontitle"]}>

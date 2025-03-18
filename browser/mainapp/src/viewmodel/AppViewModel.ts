@@ -1,4 +1,4 @@
-import { ConfigSchema, getConfigSchemaItemById } from "../configuration/ConfigSchemaItem.js";
+import { ConfigSchema, ConfigSchemaScopeType, getConfigSchemaItemById } from "../configuration/ConfigSchemaItem.js";
 import { FListApi } from "../fchat/api/FListApi.js";
 import { HostInteropApi } from "../fchat/api/HostInteropApi.js";
 import { AppSettings, RawSavedWindowLocation } from "../settings/AppSettings.js";
@@ -21,7 +21,7 @@ import { PMConvoChannelViewModel } from "./PMConvoChannelViewModel.js";
 import { AlertOptions, AlertViewModel } from "./dialogs/AlertViewModel.js";
 import { AppInitializeViewModel } from "./dialogs/AppInitializeViewModel.js";
 import { DialogViewModel } from "./dialogs/DialogViewModel.js";
-import { PromptOptions, PromptViewModel } from "./dialogs/PromptViewModel.js";
+import { PromptForStringOptions, PromptForStringViewModel, PromptOptions, PromptViewModel } from "./dialogs/PromptViewModel.js";
 import { SettingsDialogViewModel } from "./dialogs/SettingsDialogViewModel.js";
 import { ContextMenuPopupViewModel } from "./popups/ContextMenuPopupViewModel.js";
 import { PopupViewModel } from "./popups/PopupViewModel.js";
@@ -220,6 +220,11 @@ export class AppViewModel extends ObservableBase {
         return this.showDialogAsync(vm);
     }
 
+    promptForStringAsync(options: PromptForStringOptions): Promise<string | null> {
+        const vm = new PromptForStringViewModel(this, options);
+        return this.showDialogAsync(vm);
+    }
+
     async launchUrlAsync(url: string, forceExternal?: boolean): Promise<void> {
         try {
             await HostInterop.launchUrl(this, url, forceExternal ?? false);
@@ -342,6 +347,40 @@ export class AppViewModel extends ObservableBase {
         }
         else {
             return null;
+        }
+    }
+
+    setConfigSettingById(configSettingId: string, newValue: any, alvm?: { characterName: CharacterName } | null, channel?: GetConfigSettingChannelViewModel | null) {
+        const settingSchema = getConfigSchemaItemById(configSettingId);
+        if (settingSchema) {
+            const settingScopes = new Set<ConfigSchemaScopeType>();
+            if (settingSchema.scope) {
+                settingSchema.scope.forEach(s => {
+                    settingScopes.add(s);
+                });
+            }
+
+            if (alvm != null) {
+                if (channel instanceof ChatChannelViewModel) {
+                    if (settingScopes.has("char.chan")) {
+                        const settingKey = `character.${alvm.characterName.canonicalValue}.channel.${channel.name.canonicalValue}.${settingSchema.configBlockKey}`;
+                        this.configBlock.set(settingKey, newValue);
+                        return;
+                    }
+                }
+
+                if (settingScopes.has("char")) {
+                    const settingKey = `character.${alvm.characterName.canonicalValue}.any.${settingSchema.configBlockKey}`;
+                    this.configBlock.set(settingKey, newValue);
+                    return;
+                }
+            }
+            
+            if (settingScopes.has("global")) {
+                const settingKey = `global.${settingSchema.configBlockKey}`;
+                this.configBlock.set(settingKey, newValue);
+                return;
+            }
         }
     }
 

@@ -172,7 +172,7 @@ export class CharacterProfileDialogInner extends RenderingComponentBase<Characte
                         data-tooltip={isBookmarked ? "Remove Bookmark" : "Add Bookmark"} id="elBtnBookmark" on={{ "click": () => { vm.profileDetails!.toggleBookmark(); } }}>
                         <x-iconimage src={isBookmarked ? "assets/ui/bookmark-remove-icon.svg" : "assets/ui/bookmark-add-icon.svg"} id="elBookmarkIcon"></x-iconimage>
                     </button>
-                    <button classList="profile-button profile-button-report" data-tooltip="Report" id="elBtnReport">
+                    <button classList="profile-button profile-button-report" data-tooltip="Report" id="elBtnReport" on={{ "click": () => { vm.reportProfile(); } }}>
                         <x-iconimage src="assets/ui/report-icon.svg"></x-iconimage>
                     </button>
                 </div>

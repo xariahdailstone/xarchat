@@ -611,6 +611,24 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     configBlockKey: "collapseAds"
                 },
                 {
+                    id: "showChatTextboxToolbar",
+                    scope: getScopeArray(["global"]),
+                    title: "Show Chat Textbox Toolbar",
+                    description: "Show a BBCode editing toolbar above the chat entry textbox.",
+                    type: "boolean",
+                    defaultValue: false,
+                    configBlockKey: "chat.textbox.toolbarShown"
+                },
+                {
+                    id: "showChatTextboxStatusBar",
+                    scope: getScopeArray(["global"]),
+                    title: "Show Chat Textbox Toolbar",
+                    description: "Show a word/character count status bar below the chat entry textbox.",
+                    type: "boolean",
+                    defaultValue: false,
+                    configBlockKey: "chat.textbox.statusBarShown"
+                },
+                {
                     scope: getScopeArray(["global"]),
                     sectionTitle: "Colors",
                     description: "Choose colors for various parts of the XarChat interface.",

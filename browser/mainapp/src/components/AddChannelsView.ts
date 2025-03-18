@@ -49,6 +49,7 @@ export class AddChannelsView extends StageViewComponent<AddChannelsViewModel> {
 
             <div class="chantype-section private-section">
                 <div class="chantype-section-title">Private Channels</div>
+                <button id="btnCreateChannel" class="chantype-section-topbutton theme-button theme-button-smaller">Create New Channel</button>
                 <div class="chantype-section-list">
                     <div class="chantype-section-list-table">
                         <div class="chantype-section-list-thead">
@@ -73,6 +74,8 @@ export class AddChannelsView extends StageViewComponent<AddChannelsViewModel> {
         const elHeaderPublicCount = this.$("elHeaderPublicCount") as HTMLDivElement;
         const elHeaderPrivateTitle = this.$("elHeaderPrivateTitle") as HTMLDivElement;
         const elHeaderPrivateCount = this.$("elHeaderPrivateCount") as HTMLDivElement;
+
+        const btnCreateChannel = this.$("btnCreateChannel") as HTMLButtonElement;
 
         this.watchExpr(vm => vm.publicChannelsSortedView, x => {
             elPublicChannelsList.viewModel = x ?? null;
@@ -198,6 +201,13 @@ export class AddChannelsView extends StageViewComponent<AddChannelsViewModel> {
                     }
                 }
             }
+        });
+
+        btnCreateChannel.addEventListener("click", () => {
+            const vm = this.viewModel;
+            if (!vm) return;
+
+            vm.createChannelAsync();
         });
     }
 }

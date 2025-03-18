@@ -61,7 +61,7 @@ export interface ChatConnection extends IDisposable {
     channelSetModeAsync(channel: ChannelName, mode: "chat" | "ads" | "both"): Promise<void>;
     changeChannelPrivacyStatusAsync(channel: ChannelName, status: "public" | "private"): Promise<void>;
 
-    createChannelAsync(title: string): Promise<void>;
+    createChannelAsync(title: string): Promise<ChannelName>;
     changeChannelDescriptionAsync(channel: ChannelName, description: string): Promise<void>;
 
     ignoreCharacterAsync(character: CharacterName): Promise<void>;

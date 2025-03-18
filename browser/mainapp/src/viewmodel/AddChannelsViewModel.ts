@@ -289,6 +289,25 @@ export class AddChannelsViewModel extends ObservableBase implements SelectableTa
         // const result = canonicalizedTitle.replace(/ /g, "").replace(/[^A-Za-z0-9]/g, "").toLowerCase();
         // return result;
     }
+
+    async createChannelAsync(): Promise<void> {
+        const newChannelTitle = await this.activeLoginViewModel.appViewModel.promptForStringAsync({ 
+            title: "Create New Channel",
+            message: "Enter the title of the channel you wish to create.",
+            confirmButtonTitle: "Create Channel"
+        });
+        if (!StringUtils.isNullOrWhiteSpace(newChannelTitle)) {
+            // TODO:
+            try {
+                const chname = await this.activeLoginViewModel.chatConnection.createChannelAsync(newChannelTitle);
+                const ch = this.activeLoginViewModel.getChannel(chname);
+                this.activeLoginViewModel.selectedChannel = ch;
+            }
+            catch (err) {
+                this.activeLoginViewModel.appViewModel.alertAsync(CatchUtils.getMessage(err), "Failed to Create Channel");
+            }
+        }
+    }
 }
 
 export class AddChannelsItemViewModel {

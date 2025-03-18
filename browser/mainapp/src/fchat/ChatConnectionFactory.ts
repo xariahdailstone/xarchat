@@ -253,7 +253,7 @@ export class NullChatConnection implements ChatConnection {
     async channelSetModeAsync(channel: ChannelName, mode: "chat" | "ads" | "both"): Promise<void> { }
     async changeChannelPrivacyStatusAsync(channel: ChannelName, status: "public" | "private"): Promise<void> { }
 
-    async createChannelAsync(title: string): Promise<void> { }
+    async createChannelAsync(title: string): Promise<ChannelName> { throw new Error("unavailable"); }
     async changeChannelDescriptionAsync(channel: ChannelName, description: string): Promise<void> { }
 
     async ignoreCharacterAsync(character: CharacterName): Promise<void> { }
