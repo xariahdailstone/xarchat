@@ -476,10 +476,10 @@ class XarHost2Interop implements IXarHost2HostInterop {
         }
         else if (cmd == "configchange") {
             const argo = JSON.parse(arg);
-            for (let ccl of this._configChangeListeners.values()) {
+            this._configChangeListeners.forEachValueSnapshotted(ccl => {
                 try { ccl(argo); }
                 catch { }
-            }
+            });
         }
         else if (cmd.startsWith("logsearch.")) {
             const argo = JSON.parse(arg);
@@ -1097,7 +1097,7 @@ class XarHost2Interop implements IXarHost2HostInterop {
         }));
     }
 
-    private readonly _configChangeListeners: Map<number, (value: ConfigKeyValue) => void> = new Map();
+    private readonly _configChangeListeners: SnapshottableMap<number, (value: ConfigKeyValue) => void> = new SnapshottableMap();
 
     registerConfigChangeCallback(callback: (value: ConfigKeyValue) => void): IDisposable {
         const myId = this._nextConfigWaiterId++;

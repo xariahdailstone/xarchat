@@ -176,7 +176,8 @@ document.addEventListener("keydown", (e) => {
 
 async function loadDarkThemeCss() {
     var sss = await StyleLoader.loadAsync("styles/dark-theme.css");
-    setStylesheetAdoption(document, [sss]);
+    var sss2 = await StyleLoader.loadAsync("styles/bbcode.css");
+    setStylesheetAdoption(document, [sss, sss2]);
     document.getElementById("elLinkDarkTheme")?.remove();
     //throw new Error("Function not implemented.");
 }

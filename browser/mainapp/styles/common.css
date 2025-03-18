@@ -7,6 +7,23 @@
 .gender-shemale { color: var(--fg-gender-shemale) !important; }
 .gender-none { color: var(--fg-gender-none) !important; }
 
+.gender-male .char-is-bookmark,
+.gender-male.char-is-bookmark { color: var(--fg-bookmark-gender-male) !important; }
+.gender-male-herm .char-is-bookmark,
+.gender-male-herm.char-is-bookmark { color: var(--fg-bookmark-gender-male-herm) !important; }
+.gender-female .char-is-bookmark,
+.gender-female.char-is-bookmark { color: var(--fg-bookmark-gender-female) !important; }
+.gender-herm .char-is-bookmark,
+.gender-herm.char-is-bookmark { color: var(--fg-bookmark-gender-herm) !important; }
+.gender-cunt-boy .char-is-bookmark,
+.gender-cunt-boy.char-is-bookmark { color: var(--fg-bookmark-gender-cunt-boy) !important; }
+.gender-transgender .char-is-bookmark,
+.gender-transgender.char-is-bookmark { color: var(--fg-bookmark-gender-transgender) !important; }
+.gender-shemale .char-is-bookmark,
+.gender-shemale.char-is-bookmark { color: var(--fg-bookmark-gender-shemale) !important; }
+.gender-none .char-is-bookmark,
+.gender-none.char-is-bookmark { color: var(--fg-bookmark-gender-none) !important; }
+
 .gender-male .char-is-friend,
 .gender-male.char-is-friend { color: var(--fg-friend-gender-male) !important; }
 .gender-male-herm .char-is-friend,
@@ -22,7 +39,8 @@
 .gender-shemale .char-is-friend,
 .gender-shemale.char-is-friend { color: var(--fg-friend-gender-shemale) !important; }
 .gender-none .char-is-friend,
-.gender-none.char-is-friend { color: var(--fg-gfriend-ender-none) !important; }
+.gender-none.char-is-friend { color: var(--fg-friend-gender-none) !important; }
+
 .gender-offline { opacity: 0.5; }
 
 .onlinestatus-offline { color: var(--fg-status-offline); }

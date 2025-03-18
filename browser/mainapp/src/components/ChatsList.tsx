@@ -518,6 +518,9 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
             }
             else {
                 nameClasses.push(`gender-${CharacterGenderConvert.toString(cs.gender).toLowerCase()}`);
+                if (cs.isBookmark) {
+                    nameClasses.push("char-is-bookmark");
+                }
                 if (cs.isFriend) {
                     nameClasses.push("char-is-friend");
                 }

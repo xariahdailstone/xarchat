@@ -324,7 +324,10 @@ export class SettingsDialogItemViewModel extends SettingsDialogSettingViewModel 
                     case "radio":
                     case "notifroutes":
                     case "select":
-                            this.assignStringValue(value);
+                        this.assignStringValue(value);
+                        break;
+                    case "integer":
+                        this.assignIntegerValue(value);
                         break;
                     default:
                         this.logger.logError(`don't know how to assign ${this.schema.type}`);
@@ -342,6 +345,11 @@ export class SettingsDialogItemViewModel extends SettingsDialogSettingViewModel 
     set scratchValue(value: any) { this._scratchValue.value = value; }
 
     private assignStringValue(value: string) {
+        const k = this.getAppConfigKey();
+        this.scope.appViewModel.configBlock.set(k, value);
+    }
+
+    private assignIntegerValue(value: number | null) {
         const k = this.getAppConfigKey();
         this.scope.appViewModel.configBlock.set(k, value);
     }

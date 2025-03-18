@@ -13,6 +13,7 @@ import { ChatChannelMessageMode, ChatChannelPresenceState, ChatChannelViewModel 
 import { ConsoleChannelViewModel } from "../viewmodel/ConsoleChannelViewModel.js";
 import { PMConvoChannelViewModel } from "../viewmodel/PMConvoChannelViewModel.js";
 import { EIconSearchDialogViewModel } from "../viewmodel/dialogs/EIconSearchDialogViewModel.js";
+import { ChannelEditHelpPopupViewModel } from "../viewmodel/popups/ChannelEditHelpPopupViewModel.js";
 import { ComponentBase, componentElement } from "./ComponentBase.js";
 
 @componentElement("x-channeltextbox")
@@ -64,23 +65,27 @@ export class ChannelTextBox extends ComponentBase<ChannelViewModel> {
                                 <x-iconimage src="assets/ui/textbox-toolbar/noparse.svg"></x-iconimage>
                             </div>
                         </div>
-                        <div class="textbox-toolbar-toggle" title="Toggle Toolbar (Ctrl+T)">
-                            <x-iconimage src="assets/ui/toolbar-toggle.svg" id="elToggleToolbar"></x-iconimage>
+                        <div class="textbox-toolbar-toggle" title="Show Editing Help">
+                            <x-iconimage src="assets/ui/help-icon.svg" id="elShowEditHelp"></x-iconimage>
                         </div>
                     </div>
                     <textarea id="elTextbox" data-focusmagnet-strength="1"></textarea>
                 </div>
-                <button id="elSendChat">Send Chat</button>
-                <button id="elSendAd">Send Ad</button>
+                <div class="textbox-statusbar" id="elStatusBar">0 words :: 0/30,000 characters used</div>
+                <div class="buttons-container">
+                    <button id="elSendChat">Send Chat</button>
+                    <button id="elSendAd">Send Ad</button>
+                </div>
             </div>
         `);
 
         const elTextbox = this.$("elTextbox")! as HTMLTextAreaElement;
         const elSendChat = this.$("elSendChat")! as HTMLButtonElement;
         const elSendAd = this.$("elSendAd")! as HTMLButtonElement;
+        const elStatusBar = this.$("elStatusBar") as HTMLDivElement;
 
         const elTextboxContainer = this.$("elTextboxContainer") as HTMLDivElement;
-        const elToggleToolbar = this.$("elToggleToolbar") as HTMLButtonElement;
+        const elShowEditHelp = this.$("elShowEditHelp") as HTMLButtonElement;
 
         const disableReasonWCM = new WhenChangeManager();
         const updateDisableStates = () => {
@@ -154,6 +159,49 @@ export class ChannelTextBox extends ComponentBase<ChannelViewModel> {
                 elTextbox.value = v ?? "";
             }
         });
+        this.watchExpr(vm => [ vm, vm.textBoxContent, vm.getConfigSettingById("showChatTextboxStatusBar"), vm instanceof ChatChannelViewModel ? vm.messageMode : null ], (v) => {
+            if (v) {
+                const vm = v[0];
+                const txt = v[1];
+                const statusBarShown = !!v[2];
+                const messageMode = v[3];
+                if (statusBarShown) {
+                    const charCount = txt.length;
+                    const wordCount = txt.split(/\s+/).filter(x => x != "").length;
+
+                    const wordCountStr = `${wordCount.toLocaleString()} word${wordCount == 1 ? '' : 's'}`;
+                    const charCountPlural = `character${charCount == 1 ? '' : 's'}`;
+                    if (vm instanceof ChatChannelViewModel) {
+                        const chatMax = vm.activeLoginViewModel.serverVariables['chat_max'];
+                        const lfrpMax = vm.activeLoginViewModel.serverVariables['lfrp_max'];
+                        switch (messageMode) {
+                            case ChatChannelMessageMode.CHAT_ONLY:
+                                elStatusBar.innerText = `${wordCountStr} :: ${charCount.toLocaleString()} ${charCountPlural} used (max ${chatMax.toLocaleString()} chat)`;
+                                break;
+                            case ChatChannelMessageMode.ADS_ONLY:
+                                elStatusBar.innerText = `${wordCountStr} :: ${charCount.toLocaleString()} ${charCountPlural} used (max ${lfrpMax.toLocaleString()} ad)`;
+                                break;
+                            default:
+                            case ChatChannelMessageMode.BOTH:
+                                elStatusBar.innerText = `${wordCountStr} :: ${charCount.toLocaleString()} ${charCountPlural} ` +
+                                    `(max ${chatMax.toLocaleString()} chat, ` +
+                                    `${lfrpMax.toLocaleString()} ad)`;
+                        }
+                    }
+                    else if (vm instanceof PMConvoChannelViewModel) {
+                        const privMax = vm.activeLoginViewModel.serverVariables['priv_max'];
+                        elStatusBar.innerText = `${wordCountStr} :: ${charCount.toLocaleString()} ${charCountPlural} used (max ${privMax.toLocaleString()} pm)`;
+                    }
+                    else {
+                        elStatusBar.innerText = wordCountStr;
+                    }
+                }
+                else {
+                    elStatusBar.innerText = "";
+                }
+            }
+        });
+        
         this.watchExpr(vm => vm instanceof ChatChannelViewModel ? vm.messageMode : null, (v) => {
             if (v === null || v === undefined) {
                 elSendChat.classList.remove("hidden");
@@ -195,9 +243,14 @@ export class ChannelTextBox extends ComponentBase<ChannelViewModel> {
             updateDisableStates();
         });
 
+        let helpPopupVM: ChannelEditHelpPopupViewModel | null = null;
         const pushTextbox = () => {
             if (this.viewModel != null) {
                 this.viewModel.textBoxContent = elTextbox.value;
+            }
+            if (helpPopupVM != null) {
+                helpPopupVM.dismissed();
+                helpPopupVM = null;
             }
         }
         elTextbox.addEventListener("input", pushTextbox);
@@ -220,8 +273,24 @@ export class ChannelTextBox extends ComponentBase<ChannelViewModel> {
                     }
                 }
                 else if (ev.ctrlKey && ev.keyCode == KeyCodes.KEY_T && this.viewModel) {
-                    this.viewModel.textBoxToolbarShown = !this.viewModel.textBoxToolbarShown;
+                    const avm = this.viewModel.activeLoginViewModel.appViewModel;
+                    avm.setConfigSettingById("showChatTextboxToolbar", !avm.getConfigSettingById("showChatTextboxToolbar"));
                     ev.preventDefault();
+                }
+                else if (ev.ctrlKey && ev.keyCode == KeyCodes.KEY_W && this.viewModel) {
+                    const avm = this.viewModel.activeLoginViewModel.appViewModel;
+                    avm.setConfigSettingById("showChatTextboxStatusBar", !avm.getConfigSettingById("showChatTextboxStatusBar"));
+                    ev.preventDefault();
+                }
+                else if (ev.keyCode == KeyCodes.F1 && this.viewModel) {
+                    if (helpPopupVM != null) {
+                        helpPopupVM.dismissed();
+                        helpPopupVM = null;
+                    }
+                    else {
+                        helpPopupVM = new ChannelEditHelpPopupViewModel(this.viewModel.appViewModel, elShowEditHelp, () => { helpPopupVM = null; });
+                        this.viewModel.appViewModel.popups.push(helpPopupVM);
+                    }
                 }
                 else if (handleShortcuts(ev)) {
                     ev.preventDefault();
@@ -233,13 +302,18 @@ export class ChannelTextBox extends ComponentBase<ChannelViewModel> {
         elSendChat.addEventListener("click", () => this.sendChat());
         elSendAd.addEventListener("click", () => this.sendAd());
 
-        this.watchExpr(vm => vm.textBoxToolbarShown, tbs => {
+        this.watchExpr(vm => vm.appViewModel.getConfigSettingById("showChatTextboxToolbar"), tbs => {
             elTextboxContainer.classList.toggle("no-toolbar", !tbs);
             elTextboxContainer.classList.toggle("toolbar-shown", !!tbs);
         });
-        elToggleToolbar.addEventListener("click", () => {
+        this.watchExpr(vm => vm.appViewModel.getConfigSettingById("showChatTextboxStatusBar"), tbs => {
+            this.elMain.classList.toggle("no-statusbar", !tbs);
+            this.elMain.classList.toggle("statusbar-shown", !!tbs);
+        });
+        elShowEditHelp.addEventListener("click", () => {
             if (this.viewModel) {
-                this.viewModel.textBoxToolbarShown = !this.viewModel.textBoxToolbarShown;
+                helpPopupVM = new ChannelEditHelpPopupViewModel(this.viewModel.appViewModel, elShowEditHelp, () => { helpPopupVM = null; });
+                this.viewModel.appViewModel.popups.push(helpPopupVM);
             }
             elTextbox.focus();
         });
