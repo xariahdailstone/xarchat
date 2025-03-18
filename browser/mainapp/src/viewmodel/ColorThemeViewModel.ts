@@ -21,6 +21,17 @@ export class ColorThemeViewModel {
             document.body.style.setProperty("--bg-brightness-scale", bf.toString());
         }));
 
+        this._disposables.push(appViewModel.configBlock.observe("global.unseenIndicatorHighlightColor", (v: string) => {
+            if (!v) {
+                v = "246;36;1";
+            }
+            const parts = v.split(';');
+            const hue = +parts[0];
+            const sat = +parts[1];
+            const bf = parts.length > 2 ? +parts[2] : 1;
+            document.body.style.setProperty("--unseen-highlight", `hsl(${hue}, ${sat}%, ${Math.round(21 * bf)}%)`);
+        }));
+
         const setupGenderColor = (gender: string) => {
             this._disposables.push(new ObservableExpression(
                 () => [ 

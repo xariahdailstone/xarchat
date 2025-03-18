@@ -44,7 +44,7 @@ export interface ConfigSchemaOptionDefinition {
     value?: unknown;
 }
 export interface ConfigSchemaSelectOptionDefinition {
-    value: string;
+    value: any;
     displayValue: string;
 }
 
@@ -511,15 +511,6 @@ export const ConfigSchema: ConfigSchemaDefinition = {
             description: "Settings that control how XarChat looks.",
             items: [
                 {
-                    id: "unseenIndicator",
-                    scope: getScopeArray(["global", "char", "chan"]),
-                    title: "Show Unseen Messages Indicator",
-                    description: "Show a white dot on channels where new unseen messages that do not include ping words have arrived.",
-                    type: "boolean",
-                    defaultValue: true,
-                    configBlockKey: "showUnseenIndicator"
-                },
-                {
                     id: "highlightMyMessages",
                     scope: getScopeArray(["global", "char", "chan", "convo"]),
                     title: "Highlight My Messages",
@@ -627,6 +618,52 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     type: "boolean",
                     defaultValue: false,
                     configBlockKey: "chat.textbox.statusBarShown"
+                },
+                {
+                    scope: getScopeArray(["global"]),
+                    sectionTitle: "Unseen Messages",
+                    description: "",
+                    items: [
+                        {
+                            id: "unseenIndicator",
+                            scope: getScopeArray(["global", "char", "chan"]),
+                            title: "Track Unseen Messages",
+                            description: "",
+                            descriptionByScope: {
+                                "global": "Channels should track when new unseen messages that do not include ping words have arrived.",
+                                "char": "Channels should track when new unseen messages that do not include ping words have arrived.",
+                                "char.chancategory": "Channels in this category should track when new unseen messages that do not include ping words have arrived.",
+                                "char.chan": "This channel should track when new unseen messages that do not include ping words have arrived.",
+                                "char.convo": "invalid"
+                            },
+                            type: "boolean",
+                            defaultValue: true,
+                            configBlockKey: "showUnseenIndicator"
+                        },
+                        {
+                            id: "unseenIndicatorStyle",
+                            scope: getScopeArray(["global"]),
+                            title: "Unseen Messages Indicator Style",
+                            description: "Choose how a channel shows that it has unseen messages that do not include ping words. (This only appears if the channel is tracking unseen messages.)",
+                            type: "select",
+                            selectOptions: [
+                                { value: "standard", displayValue: "Dot on Window Edge (Default)" },
+                                { value: "title", displayValue: "Dot on Channel Title" },
+                                { value: "highlight", displayValue: "Highlight Background Color" },
+                            ],
+                            defaultValue: "standard",
+                            configBlockKey: "unseenIndicatorStyle"
+                        },
+                        {
+                            id: "unseenIndicatorHighlightColor",
+                            scope: getScopeArray(["global"]),
+                            title: "Unseen Messages Indicator Highlight Color",
+                            description: "Select a background color to highlight channels that have unseen messages. (Only used when the indicator style is set to highlight background color.)",
+                            type: "bgcolorcontrol",
+                            defaultValue: "246;36;1",
+                            configBlockKey: "unseenIndicatorHighlightColor"
+                        },
+                    ]
                 },
                 {
                     scope: getScopeArray(["global"]),
