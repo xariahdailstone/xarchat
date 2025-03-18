@@ -57,18 +57,24 @@ function tryHandleEditShortcutKey(textarea: HTMLTextAreaElement, ev: KeyboardEve
                 // tesh.eicon();
                 const avm = options.appViewModelGetter();
                 if (avm) {
-                    loadBack = true;
-                    (async () => {
-                        const pdialog = new EIconSearchDialogViewModel(avm);
-                        const dlgResult = await avm.showDialogAsync(pdialog);
-                        if (dlgResult) {
-                            tesh.eicon(dlgResult);
-                            textarea.value = tesh.value;
-                            textarea.setSelectionRange(tesh.selectionAt, tesh.selectionAt + tesh.selectionLength);
-                            options.onTextChanged(textarea.value);
-                        }
-                        textarea.focus();
-                    })();
+                    if (avm.getConfigSettingById("eiconSearch.enabled")) {
+                        loadBack = true;
+                        (async () => {
+                            const pdialog = new EIconSearchDialogViewModel(avm);
+                            const dlgResult = await avm.showDialogAsync(pdialog);
+                            if (dlgResult) {
+                                tesh.eicon(dlgResult);
+                                textarea.value = tesh.value;
+                                textarea.setSelectionRange(tesh.selectionAt, tesh.selectionAt + tesh.selectionLength);
+                                options.onTextChanged(textarea.value);
+                            }
+                            textarea.focus();
+                        })();
+                    }
+                    else {
+                        tesh.eicon();
+                        loadBack = true;
+                    }
                 }
                 break;
             case KeyCodes.KEY_I:

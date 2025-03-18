@@ -171,11 +171,20 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                 {
                     id: "autoUrlPaste",
                     scope: getScopeArray(["global"]),
-                    title: "Automatically add [url] tags to pasted URLs.",
+                    title: "Automatically add [url] tags to pasted URLs",
                     description: "When pasting in a URL, automatically add [url] tags around the URL when appropriate.",
                     type: "boolean",
                     defaultValue: true,
                     configBlockKey: "autoUrlPaste"
+                },
+                {
+                    id: "eiconSearch.enabled",
+                    scope: getScopeArray(["global"]),
+                    title: "Enable EIcon Search",
+                    description: "Ctrl+E pops up an eicon search instead of just inserting [eicon][/eicon] tags.",
+                    type: "boolean",
+                    defaultValue: true,
+                    configBlockKey: "eiconSearch.enabled"
                 },
                 {
                     scope: getScopeArray(["global", "char", "chan", "convo"]),
