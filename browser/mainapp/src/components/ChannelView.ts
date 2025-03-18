@@ -28,7 +28,7 @@ export class ChannelView extends StageViewComponent<ChannelViewModel> {
             </div>
             <x-splitterhandle id="elTextBoxSplitter" class="tbsplitterhandle" target="elTextBox"
                 othertarget="elContentArea" othermin="100"
-                orientation="vertical" min="75" max="99999" invert="true"></x-splitterhandle>
+                orientation="vertical" min="90" max="99999" invert="true"></x-splitterhandle>
             <x-channeltextbox class="textbox" id="elTextBox" slot="b"></x-channeltextbox>
         `);
 

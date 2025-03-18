@@ -73,3 +73,58 @@ export class OnlineWatchedCharsCharacterNameSet extends CharacterNameSet {
         });
     }
 }
+
+export class FilteredWatchedCharsCharacterNameSet extends CharacterNameSet {
+    constructor(
+        private readonly activeLoginViewModel: ActiveLoginViewModel,
+        characterNameSet: CharacterNameSet,
+        filterFunc: (cs: CharacterStatus) => boolean) {
+
+        super();
+
+        const csWatches: Map<CharacterName, IDisposable> = new Map();
+        characterNameSet.addCollectionObserver(entries => {
+            for (let entry of entries) {
+                switch (entry.changeType) {
+                    case StdObservableCollectionChangeType.ITEM_ADDED:
+                        {
+                            const charName = entry.item.value;
+                            const handleCharStatus = (cs: CharacterStatus) => {
+                                const matchesFilter = filterFunc(cs);
+                                if (matchesFilter) {
+                                    this.add(charName);
+                                }
+                                else {
+                                    this.delete(charName);
+                                }
+                            };
+
+                            const csWatch = activeLoginViewModel.characterSet.addStatusListenerDebug(
+                                [ "FilteredWatchedCharsCharacterNameSet", charName ],
+                                charName, handleCharStatus);
+                            csWatches.set(charName, csWatch);
+                            handleCharStatus(activeLoginViewModel.characterSet.getCharacterStatus(charName));
+                        }
+                        break;
+                    case StdObservableCollectionChangeType.ITEM_REMOVED:
+                        {
+                            const charName = entry.item.value;
+                            csWatches.get(charName)!.dispose();
+                            csWatches.delete(charName);
+                            this.delete(charName);
+                        }
+                        break;
+                    case StdObservableCollectionChangeType.CLEARED:
+                        {
+                            for (let csw of csWatches.values()) {
+                                csw.dispose();
+                            }
+                            csWatches.clear();
+                            this.clear();
+                        }
+                        break;
+                }
+            }
+        });
+    }
+}

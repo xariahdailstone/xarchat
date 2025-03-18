@@ -6,23 +6,28 @@
     overflow-y: auto;
 }
 
+.filter-button-container { box-sizing: border-box; }
+
 .filter-button-container {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr 1fr 1fr;
     grid-template-rows: auto;
-    grid-template-areas: "all online";
+    grid-template-areas: "all online looking";
 
     width: 100%;
     gap: 5px;
+    padding-left: 10px;
+    padding-right: 10px;
     
     padding-top: 14px;
     margin-bottom: 5px;
 }
-#elFilterAll { grid-area: all; justify-self: flex-end; }
-#elFilterOnline { grid-area: online; }
+#elFilterAll { grid-area: all; justify-self: stretch; }
+#elFilterOnline { grid-area: online; justify-self: stretch; }
+#elFilterLooking { grid-area: looking; justify-self: stretch; }
 
 .filter-button {
-    width: 70%;
+    /* width: 70%; */
     outline: none;
     border: 1px solid var(--fg-level-3);
     background: var(--bg-level-3);

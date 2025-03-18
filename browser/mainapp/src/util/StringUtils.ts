@@ -19,7 +19,7 @@ const ControlEscape: Record<string, string> = {
 };
 
 export class StringUtils {
-    static isNullOrWhiteSpace(str: Optional<string>) {
+    static isNullOrWhiteSpace(str: Optional<string>): str is Exclude<Optional<string>, string> {
         if (str === null) return true;
         if (str === undefined) return true;
         if (str == "") return true;

@@ -159,6 +159,10 @@ export class ChatChannelViewModel extends ChannelViewModel {
         // }
     }
 
+    getMaxMessageSize(): number | null {
+        return +this.activeLoginViewModel.serverVariables["chat_max"];
+    }
+
     private _name: ChannelName = ChannelName.create("");
     @observableProperty
     get name(): ChannelName { return this._name ?? ChannelName.create(""); }

@@ -268,10 +268,9 @@ export abstract class ChannelViewModel extends ObservableBase implements IDispos
     messageLimit: number = 200;
 
     @observableProperty
-    textBoxToolbarShown: boolean = false;
-
-    @observableProperty
     channelFilters: ChannelFiltersViewModel | null = null;
+
+    abstract getMaxMessageSize(): number | null;
 
     private readonly _filterClassesToShow: Set<string> = new Set(["all"]);
 

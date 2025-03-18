@@ -1357,12 +1357,27 @@ export class ChatConnectionImpl implements ChatConnection {
         });
     }
 
-    async createChannelAsync(title: string): Promise<void> {
+    async createChannelAsync(title: string): Promise<ChannelName> {
+        let result: ChannelName | null = null;
         await this.bracketedSendAsync({
-            code: "CCR", body: {
-                channel: title
-            }
-        });
+                code: "CCR", body: {
+                    channel: title
+                }
+            },
+            (recvMsg) => {
+                if (recvMsg.code == "JCH") {
+                    result = ChannelName.create(recvMsg.body.channel);
+                }
+                else {
+                    ERRAsFailure(recvMsg);
+                }
+            });
+        if (result != null) {
+            return result;
+        }
+        else {
+            throw new Error("Could not get name of created channel");
+        }
     }
 
     async changeChannelDescriptionAsync(channel: ChannelName, description: string): Promise<void> {

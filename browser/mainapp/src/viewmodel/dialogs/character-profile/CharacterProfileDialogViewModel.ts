@@ -132,5 +132,9 @@ export class CharacterProfileDialogViewModel extends DialogViewModel<number> {
             // TODO: update/delete memo
         }
     }
+
+    async reportProfile() {
+        await this.activeLoginViewModel.appViewModel.alertAsync("Not Yet Implemented");
+    }
 }
 
