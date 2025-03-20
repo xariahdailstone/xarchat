@@ -76,8 +76,13 @@ export class TextEditShortcutsHelper {
         this.handleContainingTags("[noparse]", "[/noparse]");
     }
 
-    color(colorName: string) {
-        this.handleContainingTags(`[sup=${colorName}]`, "[/sup]");
+    color(colorName?: string) {
+        if (colorName) {
+            this.handleContainingTags(`[color=${colorName}]`, "[/color]");
+        }
+        else {
+            this.handleContainingTags(`[color=]`, "[/color]");
+        }
     }
 
     private insensitiveStartsWith(haystack: string, needle: string) {

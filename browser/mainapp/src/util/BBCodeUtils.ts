@@ -115,6 +115,10 @@ function tryHandleEditShortcutKey(textarea: HTMLTextAreaElement, ev: KeyboardEve
                 tesh.strikethrough();
                 loadBack = true;
                 break;
+            case KeyCodes.KEY_D:
+                tesh.color();
+                loadBack = true;
+                break;
         }
 
         if (loadBack) {

@@ -62,6 +62,10 @@ export class ChannelEditHelpPopup extends ContextPopupBase<ChannelEditHelpPopupV
                     <td>Spoiler</td>
                 </tr>
                 <tr>
+                    <td>Ctrl+D</td>
+                    <td>Color</td>
+                </tr>
+                <tr>
                     <td>Ctrl+R</td>
                     <td>User Link</td>
                 </tr>
