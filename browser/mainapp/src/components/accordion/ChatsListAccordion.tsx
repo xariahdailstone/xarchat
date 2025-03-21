@@ -1,12 +1,13 @@
-import { jsx, Fragment, VNode } from "../snabbdom/index";
-import { asDisposable, ConvertibleToDisposable, IDisposable } from "../util/Disposable";
-import { ObjectUniqueId } from "../util/ObjectUniqueId";
-import { AccordionCollapseGroupViewModel, AccordionEntryViewModel, AccordionSetViewModel } from "../viewmodel/accordion/AccordionSetViewModel";
-import { ActiveLoginViewModel } from "../viewmodel/ActiveLoginViewModel";
-import { ChannelViewModel } from "../viewmodel/ChannelViewModel";
-import { ComponentBase, componentElement } from "./ComponentBase";
-import { RenderingComponentBase } from "./RenderingComponentBase";
+import { jsx, Fragment, VNode } from "../../snabbdom/index";
+import { asDisposable, ConvertibleToDisposable, IDisposable } from "../../util/Disposable";
+import { ObjectUniqueId } from "../../util/ObjectUniqueId";
+import { AccordionCollapseGroupViewModel, AccordionEntryViewModel, AccordionSetViewModel } from "../../viewmodel/accordion/AccordionSetViewModel";
+import { ActiveLoginViewModel } from "../../viewmodel/ActiveLoginViewModel";
+import { ChannelViewModel } from "../../viewmodel/ChannelViewModel";
+import { componentArea, ComponentBase, componentElement } from "./../ComponentBase";
+import { RenderingComponentBase } from "./../RenderingComponentBase";
 
+@componentArea("accordion")
 @componentElement("x-chatslistaccordion")
 export class ChatsListAccordion extends RenderingComponentBase<AccordionSetViewModel> {
 
