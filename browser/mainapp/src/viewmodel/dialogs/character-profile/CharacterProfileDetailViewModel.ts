@@ -69,6 +69,9 @@ export class CharacterProfileDetailViewModel extends ObservableBase {
         this.summaryInfo = new CharacterProfileDetailSummaryInfoViewModel(profileInfo, profileFieldsInfo, mappingList);
         this.description = profileInfo.description;
 
+        // Grab correctly-cased character name from profile data
+        const cn = CharacterName.create(profileInfo.name);
+
         const sectionsToShow = [
             "General details",
             "RPing preferences",
