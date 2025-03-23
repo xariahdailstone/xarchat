@@ -1,4 +1,5 @@
-import { AppSettings, RawSavedWindowLocation } from "../settings/AppSettings";
+import { AppSettings } from "../settings/AppSettings";
+import { RawSavedWindowLocation } from "../settings/RawAppSettings";
 import { NewAppSettings, XarHost2NewAppSettings } from "../settings/NewAppSettings";
 import { ChannelName } from "../shared/ChannelName";
 import { CharacterGender } from "../shared/CharacterGender";

@@ -99,7 +99,7 @@ export class CharacterSet {
     setCharacterStatus(characterName: CharacterName, status: Partial<CharacterStatus>, asOf?: StatusLastChangeInfo): CharacterStatus {
         const existingStatus = this.getCharacterStatus(characterName);
 
-        if (asOf === undefined) {
+        if (asOf === undefined) { 
             asOf = new Date();
         }
 

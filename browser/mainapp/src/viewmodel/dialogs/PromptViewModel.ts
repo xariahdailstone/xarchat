@@ -11,6 +11,7 @@ export class PromptViewModel<TResult> extends DialogViewModel<TResult> {
         this.title = options.title ?? "";
         this.message = options.message;
         this.messageAsHtml = options.messageAsHtml ?? false;
+        this.closeBoxResult = options.closeBoxResult;
 
         for (let btnOptions of options.buttons) {
             const buttonVm = new DialogButtonViewModel({
@@ -68,6 +69,7 @@ export interface PromptOptions<TResult> {
     title?: string;
     message: string;
     messageAsHtml?: boolean;
+    closeBoxResult?: TResult;
 
     buttons: PromptButtonOptions<TResult>[];
 }

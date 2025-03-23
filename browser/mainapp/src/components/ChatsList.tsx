@@ -692,7 +692,9 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
                 }}>+</button>;
         }
 
-        return <div key={id} id={id} classList={["section"]}>
+        const unseenDotStyle = options.vm.getConfigSettingById("unseenIndicatorStyle");
+
+        return <div key={id} id={id} classList={["section", `unseendot-${unseenDotStyle}`]}>
             <div classList={["sectiontitle"]}>
                 <div classList={["sectiontitle-collapse"]}>
                     <button classList={["collapsebutton"]} attr-tabindex="-1" on={{

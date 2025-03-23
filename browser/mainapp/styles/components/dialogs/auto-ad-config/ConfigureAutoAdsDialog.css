@@ -1,0 +1,231 @@
+:host,
+#elMain {
+    position: relative;
+    display: block;
+
+    width: 70vw;
+    height: 60vh;
+
+    min-width: 70vw;
+    max-width: 70vw;
+    min-height: 60vh;
+    max-height: 60vh;
+
+    overflow: hidden;
+}
+
+* { box-sizing: border-box; }
+
+.maincontainer {
+    display: grid;
+    height: 60vh;
+    width: 70vw;
+    grid-template-rows: auto auto minmax(0, 1fr);
+    grid-template-columns: 0.2fr 0.8fr;
+    grid-template-areas:
+        "enable enable"
+        "sep sep"
+        "adlist addetail";
+
+    gap: 8px;
+
+    .enablecontainer { 
+        grid-area: enable; 
+        display: flex;
+        flex-direction: row;
+        gap: 8px;
+        padding: 5px 5px;
+
+        &.is-disabled {
+            background-color: rgba(255, 0, 0, 0.4);
+            color: white;
+        }
+        &.is-enabled {
+            background-color: rgba(0, 255, 0, 0.4);
+            color: white;
+        }
+    }
+
+    .enablelistsep {
+        grid-area: sep;
+        height: 1px;
+        border-bottom: 1px solid var(--border-level-2);
+    }
+
+    .adlistcontainer { 
+        grid-area: adlist; 
+        background-color: var(--bg-level-2);
+        color: var(--fg-level-2);
+
+        overflow-y: auto;
+
+        .adtab {
+            display: grid;
+            grid-template-rows: auto;
+            grid-template-columns: minmax(0, 1fr) auto;
+            grid-template-areas:
+                "title closebutton";
+
+            padding: 4px 4px;
+
+            .adtab-title-warningicon {
+                font-size: 75%;
+            }
+            .adtab-title {
+                grid-area: title; 
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                overflow: hidden;
+            }
+            .adtab-closebutton { 
+                grid-area: closebutton; 
+                margin-left: 4px;
+            }
+
+            &.adtab-selected { 
+                background-color: var(--bg-level-2-highlight);
+                color: var(--fg-level-2-highlight);
+            }
+            &.adtab-isdisabled .adtab-title {
+                text-decoration: line-through;
+            }
+        }
+    }
+    .addetailcontainer { grid-area: addetail; }
+}
+
+.addetailcontainer {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-rows: auto auto 1fr 1fr;
+    grid-template-areas:
+        "title enabled"
+        "onlinestatuses onlinestatuses"
+        "adtext adtext"
+        "channels channels";
+
+    gap: 8px;
+
+    .adtitlecontainer { grid-area: title; }
+    .adenabledcontainer { grid-area: enabled; }
+    .adtextcontainer { grid-area: adtext; }
+    .adchannelscontainer { grid-area: channels; }
+    .adonlinestatuscontainer { grid-area: onlinestatuses; }
+}
+
+.adtitlecontainer input {
+    background-color: var(--bg-level-2);
+    color: var(--fg-level-2);
+    border: none;
+    outline: none;
+}
+
+.adtitlecontainer,
+.adenabledcontainer {
+    display: flex;
+    flex-direction: row;
+    gap: 7px;
+}
+
+.adtitlecontainer input { flex-grow: 1; flex-shrink: 0; }
+
+.adtextcontainer {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-columns: 1fr;
+    grid-template-areas: 
+        "label"
+        "textarea";
+    gap: 4px;
+
+    span { grid-area: label; }
+    textarea {
+        grid-area: textarea; 
+        background-color: var(--bg-level-2);
+        color: var(--fg-level-2);
+        border: 0;
+        outline: none;
+        resize: none;
+    }
+}
+
+.adchannelscontainer {
+    display: grid;
+    grid-template-rows: auto 1fr;
+    grid-template-columns: 1fr;
+    grid-template-areas:
+        "label"
+        "selectarea";
+    gap: 4px;
+
+    overflow: hidden;
+
+    .channelslabel { grid-area: label; }
+    .channelsset { grid-area: selectarea; }
+
+    .channelsset {
+        background-color: var(--bg-level-2);
+        color: var(--fg-level-2);
+        border-radius: 7px;
+        padding: 7px;
+        overflow-y: auto;
+
+        display: flex;
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: flex-start;
+        gap: 6px 10px;
+    }
+}
+
+.onlinestatusesset {
+    background-color: var(--bg-level-2);
+    color: var(--fg-level-2);
+
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
+    padding: 8px 8px;
+}
+
+.titlelabel,
+.onlinestatuseslabel,
+.adtextlabel,
+.channelslabel {
+    font-weight: bold;
+}
+
+.chanitem {
+    flex-grow: 0;
+    flex-shrink: 0;
+
+    display: inline-grid;
+    grid-template-columns: auto 1fr auto;
+    grid-template-rows: auto;
+    grid-template-areas:
+        "alert select close";
+    
+    background-color: var(--bg-level-4);
+    color: var(--fg-level-4);
+    padding: 4px 8px;
+    border-radius: 6px;
+
+    gap: 5px;
+
+    .chanitem-notinchanalert {
+        grid-area: alert;
+        font-size: 80%;
+        cursor: default;
+    }
+
+    .chanitem-title { 
+        grid-area: select; 
+        background-color: inherit;
+        color: inherit;
+        border: 0;
+        outline: none;
+        font: inherit;
+        font-size: 85%;
+    }
+    .chanitem-close { grid-area: close; }
+}

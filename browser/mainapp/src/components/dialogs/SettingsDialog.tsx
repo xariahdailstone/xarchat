@@ -554,14 +554,19 @@ export class SettingsDialog extends DialogComponentBase<SettingsDialogViewModel>
     private renderSettingSelect(setting: SettingsDialogItemViewModel): VNode {
         const optionNodes: VNode[] = [];
 
+        const valueMap = new Map<number, any>();
+        let nextValueNum = 1;
+
         for (let o of setting.schema.selectOptions!) {
             const isSelected = setting.value == o.value;
-            optionNodes.push(<option attrs={{ "value": o.value, "selected": isSelected }}>{o.displayValue ?? o.value}</option>)
+            const thisValueNum = nextValueNum++;
+            valueMap.set(thisValueNum, o.value);
+            optionNodes.push(<option attrs={{ "value": thisValueNum.toString(), "selected": isSelected }}>{o.displayValue ?? o.value.toString()}</option>)
         }
 
         const onChange = (e: Event) => {
             const elSelect = e.target as HTMLSelectElement;
-            setting.value = elSelect.value;
+            setting.value = valueMap.get(+elSelect.value);
         };
 
         return <div classList={[ "setting-entry", "setting-entry-select" ]}>

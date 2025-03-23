@@ -1,3 +1,4 @@
+import { Attrs } from "../../../snabbdom/index";
 import { jsx } from "../../../snabbdom/jsx";
 import { VNode } from "../../../snabbdom/vnode";
 import { BBCodeParseResult, ProfileBBCodeParser } from "../../../util/bbcode/BBCode";
@@ -219,11 +220,15 @@ export class CharacterProfileDialogInner extends RenderingComponentBase<Characte
     }
 
     private renderOverview(vm: CharacterProfileDialogViewModel): ViewTabInfo {
+        const limitIndent = !!vm.activeLoginViewModel.getConfigSettingById("profileLimitIndent");
+        const attrs: Attrs = {
+            "indentlimit": limitIndent ? "true" : "false"
+        };
         const vtiOverview: ViewTabInfo = {
             id: "overview",
             title: "Overview",
             vnode: <div classList="profile-main-description" id="elProfileDescription">
-                <x-bbcodedisplay props={{ "viewModel": this.lastParseResult }}></x-bbcodedisplay>
+                <x-bbcodedisplay props={{ "viewModel": this.lastParseResult }} attrs={attrs}></x-bbcodedisplay>
             </div>
         };
         return vtiOverview;

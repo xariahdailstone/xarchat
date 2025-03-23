@@ -1,6 +1,6 @@
 import { ChannelName } from "../shared/ChannelName";
 import { CharacterName } from "../shared/CharacterName";
-import { OnlineStatus } from "../shared/OnlineStatus";
+import { OnlineStatus, OnlineStatusConvert } from "../shared/OnlineStatus";
 import { HostInterop } from "../util/HostInterop";
 import { IterableUtils } from "../util/IterableUtils";
 import { Collection, CollectionChangeType } from "../util/ObservableCollection";
@@ -8,78 +8,7 @@ import { Optional } from "../util/Optional";
 import { PromiseSource } from "../util/PromiseSource";
 import { StringUtils } from "../util/StringUtils";
 import { StdObservableCollectionChange, StdObservableCollectionChangeType } from "../util/collections/ReadOnlyStdObservableCollection";
-
-interface RawAppSettings {
-    savedWindowLocations: RawSavedWindowLocation[];
-    savedAccountCredentials: RawSavedAccountCredentials[];
-    lastUsedSavedAccount?: string;
-    savedLogins: RawSavedLogin[];
-    savedChatStates: RawSavedChatState[];
-    autoIdleSec: Optional<number>;
-}
-
-export interface RawSavedWindowLocation {
-    desktopMetrics: string;
-    windowX: number;
-    windowY: number;
-    windowWidth: number;
-    windowHeight: number;
-}
-
-interface RawSavedLogin {
-    account: string;
-    characterName: string;
-}
-
-interface RawSavedAccountCredentials {
-    account: string;
-    password?: string;
-}
-
-interface RawSavedChatState {
-    characterName: string;
-    lastLogin: number | null | undefined;
-    joinedChannels: RawSavedChatStateJoinedChannel[];
-    pinnedChannels: string[];
-    pmConvos: RawSavedChatStatePMConvo[];
-    statusMessage: string;
-    onlineStatus: OnlineStatus;
-
-    pinnedChannelSectionCollapsed: boolean;
-    unpinnedChannelSectionCollapsed: boolean;
-    pmConvosSectionCollapsed: boolean;
-    selectedChannel?: string;
-
-    pingWords: string[];
-}
-
-export type RawSavedChatStateNamedFilterMap = RawSavedChatStateNamedFilterEntry[];
-export interface RawSavedChatStateNamedFilterEntry {
-    name: string;
-    isSelected: boolean;
-    filterClasses: string[];
-    canPing?: boolean;
-    controlsUnseenDot?: boolean;
-    showInAdsOnlyChannel?: boolean;
-    showInChatOnlyChannel?: boolean;
-    showInBothAdsAndChatChannel?: boolean;
-}
-interface RawSavedChatStateHasNamedFilters {
-    namedFilters?: RawSavedChatStateNamedFilterMap;
-}
-interface RawSavedChatStateJoinedChannel extends RawSavedChatStateHasNamedFilters {
-    name: string;
-    title: string;
-    order: number;
-    filters?: string[];
-}
-
-interface RawSavedChatStatePMConvo extends RawSavedChatStateHasNamedFilters {
-    character: string;
-    lastInteraction: number;
-    filters?: string[];
-}
-
+import { RawAppSettings, RawSavedAccountCredentials, RawSavedChatState, RawSavedChatStateAutoAdSettings, RawSavedChatStateAutoAdSettingsEntry, RawSavedChatStateJoinedChannel, RawSavedChatStateNamedFilterMap, RawSavedChatStatePMConvo, RawSavedLogin, RawSavedWindowLocation } from "./RawAppSettings";
 
 export class AppSettings {
     static async initializeAsync(): Promise<void> { 
@@ -571,6 +500,8 @@ export class SavedChatState {
         this._pmConvosSectionCollapsed = item?.pmConvosSectionCollapsed ?? false;
         this._selectedChannel = item?.selectedChannel ?? undefined;
 
+        this._autoAdSettings = new SavedChatStateAutoAdSettings(this, item?.autoAdSettings);
+
         this.pingWords = new PingWordsSet(this, item?.pingWords ?? []);
     }
 
@@ -659,6 +590,15 @@ export class SavedChatState {
         }
     }
 
+    private _autoAdSettings: SavedChatStateAutoAdSettings;
+
+    get autoAdSettings() { return this._autoAdSettings; }
+    set autoAdSettings(value) { 
+        if (value != this._autoAdSettings) {
+            this._autoAdSettings = value; 
+            this.updated();
+        }
+    }
 
     updated() {
         this.parent.updated();
@@ -677,7 +617,8 @@ export class SavedChatState {
             unpinnedChannelSectionCollapsed: this._unpinnedChannelSectionCollapsed,
             pmConvosSectionCollapsed: this._pmConvosSectionCollapsed,
             statusMessage: this._statusMessage,
-            onlineStatus: this._onlineStatus
+            onlineStatus: this._onlineStatus,
+            autoAdSettings: this._autoAdSettings.toJSON()
         };
         return result;
     }
@@ -922,4 +863,123 @@ export class PingWordsSet extends Collection<string> {
         }
         return result;
     }    
+}
+
+export class SavedChatStateAutoAdSettings {
+    constructor(private readonly parent: SavedChatState,
+        rawSettings?: RawSavedChatStateAutoAdSettings)
+    {
+        const rs: RawSavedChatStateAutoAdSettings = rawSettings ?? { entries: [], enabled: false };
+
+        for (let x of rs.entries) {
+            this._entries.add(new SavedChatStateAutoAdSettingsEntry(this, x));
+        }
+        this._enabled = rs.enabled;
+
+        this._entries.addCollectionObserver(() => {
+            this.updated();
+        });
+    }
+
+    private readonly _entries: Collection<SavedChatStateAutoAdSettingsEntry> = new Collection();
+    private _enabled: boolean = false;
+
+    get entries(): Collection<SavedChatStateAutoAdSettingsEntry> { return this._entries; }
+
+    get enabled(): boolean { return this._enabled; }
+    set enabled(value: boolean) { 
+        if (value !== this._enabled) {
+            this._enabled = value;
+            this.updated();
+        }
+    }
+
+    updated() {
+        this.parent.updated();
+    }
+
+    toJSON() {
+        const result: RawSavedChatStateAutoAdSettings = {
+            entries: this._entries.map(x => x.toJSON()),
+            enabled: this._enabled
+        };
+        return result;
+    }
+}
+
+export class SavedChatStateAutoAdSettingsEntry {
+    constructor(private readonly parent: SavedChatStateAutoAdSettings,
+        rawSettings?: RawSavedChatStateAutoAdSettingsEntry) {
+
+        const rs: RawSavedChatStateAutoAdSettingsEntry = rawSettings ?? { enabled: true, title: "Untitled Ad", adText: "", targetChannels: [], targetOnlineStatuses: [] };
+
+        this._enabled = rs.enabled;
+        this._title = rs.title;
+        this._adText = rs.adText;
+        for (let x of rs.targetChannels) {
+            this._targetChannels.add(ChannelName.create(x));
+        }
+        for (let x of rs.targetOnlineStatuses) {
+            const os = OnlineStatusConvert.toOnlineStatus(x);
+            if (os != null) {
+                this._targetOnlineStatuses.add(os);
+            }
+        }
+
+        this._targetChannels.addCollectionObserver(() => {
+            this.updated();
+        });
+        this._targetOnlineStatuses.addCollectionObserver(() => {
+            this.updated();
+        });
+    }
+
+    private _enabled: boolean;
+    private _adText: string;
+    private _title: string;
+    private readonly _targetChannels: Collection<ChannelName> = new Collection();
+    private readonly _targetOnlineStatuses: Collection<OnlineStatus> = new Collection();
+
+    get enabled() { return this._enabled; }
+    set enabled(value) {
+        if (value !== this._enabled) {
+            this._enabled = value;
+            this.updated();
+        }
+    }
+
+    get title(): string { return this._title; }
+    set title(value: string) {
+        if (value !== this._title) {
+            this._title = value;
+            this.updated();
+        }
+    }
+
+    get adText(): string { return this._adText; }
+    set adText(value: string) {
+        if (value !== this._adText) {
+            this._adText = value;
+            this.updated();
+        }
+    }
+
+    get targetChannels(): Collection<ChannelName> { return this._targetChannels; }
+
+    get targetOnlineStatuses(): Collection<OnlineStatus> { return this._targetOnlineStatuses; }
+
+    updated() {
+        this.parent.updated();
+    }
+
+    toJSON() {
+        const result: RawSavedChatStateAutoAdSettingsEntry = {
+            enabled: this._enabled,
+            title: this._title,
+            adText: this._adText,
+            targetChannels: this._targetChannels.map(x => x.canonicalValue),
+            targetOnlineStatuses: this._targetOnlineStatuses.map(x => OnlineStatusConvert.toString(x))
+        };
+        return result;
+    }
 }

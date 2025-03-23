@@ -1,4 +1,6 @@
 import { MessagePreviewPopup } from "../components/popups/MessagePreviewPopup";
+import { VNode } from "../snabbdom/vnode";
+import { ActiveLoginViewModel } from "../viewmodel/ActiveLoginViewModel";
 import { AppViewModel } from "../viewmodel/AppViewModel";
 import { ChannelViewModel } from "../viewmodel/ChannelViewModel";
 import { EIconSearchDialogViewModel } from "../viewmodel/dialogs/EIconSearchDialogViewModel";
@@ -27,11 +29,12 @@ function tryHandleEditShortcutKey(textarea: HTMLTextAreaElement, ev: KeyboardEve
                     const curPopup = (textarea as any)[CUR_POPUP_VM] as (MessagePreviewPopupViewModel | undefined);
                     if (!curPopup) {
                         const cvm = options.channelViewModelGetter ? options.channelViewModelGetter() : null;
-                        if (cvm) {
-                            const pu = new MessagePreviewPopupViewModel(cvm, textarea);
+                        const alvm = cvm ? cvm.activeLoginViewModel : (options.activeLoginViewModelGetter ? options.activeLoginViewModelGetter() : null);
+                        if (alvm) {
+                            const pu = new MessagePreviewPopupViewModel(cvm, alvm, textarea);
                             (textarea as any)[CUR_POPUP_VM] = pu;
                             pu.rawText = textarea.value;
-                            cvm.activeLoginViewModel.appViewModel.popups.push(pu);
+                            alvm.appViewModel.popups.push(pu);
                             const hinput = EventListenerUtil.addDisposableEventListener(textarea, "input", () => { pu.dismissed(); });
                             const hblur = EventListenerUtil.addDisposableEventListener(textarea, "blur", () => { pu.dismissed(); });
                             const hkeydown = EventListenerUtil.addDisposableEventListener(textarea, "keydown", () => { pu.dismissed(); });
@@ -57,18 +60,24 @@ function tryHandleEditShortcutKey(textarea: HTMLTextAreaElement, ev: KeyboardEve
                 // tesh.eicon();
                 const avm = options.appViewModelGetter();
                 if (avm) {
-                    loadBack = true;
-                    (async () => {
-                        const pdialog = new EIconSearchDialogViewModel(avm);
-                        const dlgResult = await avm.showDialogAsync(pdialog);
-                        if (dlgResult) {
-                            tesh.eicon(dlgResult);
-                            textarea.value = tesh.value;
-                            textarea.setSelectionRange(tesh.selectionAt, tesh.selectionAt + tesh.selectionLength);
-                            options.onTextChanged(textarea.value);
-                        }
-                        textarea.focus();
-                    })();
+                    if (avm.getConfigSettingById("eiconSearch.enabled")) {
+                        loadBack = true;
+                        (async () => {
+                            const pdialog = new EIconSearchDialogViewModel(avm);
+                            const dlgResult = await avm.showDialogAsync(pdialog);
+                            if (dlgResult) {
+                                tesh.eicon(dlgResult);
+                                textarea.value = tesh.value;
+                                textarea.setSelectionRange(tesh.selectionAt, tesh.selectionAt + tesh.selectionLength);
+                                options.onTextChanged(textarea.value);
+                            }
+                            textarea.focus();
+                        })();
+                    }
+                    else {
+                        tesh.eicon();
+                        loadBack = true;
+                    }
                 }
                 break;
             case KeyCodes.KEY_I:
@@ -107,6 +116,10 @@ function tryHandleEditShortcutKey(textarea: HTMLTextAreaElement, ev: KeyboardEve
                 break;
             case KeyCodes.KEY_S:
                 tesh.strikethrough();
+                loadBack = true;
+                break;
+            case KeyCodes.KEY_D:
+                tesh.color();
                 loadBack = true;
                 break;
         }
@@ -174,14 +187,15 @@ export class BBCodeUtils {
         return (inUrlCount == 0);
     }
 
-    static addEditingShortcuts(textarea: HTMLTextAreaElement, options: AddEditingShortcutsOptions) {
+    static addEditingShortcutsAbstract(addEventListener: (eventName: keyof HTMLElementEventMap, handler: (e: Event) => void) => void, options: AddEditingShortcutsOptions) {
         if (!(options?.onKeyDownHandler)) {
             options.onKeyDownHandler = (ev, handleShortcuts) => {
                 handleShortcuts(ev);
             }
         }
-        else {
-            textarea.addEventListener("keydown", (ev) => {
+        //else {
+            addEventListener("keydown", (ev: KeyboardEvent) => {
+                const textarea = ev.target as HTMLTextAreaElement;
                 options.onKeyDownHandler!(ev, (ev) => {
                     if (tryHandleEditShortcutKey(textarea, ev, options)) {
                         ev.preventDefault();
@@ -192,8 +206,9 @@ export class BBCodeUtils {
                     }
                 });
             });
-        }
-        textarea.addEventListener("paste", (ev: ClipboardEvent) => {
+        //}
+        addEventListener("paste", (ev: ClipboardEvent) => {
+            const textarea = ev.target as HTMLTextAreaElement;
             const avm = options.appViewModelGetter();
             if (!!(avm?.getConfigSettingById("autoUrlPaste"))) {
                let pasteText = ev.clipboardData?.getData("text") ?? "";
@@ -215,10 +230,42 @@ export class BBCodeUtils {
             }
         });
     }
+
+    static addEditingShortcutsVNode(textareaVNode: VNode, options: AddEditingShortcutsOptions) {
+        this.addEditingShortcutsAbstract(
+            (eventName, handler) => {
+                textareaVNode.data ??= {};
+                textareaVNode.data.on ??= {};
+                const non = (textareaVNode.data.on as any);
+                if (non[eventName]) {
+                    const existing = non[eventName];
+                    non[eventName] = (e: Event) => {
+                        try { existing(e); }
+                        catch { }
+                        handler(e);
+                    };
+                }
+                else {
+                    non[eventName] = handler;
+                }
+            },
+            options
+        );
+    }
+
+    static addEditingShortcuts(textarea: HTMLTextAreaElement, options: AddEditingShortcutsOptions) {
+        this.addEditingShortcutsAbstract(
+            (eventName, handler) => {
+                textarea.addEventListener(eventName, handler);
+            },
+            options
+        );
+    }
 }
 
 interface AddEditingShortcutsOptions {
     appViewModelGetter: () => AppViewModel | null,
+    activeLoginViewModelGetter?: () => ActiveLoginViewModel | null,
     channelViewModelGetter?: () => ChannelViewModel | null,
     onKeyDownHandler?: (ev: KeyboardEvent, handleShortcuts: (ev: KeyboardEvent) => boolean) => void;
     onTextChanged: (value: string) => void;
