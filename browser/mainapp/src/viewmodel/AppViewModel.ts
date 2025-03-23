@@ -1,7 +1,8 @@
 import { ConfigSchema, ConfigSchemaScopeType, getConfigSchemaItemById } from "../configuration/ConfigSchemaItem.js";
 import { FListApi } from "../fchat/api/FListApi.js";
 import { HostInteropApi } from "../fchat/api/HostInteropApi.js";
-import { AppSettings, RawSavedWindowLocation } from "../settings/AppSettings.js";
+import { AppSettings } from "../settings/AppSettings.js";
+import { RawSavedWindowLocation } from "../settings/RawAppSettings.js";
 import { ChannelName } from "../shared/ChannelName.js";
 import { CharacterName } from "../shared/CharacterName.js";
 import { ConfigBlock } from "../util/ConfigBlock.js";

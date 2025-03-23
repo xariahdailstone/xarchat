@@ -299,16 +299,16 @@ export class ChannelStreamMessageViewRenderer implements IDisposable {
 
         let elDiceIcon: VNode | null = null;
         if (vm.type == ChannelMessageType.ROLL) {
-            elDiceIcon = <span classList={["dice-icon"]}>{"\u{1F3B2} "}</span>;
+            elDiceIcon = <span classList={["dice-icon"]} attr-title="Dice Roll">{"\u{1F3B2} "}</span>;
         }
         else if (vm.type == ChannelMessageType.SPIN) {
-            elDiceIcon = <span classList={["dice-icon"]}>{"\u{1F37E} "}</span>;
+            elDiceIcon = <span classList={["dice-icon"]} attr-title="Bottle Spin">{"\u{1F37E} "}</span>;
         }
         else if (vm.type == ChannelMessageType.CHAT && isImportant) {
-            elDiceIcon = <span classList={["dice-icon"]}>{"\u{1F6D1} "}</span>;
+            elDiceIcon = <span classList={["dice-icon"]} attr-title="Alert">{"\u{1F6D1} "}</span>;
         }
         else if (vm.type == ChannelMessageType.AD) {
-            elDiceIcon = <span classList={["dice-icon"]}>{"\u{1F4E2} "}</span>;
+            elDiceIcon = <span classList={["dice-icon"]} attr-title="Ad">{"\u{1F4E2} "}</span>;
         }
 
         let targetContainer: VNode[] = [];
@@ -599,16 +599,16 @@ class ChannelStreamMessageViewRendererFChat implements MessageRenderer {
 
         let elDiceIcon: VNode | null = null;
         if (vm.type == ChannelMessageType.ROLL) {
-            elDiceIcon = <span classList={["dice-icon"]}>{"\u{1F3B2} "}</span>;
+            elDiceIcon = <span classList={["dice-icon"]} attr-title="Dice Roll">{"\u{1F3B2} "}</span>;
         }
         else if (vm.type == ChannelMessageType.SPIN) {
-            elDiceIcon = <span classList={["dice-icon"]}>{"\u{1F37E} "}</span>;
+            elDiceIcon = <span classList={["dice-icon"]} attr-title="Bottle Spin">{"\u{1F37E} "}</span>;
         }
         else if (vm.type == ChannelMessageType.CHAT && isImportant) {
-            elDiceIcon = <span classList={["dice-icon"]}>{"\u{1F6D1} "}</span>;
+            elDiceIcon = <span classList={["dice-icon"]} attr-title="Alert">{"\u{1F6D1} "}</span>;
         }
         else if (vm.type == ChannelMessageType.AD) {
-            elDiceIcon = <span classList={["dice-icon"]}>{"\u{1F4E2} "}</span>;
+            elDiceIcon = <span classList={["dice-icon"]} attr-title="Ad">{"\u{1F4E2} "}</span>;
         }
 
         let targetContainer: VNode[] = [];
@@ -919,10 +919,10 @@ class ChannelStreamMessageViewRendererDiscord implements MessageRenderer {
                 //elDiceIcon = <span classList={["dice-icon"]} attrs={{"data-copycontent":""}}>{"\u{1F37E} "}</span>;
             }
             else if (vm.type == ChannelMessageType.CHAT && isImportant) {
-                elDiceIcon = <span key={`msg-${uniqueMessageId}-diceicon`} classList={["dice-icon"]} attrs={{"data-copycontent":""}}>{"\u{1F6D1} "}</span>;
+                elDiceIcon = <span key={`msg-${uniqueMessageId}-diceicon`} classList={["dice-icon"]} attr-title="Alert" attrs={{"data-copycontent":""}}>{"\u{1F6D1} "}</span>;
             }
             else if (vm.type == ChannelMessageType.AD) {
-                elDiceIcon = <span key={`msg-${uniqueMessageId}-diceicon`} lassList={["dice-icon"]} attrs={{"data-copycontent":""}}>{"\u{1F4E2} "}</span>;
+                elDiceIcon = <span key={`msg-${uniqueMessageId}-diceicon`} classList={["dice-icon"]} attr-title="Ad" attrs={{"data-copycontent":""}}>{"\u{1F4E2} "}</span>;
             }
 
             const msgContainer = <div classList={[ "message-content-container" ]} attrs={{"data-copyinline": "true"}}>{rbody}</div>;
@@ -1066,20 +1066,25 @@ class ChannelStreamMessageViewRendererDiscord implements MessageRenderer {
 
         let elDiceIcon: VNode | null = null;
         let elDiceText: string = "";
+        let elDiceTextTitle: string = "";
         if (vm.type == ChannelMessageType.ROLL) {
             elDiceText = "\u{1F3B2} ";
+            elDiceTextTitle = "Dice Roll";
         }
         else if (vm.type == ChannelMessageType.SPIN) {
             elDiceText = "\u{1F37E} ";
+            elDiceTextTitle = "Bottle Spin";
         }
         else if (vm.type == ChannelMessageType.CHAT && isImportant) {
             elDiceText = "\u{1F6D1} ";
+            elDiceTextTitle = "Alert";
         }
         else if (vm.type == ChannelMessageType.AD) {
             elDiceText = "\u{1F4E2} ";
+            elDiceTextTitle = "Ad";
         }
         if (elDiceText != "") {
-            elDiceIcon = <span classList={["dice-icon"]} attrs={{"data-copycontent":""}}>{elDiceText}</span>;
+            elDiceIcon = <span classList={["dice-icon"]} attr-title={elDiceTextTitle} attrs={{"data-copycontent":""}}>{elDiceText}</span>;
         }
 
         let targetContainer: VNode[] = [];
