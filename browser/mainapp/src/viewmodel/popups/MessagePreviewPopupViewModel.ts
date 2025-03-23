@@ -3,19 +3,20 @@ import { DisposableOwnerField } from "../../util/Disposable";
 import { ObservableValue } from "../../util/Observable";
 import { observableProperty } from "../../util/ObservableBase";
 import { StringUtils } from "../../util/StringUtils";
+import { ActiveLoginViewModel } from "../ActiveLoginViewModel";
 import { ChannelViewModel } from "../ChannelViewModel";
 import { ContextPopupViewModel, PopupViewModel } from "./PopupViewModel";
 
 export class MessagePreviewPopupViewModel extends ContextPopupViewModel {
     constructor(
-        private readonly channelViewModel: ChannelViewModel,
+        private readonly channelViewModel: ChannelViewModel | null,
+        private readonly activeLoginViewModel: ActiveLoginViewModel,
         contextElement: HTMLElement) {
 
-        super(channelViewModel.activeLoginViewModel.appViewModel, contextElement);
+        super(activeLoginViewModel.appViewModel, contextElement);
     }
 
-    get activeLoginViewModel() { return this.channelViewModel.activeLoginViewModel; }
-    get appViewModel() { return this.channelViewModel.activeLoginViewModel.appViewModel; }
+    get appViewModel() { return this.activeLoginViewModel.appViewModel; }
 
     private readonly _rawText: ObservableValue<string> = new ObservableValue("");
     get rawText(): string { return this._rawText.value; }
@@ -32,7 +33,7 @@ export class MessagePreviewPopupViewModel extends ContextPopupViewModel {
                     addUrlDomains: true, 
                     appViewModel: this.appViewModel, 
                     activeLoginViewModel: this.activeLoginViewModel,
-                    channelViewModel: this.channelViewModel,
+                    channelViewModel: this.channelViewModel ?? undefined,
                     imagePreviewPopups: true,
                     syncGifs: true
                 });

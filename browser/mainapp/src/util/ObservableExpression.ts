@@ -1,9 +1,10 @@
+import { CallbackSet } from "./CallbackSet";
 import { CancellationToken } from "./CancellationTokenSource";
 import { IDisposable } from "./Disposable";
 import { testEquality } from "./Equality";
 import { Logging } from "./Logger";
-import { Observable, PropertyChangeEvent, PropertyChangeEventListener } from "./Observable";
-import { ObservableBase } from "./ObservableBase";
+import { Observable, PropertyChangeEvent, PropertyChangeEventListener, ValueSubscription } from "./Observable";
+import { ObservableBase, setupValueSubscription } from "./ObservableBase";
 import { PromiseSource } from "./PromiseSource";
 
 export class AwaitableObservableExpression<T> implements IDisposable, Disposable {
@@ -274,4 +275,54 @@ interface DependencyListenerInfo {
     viewModel: any;
     propertyName: string;
     listener: IDisposable;
+}
+
+export class WatchedExpression<T> implements Observable, IDisposable {
+    constructor(func: () => T) {
+        this._currentGetter = () => { throw new Error("Value not available yet") };
+
+        this._oe = new ObservableExpression(func,
+            (v) => {
+                this._currentGetter = () => v;
+                this.raisePropertyChangeEvent("value", v);
+            },
+            (e) => {
+                this._currentGetter = () => { throw e; };
+                this.raisePropertyChangeEvent("value", undefined);
+            }
+        );
+    }
+
+    addEventListener(eventName: "propertychange", handler: PropertyChangeEventListener): IDisposable {
+        return this._cbSet.add(handler);
+    }
+    removeEventListener(eventName: "propertychange", handler: PropertyChangeEventListener): void {
+        this._cbSet.delete(handler);
+    }
+    raisePropertyChangeEvent(propertyName: string, propValue: unknown): void {
+        this._cbSet.invoke(new PropertyChangeEvent(propertyName, propValue));
+    }
+    addValueSubscription(propertyPath: string, handler: (value: any) => any): ValueSubscription {
+        return setupValueSubscription(this, propertyPath, handler);
+    }
+
+    private readonly _oe: ObservableExpression<T>;
+    private _currentGetter: () => T | undefined;
+    private _cbSet: CallbackSet<PropertyChangeEventListener> = new CallbackSet("WatchedExpression");
+
+    get value(): (T | undefined) { return this._currentGetter(); }
+
+    private _isDisposed = false;
+    get isDisposed(): boolean { return this._isDisposed; }
+
+    dispose(): void {
+        if (!this._isDisposed) {
+            this._isDisposed = true;
+            this._oe.dispose();
+            this._currentGetter = () => { throw new Error("WatchedExpression disposed") };
+            this.raisePropertyChangeEvent("value", undefined);
+        }
+    }
+
+    [Symbol.dispose](): void { this.dispose(); }
 }

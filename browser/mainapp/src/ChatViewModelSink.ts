@@ -269,6 +269,7 @@ export class ChatViewModelSink implements ChatConnectionSink {
                 break;
             case ChatDisconnectReason.REQUESTED_DISCONNECT:
                 this.viewModel.connectionState = ChatConnectionState.DISCONNECTED_NORMALLY;
+                this.viewModel.removingFromLogins();
                 this.viewModel.appViewModel.logins.remove(this.viewModel);
                 break;
             case ChatDisconnectReason.KICKED_FROM_SERVER:
@@ -284,6 +285,7 @@ export class ChatViewModelSink implements ChatConnectionSink {
         if (!this.isReconnect) {
             this._logger.logDebug("pushing new login");
             this.viewModel.appViewModel.logins.push(this.viewModel);
+            this.viewModel.addedToLogins();
         }
         else {
             this._logger.logDebug("not pushing new login", this.isReconnect);

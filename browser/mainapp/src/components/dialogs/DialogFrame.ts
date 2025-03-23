@@ -114,12 +114,16 @@ export class DialogFrame extends ComponentBase<DialogViewModel<any>> {
         this.whenConnected(() => {
             //this.log("CONNECTED");
             const keydownListener = EventListenerUtil.addDisposableEventListener(window, "keydown", (ev: KeyboardEvent) => {
-                if (!this.shouldPreventKeyboardEventDefault(ev)) {
-                    const btn = this.getButtonForKeyboardEvent(ev);
-                    if (btn) {
-                        btn.onClick();
-                        ev.preventDefault();
-                        ev.stopPropagation();
+                if (!this.viewModel) { return; }
+                const avm = this.viewModel.parent;
+                if (avm.dialogs.length > 0 && (avm.dialogs[avm.dialogs.length - 1] == this.viewModel)) {
+                    if (!this.shouldPreventKeyboardEventDefault(ev)) {
+                        const btn = this.getButtonForKeyboardEvent(ev);
+                        if (btn) {
+                            btn.onClick();
+                            ev.preventDefault();
+                            ev.stopPropagation();
+                        }
                     }
                 }
             }, true);

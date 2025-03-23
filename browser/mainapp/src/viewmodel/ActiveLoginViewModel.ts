@@ -43,6 +43,7 @@ import { NamedObservableExpression, ObservableExpression } from "../util/Observa
 import { InAppToastViewModel } from "./InAppToastViewModel.js";
 import { InAppToastManagerViewModel } from "./InAppToastManagerViewModel.js";
 import { PartnerSearchViewModel } from "./PartnerSearchViewModel.js";
+import { AutoAdManager } from "../util/AutoAdManager.js";
 
 declare const XCHost: any;
 
@@ -318,6 +319,16 @@ export class ActiveLoginViewModel extends ObservableBase {
                 this._logger.logInfo("identified", this._characterName.value);
             }
         }
+    }
+
+    private _autoAdManager: AutoAdManager | null = null;
+
+    addedToLogins() { 
+        this._autoAdManager = new AutoAdManager(this);
+    }
+    removingFromLogins() { 
+        this._autoAdManager?.dispose();
+        this._autoAdManager = null;
     }
 
     readonly serverOps: CharacterNameSet = new CharacterNameSet();

@@ -302,6 +302,15 @@ export class ChannelTextBox extends ComponentBase<ChannelViewModel> {
         elSendChat.addEventListener("click", () => this.sendChat());
         elSendAd.addEventListener("click", () => this.sendAd());
 
+        elSendAd.addEventListener("contextmenu", (e) => {
+            if (this.viewModel && this.viewModel instanceof ChatChannelViewModel) {
+                this.viewModel.showSendAdContextMenu(elSendAd);
+
+                e.preventDefault();
+                return false;
+            }
+        });
+
         this.watchExpr(vm => vm.appViewModel.getConfigSettingById("showChatTextboxToolbar"), tbs => {
             elTextboxContainer.classList.toggle("no-toolbar", !tbs);
             elTextboxContainer.classList.toggle("toolbar-shown", !!tbs);

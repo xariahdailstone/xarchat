@@ -293,7 +293,7 @@
         font-style: italic;
     }
     &.ad {
-        & .dice-icon { display: none; }
+        & .dice-icon { display: inline; }
     }
 
     & .timestamp {
@@ -568,4 +568,8 @@
             & .message-content .character-spacer { display: none; }
         }
     }
+}
+
+.dice-icon {
+    cursor: default;
 }

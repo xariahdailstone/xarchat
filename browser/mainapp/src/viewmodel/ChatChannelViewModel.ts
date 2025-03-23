@@ -8,7 +8,8 @@ import { OnlineStatus } from "../shared/OnlineStatus.js";
 import { ObservableKeyExtractedOrderedDictionary, ObservableOrderedDictionary, ObservableOrderedDictionaryImpl } from "../util/ObservableKeyedLinkedList.js";
 import { IDisposable, asDisposable } from "../util/Disposable.js";
 import { HostInterop, LogMessageType } from "../util/HostInterop.js";
-import { RawSavedChatStateNamedFilterEntry, RawSavedChatStateNamedFilterMap, SavedChatState, SavedChatStateJoinedChannel } from "../settings/AppSettings.js";
+import { RawSavedChatStateNamedFilterEntry, RawSavedChatStateNamedFilterMap } from "../settings/RawAppSettings.js";
+import { SavedChatState, SavedChatStateJoinedChannel } from "../settings/AppSettings.js";
 import { SendQueue } from "../util/SendQueue.js";
 import { TaskUtils } from "../util/TaskUtils.js";
 import { AppNotifyEventType } from "./AppViewModel.js";
@@ -25,6 +26,9 @@ import { ObservableValue } from "../util/Observable.js";
 import { ServerError } from "../fchat/ChatConnectionImpl.js";
 import { CatchUtils } from "../util/CatchUtils.js";
 import { CallbackSet } from "../util/CallbackSet.js";
+import { ContextMenuPopupViewModel } from "./popups/ContextMenuPopupViewModel.js";
+import { ConfigureAutoAdsViewModel } from "./ConfigureAutoAdsViewModel.js";
+import { StringUtils } from "../util/StringUtils.js";
 
 export class ChatChannelUserViewModel extends ObservableBase implements IDisposable {
     constructor(
@@ -959,6 +963,55 @@ export class ChatChannelViewModel extends ChannelViewModel {
     @observableProperty
     get canSendTextboxAsAd() { return this._cantSendAsAdReasons.value.length == 0; }
 
+    async sendAdAsync(msgContent: string): Promise<void> {
+        if (StringUtils.isNullOrWhiteSpace(msgContent)) { return; }
+        
+        try {
+            await this.parent.chatConnection.checkChannelAdMessageAsync(this.name, msgContent);
+        }
+        catch (e) {
+            this.addSystemMessage(new Date(), `Cannot send: ${CatchUtils.getMessage(e)}`, true);
+            return;
+        }
+
+        await this._sendQueue.executeAsync({
+            maxRetries: 3,
+            onAttemptAsync: async () => {
+                await this.parent.chatConnection.channelAdMessageAsync(this.name, msgContent);
+
+                this._cantSendAsAdReasons.value =
+                    [CantSendAsAdReasons.WaitingOnAdThrottle, ...this._cantSendAsAdReasons.value.filter(r => r != CantSendAsAdReasons.WaitingOnAdThrottle)];
+
+                const canSendAgainAt = (new Date()).getTime() + (1000 * 60 * 10);
+
+                const tick = window.setInterval(() => { 
+                    const timeRemaining = Math.floor(Math.max(0, canSendAgainAt - (new Date()).getTime()) / 1000);
+                    this.adSendWaitRemainingSec = timeRemaining;
+                }, 1000);
+                window.setTimeout(() => {
+                    window.clearInterval(tick);
+                    this.adSendWaitRemainingSec = null;
+                    this._cantSendAsAdReasons.value = this._cantSendAsAdReasons.value.filter(r => r != CantSendAsAdReasons.WaitingOnAdThrottle);
+                }, 1000 * 60 * 10);
+            },
+            onSuccessAsync: async () => {
+                this.addAdMessage({
+                    speakingCharacter: this.parent.characterName,
+                    message: msgContent,
+                    isAd: true,
+                    seen: true,
+                    asOf: new Date()
+                });
+            },
+            onFailBeforeRetryAsync: async () => {
+                await TaskUtils.delay(1000);
+            },
+            onFailTerminalAsync: async () => {
+                this.addSystemMessage(new Date(), `Failed to send: ${msgContent}`, true);
+            }
+        });
+    }
+
     async sendTextboxAsAdAsync(): Promise<void> {
         if (this.textBoxContent && this.textBoxContent != "" && this.canSendTextboxAsAd) {
             const msgContent = this.textBoxContent;
@@ -973,45 +1026,29 @@ export class ChatChannelViewModel extends ChannelViewModel {
             this.textBoxContent = "";
 
             this.pendingSendsCount++;
-            this._sendQueue.executeAsync({
-                maxRetries: 3,
-                onAttemptAsync: async () => {
-                    await this.parent.chatConnection.channelAdMessageAsync(this.name, msgContent);
-
-                    this._cantSendAsAdReasons.value =
-                        [CantSendAsAdReasons.WaitingOnAdThrottle, ...this._cantSendAsAdReasons.value.filter(r => r != CantSendAsAdReasons.WaitingOnAdThrottle)];
-
-                    const canSendAgainAt = (new Date()).getTime() + (1000 * 60 * 10);
-
-                    const tick = window.setInterval(() => { 
-                        const timeRemaining = Math.floor(Math.max(0, canSendAgainAt - (new Date()).getTime()) / 1000);
-                        this.adSendWaitRemainingSec = timeRemaining;
-                    }, 1000);
-                    window.setTimeout(() => {
-                        window.clearInterval(tick);
-                        this.adSendWaitRemainingSec = null;
-                        this._cantSendAsAdReasons.value = this._cantSendAsAdReasons.value.filter(r => r != CantSendAsAdReasons.WaitingOnAdThrottle);
-                    }, 1000 * 60 * 10);
-                },
-                onSuccessAsync: async () => {
-                    this.addAdMessage({
-                        speakingCharacter: this.parent.characterName,
-                        message: msgContent,
-                        isAd: true,
-                        seen: true,
-                        asOf: new Date()
-                    });
-                    this.pendingSendsCount--;
-                },
-                onFailBeforeRetryAsync: async () => {
-                    await TaskUtils.delay(1000);
-                },
-                onFailTerminalAsync: async () => {
-                    this.addSystemMessage(new Date(), `Failed to send: ${msgContent}`, true);
-                    this.pendingSendsCount--;
-                }
-            });
+            try {
+                await this.sendAdAsync(msgContent);
+            }
+            finally {
+                this.pendingSendsCount--;
+            }
         }
+    }
+
+    showSendAdContextMenu(contextElement: HTMLElement) {
+        const ctxVm = new ContextMenuPopupViewModel<() => void>(this.appViewModel, contextElement);
+
+        ctxVm.addMenuItem("Setup Ad Auto Posting...", () => {
+            const vm = new ConfigureAutoAdsViewModel(this.appViewModel, this.activeLoginViewModel);
+            this.appViewModel.showDialogAsync(vm);
+        });
+
+        ctxVm.onValueSelected = (func) => {
+            ctxVm.dismissed();
+            func();
+        }
+
+        this.appViewModel.popups.push(ctxVm);
     }
 
     sessionConnectionStateChanged() {
