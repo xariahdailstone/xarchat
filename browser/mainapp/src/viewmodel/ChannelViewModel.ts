@@ -641,7 +641,7 @@ export abstract class ChannelViewModel extends ObservableBase implements IDispos
     }
 
     private readonly _hasPings: ObservableValue<boolean> = new ObservableValue(false);
-    private readonly _unseenMessagesCount: ObservableValue<number> = new ObservableValue(0);
+    private readonly _unseenMessagesCount: ObservableValue<number> = new ObservableValue(0).withName("ChannelViewModel._unseenMessagesCount");
 
     @observableProperty
     get hasPing(): boolean {
@@ -656,9 +656,9 @@ export abstract class ChannelViewModel extends ObservableBase implements IDispos
         this._hasPings.value = value;
     }
 
-    @observableProperty
+    //@observableProperty
     get hasUnseenMessages() {
-        return this.unseenMessageCount > 0;
+        return Observable.calculate("ChannelViewModel.hasUnseenMessages", () => this.unseenMessageCount > 0);
     }
 
     @observableProperty

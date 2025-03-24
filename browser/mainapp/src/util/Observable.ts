@@ -4,6 +4,7 @@ import { SnapshottableMap } from "./collections/SnapshottableMap.js";
 import { SnapshottableSet } from "./collections/SnapshottableSet.js";
 import { IDisposable, EmptyDisposable, asDisposable } from "./Disposable.js";
 import { setupValueSubscription, ValueSubscriptionImpl } from "./ObservableBase.js";
+import { ObservableExpression } from "./ObservableExpression.js";
 
 export interface Observable {
     addEventListener(eventName: "propertychange", handler: PropertyChangeEventListener): IDisposable;
@@ -35,7 +36,7 @@ export interface ValueSubscription extends IDisposable {
 }
 
 export class Observable {
-    private static readonly _listeners: Set<ReadMonitorEventListener> = new Set();
+    private static _listeners: Set<ReadMonitorEventListener> = new Set();
 
     private static _currentFireStackDepth = 0;
     private static _currentFireStackCount = 0;
@@ -88,6 +89,22 @@ export class Observable {
             if (!returned) {
                 ds.dispose();
             }
+        }
+    }
+
+    static calculate<T>(name: string, func: () => T): T {
+        const oe = new CalculatedObservable(name, func);
+        return oe.value;
+    }
+
+    static inReadSubScope<T>(func: () => T): T {
+        const origListeners = this._listeners;
+        this._listeners = new Set();
+        try {
+            return func();
+        }
+        finally {
+            this._listeners = origListeners;
         }
     }
 
@@ -206,7 +223,13 @@ export class ObservableValue<T> implements Observable {
         this.debug = debug ?? false;
     }
 
+    name: string | null = null;
     debug: boolean = false;
+
+    withName(name: string): ObservableValue<T> {
+        this.name = name;
+        return this;
+    }
 
     private _propertyChangeListeners2: CallbackSet<PropertyChangeEventListener> | null = null;
 
@@ -362,4 +385,121 @@ class DependencySetImpl implements DependencySet {
 interface Dependency {
     target: any;
     propertyName: string;
+}
+
+export class CalculatedObservable<T> implements Observable, IDisposable {
+    constructor(
+        public readonly name: string,
+        private readonly expression: () => T) {
+
+        this._cbSet = new CallbackSet<PropertyChangeEventListener>("CalculatedObservable", () => this.maybeStopObserving());
+
+        Observable.inReadSubScope(() => {
+            this.updateValue();
+        });
+    }
+
+    private _cachedValueIsError = false;
+    private _cachedValue: T | undefined = undefined;
+    private _cachedError: any = undefined;
+
+    private _isDisposed = false;
+    private _observing = false;
+    private readonly _cbSet: CallbackSet<PropertyChangeEventListener>;
+    private _depSet: DependencySet | null = null;
+
+    get isDisposed(): boolean { return this._isDisposed; }
+
+    dispose(): void {
+        if (!this._isDisposed) {
+            this._isDisposed = true;
+            this.refreshDepSet();
+        }
+    }
+
+    [Symbol.dispose](): void { this.dispose(); }
+
+    private updateValue() {
+        const prevEffValue = this._cachedValueIsError ? this._cachedError : this._cachedValue;
+
+        try {
+            const res = this.expression();
+            this._cachedValueIsError = false;
+            this._cachedValue = res;
+            this._cachedError = undefined;
+        }
+        catch (e) {
+            this._cachedValueIsError = true;
+            this._cachedValue = undefined;
+            this._cachedError = e;
+        }
+
+        const newEffValue = this._cachedValueIsError ? this._cachedError : this._cachedValue;
+
+        if (prevEffValue !== newEffValue) {
+            this.raisePropertyChangeEvent("value", newEffValue);
+        }
+
+        return newEffValue;
+    }
+
+    private startObserving() {
+        if (!this._observing && !this._isDisposed) {
+            this._observing = true;
+            this.refreshDepSet();
+        }
+    }
+
+    private maybeStopObserving() { 
+        if (this._observing) {
+            this._observing = false;
+            this.refreshDepSet();
+        }
+    }
+
+    private refreshDepSet() {
+        if (this._depSet != null) {
+            this._depSet.dispose();
+            this._depSet = null;
+        }
+        if (this._isDisposed || !this._observing) { return; }
+
+        Observable.inReadSubScope(() => {
+            const cdsResult = Observable.createDependencySetOver(
+                () => this.refreshDepSet(),
+                () => this.updateValue()
+            );
+            this._depSet = cdsResult.dependencySet;
+        });
+    }
+
+    get value(): T {
+        if (this._cachedValueIsError) {
+            Observable.publishRead(this, "value", this._cachedError);
+            throw this._cachedError;
+        }
+        else {
+            Observable.publishRead(this, "value", this._cachedValue);
+            return this._cachedValue!;
+        }
+    }
+
+    addEventListener(eventName: "propertychange", handler: PropertyChangeEventListener): IDisposable {
+        const res = this._cbSet.add(handler);
+        this.startObserving();
+        return res;
+    }
+
+    removeEventListener(eventName: "propertychange", handler: PropertyChangeEventListener): void {
+        this._cbSet.delete(handler);
+    }
+
+    raisePropertyChangeEvent(propertyName: string, propValue: unknown): void {
+        this._cbSet.invoke(new PropertyChangeEvent(propertyName, propValue));
+    }
+
+    addValueSubscription(propertyPath: string, handler: (value: any) => any): ValueSubscription {
+        return setupValueSubscription(this, propertyPath, handler);
+    }
+   
 }
