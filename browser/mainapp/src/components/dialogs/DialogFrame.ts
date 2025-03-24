@@ -175,6 +175,7 @@ export class DialogFrame extends ComponentBase<DialogViewModel<any>> {
         if (!vm) { return null; }
 
         for (let tbtn of vm.buttons) {
+            if (!tbtn.enabled) { continue; }
             if (tbtn.shortcutKeyCode == ev.keyCode) {
                 return tbtn;
             }
@@ -239,6 +240,9 @@ class DialogButton extends ComponentBase<DialogButtonViewModel> {
                 });
             }
         });
+        this.watchExpr(vm => vm.enabled, (v) => {
+            elButton.disabled = !v;
+        })
 
         elButton.addEventListener("click", () => {
             if (this.viewModel) {
