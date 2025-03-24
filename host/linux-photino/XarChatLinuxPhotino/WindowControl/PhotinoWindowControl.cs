@@ -59,5 +59,23 @@ namespace XarChatLinuxPhotino.WindowControl
         {
             // TODO:
         }
+
+        public Task SetBrowserZoomLevelAsync(float zoomLevel)
+        {
+            // TODO:
+            return Task.CompletedTask;
+        }
+
+        public Task InvokeOnUIThread(Action action)
+        {
+            // TODO:
+            return Task.CompletedTask;
+        }
+
+        public Task RestartGPUProcess()
+        {
+            // TODO:
+            return Task.CompletedTask;
+        }
     }
 }

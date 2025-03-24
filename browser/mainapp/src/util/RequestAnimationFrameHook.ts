@@ -31,7 +31,7 @@ export function hookRequestAnimationFrame() {
     const processRAFEvents = (timestamp: DOMHighResTimeStamp) => {
         stopRegistrations();
 
-        const myCallbacks = _waitingCallbacks.keys().toArray();
+        const myCallbacks = [..._waitingCallbacks.keys()];
         logger.logDebug("triggering requestAnimationFrame", myCallbacks.length);
         for (let tkey of myCallbacks) {
             const tcallback = _waitingCallbacks.get(tkey);
