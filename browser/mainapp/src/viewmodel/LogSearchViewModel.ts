@@ -94,7 +94,7 @@ export class LogSearchViewModel extends ObservableBase {
     @observableProperty
     scrollToCommand: (ScrollToCommand | null) = null;
 
-    private readonly _updatingElementsOV: ObservableValue<boolean> = new ObservableValue(false);
+    private readonly _updatingElementsOV: ObservableValue<boolean> = new ObservableValue(false).withName("LogSearchViewModel._updatingElementsOV");
     get updatingElements(): boolean { return this._updatingElementsOV.value; }
     set updatingElements(value: boolean) { this._updatingElementsOV.value = value; }
 

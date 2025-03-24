@@ -45,7 +45,7 @@ export class CharacterDetailPopupViewModel extends ContextPopupViewModel {
         })();
     }
 
-    private readonly _memoText: ObservableValue<string | null> = new ObservableValue(null);
+    private readonly _memoText: ObservableValue<string | null> = new ObservableValue(null).withName("CharacterDetailPopupViewModel._memoText");
     get memoText() { return this._memoText.value; }
 
     private readonly _alsoInChannels = new Collection<AlsoInChannelLineItem>();

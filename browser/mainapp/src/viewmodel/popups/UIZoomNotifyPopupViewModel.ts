@@ -9,7 +9,7 @@ export class UIZoomNotifyPopupViewModel extends PopupViewModel {
     }
 
     private _hideTimeout: number | null = null;
-    private _message: ObservableValue<string> = new ObservableValue("");
+    private _message: ObservableValue<string> = new ObservableValue("").withName("UIZoomNotifyPopupViewModel._message");
 
     get message(): string { return this._message.value; }
     set message(value: string) {

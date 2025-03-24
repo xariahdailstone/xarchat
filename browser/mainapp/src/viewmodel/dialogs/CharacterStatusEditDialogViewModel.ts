@@ -35,7 +35,7 @@ export class CharacterStatusEditDialogViewModel extends DialogViewModel<StatusEd
 
     private readonly _btnUpdate: DialogButtonViewModel;
 
-    private readonly _statusMessage: ObservableValue<string> = new ObservableValue("");
+    private readonly _statusMessage: ObservableValue<string> = new ObservableValue("").withName("CharacterStatusEditDialogViewModel._statusMessage");
     get statusMessage(): string { return this._statusMessage.value; }
     set statusMessage(value: string) {
         if (value != this._statusMessage.value) {

@@ -12,7 +12,7 @@ import { EL } from "../util/EL.js";
 import { EventListenerUtil, MouseButton } from "../util/EventListenerUtil.js";
 import { HTMLUtils } from "../util/HTMLUtils.js";
 import { ObjectUniqueId } from "../util/ObjectUniqueId.js";
-import { ObservableExpression } from "../util/ObservableExpression.js";
+import { CalculatedObservable } from "../util/ObservableExpression.js";
 import { Optional } from "../util/Optional.js";
 import { WhenChangeManager } from "../util/WhenChange.js";
 import { KeyValuePair } from "../util/collections/KeyValuePair.js";
@@ -164,10 +164,8 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
         const winResizeEvt = EventListenerUtil.addDisposableEventListener(window, "resize", () => {
             recalculateAlertDisplay();
         });
-        const appWindowStateChanged = new ObservableExpression(
-            () => this.viewModel?.appViewModel.appWindowState,
-            (v) => { recalculateAlertDisplay(); },
-            (e) => { recalculateAlertDisplay(); });
+        const appWindowStateChanged = new CalculatedObservable("ChatsList.appWindowStateChanged", () => this.viewModel?.appViewModel.appWindowState);
+        const appWindowStateChangedSub = appWindowStateChanged.addValueChangeListener((v) => { recalculateAlertDisplay(); });
 
         return asDisposable(() => {
             if (io) {
@@ -175,6 +173,7 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
                 io = null;
             }
             winResizeEvt?.dispose();
+            appWindowStateChangedSub?.dispose();
             appWindowStateChanged?.dispose();
             mo.disconnect();
             this.scrollToNextAlertAbove = null;

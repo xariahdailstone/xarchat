@@ -186,7 +186,7 @@ export class ObservableOrderedDictionaryImpl<TKey, TItem> implements ObservableK
         }
     }
 
-    private readonly _valuesVersion: ObservableValue<number> = new ObservableValue(0);
+    private readonly _valuesVersion: ObservableValue<number> = new ObservableValue(0).withName("ObservableOrderedDictionaryImpl._valuesVersion");
 
     @observableProperty
     get size(): number { 

@@ -16,9 +16,9 @@ export class CharacterGuestbookViewModel extends ObservableBase {
         this.navigateToPageAsync(0, CancellationToken.NONE);
     }
 
-    private readonly _page: ObservableValue<number> = new ObservableValue(-1);
-    private readonly _hasNextPage: ObservableValue<boolean> = new ObservableValue(false);
-    private readonly _hasPrevPage: ObservableValue<boolean> = new ObservableValue(false);
+    private readonly _page: ObservableValue<number> = new ObservableValue(-1).withName("CharacterGuestbookViewModel._page");
+    private readonly _hasNextPage: ObservableValue<boolean> = new ObservableValue(false).withName("CharacterGuestbookViewModel._hasNextPage");
+    private readonly _hasPrevPage: ObservableValue<boolean> = new ObservableValue(false).withName("CharacterGuestbookViewModel._hasPrevPage");
 
     get page(): number { return this._page.value; }
     get hasNextPage(): boolean { return this._hasNextPage.value; }

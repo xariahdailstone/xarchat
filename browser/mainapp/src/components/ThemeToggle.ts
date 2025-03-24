@@ -29,7 +29,7 @@ export class ThemeToggle extends ComponentBase<boolean> {
         });
     }
 
-    readonly _unboundValue: ObservableValue<boolean> = new ObservableValue<boolean>(false);
+    readonly _unboundValue: ObservableValue<boolean> = new ObservableValue<boolean>(false).withName("ThemeToggle._unboundValue");
 
     private assignValue(value: boolean, isUserInitiated: boolean) {
         const elCheckboxContainer = this.$("elCheckboxContainer") as HTMLLabelElement;

@@ -35,7 +35,7 @@ export interface ValueSubscription extends IDisposable {
 }
 
 export class Observable {
-    private static readonly _listeners: Set<ReadMonitorEventListener> = new Set();
+    private static _listeners: Set<ReadMonitorEventListener> = new Set();
 
     private static _currentFireStackDepth = 0;
     private static _currentFireStackCount = 0;
@@ -89,6 +89,15 @@ export class Observable {
                 ds.dispose();
             }
         }
+    }
+
+    static enterSubReadScope(): IDisposable {
+        const oldListeners = this._listeners;
+        this._listeners = new Set();
+
+        return asDisposable(() => {
+            this._listeners = oldListeners;
+        });
     }
 
     static addReadMonitor(listener: ReadMonitorEventListener): (IDisposable & Disposable) {
@@ -207,6 +216,13 @@ export class ObservableValue<T> implements Observable {
     }
 
     debug: boolean = false;
+
+    name?: string;
+
+    withName(name: string): this {
+        this.name = name;
+        return this;
+    }
 
     private _propertyChangeListeners2: CallbackSet<PropertyChangeEventListener> | null = null;
 

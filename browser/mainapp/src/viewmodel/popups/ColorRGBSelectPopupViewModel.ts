@@ -19,7 +19,8 @@ export class ColorRGBSelectPopupViewModel extends ContextPopupViewModel {
     }
 
     private _rgbStringOE: ObservableExpression<string>;
-    private _rgbColor: ObservableValue<[number, number, number]> = new ObservableValue([0, 0, 0]);
+    private _rgbColor: ObservableValue<[number, number, number]> = new ObservableValue<[number, number, number]>([0, 0, 0])
+        .withName("ColorRGBSelectPopupViewModel._rgbColor");
 
     get red(): number { return this._rgbColor.value[0]; }
     set red(value: number) {

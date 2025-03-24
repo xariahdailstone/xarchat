@@ -29,11 +29,11 @@ export class CharacterProfileDialogInner extends RenderingComponentBase<Characte
         });
     }
 
-    private readonly _selectedTab: ObservableValue<string> = new ObservableValue("overview");
+    private readonly _selectedTab: ObservableValue<string> = new ObservableValue("overview").withName("CharacterProfileDialogInner._selectedTab");
     get selectedTab(): string { return this._selectedTab.value; }
     set selectedTab(value: string) { this._selectedTab.value = value; }
 
-    private readonly _expandedKinksets: ObservableValue<CharacterProfileDetailKinkItemViewModel[]> = new ObservableValue([]);
+    private readonly _expandedKinksets: ObservableValue<CharacterProfileDetailKinkItemViewModel[]> = new ObservableValue([]).withName("CharacterProfileDialogInner._expendedKinksets");
     get expandedKinksets(): CharacterProfileDetailKinkItemViewModel[] { return this._expandedKinksets.value; }
     set expandedKinksets(value) { this._expandedKinksets.value = value; }
 

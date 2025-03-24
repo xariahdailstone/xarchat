@@ -340,7 +340,7 @@ export class SettingsDialogItemViewModel extends SettingsDialogSettingViewModel 
         }
     }
 
-    private readonly _scratchValue: ObservableValue<any> = new ObservableValue(null);
+    private readonly _scratchValue: ObservableValue<any> = new ObservableValue(null).withName("SettingsDialogItemViewModel._scratchValue");
     get scratchValue(): any { return this._scratchValue.value; }
     set scratchValue(value: any) { this._scratchValue.value = value; }
 

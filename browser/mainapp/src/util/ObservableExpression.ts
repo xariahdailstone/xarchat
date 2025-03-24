@@ -1,9 +1,9 @@
 import { CallbackSet } from "./CallbackSet";
 import { CancellationToken } from "./CancellationTokenSource";
-import { IDisposable } from "./Disposable";
+import { EmptyDisposable, IDisposable } from "./Disposable";
 import { testEquality } from "./Equality";
 import { Logging } from "./Logger";
-import { Observable, PropertyChangeEvent, PropertyChangeEventListener, ValueSubscription } from "./Observable";
+import { Observable, PropertyChangeEvent, PropertyChangeEventListener, ValueSubscription, DependencySet } from "./Observable";
 import { ObservableBase, setupValueSubscription } from "./ObservableBase";
 import { PromiseSource } from "./PromiseSource";
 
@@ -226,6 +226,8 @@ class ObservableExpressionInner<T> implements IDisposable {
         let pendingError: (any | undefined) = undefined;
 
         {
+            using x = Observable.enterSubReadScope();
+
             using rmDisposable = Observable.addReadMonitor((vm, propName, propValue) => {
                 //console.log("addReadMonitor", vm, propName, propValue);
                 this.addDependencyListener(vm, propName);
@@ -325,4 +327,169 @@ export class WatchedExpression<T> implements Observable, IDisposable {
     }
 
     [Symbol.dispose](): void { this.dispose(); }
+}
+
+export class CalculatedObservable<T> implements Observable, IDisposable {
+
+    constructor(
+        public readonly name: string,
+        private readonly expression: () => T,
+        private valueOnError?: T) {
+
+        this._cbSet = new CallbackSet("CalculatedObservable.propertychanged", () => this.maybeStopObserving());
+        this.refreshValue();
+    }
+
+    private _currentValue: T | undefined = undefined;
+    private readonly _cbSet: CallbackSet<PropertyChangeEventListener>;
+
+    private _observing: boolean = false;
+
+    get value(): T | undefined { 
+        if (this._isDisposed) {
+            return undefined;
+        }
+
+        if (!this._observing) {
+            let result: T | undefined;
+            try {
+                result = this.expression();
+            }
+            catch (e) {
+                if (this.valueOnError !== undefined) {
+                    result = this.valueOnError;
+                }
+                else {
+                    result = undefined;
+                }
+            }
+
+            Observable.publishRead(this, "value", result);
+            return result;
+        }
+        else {
+            Observable.publishRead(this, "value", this._currentValue);
+            return this._currentValue!;
+        }
+    }
+
+    private _isDisposed = false;
+    get isDisposed(): boolean { return this._isDisposed; }
+    
+    dispose(): void {
+        if (!this._isDisposed) {
+            this._isDisposed = true;
+            this.refreshValue();
+        }
+    }
+
+    [Symbol.dispose](): void { this.dispose(); }
+    
+    addEventListener(eventName: "propertychange", handler: PropertyChangeEventListener): IDisposable {
+        if (this._isDisposed) { return EmptyDisposable; }
+        const result = this._cbSet.add(handler);
+        this.startObserving();
+        return result;
+    }
+
+    removeEventListener(eventName: "propertychange", handler: PropertyChangeEventListener): void {
+        this._cbSet.delete(handler);
+        this.maybeStopObserving();
+    }
+
+    raisePropertyChangeEvent(propertyName: string, propValue: unknown): void {
+        this._cbSet.invoke(new PropertyChangeEvent(propertyName, propValue));
+    }
+
+    addValueChangeListener(handler: (value: any) => any): IDisposable {
+        return this.addEventListener("propertychange", (e) => {
+            if (e.propertyName == "value") {
+                handler(e.propertyValue);
+            }
+        })
+    }
+
+    addValueSubscription(propertyPath: string, handler: (value: any) => any): ValueSubscription {
+        return setupValueSubscription(this, propertyPath, handler);
+    }
+
+    private assignCurrentValue(value: T | undefined) {
+        if (value !== this._currentValue) {
+            this._currentValue = value;
+            this.raisePropertyChangeEvent("value", value);
+        }
+    }
+
+    private startObserving() { 
+        if (!this._observing) {
+            this._observing = true;
+            this.refreshValue();
+        }
+    }
+
+    private maybeStopObserving() {
+        if (this._observing && this._cbSet.size == 0) {
+            this._observing = false;
+            this.disposeDepSet();
+        }
+    }
+
+    private _currentDepSet: DependencySet | null = null;
+
+    private disposeDepSet() {
+        if (this._currentDepSet) {
+            this._currentDepSet.dispose();
+            this._currentDepSet = null;
+        }
+    }
+
+    refreshValue() {
+        this.disposeDepSet();
+
+        if (this._isDisposed || !this._observing) {
+            this.assignCurrentValue(undefined);
+            return;
+        }
+
+        let newDepSet: DependencySet;
+        let newValue: T | undefined;
+        let newError: any;
+
+        {
+            using x = Observable.enterSubReadScope();
+
+            const cdsResult = Observable.createDependencySetOver(
+                () => { this.refreshValue(); },
+                () => { 
+                    try {
+                        return this.expression();
+                    }
+                    catch (e) {
+                        if (this.valueOnError !== undefined) {
+                            return this.valueOnError;
+                        }
+                        else {
+                            return undefined;
+                        }
+                    }
+                }
+            );
+            newDepSet = cdsResult.dependencySet;
+            newValue = cdsResult.result;
+            newError = cdsResult.error;
+        }
+
+        this._currentDepSet = newDepSet;
+        if (newError) {
+            if (this.valueOnError !== undefined) {
+                this.assignCurrentValue(this.valueOnError);
+            }
+            else {
+                this.assignCurrentValue(undefined);
+            }
+        }
+        else {
+            this.assignCurrentValue(newValue);
+        }
+    }
 }

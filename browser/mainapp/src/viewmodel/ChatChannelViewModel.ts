@@ -958,7 +958,7 @@ export class ChatChannelViewModel extends ChannelViewModel {
         }
     }
 
-    private readonly _cantSendAsAdReasons: ObservableValue<CantSendAsAdReasons[]> = new ObservableValue([]);
+    private readonly _cantSendAsAdReasons: ObservableValue<CantSendAsAdReasons[]> = new ObservableValue([]).withName("ChatChannelViewModel._cantSendAsAdReasons");
 
     @observableProperty
     get canSendTextboxAsAd() { return this._cantSendAsAdReasons.value.length == 0; }

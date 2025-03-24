@@ -302,7 +302,7 @@ export class ChannelMessageCollectionView extends ComponentBase<ReadOnlyStdObser
         });
     }
 
-    private readonly containerElementChild: ObservableValue<HTMLElement | null> = new ObservableValue(null);
+    private readonly containerElementChild: ObservableValue<HTMLElement | null> = new ObservableValue(null).withName("ChannelMessageCollectionView.containerElementChild");
 
     private readonly _renderer: ChannelStreamMessageViewRenderer = new ChannelStreamMessageViewRenderer();
 }

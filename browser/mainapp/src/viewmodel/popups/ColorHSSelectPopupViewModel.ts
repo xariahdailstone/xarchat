@@ -8,7 +8,8 @@ export class ColorHSSelectPopupViewModel extends ContextPopupViewModel {
         super(parent, contextElement);
     }
 
-    private _hueSat: ObservableValue<[number, number, number]> = new ObservableValue<[number, number, number]>([0, 0, 1]);
+    private _hueSat: ObservableValue<[number, number, number]> = new ObservableValue<[number, number, number]>([0, 0, 1])
+        .withName("ColorHSSelectPopupViewModel._hueSat");
 
     get hue(): number { return this._hueSat.value[0]; }
 

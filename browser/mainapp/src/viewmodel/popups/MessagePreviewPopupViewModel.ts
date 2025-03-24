@@ -18,7 +18,7 @@ export class MessagePreviewPopupViewModel extends ContextPopupViewModel {
 
     get appViewModel() { return this.activeLoginViewModel.appViewModel; }
 
-    private readonly _rawText: ObservableValue<string> = new ObservableValue("");
+    private readonly _rawText: ObservableValue<string> = new ObservableValue("").withName("MessagePreviewPopupViewModel._rawText");
     get rawText(): string { return this._rawText.value; }
     set rawText(value: string) {
         if (value !== this._rawText.value) {

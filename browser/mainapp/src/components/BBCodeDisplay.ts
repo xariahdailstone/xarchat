@@ -57,9 +57,9 @@ export class BBCodeDisplay extends ComponentBase<BBCodeParseResult | string> {
         }
     }
 
-    private readonly _parser: ObservableValue<string | null> = new ObservableValue<string | null>(null);
-    private readonly _indentLimit: ObservableValue<string | null> = new ObservableValue<string | null>(null);
-    private readonly _parseOptions: ObservableValue<BBCodeParseOptions | null> = new ObservableValue<BBCodeParseOptions | null>(null);
+    private readonly _parser: ObservableValue<string | null> = new ObservableValue<string | null>(null).withName("BBCodeDisplay._parser");
+    private readonly _indentLimit: ObservableValue<string | null> = new ObservableValue<string | null>(null).withName("BBCodeDisplay._indentLimit");
+    private readonly _parseOptions: ObservableValue<BBCodeParseOptions | null> = new ObservableValue<BBCodeParseOptions | null>(null).withName("BBCodeDisplay._parseOptions");
 
     get parser(): string { return this.getAttribute(ATTR_PARSER) ?? ""; }
     set parser(value: string) {

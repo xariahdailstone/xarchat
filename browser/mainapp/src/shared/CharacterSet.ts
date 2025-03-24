@@ -93,7 +93,7 @@ export class CharacterSet {
 
     private readonly _lingeringGenders: LingeringGenderSet = new LingeringGenderSet();
 
-    private readonly _size: ObservableValue<number> = new ObservableValue<number>(0);
+    private readonly _size: ObservableValue<number> = new ObservableValue<number>(0).withName("CharacterSet._size");
     get size(): number { return this._size.value; }
 
     setCharacterStatus(characterName: CharacterName, status: Partial<CharacterStatus>, asOf?: StatusLastChangeInfo): CharacterStatus {

@@ -86,7 +86,7 @@ export class ConfigureAutoAdsViewModel extends DialogViewModel<void> {
     @observableProperty
     selectedEntry: ConfiguredAdViewModel = null!;
 
-    private readonly _enabled: ObservableValue<boolean> = new ObservableValue(false);
+    private readonly _enabled: ObservableValue<boolean> = new ObservableValue(false).withName("ConfigureAutoAdsViewModel._enabled");
 
     get enabled(): boolean { return this._enabled.value; }
     set enabled(value: boolean) {
@@ -150,9 +150,9 @@ export class ConfiguredAdViewModel extends ObservableBase {
         })
     }
 
-    private readonly _enabled: ObservableValue<boolean> = new ObservableValue(true);
-    private readonly _title: ObservableValue<string> = new ObservableValue("");
-    private readonly _adText: ObservableValue<string> = new ObservableValue("");
+    private readonly _enabled: ObservableValue<boolean> = new ObservableValue(true).withName("ConfiguredAdViewModel._enabled");
+    private readonly _title: ObservableValue<string> = new ObservableValue("").withName("ConfiguredAdViewModel._title");
+    private readonly _adText: ObservableValue<string> = new ObservableValue("").withName("ConfiguredAdViewModel._adText");
 
     @observableProperty
     isNewAdPlaceholder: boolean = false;

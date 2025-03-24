@@ -95,7 +95,7 @@ export class WatchedList extends RenderingComponentBase<ActiveLoginViewModel> {
         ];
     }
 
-    private readonly _showType: ObservableValue<WatchedListShowType> = new ObservableValue(WatchedListShowType.ALL);
+    private readonly _showType: ObservableValue<WatchedListShowType> = new ObservableValue(WatchedListShowType.ALL).withName("WatchedList._showType");
     get showType() { return this._showType.value; }
     set showType(value: WatchedListShowType) {
         this._showType.value = value;

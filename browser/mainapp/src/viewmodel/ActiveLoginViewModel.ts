@@ -173,7 +173,7 @@ export class ActiveLoginViewModel extends ObservableBase {
 
     get appViewModel() { return this.parent; }
 
-    private readonly _serverVariables: ObservableValue<{ [key: string]: any }> = new ObservableValue({});
+    private readonly _serverVariables: ObservableValue<{ [key: string]: any }> = new ObservableValue({}).withName("ActiveLoginViewModel._serverVariables");
     get serverVariables() { return this._serverVariables.value; }
     updateServerVariable(varName: string, varValue: any) {
         const nv = {...this._serverVariables.value, [varName]: varValue};
@@ -732,7 +732,7 @@ export class ActiveLoginViewModel extends ObservableBase {
         this.selectedTab = value;
     }
 
-    private _isActiveSession: ObservableValue<boolean> = new ObservableValue<boolean>(false);
+    private _isActiveSession: ObservableValue<boolean> = new ObservableValue<boolean>(false).withName("ActiveLoginViewModel._isActiveSession");
     get isActiveSession() { return this._isActiveSession.value; }
     set isActiveSession(value: boolean) { 
         if (value != this._isActiveSession.value) {

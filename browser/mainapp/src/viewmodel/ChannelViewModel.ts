@@ -20,7 +20,7 @@ import { ObjectUniqueId } from "../util/ObjectUniqueId.js";
 import { Observable, ObservableValue } from "../util/Observable.js";
 import { ObservableBase, observableProperty } from "../util/ObservableBase.js";
 import { Collection, ObservableCollection } from "../util/ObservableCollection.js";
-import { ObservableExpression } from "../util/ObservableExpression.js";
+import { CalculatedObservable, ObservableExpression } from "../util/ObservableExpression.js";
 import { ObservableKeyExtractedOrderedDictionary, ObservableOrderedDictionary, ObservableOrderedDictionaryImpl } from "../util/ObservableKeyedLinkedList.js";
 import { StringUtils } from "../util/StringUtils.js";
 import { WhenChangeManager } from "../util/WhenChange.js";
@@ -69,6 +69,8 @@ export abstract class ChannelViewModel extends ObservableBase implements IDispos
             for (let od of [...this.ownedDisposables]) {
                 od.dispose();
             }
+
+            this._hasUnseenMessages.dispose();
         }
     }
     get isDisposed() { return this._disposed; }
@@ -367,7 +369,8 @@ export abstract class ChannelViewModel extends ObservableBase implements IDispos
         }
     }
 
-    private readonly _messages = new ObservableValue<StdObservableConcatCollectionView<KeyValuePair<ChannelMessageViewModel, ChannelMessageViewModel>>>(null!);
+    private readonly _messages = new ObservableValue<StdObservableConcatCollectionView<KeyValuePair<ChannelMessageViewModel, ChannelMessageViewModel>>>(null!)
+        .withName("ChannelViewModel._messages");
 
     @observableProperty
     get messages() { return this._messages.value; }
@@ -640,8 +643,13 @@ export abstract class ChannelViewModel extends ObservableBase implements IDispos
         }
     }
 
-    private readonly _hasPings: ObservableValue<boolean> = new ObservableValue(false);
-    private readonly _unseenMessagesCount: ObservableValue<number> = new ObservableValue(0);
+    private readonly _hasPings: ObservableValue<boolean> = new ObservableValue(false).withName("ChannelViewModel._hasPings");
+    private readonly _unseenMessagesCount: ObservableValue<number> = new ObservableValue(0).withName("ChannelViewModel._unseenMessagesCount");
+
+    private readonly _hasUnseenMessages: CalculatedObservable<boolean> = new CalculatedObservable("ChannelViewModel._hasUnseenMessages",
+        () => this._unseenMessagesCount.value > 0,
+        false
+    );
 
     @observableProperty
     get hasPing(): boolean {
@@ -658,7 +666,7 @@ export abstract class ChannelViewModel extends ObservableBase implements IDispos
 
     @observableProperty
     get hasUnseenMessages() {
-        return this.unseenMessageCount > 0;
+        return this._hasUnseenMessages.value ?? false;
     }
 
     @observableProperty
@@ -1087,7 +1095,7 @@ export class ChannelMessageViewModel extends ObservableBase implements IDisposab
         return false;
     }
 
-    private readonly _isOversized: ObservableValue<boolean> = new ObservableValue(true);
+    private readonly _isOversized: ObservableValue<boolean> = new ObservableValue(true).withName("ChannelMessageViewModel._isOversized");
     get isOversized() { return this._isOversized.value; };
     set isOversized(value) { this._isOversized.value = value; }
 
@@ -1240,7 +1248,7 @@ export class SingleSelectChannelFilterOptionItem {
         private readonly onSelect: () => any) {
     }
 
-    private _isSelected: ObservableValue<boolean> = new ObservableValue(false);
+    private _isSelected: ObservableValue<boolean> = new ObservableValue(false).withName("SingleSelectChannelFilterOptionItem._isSelected");
     get isSelected() { return this._isSelected.value; }
     set isSelected(value: boolean) {
         if (value != this._isSelected.value) {
@@ -1314,7 +1322,7 @@ export class MultiSelectChannelFilterOptionItem {
 
     owner: MultiSelectChannelFilterOptions | null = null;
 
-    private _isSelected: ObservableValue<boolean> = new ObservableValue(false);
+    private _isSelected: ObservableValue<boolean> = new ObservableValue(false).withName("MultiSelectChannelFilterOptionItem._isSelected");
     get isSelected() { return this._isSelected.value; }
     set isSelected(value: boolean) { 
         if (value != this._isSelected.value) {

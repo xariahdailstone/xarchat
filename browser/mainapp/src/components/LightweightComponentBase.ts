@@ -12,7 +12,7 @@ export abstract class LightweightComponentBase<TViewModel> implements IDisposabl
 
         this.logger = Logging.createLogger(`${this.constructor.name}#${ObjectUniqueId.get(this)}`);
 
-        this._viewModel = new ObservableValue(null);
+        this._viewModel = new ObservableValue(null).withName("LightweightComponentBase._viewModel");
         if (viewModelFunc) {
             this._viewModelExpression = new ObservableExpression<Optional<TViewModel>>(viewModelFunc,
                 vm => { this.setViewModel(vm); },

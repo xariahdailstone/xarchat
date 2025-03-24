@@ -121,9 +121,9 @@ export class Collection<T> implements ObservableCollection<T>, Observable {
     }
 
     private readonly _items: T[] = [];
-    private readonly _itemsEnumerated: ObservableValue<object> = new ObservableValue<object>({});
+    private readonly _itemsEnumerated: ObservableValue<object> = new ObservableValue<object>({}).withName("Collection._itemsEnumerated");
 
-    private readonly _itemsLength: ObservableValue<number> = new ObservableValue<number>(0);
+    private readonly _itemsLength: ObservableValue<number> = new ObservableValue<number>(0).withName("Collection._itemsLength");
 
     get length(): number { return this._itemsLength.value; }
 

@@ -14,7 +14,7 @@ export class IFramePopupViewModel extends ContextPopupViewModel {
     @observableProperty
     iframeElement: HTMLIFrameElement | null = null;
 
-    private readonly _iframeSize: ObservableValue<[number, number]> = new ObservableValue([1000, 1000]);
+    private readonly _iframeSize: ObservableValue<[number, number]> = new ObservableValue<[number, number]>([1000, 1000]).withName("IFramePopupViewModel._iframeSize");
     get iframeSize(): [number, number] { return this._iframeSize.value; }
     set iframeSize(value) { this._iframeSize.value = value; }
 

@@ -81,6 +81,7 @@ export class AppViewModel extends ObservableBase {
 
         this.appWindowState = HostInterop.windowState;
         HostInterop.registerWindowStateChangeCallback((winState) => {
+            this.logger.logInfo("windowStateChanged", winState);
             this.appWindowState = winState;
         });
 
@@ -180,7 +181,7 @@ export class AppViewModel extends ObservableBase {
         }
     }
 
-    private _isWindowActive: ObservableValue<boolean> = new ObservableValue<boolean>(true);
+    private _isWindowActive: ObservableValue<boolean> = new ObservableValue<boolean>(true).withName("AppViewModel._isWindowActive");
     get isWindowActive() { return this._isWindowActive.value; }
     set isWindowActive(value) {
         if (value !== this._isWindowActive.value) {
