@@ -387,9 +387,9 @@ namespace MinimalWin32Test.UI
             return allScreenMetrics.ToString();
         }
 
-        private void MaybeUpdateWindowState()
+        private async void MaybeUpdateWindowState()
         {
-            Task.Run(async () =>
+            try
             {
                 var sp = await _backend.GetServiceProviderAsync();
                 var eventSink = sp.GetRequiredService<IXCHostSession>();
@@ -409,7 +409,11 @@ namespace MinimalWin32Test.UI
                         eventSink.WindowMaximized();
                         break;
                 }
-            });
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine(ex.Message);
+            }
         }
 
         protected virtual void OnWindowMaximized()
