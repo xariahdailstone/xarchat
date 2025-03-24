@@ -1,7 +1,7 @@
 import { asDisposable, IDisposable } from "../../util/Disposable";
 import { EventListenerUtil } from "../../util/EventListenerUtil";
 import { HTMLUtils } from "../../util/HTMLUtils";
-import { ObservableExpression } from "../../util/ObservableExpression";
+import { CalculatedObservable } from "../../util/ObservableExpression";
 import { MultiSelectChannelFilterOptionItem } from "../../viewmodel/ChannelViewModel";
 import { MultiSelectPopupViewModel, MultiSelectPopupViewModelItem } from "../../viewmodel/popups/MultiSelectPopupViewModel";
 import { CollectionViewLightweight } from "../CollectionViewLightweight";
@@ -48,22 +48,21 @@ export class MultiSelectItemCollectionView extends CollectionViewLightweight<Mul
         const elLabelText = document.createElement("div");
 
         elLabel.classList.add("item");
-        disposables.push(new ObservableExpression(
-            () => vm.isEnabled,
-            (isEnabled) => { 
-                elLabel.classList.toggle("disabled", !isEnabled);
-                elCheckbox.readOnly = !isEnabled;
-            },
-            () => { elCheckbox.checked = false; }
-        ));
+        const enabledObs = new CalculatedObservable("MultiSelectItemCollectionView.createUserElement", () => vm.isEnabled);
+        disposables.push(enabledObs);
+        disposables.push(enabledObs.addValueChangeListener(isEnabled => {
+            elLabel.classList.toggle("disabled", !isEnabled);
+            elCheckbox.readOnly = !isEnabled;
+        }));
         
         elCheckbox.classList.add("item-checkbox");
         elCheckbox.type = "checkbox";
-        disposables.push(new ObservableExpression(
-            () => vm.isSelected,
-            (isSel) => { elCheckbox.checked = !!isSel; },
-            () => { elCheckbox.checked = false; }
-        ));
+        const selectedObs = new CalculatedObservable("MultiSelectItemCollectionView.createUserElement", () => vm.isSelected);
+        disposables.push(selectedObs);
+        disposables.push(selectedObs.addValueChangeListener(isSel => {
+            elCheckbox.checked = !!isSel;
+        }));
+        
         disposables.push(EventListenerUtil.addDisposableEventListener(elCheckbox, "change", (e: Event) => {
             vm.isSelected = elCheckbox.checked;
         }));

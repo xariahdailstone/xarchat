@@ -5,7 +5,7 @@ import { ActiveLoginViewModel } from "../viewmodel/ActiveLoginViewModel";
 import { MiscTabViewModel } from "../viewmodel/MiscTabViewModel";
 import { CollectionViewLightweight } from "./CollectionViewLightweight";
 import { ComponentBase, componentElement } from "./ComponentBase";
-import { ObservableExpression } from "../util/ObservableExpression";
+import { CalculatedObservable } from "../util/ObservableExpression";
 import { HTMLUtils } from "../util/HTMLUtils";
 
 @componentElement("x-misctabslist")
@@ -36,16 +36,23 @@ export class MiscTabsCollectionView extends CollectionViewLightweight<MiscTabVie
         const disposables: IDisposable[] = [];
 
         const elName = EL("div", { class: "tabitem-name" }, [ vm.title ]);
-        disposables.push(new ObservableExpression(() => vm.title, title => {
+
+        const calcObsTitle = new CalculatedObservable("MiscTabsCollectionView.createUserElement", () => vm.title);
+        disposables.push(calcObsTitle);
+        disposables.push(calcObsTitle.addValueChangeListener(title => {
             elName.innerText = title ?? "";
         }));
 
         const el = EL("div", { class: "tabitem" }, [
             elName
         ]);
-        disposables.push(new ObservableExpression(() => vm.isSelected, isSel => {
+
+        const calcObsIsSelected = new CalculatedObservable("MiscTabsCollectionView.createUserElement", () => vm.isSelected);
+        disposables.push(calcObsIsSelected);
+        disposables.push(calcObsIsSelected.addValueChangeListener(isSel => {
             el.classList.toggle("selected", !!isSel);
         }));
+
         el.addEventListener("click", () => {
             vm.select();
         });

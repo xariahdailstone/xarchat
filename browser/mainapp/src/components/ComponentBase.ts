@@ -13,7 +13,7 @@ import { ObjectUniqueId } from "../util/ObjectUniqueId.js";
 import { Observable, ValueSubscription } from "../util/Observable.js";
 import { ObservableBase } from "../util/ObservableBase.js";
 import { Collection } from "../util/ObservableCollection.js";
-import { ObservableExpression } from "../util/ObservableExpression.js";
+import { CalculatedObservable } from "../util/ObservableExpression.js";
 import { Optional } from "../util/Optional.js";
 import { Predicate } from "../util/Predicate.js";
 import { OperationCancelledError } from "../util/PromiseSource.js";
@@ -383,17 +383,17 @@ export abstract class ComponentBase<TViewModel> extends HTMLElement {
         const result = this.whenConnectedWithViewModel((vm) => {
             const lastReturnedDisposable = new DisposableOwnerField();
 
-            const oexpr = new ObservableExpression(
-                () => expr(vm), 
-                v => {
-                    const vcResult = valueChanged(v);
-                    lastReturnedDisposable.value = vcResult ?? null;
-                });
+            const cexpr = new CalculatedObservable("ComponentBase.watchExpr", () => expr(vm));
+            const cexprsub = cexpr.addValueChangeListener((v) => {
+                const vcResult = valueChanged(v);
+                lastReturnedDisposable.value = vcResult ?? null;
+            });
             
             return asNamedDisposable(`${this.constructor.name}_watchExprRegistration`, () => {
                 lastReturnedDisposable.value = valueChanged(undefined) ?? null;
                 lastReturnedDisposable.dispose();
-                oexpr.dispose();
+                cexprsub.dispose();
+                cexpr.dispose();
             });
         });
         

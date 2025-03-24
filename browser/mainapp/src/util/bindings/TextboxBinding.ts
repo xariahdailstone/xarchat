@@ -1,5 +1,5 @@
 import { IDisposable, asDisposable } from "../Disposable";
-import { ObservableExpression } from "../ObservableExpression";
+import { CalculatedObservable } from "../ObservableExpression";
 import { ValueReference } from "../ValueReference";
 
 export class TextboxBinding implements IDisposable {
@@ -78,11 +78,12 @@ export class TextboxBinding implements IDisposable {
         }
 
         if (this.viewModelValueRef.canRead) {
-            this._disposables.add(new ObservableExpression(
-                () => { return this.viewModelValueRef.read(); },
-                (value) => { onViewModelUpdate(value ?? ""); },
-                (err) => { onViewModelUpdate(""); })
-            );
+            const robs = new CalculatedObservable("TextboxBinding.initialize", () => this.viewModelValueRef.read());
+            const rsub = robs.addValueChangeListener(value => {
+                onViewModelUpdate(value ?? "");
+            });
+            this._disposables.add(robs);
+            this._disposables.add(rsub);
         }
     }
 

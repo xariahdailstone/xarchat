@@ -2,7 +2,7 @@ import { IDisposable, EmptyDisposable, asDisposable } from "../util/Disposable.j
 import { Logger, Logging } from "../util/Logger.js";
 import { ObjectUniqueId } from "../util/ObjectUniqueId.js";
 import { ObservableValue } from "../util/Observable.js";
-import { ObservableExpression } from "../util/ObservableExpression.js";
+import { CalculatedObservable } from "../util/ObservableExpression.js";
 import { Optional } from "../util/Optional.js";
 
 export abstract class LightweightComponentBase<TViewModel> implements IDisposable {
@@ -14,18 +14,20 @@ export abstract class LightweightComponentBase<TViewModel> implements IDisposabl
 
         this._viewModel = new ObservableValue(null).withName("LightweightComponentBase._viewModel");
         if (viewModelFunc) {
-            this._viewModelExpression = new ObservableExpression<Optional<TViewModel>>(viewModelFunc,
-                vm => { this.setViewModel(vm); },
-                err => { this.setViewModel(null); });
+            this._viewModelExpression = new CalculatedObservable<Optional<TViewModel>>("LightweightComponentBase._viewModelExpression", viewModelFunc);
+            this._vmeSubscription = this._viewModelExpression.addValueChangeListener(vm => this.setViewModel(vm ?? null));
         }
         else {
             this._viewModelExpression = null;
+            this._vmeSubscription = null;
         }
     }
 
     protected readonly logger: Logger;
 
-    private readonly _viewModelExpression: ObservableExpression<Optional<TViewModel>> | null;
+    private readonly _viewModelExpression: CalculatedObservable<Optional<TViewModel>> | null;
+    private readonly _vmeSubscription: IDisposable | null;
+
     private _disposed = false;
 
     dispose() {
@@ -37,6 +39,9 @@ export abstract class LightweightComponentBase<TViewModel> implements IDisposabl
             }
             this._watchRegistrations.clear();
 
+            if (this._vmeSubscription) {
+                this._vmeSubscription.dispose();
+            }
             if (this._viewModelExpression) {
                 this._viewModelExpression.dispose();
             }
@@ -101,12 +106,13 @@ class WatchRegistration<T> implements IDisposable {
         private readonly expr: () => T,
         private readonly callback: (item: Optional<T>) => (void | IDisposable)) {
 
-        this._oe = new ObservableExpression(expr,
-            v => { this.invokeCallback(v); },
-            err => { this.invokeCallback(null); });
+        this._oe = new CalculatedObservable("WatchRegistration._oe", expr);
+        this._oeSub = this._oe.addValueChangeListener(v => this.invokeCallback(v ?? null));
     }
 
-    private readonly _oe: ObservableExpression<T>;
+    private readonly _oe: CalculatedObservable<T>;
+    private readonly _oeSub: IDisposable;
+
     private _disposed: boolean = false;
     private _currentCallbackDisposable: IDisposable | null = null;
 
@@ -114,6 +120,7 @@ class WatchRegistration<T> implements IDisposable {
         if (!this._disposed) {
             this._disposed = true;
 
+            this._oeSub.dispose();
             this._oe.dispose();
             this._currentCallbackDisposable?.dispose();
         }

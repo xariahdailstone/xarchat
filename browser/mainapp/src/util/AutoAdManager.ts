@@ -6,7 +6,6 @@ import { ChatChannelMessageMode, ChatChannelViewModel } from "../viewmodel/ChatC
 import { asDisposable, IDisposable } from "./Disposable";
 import { Logger, Logging } from "./Logger";
 import { ObjectUniqueId } from "./ObjectUniqueId";
-import { ObservableExpression } from "./ObservableExpression";
 import { StringUtils } from "./StringUtils";
 import { TaskUtils } from "./TaskUtils";
 

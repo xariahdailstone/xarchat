@@ -1,8 +1,8 @@
-import { IDisposable } from './Disposable';
+import { asDisposable, IDisposable } from './Disposable';
 import { HostInterop } from './HostInterop';
 import { Logger, Logging } from './Logger';
 import { Observable } from './Observable';
-import { ObservableExpression } from './ObservableExpression';
+import { CalculatedObservable } from './ObservableExpression';
 
 export interface ConfigBlock {
     get(key: string): (unknown | null);
@@ -78,11 +78,11 @@ export class HostInteropConfigBlock implements ConfigBlock {
     }
 
     observe(key: string, onValueUpdated: (value: unknown | null) => void): IDisposable {
-        const expr = new ObservableExpression(() => this.get(key),
-            (v) => { onValueUpdated(v ?? null); },
-            (err) => { onValueUpdated(null); });
-
-        return expr;
+        const cexpr = new CalculatedObservable("HostInteropConfigBlock.observe", () => this.get(key));
+        const vsub = cexpr.addValueChangeListener(v => {
+            onValueUpdated(v ?? null);
+        });
+        return asDisposable(cexpr, vsub);
     }
 
     hostAssignSet(pairs: { key: string, value: (unknown | null) }[]): void {

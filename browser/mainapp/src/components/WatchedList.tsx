@@ -8,7 +8,7 @@ import { EL } from "../util/EL";
 import { MouseButton } from "../util/EventListenerUtil";
 import { HTMLUtils } from "../util/HTMLUtils";
 import { ObservableValue } from "../util/Observable";
-import { ObservableExpression } from "../util/ObservableExpression";
+import { CalculatedObservable } from "../util/ObservableExpression";
 import { URLUtils } from "../util/URLUtils";
 import { WhenChangeManager } from "../util/WhenChange";
 import { ChatBBCodeParser } from "../util/bbcode/BBCode";
@@ -230,10 +230,12 @@ export class CharactersCollectionView extends CollectionViewLightweight<KeyValue
                 }
             };
 
-            const sel = new ObservableExpression(() => this.activeLoginViewModel!.selectedTab, (selectedChannel) => {
+            const sobs = new CalculatedObservable("CharactersCollectionView.createUserElement", () => this.activeLoginViewModel!.selectedTab);
+            disposables.push(sobs);
+            disposables.push(sobs.addValueChangeListener(selectedChannel => {
                 updateSelectedClass();
-            });
-            disposables.push(sel);
+            }));
+
             updateSelectedClass();
         }
 

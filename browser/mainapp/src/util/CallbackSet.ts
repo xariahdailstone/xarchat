@@ -54,6 +54,17 @@ export class CallbackSet<T extends (...args: any) => any> {
         }
     }
 
+    clear() {
+        let anyRemoved = false;
+        if (this._callbacksSet.size > 0) {
+            this._callbacksSet.clear();
+            anyRemoved = true;
+        }
+        if (anyRemoved) {
+            this.fireOnCallbackRemoved();
+        }
+    }
+
     invoke(...params: Parameters<T>) {
         let anyRemoved = false;
         this._callbacksSet.forEachValueSnapshotted(cbi => {

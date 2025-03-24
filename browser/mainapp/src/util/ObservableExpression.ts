@@ -379,6 +379,7 @@ export class CalculatedObservable<T> implements Observable, IDisposable {
     dispose(): void {
         if (!this._isDisposed) {
             this._isDisposed = true;
+            this._cbSet.clear();
             this.refreshValue();
         }
     }
@@ -401,12 +402,16 @@ export class CalculatedObservable<T> implements Observable, IDisposable {
         this._cbSet.invoke(new PropertyChangeEvent(propertyName, propValue));
     }
 
-    addValueChangeListener(handler: (value: any) => any): IDisposable {
-        return this.addEventListener("propertychange", (e) => {
+    addValueChangeListener(handler: (value: any) => any, fireImmediately: boolean = true): IDisposable {
+        const result = this.addEventListener("propertychange", (e) => {
             if (e.propertyName == "value") {
                 handler(e.propertyValue);
             }
-        })
+        });
+        if (fireImmediately) {
+            handler(this.value);
+        }
+        return result;
     }
 
     addValueSubscription(propertyPath: string, handler: (value: any) => any): ValueSubscription {

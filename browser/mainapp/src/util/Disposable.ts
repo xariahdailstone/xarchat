@@ -229,3 +229,36 @@ export function disposeWithThis(target: any, propertyKey: string, descriptor?: P
 
     (target[SYM_DISPOSEWITHTHISSET] as Set<string>).add(propertyKey);
 }
+
+export class DisposableSet implements IDisposable {
+    constructor(public readonly name?: string) {
+    }
+
+    private readonly _items: (Disposable | IDisposable)[] = [];
+    private _isDisposed = false;
+
+    get isDisposed(): boolean { return this._isDisposed; }
+
+    dispose(): void {
+        if (!this._isDisposed) {
+            this._isDisposed = true;
+            for (let d of this._items) {
+                try { tryDispose(d); }
+                catch { }
+            }
+        }
+    }
+    [Symbol.dispose](): void { this.dispose(); }
+
+    add<T extends (Disposable | IDisposable)>(item: T): T {
+        if (this._isDisposed) {
+            try { tryDispose(item); }
+            catch { }
+        }
+        else {
+            this._items.push(item);
+        }
+
+        return item;
+    }
+}
