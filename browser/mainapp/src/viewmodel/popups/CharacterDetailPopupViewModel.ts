@@ -1,5 +1,6 @@
 import { CharacterName } from "../../shared/CharacterName";
 import { CancellationToken } from "../../util/CancellationTokenSource";
+import { HTMLUtils } from "../../util/HTMLUtils";
 import { HostInterop } from "../../util/HostInterop";
 import { ObservableValue } from "../../util/Observable";
 import { ObservableBase, observableProperty } from "../../util/ObservableBase";
@@ -89,7 +90,20 @@ export class CharacterDetailPopupViewModel extends ContextPopupViewModel {
     }
 
     async timeout() {
-        // TOOD:
+        const timeoutValue = await this.appViewModel.promptForStringAsync({
+            title: "Timeout Character",
+            messageAsHtml: true,
+            message: `How long, in minutes, do you want to timeout <b>${this.char.value}</b> from <b>${HTMLUtils.escapeHTML(this.channelViewModel!.title)}</b> for?`,
+            confirmButtonTitle: "Timeout",
+            initialValue: "",
+            valueOnCancel: null,
+            validationFunc: (str: string) => {
+                return !!str.match(/^(\d)+$/);
+            }
+        })
+        if (timeoutValue != null && (+timeoutValue) > 0) {
+            (this.channelViewModel as ChatChannelViewModel).timeoutAsync(this.char, +timeoutValue);
+        }
     }
 
     async ban() {
@@ -136,7 +150,7 @@ export class CharacterDetailPopupViewModel extends ContextPopupViewModel {
             ]
         });
         if (confirmed) {
-            // TODO:
+            (this.channelViewModel as ChatChannelViewModel).opAsync(this.char);
         }
     }
 
@@ -160,7 +174,7 @@ export class CharacterDetailPopupViewModel extends ContextPopupViewModel {
             ]
         });
         if (confirmed) {
-            // TODO:
+            (this.channelViewModel as ChatChannelViewModel).deopAsync(this.char);
         }
     }
 
@@ -184,7 +198,7 @@ export class CharacterDetailPopupViewModel extends ContextPopupViewModel {
             ]
         });
         if (confirmed) {
-            // TODO:
+            (this.channelViewModel as ChatChannelViewModel).changeOwnerAsync(this.char);
         }
     }
 }
