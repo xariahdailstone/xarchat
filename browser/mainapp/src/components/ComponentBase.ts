@@ -225,7 +225,7 @@ export abstract class ComponentBase<TViewModel> extends HTMLElement {
     private connectedCallback() {
         this._isComponentConnected = true;
         this.parentComponent = this.findParentComponent();
-        //console.log(`${this.constructor.name} connected`, this.parentComponent);
+        //this.logger.logDebug(`${this.constructor.name} connected`, this.parentComponent);
         this.viewModelContextUpdated();
         try { this.connectedToDocument(); } catch { }
         this.setupWhenConnecteds();
@@ -236,7 +236,7 @@ export abstract class ComponentBase<TViewModel> extends HTMLElement {
     protected disconnectedFromDocument() { }
 
     private disconnectedCallback() {
-        //console.log(`${this.constructor.name} disconnected`);
+        //this.logger.logDebug(`${this.constructor.name} disconnected`);
         this.logger.logDebug("disconnecting");
         this._isComponentConnected = false;
         this.parentComponent = null;

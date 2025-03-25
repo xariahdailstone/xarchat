@@ -49,17 +49,26 @@ class ConsoleLogger implements Logger {
                 break;
         }
     }
+
     logDebug(...args: any[]): void {
-        console.debug(`[${this.source}]`, ...this._scopes, ...args);
+        this.invokeLog(console.debug, args);
     }
+
     logInfo(...args: any[]): void {
-        console.info(`[${this.source}]`, ...this._scopes, ...args);
+        this.invokeLog(console.info, args);
     }
+
     logWarn(...args: any[]): void {
-        console.warn(`[${this.source}]`, ...this._scopes, ...args);
+        this.invokeLog(console.warn, args);
     }
+
     logError(...args: any[]): void {
-        console.error(`[${this.source}]`, ...this._scopes, ...args);
+        this.invokeLog(console.error, args);
+    }
+
+    private invokeLog(f: (...data: any) => void, args: any[]) {
+        const d = new Date();
+        f.call(console, `[${d.toISOString()}] [${this.source}]`, ...this._scopes, ...args);
     }
 }
 

@@ -389,31 +389,34 @@ namespace MinimalWin32Test.UI
 
         private async void MaybeUpdateWindowState()
         {
-            try
+            _app.Post(async () =>
             {
-                var sp = await _backend.GetServiceProviderAsync();
-                var eventSink = sp.GetRequiredService<IXCHostSession>();
-                var ws = this.WindowState;
-                switch (ws)
+                try
                 {
-                    case WindowState.Normal:
-                        OnWindowRestored();
-                        eventSink.WindowRestored();
-                        break;
-                    case WindowState.Minimized:
-                        OnWindowMinimized();
-                        eventSink.WindowMinimized();
-                        break;
-                    case WindowState.Maximized:
-                        OnWindowMaximized();
-                        eventSink.WindowMaximized();
-                        break;
+                    var sp = await _backend.GetServiceProviderAsync();
+                    var eventSink = sp.GetRequiredService<IXCHostSession>();
+                    var ws = this.WindowState;
+                    switch (ws)
+                    {
+                        case WindowState.Normal:
+                            OnWindowRestored();
+                            eventSink.WindowRestored();
+                            break;
+                        case WindowState.Minimized:
+                            OnWindowMinimized();
+                            eventSink.WindowMinimized();
+                            break;
+                        case WindowState.Maximized:
+                            OnWindowMaximized();
+                            eventSink.WindowMaximized();
+                            break;
+                    }
                 }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine(ex.Message);
-            }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine(ex.Message);
+                }
+            });
         }
 
         protected virtual void OnWindowMaximized()

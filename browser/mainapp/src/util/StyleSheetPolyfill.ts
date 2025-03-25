@@ -42,7 +42,7 @@ class CompatCSSStyleSheet implements SharedStyleSheet {
 
     replaceSync(text: string): void {
         this._text = text;
-        //console.log("compatcssstylesheet change text", text);
+        //this.logger.logDebug("compatcssstylesheet change text", text);
 
         this._styleElements.forEachValueSnapshotted(x => {
             var xd = x.deref();

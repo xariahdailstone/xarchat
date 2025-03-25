@@ -1,17 +1,20 @@
 import { OnlineStatus, OnlineStatusConvert } from "../shared/OnlineStatus";
 import { IDisposable } from "../util/Disposable";
+import { ObservableBase } from "../util/ObservableBase";
 import { ObservableExpression } from "../util/ObservableExpression";
 import { AppViewModel } from "./AppViewModel";
 
-export class ColorThemeViewModel {
+export class ColorThemeViewModel extends ObservableBase {
     constructor(
         public readonly appViewModel: AppViewModel) {
+
+        super();
 
         this._disposables.push(appViewModel.configBlock.observe("global.bgColor", (v: string) => {
             if (!v) {
                 v = "225;7";
             }
-            console.log("global.bgColor", v);
+            this.logger.logDebug("global.bgColor", v);
             const parts = v.split(';');
             const hue = +parts[0];
             const sat = +parts[1];

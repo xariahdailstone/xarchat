@@ -141,11 +141,11 @@ export class MainInterface extends ComponentBase<AppViewModel> {
             }
         });
         // this.watchExpr(vm => vm.dialogs.length, v => {
-        //     console.log("vm.dialogs.length", v);
+        //     this.logger.logDebug("vm.dialogs.length", v);
         //     this.updateDialogsState();
         // });
         // this.watchExpr(vm => vm.popups.length, v => {
-        //     console.log("vm.popups.length", v);
+        //     this.logger.logDebug("vm.popups.length", v);
         //     this.updatePopupsState();
         // });
 
