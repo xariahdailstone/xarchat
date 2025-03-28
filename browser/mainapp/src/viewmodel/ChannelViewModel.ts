@@ -16,6 +16,7 @@ import { asDisposable, tryDispose as maybeDispose, IDisposable, isDisposable } f
 import { HeldCacheManager } from "../util/HeldCacheManager.js";
 import { LoggedMessage, LogMessageType } from "../util/HostInterop.js";
 import { IterableUtils } from "../util/IterableUtils.js";
+import { Logging } from "../util/Logger.js";
 import { ObjectUniqueId } from "../util/ObjectUniqueId.js";
 import { Observable, ObservableValue } from "../util/Observable.js";
 import { ObservableBase, observableProperty } from "../util/ObservableBase.js";
@@ -803,8 +804,9 @@ export function ChannelMessageViewModelComparer(a: ChannelMessageViewModel, b: C
     }
 }
 
+const cleanupRegisteryLogger = Logging.createLogger("ChannelViewModel.cleanupRegistry");
 const cleanupRegistry = new FinalizationRegistry<IDisposable>(hv => {
-    console.log("cleanupdispose", hv);
+    cleanupRegisteryLogger.logInfo("cleanupdispose", hv);
     try { hv.dispose(); }
     catch { }
 });
@@ -985,18 +987,18 @@ export class ChannelMessageViewModel extends ObservableBase implements IDisposab
 
     incrementParsedTextUsage() {
         this._parsedTextInUse++;
-        //console.log("incrementParsedTextUsage", ObjectUniqueId.get(this), this._parsedTextInUse);
+        //this.logger.logInfo("incrementParsedTextUsage", ObjectUniqueId.get(this), this._parsedTextInUse);
         this.cancelParsedTextReleaseTimer();
     }
     decrementParsedTextUsage() {
         this._parsedTextInUse = Math.max(0, this._parsedTextInUse - 1);
-        //console.log("decrementParsedTextUsage", ObjectUniqueId.get(this), this._parsedTextInUse);
+        //this.logger.logInfo("decrementParsedTextUsage", ObjectUniqueId.get(this), this._parsedTextInUse);
         if (this._parsedTextInUse == 0) {
             this.cancelParsedTextReleaseTimer();
             this._parsedTextReleaseTimer = HeldCacheManager.addReleasableItem(() => {
                 this._parsedTextReleaseTimer = null;
                 if (this._parsedText != null) {
-                    //console.log("releasing parsedText");
+                    //cthis.logger.logInfo("releasing parsedText");
                     this._parsedText.dispose();
                     this._parsedText = null;
                 }

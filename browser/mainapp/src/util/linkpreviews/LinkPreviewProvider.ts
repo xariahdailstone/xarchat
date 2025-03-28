@@ -2,8 +2,10 @@ import { AppViewModel } from "../../viewmodel/AppViewModel";
 import { IFramePopupViewModel } from "../../viewmodel/popups/IFramePopupViewModel";
 import { ImagePreviewPopupViewModel } from "../../viewmodel/popups/ImagePreviewPopupViewModel";
 import { CancellationToken } from "../CancellationTokenSource";
-import { IDisposable } from "../Disposable";
+import { asDisposable, IDisposable } from "../Disposable";
 import { EventListenerUtil } from "../EventListenerUtil";
+import { Logger, Logging } from "../Logger";
+import { MouseOverUtils } from "../MouseOverUtils";
 
 class CheckData {
     constructor(
@@ -90,15 +92,24 @@ class CheckData {
 }
 
 export class LinkPreviewProvider {
-    static addMouseOverPreview(appViewModel: AppViewModel, url: string, el: HTMLElement) {
+    static readonly logger: Logger = Logging.createLogger("LinkPreviewProvider");
+
+    static addMouseOverPreview(appViewModel: AppViewModel, url: string, el: HTMLElement): IDisposable {
         const u = new URL(url);
-        let popupViewModel: (ImagePreviewPopupViewModel | IFramePopupViewModel | null) = null;
+        let zpopupViewModel: (ImagePreviewPopupViewModel | IFramePopupViewModel | null) = null;
         let linkPreviewData: (LinkPreviewData | null | undefined) = undefined;
         let mouseStillOver: boolean = false;
         let mouseOutDispose: IDisposable | null = null;
 
-        el.addEventListener("mouseover", async () => {
-            //console.log("link mouseover");
+        const assignPopupViewModel = (pvm: (ImagePreviewPopupViewModel | IFramePopupViewModel | null)) => {
+            if (zpopupViewModel != null) {
+                zpopupViewModel.dismissed();
+            }
+            zpopupViewModel = pvm;
+        };
+
+        const mouseOverHandler = MouseOverUtils.addMouseOverHandler(el, async () => {
+            this.logger.logDebug("link mouseover");
             mouseStillOver = true;
             if (linkPreviewData === undefined) {
                 linkPreviewData = await LinkPreviewProvider.getLinkPreviewDataAsync(url, CancellationToken.NONE);
@@ -107,16 +118,16 @@ export class LinkPreviewProvider {
                 if (linkPreviewData instanceof LinkPreviewImageData) {
                     const previewUrl = linkPreviewData.url;
                     const myPopupViewModel = new ImagePreviewPopupViewModel(appViewModel, el);
-                    popupViewModel = myPopupViewModel;
-                    if (previewUrl && popupViewModel == myPopupViewModel) {
+                    assignPopupViewModel(myPopupViewModel);
+                    if (previewUrl) {
                         myPopupViewModel.imageUrl = previewUrl;
                     }
                 }
                 else if (linkPreviewData instanceof LinkPreviewVideoData) {
                     const previewUrl = linkPreviewData.url;
                     const myPopupViewModel = new ImagePreviewPopupViewModel(appViewModel, el);
-                    popupViewModel = myPopupViewModel;
-                    if (previewUrl && popupViewModel == myPopupViewModel) {
+                    assignPopupViewModel(myPopupViewModel);
+                    if (previewUrl) {
                         myPopupViewModel.videoUrl = previewUrl;
                     }
                 }
@@ -128,7 +139,7 @@ export class LinkPreviewProvider {
                     mouseOutDispose = EventListenerUtil.addDisposableEventListener(window, "message", (evt: MessageEvent) => {
                         try {
                             const data = evt.data
-                            console.log("embed message", data);
+                            this.logger.logDebug("embed message", data);
                             if (data.cmd == "embed-loaded" && data.embedId == richEmbedData.embedId) {
                                 myPopupViewModel.iframeSize = [ data.width, data.height ];
                                 window.requestAnimationFrame(() => {
@@ -140,7 +151,7 @@ export class LinkPreviewProvider {
                     });
 
                     appViewModel.popups.push(myPopupViewModel);
-                    popupViewModel = myPopupViewModel;
+                    assignPopupViewModel(myPopupViewModel);
                     
                     ifr.src = linkPreviewData.url;
                     ifr.allow = "";
@@ -148,17 +159,24 @@ export class LinkPreviewProvider {
                 }
             }
         });
-        el.addEventListener("mouseout", () => {
-            //console.log("link mouseout");
+        const mouseOutHandler = MouseOverUtils.addMouseOutHandler(el, () => {
+            this.logger.logDebug("link mouseout");
             mouseStillOver = false;
             if (mouseOutDispose) {
                 mouseOutDispose.dispose();
                 mouseOutDispose = null;
             }
-            if (popupViewModel) {
-                popupViewModel.dismissed();
-                popupViewModel = null;
+            assignPopupViewModel(null);
+        });
+
+        return asDisposable(() => {
+            mouseOverHandler.dispose();
+            mouseOutHandler.dispose();
+            if (mouseOutDispose) {
+                mouseOutDispose.dispose();
+                mouseOutDispose = null;
             }
+            assignPopupViewModel(null);
         });
     }
 
@@ -250,15 +268,15 @@ export class LinkPreviewProvider {
             }
 
             const elMetaImage = rdoc.querySelector("meta[property='og:video']") as (HTMLMetaElement | null);
-            if (!elMetaImage) { console.log("no og:video meta found"); return null; }
-            console.log("og:video meta", elMetaImage.content);
+            if (!elMetaImage) { this.logger.logDebug("no og:video meta found"); return null; }
+            this.logger.logDebug("og:video meta", elMetaImage.content);
 
             const metaImageUrl = elMetaImage.content;
             const innerCheckData = checkData.getRelatedCheck(metaImageUrl);
             const innerResult = (metaImageUrl != checkData.url) ? await this.checkForVideoAsync(innerCheckData, false, cancellationToken) : null;
             return innerResult;
         }
-        catch (e) { console.error("checkForOpenGraphVideoAsync error", e); }
+        catch (e) { this.logger.logError("checkForOpenGraphVideoAsync error", e); }
 
         return null;
     }
@@ -271,15 +289,15 @@ export class LinkPreviewProvider {
             }
 
             const elMetaImage = rdoc.querySelector("meta[property='og:image']") as (HTMLMetaElement | null);
-            if (!elMetaImage) { console.log("no og:image meta found"); return null; }
-            console.log("og:image meta", elMetaImage.content);
+            if (!elMetaImage) { this.logger.logDebug("no og:image meta found"); return null; }
+            this.logger.logDebug("og:image meta", elMetaImage.content);
 
             const metaImageUrl = elMetaImage.content;
             const innerCheckData = checkData.getRelatedCheck(metaImageUrl);
             const innerResult = (metaImageUrl != checkData.url) ? await this.checkForImageAsync(innerCheckData, false, cancellationToken) : null;
             return innerResult;
         }
-        catch (e) { console.error("checkForOpenGraphImageAsync error", e); }
+        catch (e) { this.logger.logError("checkForOpenGraphImageAsync error", e); }
 
         return null;
     }
