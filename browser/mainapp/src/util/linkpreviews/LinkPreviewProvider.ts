@@ -96,10 +96,17 @@ export class LinkPreviewProvider {
 
     static addMouseOverPreview(appViewModel: AppViewModel, url: string, el: HTMLElement): IDisposable {
         const u = new URL(url);
-        let popupViewModel: (ImagePreviewPopupViewModel | IFramePopupViewModel | null) = null;
+        let zpopupViewModel: (ImagePreviewPopupViewModel | IFramePopupViewModel | null) = null;
         let linkPreviewData: (LinkPreviewData | null | undefined) = undefined;
         let mouseStillOver: boolean = false;
         let mouseOutDispose: IDisposable | null = null;
+
+        const assignPopupViewModel = (pvm: (ImagePreviewPopupViewModel | IFramePopupViewModel | null)) => {
+            if (zpopupViewModel != null) {
+                zpopupViewModel.dismissed();
+            }
+            zpopupViewModel = pvm;
+        };
 
         const mouseOverHandler = MouseOverUtils.addMouseOverHandler(el, async () => {
             this.logger.logDebug("link mouseover");
@@ -111,16 +118,16 @@ export class LinkPreviewProvider {
                 if (linkPreviewData instanceof LinkPreviewImageData) {
                     const previewUrl = linkPreviewData.url;
                     const myPopupViewModel = new ImagePreviewPopupViewModel(appViewModel, el);
-                    popupViewModel = myPopupViewModel;
-                    if (previewUrl && popupViewModel == myPopupViewModel) {
+                    assignPopupViewModel(myPopupViewModel);
+                    if (previewUrl) {
                         myPopupViewModel.imageUrl = previewUrl;
                     }
                 }
                 else if (linkPreviewData instanceof LinkPreviewVideoData) {
                     const previewUrl = linkPreviewData.url;
                     const myPopupViewModel = new ImagePreviewPopupViewModel(appViewModel, el);
-                    popupViewModel = myPopupViewModel;
-                    if (previewUrl && popupViewModel == myPopupViewModel) {
+                    assignPopupViewModel(myPopupViewModel);
+                    if (previewUrl) {
                         myPopupViewModel.videoUrl = previewUrl;
                     }
                 }
@@ -144,7 +151,7 @@ export class LinkPreviewProvider {
                     });
 
                     appViewModel.popups.push(myPopupViewModel);
-                    popupViewModel = myPopupViewModel;
+                    assignPopupViewModel(myPopupViewModel);
                     
                     ifr.src = linkPreviewData.url;
                     ifr.allow = "";
@@ -159,10 +166,7 @@ export class LinkPreviewProvider {
                 mouseOutDispose.dispose();
                 mouseOutDispose = null;
             }
-            if (popupViewModel) {
-                popupViewModel.dismissed();
-                popupViewModel = null;
-            }
+            assignPopupViewModel(null);
         });
 
         return asDisposable(() => {
@@ -172,10 +176,7 @@ export class LinkPreviewProvider {
                 mouseOutDispose.dispose();
                 mouseOutDispose = null;
             }
-            if (popupViewModel) {
-                popupViewModel.dismissed();
-                popupViewModel = null;
-            }
+            assignPopupViewModel(null);
         });
     }
 
