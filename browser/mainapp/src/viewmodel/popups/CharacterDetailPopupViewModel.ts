@@ -11,6 +11,7 @@ import { AppViewModel } from "../AppViewModel";
 import { ChannelViewModel } from "../ChannelViewModel";
 import { ChatChannelViewModel } from "../ChatChannelViewModel";
 import { DialogButtonStyle } from "../dialogs/DialogViewModel";
+import { ReportSource, ReportViewModel } from "../dialogs/ReportViewModel";
 import { ContextPopupViewModel, PopupViewModel } from "./PopupViewModel";
 
 export class CharacterDetailPopupViewModel extends ContextPopupViewModel {
@@ -63,6 +64,11 @@ export class CharacterDetailPopupViewModel extends ContextPopupViewModel {
 
     showSettings() {
         this.parent.showSettingsDialogAsync(this.session, this.char);
+    }
+
+    async submitReport() {
+        const vm = new ReportViewModel(this.session, ReportSource.PROFILE_POPUP, this.char, this.channelViewModel ?? undefined);
+        const wasReported = await this.parent.showDialogAsync(vm);
     }
 
     async kick() {

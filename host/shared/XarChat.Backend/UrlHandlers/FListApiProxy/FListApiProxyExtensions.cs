@@ -108,6 +108,25 @@ namespace XarChat.Backend.UrlHandlers.FListApiProxy
                 var response = await authApi.SaveMemoAsync(name, memo, cancellationToken);
                 return CustomResults.NewtonsoftJsonResult(response, SourceGenerationContext.Default.SaveMemoResponse);
             });
+            app.MapPost(urlBase + "{account}/submitReport", async (
+                HttpRequest request,
+                [FromRoute] string account,
+                CancellationToken cancellationToken) =>
+            {
+                var character = request.Form["character"].First()!.ToString();
+                var reportText = request.Form["reportText"].First()!.ToString();
+                var log = request.Form["log"].First()!.ToString();
+                var channel = request.Form["channel"].First()!.ToString();
+                var text = request.Form["text"].First()!.ToString();
+                var reportUser = request.Form["reportUser"].FirstOrDefault()?.ToString() ?? null;
+
+                var authApi = await flistApi.GetAlreadyAuthenticatedFListApiAsync(account, cancellationToken);
+                var response = await authApi.SubmitReportAsync(
+                    character, reportText, log, channel, reportUser, cancellationToken);
+                return CustomResults.NewtonsoftJsonResult(response, SourceGenerationContext.Default.SubmitReportResponse);
+            })
+                .DisableAntiforgery();
+
             app.MapGet(urlBase + "{account}/friendsList", async (
                 [FromRoute] string account,
                 CancellationToken cancellationToken) =>

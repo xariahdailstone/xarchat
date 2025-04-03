@@ -1456,4 +1456,16 @@ export class ChatConnectionImpl implements ChatConnection {
             throw new Error(error ?? "Unknown error.");
         }
     }
+
+    async submitReportAsync(logId: number, text: string, channel: string): Promise<void> {
+        // TODO:
+        // await this.bracketedSendAsync({
+        //     code: "SFC", body: {
+        //         action: "report",
+        //         logid: logId,
+        //         report: text,
+        //         tab: channel
+        //     }
+        // });
+    }
 }

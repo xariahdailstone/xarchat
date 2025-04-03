@@ -21,8 +21,8 @@ namespace XarChat.Backend.Features.FListApi.Impl
 
         public record CreationArgs(FListApiImpl Owner, string Account);
 
-		public AuthenticatedFListApiImpl(
-			CreationArgs creationArgs,
+        public AuthenticatedFListApiImpl(
+            CreationArgs creationArgs,
             IDataUpdateSubmitter dataUpdateSubmitter,
             ILocalDataCache localDataCache)
         {
@@ -40,11 +40,11 @@ namespace XarChat.Backend.Features.FListApi.Impl
             CancellationToken cancellationToken)
             => PerformAuthenticatedRequest<T>(urlPath, formData, jsonTypeInfo, null, cancellationToken);
 
-		private async Task<T> PerformAuthenticatedRequest<T>(string urlPath,
+        private async Task<T> PerformAuthenticatedRequest<T>(string urlPath,
             IEnumerable<KeyValuePair<string, string>> formData,
             JsonTypeInfo<T> jsonTypeInfo,
-			Func<string, Task>? rawResponseTapFunc,
-			CancellationToken cancellationToken)
+            Func<string, Task>? rawResponseTapFunc,
+            CancellationToken cancellationToken)
         {
             var hc = _flistApi.GetHttpClient();
             var apiTicket = await this.GetApiTicketAsync(cancellationToken);
@@ -77,8 +77,8 @@ namespace XarChat.Backend.Features.FListApi.Impl
             IEnumerable<KeyValuePair<string, string>> formData,
             HttpClient hc, string ticket,
             JsonTypeInfo<T> jsonTypeInfo,
-			Func<string, Task>? rawResponseTapFunc,
-			CancellationToken cancellationToken)
+            Func<string, Task>? rawResponseTapFunc,
+            CancellationToken cancellationToken)
         {
             var in405Retry = false;
         TRYAGAIN:
@@ -129,8 +129,8 @@ namespace XarChat.Backend.Features.FListApi.Impl
             }
             try
             {
-				await (rawResponseTapFunc is not null ? rawResponseTapFunc(json) : Task.CompletedTask);
-				var result = jobj.Deserialize<T>(jsonTypeInfo); // jobj!.ToObject<T>()!;
+                await (rawResponseTapFunc is not null ? rawResponseTapFunc(json) : Task.CompletedTask);
+                var result = jobj.Deserialize<T>(jsonTypeInfo); // jobj!.ToObject<T>()!;
                 System.Diagnostics.Debug.WriteLine($"API returned result");
                 return result;
             }
@@ -227,6 +227,36 @@ namespace XarChat.Backend.Features.FListApi.Impl
             await _localDataCache.AssignAsync(GetMemoCacheKey(name), result.Note,
                 SourceGenerationContext.Default.String,
                 TimeSpan.FromHours(1), cancellationToken);
+
+            return result;
+        }
+
+        public async Task<SubmitReportResponse> SubmitReportAsync(
+            string reportSubmitCharacter,
+            string reportText,
+            string log,
+            string channel,
+            string? reportTargetCharacter,
+            CancellationToken cancellationToken)
+        {
+            var formData = new Dictionary<string, string>
+            {
+                { "character", reportSubmitCharacter },
+                { "reportText", reportText },
+                { "log", log },
+                { "channel", channel },
+                { "text", "true" },
+            };
+            if (!String.IsNullOrWhiteSpace(reportTargetCharacter))
+            {
+                formData["reportUser"] = reportTargetCharacter;
+            }
+
+            System.Diagnostics.Debug.WriteLine($"submitreport {reportSubmitCharacter}->{reportTargetCharacter}");
+            // TODO:
+            //var result = await PerformAuthenticatedRequest<SubmitReportResponse>("api/report-submit.php", formData,
+            //    SourceGenerationContext.Default.SubmitReportResponse, cancellationToken);
+            var result = new SubmitReportResponse() { LogId = null };
 
             return result;
         }

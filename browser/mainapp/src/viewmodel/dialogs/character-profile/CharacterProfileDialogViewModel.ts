@@ -9,6 +9,7 @@ import { ActiveLoginViewModel } from "../../ActiveLoginViewModel";
 import { AppViewModel } from "../../AppViewModel";
 import { DialogCaptionButtonViewModel, DialogViewModel } from "../DialogViewModel";
 import { EditMemoViewModel } from "../EditMemoViewModel";
+import { ReportSource, ReportViewModel } from "../ReportViewModel";
 import { CharacterProfileDetailViewModel } from "./CharacterProfileDetailViewModel";
 
 export class CharacterProfileDialogViewModel extends DialogViewModel<number> {
@@ -134,7 +135,10 @@ export class CharacterProfileDialogViewModel extends DialogViewModel<number> {
     }
 
     async reportProfile() {
-        await this.activeLoginViewModel.appViewModel.alertAsync("Not Yet Implemented");
+        if (this.profileDetails) {
+            const vm = new ReportViewModel(this.activeLoginViewModel, ReportSource.PROFILE_DIALOG, this.profileDetails!.character, undefined);
+            const wasReported = await this.parent.showDialogAsync(vm);
+        }
     }
 }
 

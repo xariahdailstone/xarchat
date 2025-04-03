@@ -1,6 +1,6 @@
 import { CharacterName } from "../../shared/CharacterName";
 import { CancellationToken } from "../../util/CancellationTokenSource";
-import { ApiTicket, FListApi, FListAuthenticatedApi, FriendsList, GuestbookPageInfo, KinkList, MappingList, PartnerSearchFieldsDefinitions, ProfileFieldsInfoList, ProfileFriendsInfo, ProfileInfo } from "./FListApi";
+import { ApiTicket, FListApi, FListAuthenticatedApi, FriendsList, GuestbookPageInfo, KinkList, MappingList, PartnerSearchFieldsDefinitions, ProfileFieldsInfoList, ProfileFriendsInfo, ProfileInfo, ReportData } from "./FListApi";
 
 const API_URL_BASE = "/api/flist/";
 
@@ -34,14 +34,20 @@ export class HostInteropApi implements FListApi {
         return json;
     }
 
-    async postFromHostInteropAsync<T>(url: string, formData: { [name: string]: string }, cancellationToken: CancellationToken): Promise<T> {
-        const fd = new FormData();
+    async postFromHostInteropAsync<T>(url: string, formData: { [name: string]: string | null }, cancellationToken: CancellationToken): Promise<T> {
+        const fd = new URLSearchParams();
         for (let k of Object.getOwnPropertyNames(formData)) {
-            fd.append(k, formData[k]);
+            const v = formData[k];
+            if (v !== null) {
+                fd.append(k, v);
+            }
         }
         const resp = await fetch(API_URL_BASE + url, {
             method: "post",
-            body: fd
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded"
+            },
+            body: fd.toString()
         });
         if (resp.status != 200) {
             throw (await this.getResponseErrorAsync(resp));
@@ -137,6 +143,18 @@ export class HostInteropAuthenticatedApi implements FListAuthenticatedApi {
             note: memoText
         }, cancellationToken);
         return r.note;
+    }
+
+    async submitReportAsync(reportData: ReportData, cancellationToken: CancellationToken): Promise<number | null> {
+        const r = await this.owner.postFromHostInteropAsync<any>(`${this.account}/submitReport`, {
+            character: reportData.character.value,
+            reportText: reportData.reportText,
+            log: reportData.log,
+            channel: reportData.channel,
+            text: "true",
+            reportUser: reportData.reportUser?.value ?? null
+        }, cancellationToken);
+        return r.log_id ?? null;
     }
 
     async getCharacterProfileAsync(name: CharacterName, cancellationToken: CancellationToken): Promise<ProfileInfo> {

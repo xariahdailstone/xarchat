@@ -13,6 +13,7 @@ import { CharacterProfileDetailImageInfoViewModel } from "./CharacterProfileDeta
 import { CharacterProfileDetailSectionInfoViewModel } from "./CharacterProfileDetailSectionInfoViewModel";
 import { CharacterProfileDetailSummaryInfoViewModel } from "./CharacterProfileDetailSummaryInfoViewModel";
 import { CharacterGuestbookPostViewModel, CharacterGuestbookViewModel } from "./CharacterGuestbookViewModel";
+import { ReportSource, ReportViewModel } from "../ReportViewModel";
 
 
 export class CharacterProfileDetailViewModel extends ObservableBase {
@@ -135,6 +136,11 @@ export class CharacterProfileDetailViewModel extends ObservableBase {
             targetElement: null
         });
         this.parent.close(0);
+    }
+
+    async submitReport() {
+        const vm = new ReportViewModel(this.activeLoginViewModel, ReportSource.PROFILE_DIALOG, this.character, undefined);
+        const wasReported = await this.activeLoginViewModel.appViewModel.showDialogAsync(vm);
     }
 
     @observableProperty

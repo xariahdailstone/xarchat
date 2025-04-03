@@ -17,6 +17,12 @@ namespace XarChat.Backend.Features.FListApi
         public string? Error { get; set; }
     }
 
+    public class SubmitReportResponse
+    {
+        [JsonPropertyName("log_id")]
+        public int? LogId { get; set; }
+    }
+
     public class GetAllMemosResponse
     {
         [JsonPropertyName("memos")]

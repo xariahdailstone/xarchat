@@ -262,6 +262,8 @@ export class NullChatConnection implements ChatConnection {
 
     async performPartnerSearchAsync(args: PartnerSearchArgs): Promise<PartnerSearchResult> { throw new Error("unavailable"); }
 
+    async submitReportAsync(logId: number, text: string, channel: string): Promise<void> { throw new Error("unavailable"); }
+
     dispose(): void {
     }
 

@@ -69,6 +69,8 @@ export interface ChatConnection extends IDisposable {
     notifyIgnoredAsync(character: CharacterName): Promise<void>;
 
     performPartnerSearchAsync(args: PartnerSearchArgs): Promise<PartnerSearchResult>;
+
+    submitReportAsync(logId: number, text: string, channel: string): Promise<void>;
 }
 
 export interface PartnerSearchArgs {

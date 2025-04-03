@@ -160,7 +160,7 @@ export class CharacterDetailPopup extends ContextPopupBase<CharacterDetailPopupV
                         }}>{cs.ignored ? "Unignore" : "Ignore"}</button>
                     <button classList="theme-button theme-button-warning char-detail-button character-button-report" id="elReport" on={{
                             "click": () => {
-                                vm.appViewModel.alertAsync("Not Yet Implemented");
+                                vm.submitReport();
                                 vm.dismissed();
                             }
                         }}>Report</button>
