@@ -1,8 +1,10 @@
 import { jsx, Fragment, VNode } from "../../snabbdom/index";
+import { VNodeTextInputBinding } from "../../util/bindings/VNodeBinding";
 import { asDisposable, IDisposable, isDisposable, maybeDispose } from "../../util/Disposable";
 import { HTMLUtils } from "../../util/HTMLUtils";
 import { observableProperty } from "../../util/ObservableBase";
 import { LogSearch2ViewModel, VirtualScrollViewModel, VirtualScrollBarViewModel, CurrentDisplayItems } from "../../viewmodel/newlogsearch/LogSearch2ViewModel";
+import { SearchStreamSpecChannelViewModel, SearchStreamSpecPMConvoViewModel } from "../../viewmodel/newlogsearch/SearchCriteriaViewModel";
 import { componentArea, ComponentBase, componentElement } from "../ComponentBase";
 import { RenderingComponentBase } from "../RenderingComponentBase";
 import { stageViewFor } from "../Stage";
@@ -20,11 +22,12 @@ export class LogSearch2 extends RenderingComponentBase<LogSearch2ViewModel> {
             const vm = this.viewModel;
             const disposables: IDisposable[] = [];
 
-            const renderedCriteria = this.renderCriteria(vm);
-            disposables.push(renderedCriteria[1]);
+            const addDisposable = (d: IDisposable) => disposables.push(d);
+
+            const renderedCriteria = this.renderCriteria(vm, addDisposable);
 
             const resultNode: VNode = <>
-                { renderedCriteria[0] }
+                { renderedCriteria }
                 <x-vscrollarea classList={[ "result-view" ]} props={{ viewModel: vm.resultView }}></x-vscrollarea>
             </>;
             return [resultNode, asDisposable(...disposables)];
@@ -34,31 +37,121 @@ export class LogSearch2 extends RenderingComponentBase<LogSearch2ViewModel> {
         }
     }
 
-    private renderCriteria(vm: LogSearch2ViewModel): [VNode, IDisposable] {
-        const disposables: IDisposable[] = [];
-
+    private renderCriteria(vm: LogSearch2ViewModel, addDisposable: (d: IDisposable) => void): VNode {
         const criteria = vm.searchCriteria;
 
         const vnode = <div classList={[ "search-criteria" ]}>
-            <div classList={[ "search-criteria-whospec-row" ]}>
-                <div classList={[ "search-criteria-label" ]}>Messages From:</div>
-                <x-suggesttextbox classList={[ "search-criteria-field" ]} attr-props={{
-                    "viewModel": criteria.speakingCharacter
-                }}></x-suggesttextbox>
-            </div>
-            <div classList={[ "search-criteria-streamspec-row" ]}>
-                <div classList={[ "search-criteria-label" ]}>In:</div>
-            </div>
-            <div classList={[ "search-criteria-textspec-row" ]}>
-                <div classList={[ "search-criteria-label" ]}>Containing:</div>
-                <input classList={[ "search-criteria-field" ]} attr-type="text" />
-            </div>
-            <div classList={[ "search-criteria-timespec-row" ]}>
-                <div classList={[ "search-criteria-label" ]}>Timestamp:</div>
+            { this.renderWhoSpecCriteria(vm, addDisposable) }
+            { this.renderStreamSpecCriteria(vm, addDisposable) }
+            { this.renderTextSpecCriteria(vm, addDisposable) }
+            { this.renderTimeSpecCriteria(vm, addDisposable) }
+            <div classList={[ "search-criteria-buttons-container" ]}>
+                <button classList={[ "search-criteria-buttons-search" ]} props={{ "disabled": !criteria.isValid }}>Search</button>
+                <button classList={[ "search-criteria-buttons-reset" ]}>Reset</button>
             </div>
         </div>;
 
-        return [vnode, asDisposable(...disposables)];
+        return vnode;
+    }
+
+    private renderWhoSpecCriteria(vm: LogSearch2ViewModel, addDisposable: (d: IDisposable) => void): VNode {
+        const criteria = vm.searchCriteria;
+
+        const whoSpecInput = <input classList={[ "search-criteria-field", "search-criteria-whospec-field" ]} attr-type="text" />;
+        VNodeTextInputBinding.bind(whoSpecInput, criteria.speakingCharacter.value, s => criteria.speakingCharacter.value = s);
+        
+        return <div classList={[ "search-criteria-whospec-row" ]}>
+            <div classList={[ "search-criteria-label", "search-criteria-whospec-label" ]}>Messages From:</div>
+                {whoSpecInput}
+                {/* <x-suggesttextbox classList={[ "search-criteria-field", "search-criteria-whospec-field" ]} attr-props={{
+                    "viewModel": criteria.speakingCharacter
+                }}></x-suggesttextbox> */}
+        </div>;
+    }
+
+    private renderStreamSpecCriteria(vm: LogSearch2ViewModel, addDisposable: (d: IDisposable) => void): VNode {
+        const criteria = vm.searchCriteria;
+        const streamSpecCriteria = criteria.streamSpec;
+
+        let selValue: "none" | "channel" | "pmconvo";
+        const fieldNodes: VNode[] = [];
+
+        if (streamSpecCriteria instanceof SearchStreamSpecChannelViewModel) {
+            selValue = "channel";
+            const cinput = <input classList={[ "search-criteria-streamspec-field-textbox" ]} attr-type="text" />;
+            VNodeTextInputBinding.bind(cinput, streamSpecCriteria.channelTitle, (s) => streamSpecCriteria.channelTitle = s);
+            fieldNodes.push(cinput);
+        }
+        else if (streamSpecCriteria instanceof SearchStreamSpecPMConvoViewModel) {
+            selValue = "pmconvo";
+            const selfinput = <input classList={[ "search-criteria-streamspec-field-textbox" ]} attr-type="text" />;
+            const interlocutorinput = <input classList={[ "search-criteria-streamspec-field-textbox" ]} attr-type="text" />;
+
+            VNodeTextInputBinding.bind(selfinput, streamSpecCriteria.myCharacterName, (s) => streamSpecCriteria.myCharacterName = s);
+            VNodeTextInputBinding.bind(interlocutorinput, streamSpecCriteria.interlocutorCharacterName, (s) => streamSpecCriteria.interlocutorCharacterName = s);
+
+            fieldNodes.push(selfinput);
+            fieldNodes.push(interlocutorinput);
+        }
+        else {
+            selValue = "none";
+        }
+
+        const onSelValueChange = (e: Event) => {
+            const target = e.target as HTMLSelectElement;
+            const ctgt = target.value;
+            if (ctgt != selValue) {
+                switch (ctgt) {
+                    default:
+                    case "none":
+                        criteria.streamSpec = null;
+                        break;
+                    case "channel":
+                        criteria.streamSpec = new SearchStreamSpecChannelViewModel();
+                        break;
+                    case "pmconvo":
+                        criteria.streamSpec = new SearchStreamSpecPMConvoViewModel();
+                        break;
+                }
+            }
+        }
+
+        return <div classList={[ "search-criteria-streamspec-row" ]}>
+            <div classList={[ "search-criteria-label", "search-criteria-streamspec-label" ]}>In:</div>
+            <div classList={[ "search-criteria-field", "search-criteria-streamspec-field" ]}>
+                <select classList={[ "search-criteria-streamspec-field-textbox" ]} props={{ "value": selValue }} on={{
+                        "change": onSelValueChange,
+                        "input": onSelValueChange
+                    }}>
+                    <option attr-value="none">Anywhere</option>
+                    <option attr-value="channel">Channel Title</option>
+                    <option attr-value="pmconvo">PM Conversation Between</option>
+                </select>
+                {fieldNodes}
+            </div>
+        </div>;
+    }
+
+    private renderTextSpecCriteria(vm: LogSearch2ViewModel, addDisposable: (d: IDisposable) => void): VNode {
+        const criteria = vm.searchCriteria;
+
+        const cinput = <input classList={[ "search-criteria-field", "search-criteria-textspec-field" ]} attr-type="text" />;
+        VNodeTextInputBinding.bind(cinput, criteria.searchText ?? "", (s) => criteria.searchText = s);
+
+        return <div classList={[ "search-criteria-textspec-row" ]}>
+            <div classList={[ "search-criteria-label", "search-criteria-textspec-label" ]}>Containing:</div>
+            <input classList={[ "search-criteria-field", "search-criteria-textspec-field" ]} attr-type="text" />
+        </div>;
+    }
+
+    private renderTimeSpecCriteria(vm: LogSearch2ViewModel, addDisposable: (d: IDisposable) => void): VNode {
+        const criteria = vm.searchCriteria;
+
+        return <div classList={[ "search-criteria-timespec-row" ]}>
+            <div classList={[ "search-criteria-label", "search-criteria-timespec-label" ]}>Timestamp:</div>
+            <input classList={[ "search-criteria-field", "search-criteria-timespec-field-after"]} attr-type="datetime-local" />
+            <input classList={[ "search-criteria-field", "search-criteria-timespec-field-before"]} attr-type="datetime-local" />
+        </div>;
     }
 }
 

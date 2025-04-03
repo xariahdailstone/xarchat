@@ -1,5 +1,6 @@
 import { CharacterName } from "../../shared/CharacterName";
 import { ObservableBase, observableProperty } from "../../util/ObservableBase";
+import { StringUtils } from "../../util/StringUtils";
 import { TaskUtils } from "../../util/TaskUtils";
 import { ActiveLoginViewModel } from "../ActiveLoginViewModel";
 import { SuggestTextboxItemViewModel, SuggestTextboxViewModel } from "./SuggestTextboxViewModel";
@@ -27,27 +28,42 @@ export class SearchCriteriaViewModel extends ObservableBase {
     streamSpec: SearchStreamSpecViewModel | null = null;
 
     @observableProperty
-    searchText: string | null = null;
+    searchText: string = "";
 
     @observableProperty
     searchBefore: Date | null = null;
 
     @observableProperty
     searchAfter: Date | null = null;
+
+    @observableProperty
+    get isValid() {
+        return true
+            && ((this.streamSpec) ? this.streamSpec?.isValid : true);
+    }
 }
 
-export abstract class SearchStreamSpecViewModel extends ObservableBase { }
+export abstract class SearchStreamSpecViewModel extends ObservableBase {
+    get isValid() { return true; }
+}
 
 export class SearchStreamSpecChannelViewModel extends SearchStreamSpecViewModel {
     @observableProperty
-    channelTitle: string | null = null;
+    channelTitle: string = "";
 }
 
 export class SearchStreamSpecPMConvoViewModel extends SearchStreamSpecViewModel {
     @observableProperty
-    myCharacterName: CharacterName | null = null;
+    myCharacterName: string = "";
 
     @observableProperty
-    interlocutorCharacterName: CharacterName | null = null;
+    interlocutorCharacterName: string = "";
+
+    override get isValid() {
+        const hasMy = StringUtils.isNullOrWhiteSpace(this.myCharacterName);
+        const hasInterlocutor = StringUtils.isNullOrWhiteSpace(this.interlocutorCharacterName);
+
+        return (!hasMy && !hasInterlocutor) || (hasMy && hasInterlocutor);
+    }
 }
 
