@@ -13,6 +13,7 @@ import { CharacterProfileDetailImageInfoViewModel } from "./CharacterProfileDeta
 import { CharacterProfileDetailSectionInfoViewModel } from "./CharacterProfileDetailSectionInfoViewModel";
 import { CharacterProfileDetailSummaryInfoViewModel } from "./CharacterProfileDetailSummaryInfoViewModel";
 import { CharacterGuestbookPostViewModel, CharacterGuestbookViewModel } from "./CharacterGuestbookViewModel";
+import { PromiseSource } from "../../../util/PromiseSource";
 
 
 export class CharacterProfileDetailViewModel extends ObservableBase {
