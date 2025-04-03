@@ -3,7 +3,7 @@ import { SettingsDialogSectionViewModel, SettingsDialogItemViewModel, SettingsDi
 import { componentArea, componentElement } from "../ComponentBase";
 import { makeRenderingComponent, RenderingComponentBase } from "../RenderingComponentBase";
 import { DialogBorderType, DialogComponentBase, dialogViewFor } from "./DialogFrame";
-import { Fragment, init, jsx, VNode, styleModule, toVNode, propsModule, eventListenersModule, h, Hooks } from "../../snabbdom/index.js";
+import { Fragment, init, jsx, VNode, styleModule, toVNode, propsModule, eventListenersModule, h, Hooks, Attrs, On } from "../../snabbdom/index.js";
 import { IterableUtils } from "../../util/IterableUtils";
 import { HTMLUtils } from "../../util/HTMLUtils";
 import { ConfigSchemaItemDefinitionItem, PingLineItemDefinition, PingLineItemMatchStyle, PingLineItemMatchStyleConvert } from "../../configuration/ConfigSchemaItem";
@@ -110,6 +110,9 @@ export class SettingsDialog extends DialogComponentBase<SettingsDialogViewModel>
                 case "boolean":
                     inner = this.renderSettingBoolean(setting);
                     break;
+                case "integer":
+                    inner = this.renderSettingInteger(setting);
+                    break;
                 case "color":
                     inner = this.renderSettingColor(setting);
                     break;
@@ -201,6 +204,37 @@ export class SettingsDialog extends DialogComponentBase<SettingsDialogViewModel>
         return <x-themetoggle classList={["setting-entry", "setting-entry-boolean"]} 
             props={{ "value": !!setting.value }} hook={hooks}
             on={{ "change": onChange }}></x-themetoggle>
+    }
+
+    private renderSettingInteger(setting: SettingsDialogItemViewModel): VNode {
+        let min: number | undefined = setting.schema.min;
+        let max: number | undefined = setting.schema.max;
+        const attrs: Attrs = {
+            "type": "number",
+            "step": "1"
+        };
+        if (min != null) { attrs.min = min.toString(); }
+        if (min != null) { attrs.max = min.toString(); }
+
+        const vChange = (e: Event) => {
+            const x = (e.target as HTMLInputElement).value.trim();
+            if (x == "") {
+                if (!(setting.schema.allowEmpty ?? false)) { return; }
+                setting.value = null;
+            }
+
+            const xnum = parseInt(x);
+            if (xnum == null) { return; }
+            if (min != null && xnum < min) { return; }
+            if (max != null && xnum > max) { return; }
+            setting.value = xnum;
+        };
+        const evts: On = {
+            "change": vChange,
+            "input": vChange
+        };
+
+        return <input classList={["setting-entry", "setting-entry-integer"]} attrs={attrs} on={evts} props={{ "value": setting.value?.toString() ?? "" }}></input>
     }
 
     private renderSettingColor(setting: SettingsDialogItemViewModel): VNode {
@@ -520,14 +554,19 @@ export class SettingsDialog extends DialogComponentBase<SettingsDialogViewModel>
     private renderSettingSelect(setting: SettingsDialogItemViewModel): VNode {
         const optionNodes: VNode[] = [];
 
+        const valueMap = new Map<number, any>();
+        let nextValueNum = 1;
+
         for (let o of setting.schema.selectOptions!) {
             const isSelected = setting.value == o.value;
-            optionNodes.push(<option attrs={{ "value": o.value, "selected": isSelected }}>{o.displayValue ?? o.value}</option>)
+            const thisValueNum = nextValueNum++;
+            valueMap.set(thisValueNum, o.value);
+            optionNodes.push(<option attrs={{ "value": thisValueNum.toString(), "selected": isSelected }}>{o.displayValue ?? o.value.toString()}</option>)
         }
 
         const onChange = (e: Event) => {
             const elSelect = e.target as HTMLSelectElement;
-            setting.value = elSelect.value;
+            setting.value = valueMap.get(+elSelect.value);
         };
 
         return <div classList={[ "setting-entry", "setting-entry-select" ]}>

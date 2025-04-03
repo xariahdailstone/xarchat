@@ -114,12 +114,16 @@ export class DialogFrame extends ComponentBase<DialogViewModel<any>> {
         this.whenConnected(() => {
             //this.log("CONNECTED");
             const keydownListener = EventListenerUtil.addDisposableEventListener(window, "keydown", (ev: KeyboardEvent) => {
-                if (!this.shouldPreventKeyboardEventDefault(ev)) {
-                    const btn = this.getButtonForKeyboardEvent(ev);
-                    if (btn) {
-                        btn.onClick();
-                        ev.preventDefault();
-                        ev.stopPropagation();
+                if (!this.viewModel) { return; }
+                const avm = this.viewModel.parent;
+                if (avm.dialogs.length > 0 && (avm.dialogs[avm.dialogs.length - 1] == this.viewModel)) {
+                    if (!this.shouldPreventKeyboardEventDefault(ev)) {
+                        const btn = this.getButtonForKeyboardEvent(ev);
+                        if (btn) {
+                            btn.onClick();
+                            ev.preventDefault();
+                            ev.stopPropagation();
+                        }
                     }
                 }
             }, true);
@@ -171,6 +175,7 @@ export class DialogFrame extends ComponentBase<DialogViewModel<any>> {
         if (!vm) { return null; }
 
         for (let tbtn of vm.buttons) {
+            if (!tbtn.enabled) { continue; }
             if (tbtn.shortcutKeyCode == ev.keyCode) {
                 return tbtn;
             }
@@ -235,6 +240,9 @@ class DialogButton extends ComponentBase<DialogButtonViewModel> {
                 });
             }
         });
+        this.watchExpr(vm => vm.enabled, (v) => {
+            elButton.disabled = !v;
+        })
 
         elButton.addEventListener("click", () => {
             if (this.viewModel) {

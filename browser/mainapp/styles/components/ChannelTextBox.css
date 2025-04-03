@@ -17,32 +17,41 @@
 
     display: grid;
 
-    grid-template-rows: 1fr 1fr;
+    grid-template-rows: 1fr auto;
     grid-template-columns: 1fr 125px;
+    grid-template-areas:
+        "textbox buttons"
+        "statusbar buttons";
 
     padding-top: 0px;
     padding-left: 0px;
     padding-right: 5px;
     padding-bottom: 5px;
+    gap: 0px 5px;
+}
+
+.buttons-container {
+    grid-area: buttons;
+    display: grid;
+
+    grid-template-rows: 1fr 1fr;
+    grid-template-columns: auto;
     gap: 5px;
 }
-
-#elMain[data-messagemode='both'] #elControls {
+#elMain[data-messagemode='both'] .buttons-container {
     grid-template-areas:
-        "textbox sendchat"
-        "textbox sendad";
+        "sendchat"
+        "sendad";
 }
-
-#elMain[data-messagemode='chat'] #elControls {
+#elMain[data-messagemode='chat'] .buttons-container {
     grid-template-areas:
-        "textbox sendchat"
-        "textbox sendchat";
+        "sendchat"
+        "sendchat";
 }
-
-#elMain[data-messagemode='ads'] #elControls {
+#elMain[data-messagemode='ads'] .buttons-container {
     grid-template-areas:
-        "textbox sendad"
-        "textbox sendad";
+        "sendad"
+        "sendad";
 }
 
 .textbox-container {
@@ -60,7 +69,7 @@
     display: grid;
 }
 .textbox-container.no-toolbar {
-    grid-template-rows: auto 1fr;
+    grid-template-rows: auto minmax(0, 1fr);
     grid-template-columns: 1fr auto;
     grid-template-areas:
         "textarea toggler"
@@ -85,7 +94,9 @@
 }
 
 .textbox-container.toolbar-shown {
-    grid-template-rows: auto 1fr;
+    max-height: 100%;
+    overflow: hidden;
+    grid-template-rows: auto minmax(0, 1fr);
     grid-template-columns: 1fr;
     grid-template-areas:
         "toolbar"
@@ -93,6 +104,14 @@
 
     padding: 0px;
 }
+
+.textbox-statusbar {
+    font-size: 85%;
+    text-align: right;
+    opacity: 0.3;
+    margin-top: 5px;
+}
+.no-statusbar .textbox-statusbar { display: none !important; }
 
 .textbox-container.toolbar-shown .textbox-toolbar {
     grid-area: toolbar;
@@ -151,6 +170,9 @@
 
     font-size: var(--chat-font-size);
     font-family: var(--chat-font-family);
+
+    overflow-x: hidden;
+    overflow-y: auto;
 }
 .textbox-container.toolbar-shown #elTextbox {
     margin: var(--textbox-container-padding);
@@ -179,7 +201,7 @@ button {
     color: var(--fg-main-textbox-btn);
     border: none;
     outline: none;
-    padding: 7px 7px;
+    padding: 0px 7px;
     border-radius: 8px;
 }
 

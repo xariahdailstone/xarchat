@@ -105,6 +105,10 @@ export class PMConvoChannelViewModel extends ChannelViewModel {
         this._characterStatusListener.dispose();
     }
 
+    getMaxMessageSize(): number | null {
+        return +this.activeLoginViewModel.serverVariables["priv_max"];
+    }
+
     private updateFilterOptions() {
         const filterSelectOptions: MultiSelectChannelFilterOptionItem[] = [];
         filterSelectOptions.push(

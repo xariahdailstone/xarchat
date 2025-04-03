@@ -28,7 +28,7 @@ export class ChannelView extends StageViewComponent<ChannelViewModel> {
             </div>
             <x-splitterhandle id="elTextBoxSplitter" class="tbsplitterhandle" target="elTextBox"
                 othertarget="elContentArea" othermin="100"
-                orientation="vertical" min="75" max="99999" invert="true"></x-splitterhandle>
+                orientation="vertical" min="90" max="99999" invert="true"></x-splitterhandle>
             <x-channeltextbox class="textbox" id="elTextBox" slot="b"></x-channeltextbox>
         `);
 
@@ -57,6 +57,12 @@ export class ChannelView extends StageViewComponent<ChannelViewModel> {
                 ncfs = 12;
             }
             this.elMain.style.setProperty("--chat-font-size", `${ncfs}px`);
+        });
+
+        this.watchExpr(vm => vm.getConfigSettingById("eiconDisplaySize"), dsize => {
+            this.elMain.classList.toggle(`bbcode-eicons-small`, dsize == "small");
+            this.elMain.classList.toggle(`bbcode-eicons-normal`, dsize == "normal");
+            this.elMain.classList.toggle(`bbcode-eicons-large`, dsize == "large");
         });
     }
 

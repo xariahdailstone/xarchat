@@ -43,13 +43,29 @@ export class CallbackSet<T extends (...args: any) => any> {
 
     delete(callback: T) {
         let anyRemoved = false;
-        this._callbacksSet.forEachValueSnapshotted(cbi => {
-            if (cbi.callback === callback) {
-                this._callbacksSet.delete(cbi.key);
-                anyRemoved = true;
+        let toDelete: CallbackInfo<T>[] | null = null;
+
+        for (let v of this._callbacksSet.values()) {
+            if (v.callback == callback) {
+                toDelete ??= [];
+                toDelete.push(v);
             }
-        });
+        }
+        if (toDelete) {
+            for (let td of toDelete) {
+                this._callbacksSet.delete(td);
+            }
+            anyRemoved = true;
+        }
+
         if (anyRemoved) {
+            this.fireOnCallbackRemoved();
+        }
+    }
+
+    clear() {
+        if (this._callbacksSet.size > 0) {
+            this._callbacksSet.clear();
             this.fireOnCallbackRemoved();
         }
     }

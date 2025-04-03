@@ -1,6 +1,8 @@
+import { Attrs } from "../../../snabbdom/index";
 import { jsx } from "../../../snabbdom/jsx";
 import { VNode } from "../../../snabbdom/vnode";
 import { BBCodeParseResult, ProfileBBCodeParser } from "../../../util/bbcode/BBCode";
+import { CatchUtils } from "../../../util/CatchUtils";
 import { getEffectiveCharacterNameVNodes } from "../../../util/CharacterNameIcons";
 import { asDisposable } from "../../../util/Disposable";
 import { ObservableValue } from "../../../util/Observable";
@@ -171,7 +173,7 @@ export class CharacterProfileDialogInner extends RenderingComponentBase<Characte
                         data-tooltip={isBookmarked ? "Remove Bookmark" : "Add Bookmark"} id="elBtnBookmark" on={{ "click": () => { vm.profileDetails!.toggleBookmark(); } }}>
                         <x-iconimage src={isBookmarked ? "assets/ui/bookmark-remove-icon.svg" : "assets/ui/bookmark-add-icon.svg"} id="elBookmarkIcon"></x-iconimage>
                     </button>
-                    <button classList="profile-button profile-button-report" data-tooltip="Report" id="elBtnReport">
+                    <button classList="profile-button profile-button-report" data-tooltip="Report" id="elBtnReport" on={{ "click": () => { vm.reportProfile(); } }}>
                         <x-iconimage src="assets/ui/report-icon.svg"></x-iconimage>
                     </button>
                 </div>
@@ -218,11 +220,15 @@ export class CharacterProfileDialogInner extends RenderingComponentBase<Characte
     }
 
     private renderOverview(vm: CharacterProfileDialogViewModel): ViewTabInfo {
+        const limitIndent = !!vm.activeLoginViewModel.getConfigSettingById("profileLimitIndent");
+        const attrs: Attrs = {
+            "indentlimit": limitIndent ? "true" : "false"
+        };
         const vtiOverview: ViewTabInfo = {
             id: "overview",
             title: "Overview",
             vnode: <div classList="profile-main-description" id="elProfileDescription">
-                <x-bbcodedisplay props={{ "viewModel": this.lastParseResult }}></x-bbcodedisplay>
+                <x-bbcodedisplay props={{ "viewModel": this.lastParseResult }} attrs={attrs}></x-bbcodedisplay>
             </div>
         };
         return vtiOverview;
@@ -391,22 +397,36 @@ export class CharacterProfileDialogInner extends RenderingComponentBase<Characte
     }
 
     private renderFriends(vm: CharacterProfileDialogViewModel): ViewTabInfo | null {
-        if (vm.profileDetails == null || vm.profileDetails.friends.length == 0) {
+        if (vm.profileDetails == null || !vm.profileDetails.showFriends) {
             return null;
         }
         else {
-            const elFriends = <div classList="profile-main-friends"></div>;
-            for (let tfriend of vm.profileDetails.friends) {
-                const elThisFriend = <div classList="profile-main-friends-item"
-                    on={{ "click": (e) => { tfriend.click(e.target as HTMLElement); } }}>
-                    <img classList="profile-main-friends-item-image" src={URLUtils.getAvatarImageUrl(tfriend.characterName)} />
-                    <div classList="profile-main-friends-item-name">{getEffectiveCharacterNameVNodes(tfriend.characterName, vm.activeLoginViewModel)}</div>
-                </div>;
-                elFriends.children!.push(elThisFriend);
+            let elFriends: VNode;
+            let friendCount: string = "";
+            if (vm.profileDetails.loadingFriends) {
+                friendCount = "...";
+                elFriends = <div classList="profile-main-friendsmessage"><div classList="profile-main-friendsmessage-message">Loading...</div></div>;
             }
+            else if (vm.profileDetails.friendsLoadError) {
+                friendCount = "!!";
+                elFriends = <div classList="profile-main-friendsmessage-message"><div classList="profile-main-friendsmessage-message">Failed to load friends list: ${CatchUtils.getMessage(vm.profileDetails.friendsLoadError)}</div></div>;
+            }
+            else {
+                elFriends = <div classList="profile-main-friends"></div>;
+                for (let tfriend of vm.profileDetails.friends) {
+                    const elThisFriend = <div classList="profile-main-friends-item"
+                        on={{ "click": (e) => { tfriend.click(e.target as HTMLElement); } }}>
+                        <img classList="profile-main-friends-item-image" src={URLUtils.getAvatarImageUrl(tfriend.characterName)} />
+                        <div classList="profile-main-friends-item-name">{getEffectiveCharacterNameVNodes(tfriend.characterName, vm.activeLoginViewModel)}</div>
+                    </div>;
+                    elFriends.children!.push(elThisFriend);
+                }
+                friendCount = vm.profileDetails.friends.length.toString();
+            }
+
             return {
                 id: "friends",
-                title: `Friends (${vm.profileDetails.friends.length})`,
+                title: `Friends (${friendCount})`,
                 vnode: elFriends
             };
         }

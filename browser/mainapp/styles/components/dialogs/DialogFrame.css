@@ -65,7 +65,7 @@
 
 .contentarea {
     display: block;
-    overflow: auto;
+    /* overflow: auto; */
     margin-left: 15px;
     margin-right: 15px;
 }
@@ -101,8 +101,8 @@
     right: 0;
     bottom: 0;
     display: grid;
-    grid-template-rows: minmax(5%, 1fr) minmax(200px, auto) minmax(5%, 1fr);
-    grid-template-columns: minmax(5%, 1fr) minmax(200px, auto) minmax(5%, 1fr);
+    grid-template-rows: minmax(5%, 1fr) minmax(100px, auto) minmax(5%, 1fr);
+    grid-template-columns: minmax(5%, 1fr) minmax(100px, auto) minmax(5%, 1fr);
     grid-template-areas: 
         ". . ."
         ". dialogcontents ."

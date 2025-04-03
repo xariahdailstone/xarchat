@@ -1,4 +1,5 @@
-import { RawSavedChatStateNamedFilterEntry, RawSavedChatStateNamedFilterMap, SavedChatStateJoinedChannelMap } from "../settings/AppSettings";
+import { RawSavedChatStateNamedFilterEntry, RawSavedChatStateNamedFilterMap } from "../settings/RawAppSettings";
+import { SavedChatStateJoinedChannelMap } from "../settings/AppSettings";
 import { IDisposable } from "../util/Disposable";
 import { IterableUtils } from "../util/IterableUtils";
 import { ObservableValue } from "../util/Observable";

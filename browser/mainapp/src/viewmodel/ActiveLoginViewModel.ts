@@ -12,7 +12,7 @@ import { Collection, CollectionChangeEvent, CollectionChangeType, ObservableColl
 import { DictionaryChangeType, ObservableKeyExtractedOrderedDictionary, ObservableOrderedDictionaryImpl, ObservableOrderedSet } from "../util/ObservableKeyedLinkedList.js";
 import { AppNotifyEventType, AppViewModel, GetConfigSettingChannelViewModel } from "./AppViewModel.js";
 import { ChannelMessageViewModel, ChannelViewModel } from "./ChannelViewModel.js";
-import { CharacterNameSet, OnlineWatchedCharsCharacterNameSet } from "./CharacterNameSet.js";
+import { CharacterNameSet, FilteredWatchedCharsCharacterNameSet, OnlineWatchedCharsCharacterNameSet } from "./CharacterNameSet.js";
 import { ChatChannelPresenceState, ChatChannelViewModel, ChatChannelViewModelSortKey } from "./ChatChannelViewModel.js";
 import { ConsoleChannelViewModel } from "./ConsoleChannelViewModel.js";
 import { PMConvoChannelViewModel, PMConvoChannelViewModelSortKey } from "./PMConvoChannelViewModel.js";
@@ -44,6 +44,7 @@ import { InAppToastViewModel } from "./InAppToastViewModel.js";
 import { InAppToastManagerViewModel } from "./InAppToastManagerViewModel.js";
 import { LogSearch2ViewModel } from "./newlogsearch/LogSearch2ViewModel.js";
 import { PartnerSearchViewModel } from "./PartnerSearchViewModel.js";
+import { AutoAdManager } from "../util/AutoAdManager.js";
 
 declare const XCHost: any;
 
@@ -93,9 +94,12 @@ export class ActiveLoginViewModel extends ObservableBase {
         });
 
         this.characterSet = new CharacterSet(this.ignoredChars, this.friends, this.bookmarks, this.interests);
-        this.onlineWatchedChars = new OnlineWatchedCharsCharacterNameSet(this, this.watchedChars);
-        this.onlineFriends = new OnlineWatchedCharsCharacterNameSet(this, this.friends);
-        this.onlineBookmarks = new OnlineWatchedCharsCharacterNameSet(this, this.bookmarks);
+        this.onlineWatchedChars = new FilteredWatchedCharsCharacterNameSet(this, this.watchedChars, cs => cs.status != OnlineStatus.OFFLINE);
+        this.onlineFriends = new FilteredWatchedCharsCharacterNameSet(this, this.friends, cs => cs.status != OnlineStatus.OFFLINE);
+        this.onlineBookmarks = new FilteredWatchedCharsCharacterNameSet(this, this.bookmarks, cs => cs.status != OnlineStatus.OFFLINE);
+        this.lookingWatchedChars = new FilteredWatchedCharsCharacterNameSet(this, this.watchedChars, cs => cs.status == OnlineStatus.LOOKING);
+        this.lookingFriends = new FilteredWatchedCharsCharacterNameSet(this, this.friends, cs => cs.status == OnlineStatus.LOOKING);
+        this.lookingBookmarks = new FilteredWatchedCharsCharacterNameSet(this, this.bookmarks, cs => cs.status == OnlineStatus.LOOKING);
 
         const openChannelPingMentionChange = (ev: PropertyChangeEvent) => {
             if (ev.propertyName == "hasPing" || ev.propertyName == "unseenMessageCount") {
@@ -120,7 +124,7 @@ export class ActiveLoginViewModel extends ObservableBase {
                         this.refreshPingMentionCount();
                         break;
                     case StdObservableCollectionChangeType.CLEARED:
-                        console.warn("unhandled clear");
+                        this.logger.logWarn("unhandled clear");
                         break;
                 }
             }
@@ -152,7 +156,7 @@ export class ActiveLoginViewModel extends ObservableBase {
                         }
                         break;
                     case StdObservableCollectionChangeType.CLEARED:
-                        console.warn("unhandled clear");
+                        this.logger.logWarn("unhandled clear");
                         break;
                 }
             }
@@ -322,6 +326,16 @@ export class ActiveLoginViewModel extends ObservableBase {
         }
     }
 
+    private _autoAdManager: AutoAdManager | null = null;
+
+    addedToLogins() { 
+        this._autoAdManager = new AutoAdManager(this);
+    }
+    removingFromLogins() { 
+        this._autoAdManager?.dispose();
+        this._autoAdManager = null;
+    }
+
     readonly serverOps: CharacterNameSet = new CharacterNameSet();
 
     // watchedChars = superset of friends + bookmarks + interests
@@ -343,7 +357,19 @@ export class ActiveLoginViewModel extends ObservableBase {
     readonly onlineBookmarks: CharacterNameSet;
 
     @observableProperty
-    showOnlineWatchedOnly: boolean = true;
+    readonly lookingWatchedChars: CharacterNameSet;
+
+    @observableProperty
+    readonly lookingFriends: CharacterNameSet;
+
+    @observableProperty
+    readonly lookingBookmarks: CharacterNameSet;
+
+    // @observableProperty
+    // showOnlineWatchedOnly: boolean = true;
+
+    @observableProperty
+    watchedListFilter: WatchedListFilterType = WatchedListFilterType.ONLINE;
 
     readonly ignoredChars: CharacterNameSet = new CharacterNameSet();
 
@@ -1053,6 +1079,12 @@ class SortedPMConvoSet extends ObservableOrderedDictionaryImpl<PMConvoChannelVie
                 break;
         }
     }
+}
+
+export enum WatchedListFilterType {
+    ALL,
+    ONLINE,
+    LOOKING
 }
 
 export enum LeftListSelectedPane {

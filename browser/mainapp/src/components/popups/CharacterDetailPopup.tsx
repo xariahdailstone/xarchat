@@ -53,6 +53,9 @@ export class CharacterDetailPopup extends ContextPopupBase<CharacterDetailPopupV
 
             const charNameClasses: string[] = [];
             charNameClasses.push(`gender-${CharacterGenderConvert.toString(cs.gender).toLowerCase()}`);
+            if (vm.session.bookmarks.has(character)) {
+                charNameClasses.push("char-is-bookmark");
+            }
             if (vm.session.friends.has(character)) {
                 charNameClasses.push("char-is-friend");
             }

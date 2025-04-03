@@ -66,7 +66,7 @@ export function makeRenderingComponent<TViewModel>(
         const myDepSet = Observable.createDependencySet();
         curDepSet = myDepSet;
         myDepSet.addChangeListener((obs, propName) => { 
-            //console.log("RenderingComponentBase myDepSet.addChangeListener", component.constructor.name, obs, propName);
+            //this.logger.logDebug("RenderingComponentBase myDepSet.addChangeListener", component.constructor.name, obs, propName);
             if (curDepSet == myDepSet) { 
                 logger.logDebug("RenderingComponentBase myDepSet.addChangeListener match", component.constructor.name, obs, propName);
                 stateHasChanged(obs, propName); 

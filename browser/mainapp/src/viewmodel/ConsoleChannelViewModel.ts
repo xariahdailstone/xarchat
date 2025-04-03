@@ -26,5 +26,9 @@ export class ConsoleChannelViewModel extends ChannelViewModel {
         return URLUtils.getEmptyImageUrl();
     }
 
+    getMaxMessageSize(): number | null {
+        return null;
+    }
+
     override close() { }
 }

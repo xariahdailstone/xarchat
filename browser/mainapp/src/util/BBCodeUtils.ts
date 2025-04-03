@@ -1,4 +1,6 @@
 import { MessagePreviewPopup } from "../components/popups/MessagePreviewPopup";
+import { VNode } from "../snabbdom/vnode";
+import { ActiveLoginViewModel } from "../viewmodel/ActiveLoginViewModel";
 import { AppViewModel } from "../viewmodel/AppViewModel";
 import { ChannelViewModel } from "../viewmodel/ChannelViewModel";
 import { EIconSearchDialogViewModel } from "../viewmodel/dialogs/EIconSearchDialogViewModel";
@@ -27,11 +29,12 @@ function tryHandleEditShortcutKey(textarea: HTMLTextAreaElement, ev: KeyboardEve
                     const curPopup = (textarea as any)[CUR_POPUP_VM] as (MessagePreviewPopupViewModel | undefined);
                     if (!curPopup) {
                         const cvm = options.channelViewModelGetter ? options.channelViewModelGetter() : null;
-                        if (cvm) {
-                            const pu = new MessagePreviewPopupViewModel(cvm, textarea);
+                        const alvm = cvm ? cvm.activeLoginViewModel : (options.activeLoginViewModelGetter ? options.activeLoginViewModelGetter() : null);
+                        if (alvm) {
+                            const pu = new MessagePreviewPopupViewModel(cvm, alvm, textarea);
                             (textarea as any)[CUR_POPUP_VM] = pu;
                             pu.rawText = textarea.value;
-                            cvm.activeLoginViewModel.appViewModel.popups.push(pu);
+                            alvm.appViewModel.popups.push(pu);
                             const hinput = EventListenerUtil.addDisposableEventListener(textarea, "input", () => { pu.dismissed(); });
                             const hblur = EventListenerUtil.addDisposableEventListener(textarea, "blur", () => { pu.dismissed(); });
                             const hkeydown = EventListenerUtil.addDisposableEventListener(textarea, "keydown", () => { pu.dismissed(); });
@@ -57,18 +60,24 @@ function tryHandleEditShortcutKey(textarea: HTMLTextAreaElement, ev: KeyboardEve
                 // tesh.eicon();
                 const avm = options.appViewModelGetter();
                 if (avm) {
-                    loadBack = true;
-                    (async () => {
-                        const pdialog = new EIconSearchDialogViewModel(avm);
-                        const dlgResult = await avm.showDialogAsync(pdialog);
-                        if (dlgResult) {
-                            tesh.eicon(dlgResult);
-                            textarea.value = tesh.value;
-                            textarea.setSelectionRange(tesh.selectionAt, tesh.selectionAt + tesh.selectionLength);
-                            options.onTextChanged(textarea.value);
-                        }
-                        textarea.focus();
-                    })();
+                    if (avm.getConfigSettingById("eiconSearch.enabled")) {
+                        loadBack = true;
+                        (async () => {
+                            const pdialog = new EIconSearchDialogViewModel(avm);
+                            const dlgResult = await avm.showDialogAsync(pdialog);
+                            if (dlgResult) {
+                                tesh.eicon(dlgResult);
+                                textarea.value = tesh.value;
+                                textarea.setSelectionRange(tesh.selectionAt, tesh.selectionAt + tesh.selectionLength);
+                                options.onTextChanged(textarea.value);
+                            }
+                            textarea.focus();
+                        })();
+                    }
+                    else {
+                        tesh.eicon();
+                        loadBack = true;
+                    }
                 }
                 break;
             case KeyCodes.KEY_I:
@@ -109,6 +118,10 @@ function tryHandleEditShortcutKey(textarea: HTMLTextAreaElement, ev: KeyboardEve
                 tesh.strikethrough();
                 loadBack = true;
                 break;
+            case KeyCodes.KEY_D:
+                tesh.color();
+                loadBack = true;
+                break;
         }
 
         if (loadBack) {
@@ -123,15 +136,67 @@ function tryHandleEditShortcutKey(textarea: HTMLTextAreaElement, ev: KeyboardEve
 }
 
 export class BBCodeUtils {
-    static pasteWithAutoUrlization(origText: string, selStart: number, selEnd: number, pasteText: string): (null | [string, number | null]) {
+    static pasteWithAutoUrlization(origText: string, selStart: number, selEnd: number, pasteText: string): (null | [string, number | null, number | null]) {
         if (BBCodeUtils.isPastedUrl(pasteText)) {
-            if (BBCodeUtils.isCursorAtAutoUrlLocation(origText, selStart)) {
-                const firstPart = `[url=${pasteText}]`;
-                const secondPart = "[/url]";
-                return [firstPart + secondPart, firstPart.length];
+            if (selEnd == selStart) {
+                if (BBCodeUtils.isCursorAtAutoUrlLocation(origText, selStart)) {
+                    const firstPart = `[url=${pasteText}]`;
+                    const secondPart = "[/url]";
+                    return [firstPart + secondPart, firstPart.length, null];
+                }
+            }
+            else {
+                if (BBCodeUtils.isCursorAtAutoUrlLocation(origText, selStart)) {
+                    const selContent = BBCodeUtils.isSelectionAlreadyUrlTag(origText, selStart, selEnd, pasteText)
+                    if (selContent != null) {
+                        return [selContent, 0, selContent.length];
+                    }
+                    else {
+                        const innerPart = origText.substring(selStart, selEnd);
+                        const innerLT = this.getLeadingTrailingWhitespace(innerPart);
+
+                        const firstPart = `[url=${pasteText}]`;
+                        const thirdPart = "[/url]";
+                        const totalStr = innerLT[0] + firstPart + innerLT[1] + thirdPart + innerLT[2];
+                        return [totalStr, 0, totalStr.length];
+                    }
+                }
             }
         }
-        return [pasteText, null];
+        return [pasteText, null, null];
+    }
+
+    private static getLeadingTrailingWhitespace(str: string): [string, string, string] {
+        const strTrimStart = str.trimStart();
+        const strTrimEnd = str.trimEnd();
+        const strTrim = str.trim();
+
+        let leadingWhitespace = "";
+        if (str != strTrimStart) {
+            leadingWhitespace = str.substring(0, str.length - strTrimStart.length);
+        }
+
+        let trailingWhitespace = "";
+        if (str != strTrimEnd) {
+            trailingWhitespace = str.substring(strTrimEnd.length);
+        }
+
+        return [leadingWhitespace, strTrim, trailingWhitespace];
+    }
+
+    private static isSelectionAlreadyUrlTag(origText: string, selStart: number, selEnd: number, pasteText: string): string | null {
+        const prefix = `[url=${pasteText}]`;
+        const suffix = "[/url]";
+
+        const selStr = origText.substring(selStart, selEnd);
+        const selLT = this.getLeadingTrailingWhitespace(selStr);
+
+        const selStrTrimmed = selLT[1];
+
+        if (selStrTrimmed.toLowerCase().startsWith(prefix.toLowerCase()) && selStrTrimmed.toLowerCase().endsWith(suffix.toLowerCase())) {
+            return selLT[0] +  selStrTrimmed.substring(prefix.length, selStrTrimmed.length - suffix.length) + selLT[2];
+        }
+        return null;
     }
 
     private static isPastedUrl(pasteText: string) {
@@ -174,14 +239,15 @@ export class BBCodeUtils {
         return (inUrlCount == 0);
     }
 
-    static addEditingShortcuts(textarea: HTMLTextAreaElement, options: AddEditingShortcutsOptions) {
+    static addEditingShortcutsAbstract(addEventListener: (eventName: keyof HTMLElementEventMap, handler: (e: Event) => void) => void, options: AddEditingShortcutsOptions) {
         if (!(options?.onKeyDownHandler)) {
             options.onKeyDownHandler = (ev, handleShortcuts) => {
                 handleShortcuts(ev);
             }
         }
-        else {
-            textarea.addEventListener("keydown", (ev) => {
+        //else {
+            addEventListener("keydown", (ev: KeyboardEvent) => {
+                const textarea = ev.target as HTMLTextAreaElement;
                 options.onKeyDownHandler!(ev, (ev) => {
                     if (tryHandleEditShortcutKey(textarea, ev, options)) {
                         ev.preventDefault();
@@ -192,21 +258,27 @@ export class BBCodeUtils {
                     }
                 });
             });
-        }
-        textarea.addEventListener("paste", (ev: ClipboardEvent) => {
+        //}
+        addEventListener("paste", (ev: ClipboardEvent) => {
+            const textarea = ev.target as HTMLTextAreaElement;
             const avm = options.appViewModelGetter();
             if (!!(avm?.getConfigSettingById("autoUrlPaste"))) {
                let pasteText = ev.clipboardData?.getData("text") ?? "";
                 if (pasteText != "") {
-                    const selStart = textarea.selectionStart;
-                    const selEnd = textarea.selectionEnd;
+                    const selStart = Math.min(textarea.selectionStart, textarea.selectionEnd);
+                    const selEnd = Math.max(textarea.selectionStart, textarea.selectionEnd);
 
                     const effectivePaste = BBCodeUtils.pasteWithAutoUrlization(textarea.value, selStart, selEnd, pasteText);
                     //textarea.setSelectionRange(0, textarea.value.length, "forward");
                     if (effectivePaste) {
                         document.execCommand("insertText", false, effectivePaste[0]);
-                        if (effectivePaste[1]) {
-                            textarea.setSelectionRange(selStart + effectivePaste[1], selStart + effectivePaste[1], "forward");
+                        if (effectivePaste[1] != null) {
+                            if (effectivePaste[2] == null) {
+                                textarea.setSelectionRange(selStart + effectivePaste[1], selStart + effectivePaste[1], "forward");
+                            }
+                            else {
+                                textarea.setSelectionRange(selStart + effectivePaste[1], selStart +  effectivePaste[1] + effectivePaste[2], "forward");
+                            }
                         }
                         options.onTextChanged(textarea.value);
                     }
@@ -215,10 +287,42 @@ export class BBCodeUtils {
             }
         });
     }
+
+    static addEditingShortcutsVNode(textareaVNode: VNode, options: AddEditingShortcutsOptions) {
+        this.addEditingShortcutsAbstract(
+            (eventName, handler) => {
+                textareaVNode.data ??= {};
+                textareaVNode.data.on ??= {};
+                const non = (textareaVNode.data.on as any);
+                if (non[eventName]) {
+                    const existing = non[eventName];
+                    non[eventName] = (e: Event) => {
+                        try { existing(e); }
+                        catch { }
+                        handler(e);
+                    };
+                }
+                else {
+                    non[eventName] = handler;
+                }
+            },
+            options
+        );
+    }
+
+    static addEditingShortcuts(textarea: HTMLTextAreaElement, options: AddEditingShortcutsOptions) {
+        this.addEditingShortcutsAbstract(
+            (eventName, handler) => {
+                textarea.addEventListener(eventName, handler);
+            },
+            options
+        );
+    }
 }
 
 interface AddEditingShortcutsOptions {
     appViewModelGetter: () => AppViewModel | null,
+    activeLoginViewModelGetter?: () => ActiveLoginViewModel | null,
     channelViewModelGetter?: () => ChannelViewModel | null,
     onKeyDownHandler?: (ev: KeyboardEvent, handleShortcuts: (ev: KeyboardEvent) => boolean) => void;
     onTextChanged: (value: string) => void;

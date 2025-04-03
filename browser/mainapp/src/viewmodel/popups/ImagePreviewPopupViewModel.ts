@@ -1,81 +1,146 @@
-import { CancellationTokenSource } from "../../util/CancellationTokenSource";
-import { IDisposable } from "../../util/Disposable";
+import { CancellationToken, CancellationTokenSource } from "../../util/CancellationTokenSource";
 import { HTMLUtils } from "../../util/HTMLUtils";
+import { ObservableValue } from "../../util/Observable";
 import { observableProperty } from "../../util/ObservableBase";
 import { PromiseSource } from "../../util/PromiseSource";
 import { ContextPopupViewModel, PopupViewModel } from "./PopupViewModel";
 
+export class ImagePreviewPopupViewModel extends ContextPopupViewModel {
 
-export class ImagePreviewPopupViewModel extends ContextPopupViewModel implements IDisposable {
+    private readonly _imageUrl: ObservableValue<string | null> = new ObservableValue(null).withName("ImagePreviewPopupViewModel._imageUrl");
+    private readonly _videoUrl: ObservableValue<string | null> = new ObservableValue(null).withName("ImagePreviewPopupViewModel._videoUrl");
 
-    private _loadCTS: CancellationTokenSource | null = null;
+    private readonly _imageElement: ObservableValue<HTMLImageElement | null> = new ObservableValue(null).withName("ImagePreviewPopupViewModel._imageElement");
+    private readonly _videoElement: ObservableValue<HTMLVideoElement | null> = new ObservableValue(null).withName("ImagePreviewPopupViewModel._videoElement");
 
-    private _disposed: boolean = false;
-    get isDisposed() { return this._disposed; }
-    dispose() {
-        if (!this._disposed) {
-            this._disposed = true;
-            this.dismissed();
+    get imageUrl(): string | null { return this._imageUrl.value; }
+    set imageUrl(value: (string | null)) {
+        if (value !== this._imageUrl.value) {
+            this._imageUrl.value = value;
+            this.startLoad();
         }
     }
-    [Symbol.dispose]() { this.dispose(); }
 
-    private _imageUrl: string | null = null;
-    @observableProperty
-    get imageUrl(): string | null { return this._imageUrl; }
-    set imageUrl(value: (string | null)) {
-        if (value != this._imageUrl) {
-            if (this._loadCTS) {
-                this._loadCTS.cancel();
-                this._loadCTS = null;
+    get videoUrl(): string | null { return this._videoUrl.value; }
+    set videoUrl(value: (string | null)) {
+        if (value !== this._videoUrl.value) {
+            this._videoUrl.value = value;
+            this.startLoad();
+        }
+    }
+
+    get imageElement(): HTMLImageElement | null { return this._imageElement.value; }
+    set imageElement(value: (HTMLImageElement | null)) { 
+        if (value !== this._imageElement.value) {
+            this._imageElement.value = value;
+            this.updateVisibility();
+        }
+    }
+
+    get videoElement(): HTMLVideoElement | null { return this._videoElement.value; }
+    set videoElement(value: (HTMLVideoElement | null)) { 
+        if (value !== this._videoElement.value) {
+            this._videoElement.value = value;
+            this.updateVisibility();
+        }
+    }
+
+
+    private _currentLoadCTS: CancellationTokenSource = new CancellationTokenSource();
+
+    private startLoad() {
+        this._currentLoadCTS.cancel();
+        
+        const myCTS = new CancellationTokenSource();
+        this._currentLoadCTS = myCTS;
+
+        this._imageElement.value = null;
+        this._videoElement.value = null;
+
+        if (this._imageUrl.value) {
+            this.logger.logDebug("image preview load start");
+            this.loadImageAsync(this._imageUrl.value, myCTS.token);
+        }
+        else if (this._videoUrl.value) {
+            this.logger.logDebug("video preview load start");
+            this.loadVideoAsync(this._videoUrl.value, myCTS.token);
+        }
+    }
+
+    private async loadImageAsync(url: string, cancellationToken: CancellationToken) {
+        try {
+            const imgEl = document.createElement("img");
+
+            const loadedPS = new PromiseSource<void>();
+            using r = cancellationToken.register(() => {
+                if (loadedPS.tryReject("cancelled")) {
+                    this.logger.logDebug("image preview load cancelled");
+                    imgEl.src = "";
+                }
+                else {
+                    this.logger.logDebug("image preview load could not cancel");
+                }
+            });
+            imgEl.addEventListener("load", () => {
+                loadedPS.tryResolve();
+            });
+
+            imgEl.src = this.getImageProxyUrl(url);
+            await loadedPS.promise;
+
+            if (!cancellationToken.isCancellationRequested) {
+                this.logger.logDebug("completed image load");
+                this.imageElement = imgEl;
             }
-
-            this._imageUrl = value;
-            const myLoadCTS = new CancellationTokenSource();
-            this._loadCTS = myLoadCTS;
-
-            if (value) {
-                (async () => {
-                    const imgEl = document.createElement("img");
-
-                    const loadedPS = new PromiseSource<void>();
-                    using r = myLoadCTS.token.register(() => {
-                        imgEl.src = "";
-                        loadedPS.tryResolve();
-                    });
-
-                    imgEl.addEventListener("load", () => {
-                        loadedPS.tryResolve();
-                    });
-                    imgEl.src = this.getImageProxyUrl(value);
-
-                    await loadedPS.promise;
-
-                    if (!myLoadCTS.isCancellationRequested) {
-                        this.imageElement = imgEl;
-                    }
-            })();
-            }
-            else {
+        }
+        catch {
+            if (!cancellationToken.isCancellationRequested) {
                 this.imageElement = null;
             }
         }
     }
 
-    private _imageElement: HTMLImageElement | null = null;
-    @observableProperty
-    get imageElement(): HTMLImageElement | null { return this._imageElement; }
-    set imageElement(value) {
-        if (value != this._imageElement) {
-            if (this._imageElement) {
-                this.breakImageElement(this._imageElement);
+    private async loadVideoAsync(url: string, cancellationToken: CancellationToken) {
+        const vidEl = document.createElement("video");
+        const srcEl = document.createElement("source");
+        let wasCancelled = false;
+
+        try {
+            const canPlayPS = new PromiseSource<void>();
+            using r = cancellationToken.register(() => {
+                if (canPlayPS.tryReject("cancelled")) {
+                    this.logger.logDebug("cancelling video load", url);
+                    vidEl.src = "";
+                    srcEl.src = "";
+                    HTMLUtils.clearChildren(vidEl);
+                    wasCancelled = true;
+                }
+                else {
+                    this.logger.logDebug("could not cancel video load", url);
+                }
+            });
+
+            vidEl.addEventListener("canplay", () => {
+                canPlayPS.resolve();
+            });
+            vidEl.autoplay = true;
+            vidEl.muted = true;
+            vidEl.loop = true;
+            
+            this.logger.logDebug("starting video load", url);
+            srcEl.src = url;
+            vidEl.appendChild(srcEl);
+
+            await canPlayPS.promise;
+
+            if (!cancellationToken.isCancellationRequested) {
+                this.logger.logDebug("completed video load", url);
+                this.videoElement = vidEl;
             }
-            this._imageElement = value;
-            if (value && !this._disposed) {
-                this.parent.popups.push(this);
-            }
-            else {
-                this.parent.popups.remove(this);
+        }
+        catch {
+            if (!cancellationToken.isCancellationRequested) {
+                this.videoElement = null;
             }
         }
     }
@@ -90,103 +155,21 @@ export class ImagePreviewPopupViewModel extends ContextPopupViewModel implements
         return url;
     }
 
-    private breakImageElement(el: HTMLImageElement) {
-        el.src = "";
-    }
-
-    private breakVideoElement(el: HTMLVideoElement) {
-        el.src = "";
-        HTMLUtils.clearChildren(el);
-    }
-
-    private _videoUrl: string | null = null;
-    @observableProperty
-    get videoUrl(): string | null { return this._videoUrl; }
-    set videoUrl(value: (string | null)) {
-        if (value != this._videoUrl) {
-            if (this._loadCTS) {
-                this._loadCTS.cancel();
-                this._loadCTS = null;
-            }
-
-            this._videoUrl = value;
-            const myLoadCTS = new CancellationTokenSource();
-            this._loadCTS = myLoadCTS;
-            
-            if (value) {
-                (async () => {
-                    const vidEl = document.createElement("video");
-                    const srcEl = document.createElement("source");
-                    let wasCancelled = false;
-
-                    const canPlayPS = new PromiseSource<void>();
-                    using r = myLoadCTS.token.register(() => {
-                        console.log("cancelling video load", value);
-                        vidEl.src = "";
-                        srcEl.src = "";
-                        HTMLUtils.clearChildren(vidEl);
-                        wasCancelled = true;
-                        canPlayPS.tryResolve();
-                    });
-
-                    vidEl.addEventListener("canplay", () => {
-                        canPlayPS.resolve();
-                    });
-                    vidEl.autoplay = true;
-                    vidEl.muted = true;
-                    vidEl.loop = true;
-                    
-                    console.log("starting video load", value);
-                    srcEl.src = value;
-                    vidEl.appendChild(srcEl);
-
-                    await canPlayPS.promise;
-
-                    if (!myLoadCTS.isCancellationRequested) {
-                        console.log("completed video load", value);
-                        this.videoElement = vidEl;
-                    }
-                    else {
-                        if (!wasCancelled) {
-                            console.log("ABANDONED video load", value);
-                        }
-                    }
-                })();
-                
-            }
-            else {
-                this.videoElement = null;
-            }
+    private updateVisibility() {
+        if (this.videoElement || this.imageElement) {
+            this.appViewModel.popups.push(this);
         }
-    }
-
-    private _videoElement: HTMLVideoElement | null = null;
-    @observableProperty
-    get videoElement(): HTMLVideoElement | null { return this._videoElement; }
-    set videoElement(value) {
-        if (value != this._videoElement) {
-            if (this._videoElement) {
-                this.breakVideoElement(this._videoElement);
-            }
-            this._videoElement = value;
-            if (value && !this._disposed) {
-                this.parent.popups.push(this);
-            }
-            else {
-                this.parent.popups.remove(this);
-            }
+        else {
+            this.appViewModel.popups.remove(this);
         }
     }
 
     dismissed(): void {
+        this.logger.logDebug("imagepreviewpopup dismissed");
         this.imageUrl = null;
         this.videoUrl = null;
-
-        if (this._loadCTS) {
-            this._loadCTS.cancel();
-            this._loadCTS = null;
-        }
 
         super.dismissed();
     }
 }
+

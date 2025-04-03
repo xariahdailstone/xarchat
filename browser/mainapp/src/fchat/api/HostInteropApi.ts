@@ -4,6 +4,11 @@ import { ApiTicket, FListApi, FListAuthenticatedApi, FriendsList, GuestbookPageI
 
 const API_URL_BASE = "/api/flist/";
 
+type Timed<T> = { expiresAt: number, value: Promise<T> };
+let cachedMappingList: Timed<MappingList> = { expiresAt: 0, value: null! };
+let cachedProfileFieldsInfoList: Timed<ProfileFieldsInfoList> = { expiresAt: 0, value: null! };
+let cachedKinksList: Timed<KinkList> = { expiresAt: 0, value: null! };
+
 export class HostInteropApi implements FListApi {
 
     private async getResponseErrorAsync(resp: Response): Promise<Error> {
@@ -46,18 +51,37 @@ export class HostInteropApi implements FListApi {
         return json;
     }
 
+    private async getOrCreateAsync<T>(ref: Timed<T>, cacheForMs: number, createFunc: () => Promise<T>) {
+        const now = (new Date()).getTime();
+        if (ref.expiresAt < now) {
+            ref.expiresAt = now + cacheForMs;
+            ref.value = createFunc();
+        }
+        const result = await ref.value;
+        return result;
+    }
+
     async getMappingListAsync(cancellationToken: CancellationToken): Promise<MappingList> {
-        const r = await this.getFromHostInteropAsync<MappingList>("mappingList", cancellationToken);
+        const r = await this.getOrCreateAsync(cachedMappingList, 1000 * 60 * 30, async () => {
+            const res = await this.getFromHostInteropAsync<MappingList>("mappingList", cancellationToken);
+            return res;
+        });
         return r;
     }
 
     async getKinksListAsync(cancellationToken: CancellationToken): Promise<KinkList> {
-        const r = await this.getFromHostInteropAsync<any>("kinkList", cancellationToken);
+        const r = await this.getOrCreateAsync(cachedKinksList, 1000 * 60 * 30, async () => {
+            const res = await this.getFromHostInteropAsync<any>("kinkList", cancellationToken);
+            return res;
+        });
         return r.kinks;
     }
 
     async getProfileFieldsInfoListAsync(cancellationToken: CancellationToken): Promise<ProfileFieldsInfoList> {
-        const r = await this.getFromHostInteropAsync<any>("profileFieldInfoList", cancellationToken);
+        const r = await this.getOrCreateAsync(cachedProfileFieldsInfoList, 1000 * 60 * 30, async () => {
+            const res = await this.getFromHostInteropAsync<any>("profileFieldInfoList", cancellationToken);
+            return res;
+        });
         return r.info;
     }
 

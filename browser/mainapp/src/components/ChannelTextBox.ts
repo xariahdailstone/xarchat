@@ -71,14 +71,18 @@ export class ChannelTextBox extends ComponentBase<ChannelViewModel> {
                     </div>
                     <textarea id="elTextbox" data-focusmagnet-strength="1"></textarea>
                 </div>
-                <button id="elSendChat">Send Chat</button>
-                <button id="elSendAd">Send Ad</button>
+                <div class="textbox-statusbar" id="elStatusBar">0 words :: 0/30,000 characters used</div>
+                <div class="buttons-container">
+                    <button id="elSendChat">Send Chat</button>
+                    <button id="elSendAd">Send Ad</button>
+                </div>
             </div>
         `);
 
         const elTextbox = this.$("elTextbox")! as HTMLTextAreaElement;
         const elSendChat = this.$("elSendChat")! as HTMLButtonElement;
         const elSendAd = this.$("elSendAd")! as HTMLButtonElement;
+        const elStatusBar = this.$("elStatusBar") as HTMLDivElement;
 
         const elTextboxContainer = this.$("elTextboxContainer") as HTMLDivElement;
         const elShowEditHelp = this.$("elShowEditHelp") as HTMLButtonElement;
@@ -155,6 +159,49 @@ export class ChannelTextBox extends ComponentBase<ChannelViewModel> {
                 elTextbox.value = v ?? "";
             }
         });
+        this.watchExpr(vm => [ vm, vm.textBoxContent, vm.getConfigSettingById("showChatTextboxStatusBar"), vm instanceof ChatChannelViewModel ? vm.messageMode : null ], (v) => {
+            if (v) {
+                const vm = v[0];
+                const txt = v[1];
+                const statusBarShown = !!v[2];
+                const messageMode = v[3];
+                if (statusBarShown) {
+                    const charCount = txt.length;
+                    const wordCount = txt.split(/\s+/).filter(x => x != "").length;
+
+                    const wordCountStr = `${wordCount.toLocaleString()} word${wordCount == 1 ? '' : 's'}`;
+                    const charCountPlural = `character${charCount == 1 ? '' : 's'}`;
+                    if (vm instanceof ChatChannelViewModel) {
+                        const chatMax = vm.activeLoginViewModel.serverVariables['chat_max'];
+                        const lfrpMax = vm.activeLoginViewModel.serverVariables['lfrp_max'];
+                        switch (messageMode) {
+                            case ChatChannelMessageMode.CHAT_ONLY:
+                                elStatusBar.innerText = `${wordCountStr} :: ${charCount.toLocaleString()} ${charCountPlural} used (max ${chatMax.toLocaleString()} chat)`;
+                                break;
+                            case ChatChannelMessageMode.ADS_ONLY:
+                                elStatusBar.innerText = `${wordCountStr} :: ${charCount.toLocaleString()} ${charCountPlural} used (max ${lfrpMax.toLocaleString()} ad)`;
+                                break;
+                            default:
+                            case ChatChannelMessageMode.BOTH:
+                                elStatusBar.innerText = `${wordCountStr} :: ${charCount.toLocaleString()} ${charCountPlural} ` +
+                                    `(max ${chatMax.toLocaleString()} chat, ` +
+                                    `${lfrpMax.toLocaleString()} ad)`;
+                        }
+                    }
+                    else if (vm instanceof PMConvoChannelViewModel) {
+                        const privMax = vm.activeLoginViewModel.serverVariables['priv_max'];
+                        elStatusBar.innerText = `${wordCountStr} :: ${charCount.toLocaleString()} ${charCountPlural} used (max ${privMax.toLocaleString()} pm)`;
+                    }
+                    else {
+                        elStatusBar.innerText = wordCountStr;
+                    }
+                }
+                else {
+                    elStatusBar.innerText = "";
+                }
+            }
+        });
+        
         this.watchExpr(vm => vm instanceof ChatChannelViewModel ? vm.messageMode : null, (v) => {
             if (v === null || v === undefined) {
                 elSendChat.classList.remove("hidden");
@@ -226,7 +273,13 @@ export class ChannelTextBox extends ComponentBase<ChannelViewModel> {
                     }
                 }
                 else if (ev.ctrlKey && ev.keyCode == KeyCodes.KEY_T && this.viewModel) {
-                    this.viewModel.textBoxToolbarShown = !this.viewModel.textBoxToolbarShown;
+                    const avm = this.viewModel.activeLoginViewModel.appViewModel;
+                    avm.setConfigSettingById("showChatTextboxToolbar", !avm.getConfigSettingById("showChatTextboxToolbar"));
+                    ev.preventDefault();
+                }
+                else if (ev.ctrlKey && ev.keyCode == KeyCodes.KEY_W && this.viewModel) {
+                    const avm = this.viewModel.activeLoginViewModel.appViewModel;
+                    avm.setConfigSettingById("showChatTextboxStatusBar", !avm.getConfigSettingById("showChatTextboxStatusBar"));
                     ev.preventDefault();
                 }
                 else if (ev.keyCode == KeyCodes.F1 && this.viewModel) {
@@ -249,9 +302,22 @@ export class ChannelTextBox extends ComponentBase<ChannelViewModel> {
         elSendChat.addEventListener("click", () => this.sendChat());
         elSendAd.addEventListener("click", () => this.sendAd());
 
-        this.watchExpr(vm => vm.textBoxToolbarShown, tbs => {
+        elSendAd.addEventListener("contextmenu", (e) => {
+            if (this.viewModel && this.viewModel instanceof ChatChannelViewModel) {
+                this.viewModel.showSendAdContextMenu(elSendAd);
+
+                e.preventDefault();
+                return false;
+            }
+        });
+
+        this.watchExpr(vm => vm.appViewModel.getConfigSettingById("showChatTextboxToolbar"), tbs => {
             elTextboxContainer.classList.toggle("no-toolbar", !tbs);
             elTextboxContainer.classList.toggle("toolbar-shown", !!tbs);
+        });
+        this.watchExpr(vm => vm.appViewModel.getConfigSettingById("showChatTextboxStatusBar"), tbs => {
+            this.elMain.classList.toggle("no-statusbar", !tbs);
+            this.elMain.classList.toggle("statusbar-shown", !!tbs);
         });
         elShowEditHelp.addEventListener("click", () => {
             if (this.viewModel) {

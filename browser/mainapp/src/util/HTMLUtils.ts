@@ -4,6 +4,13 @@ export class HTMLUtils {
     //private static _cloners: Map<string, SmartCloner> = new Map();
     private static _fragments: Map<string, DocumentFragment> = new Map();
 
+    static escapeHTML(raw: string): string {
+        return raw.replaceAll("&", "&amp;")
+            .replaceAll("<", "&lt;")
+            .replaceAll(">", "&gt;")
+            .replaceAll("\"", "&quot;");
+    }
+
     static clearChildren(el: HTMLElement | ShadowRoot) {
         let x: ChildNode | null = null;
         while (x = el.firstChild) {

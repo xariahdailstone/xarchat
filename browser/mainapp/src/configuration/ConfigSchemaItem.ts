@@ -13,6 +13,9 @@ export interface ConfigSchemaItemDefinitionItem {
     type: ConfigSchemaItemType;
     options?: ConfigSchemaOptionDefinition[];
     selectOptions?: ConfigSchemaSelectOptionDefinition[];
+    allowEmpty?: boolean;
+    min?: number;
+    max?: number;
     defaultValue: unknown;
     configBlockKey: string;
     items?: ConfigSchemaItemDefinition[];
@@ -41,7 +44,7 @@ export interface ConfigSchemaOptionDefinition {
     value?: unknown;
 }
 export interface ConfigSchemaSelectOptionDefinition {
-    value: string;
+    value: any;
     displayValue: string;
 }
 
@@ -70,7 +73,7 @@ export interface PingLineItemDefinition {
 
 export type ConfigSchemaItemDefinition = (ConfigSchemaItemDefinitionItem | ConfigSchemaItemDefinitionSection);
 
-export type ConfigSchemaItemType = "text" | "boolean" | "text[]" | "pinglist" | "radio" | "timespan" | "color" | "color-hs" | "bgcolorcontrol" | "notifroutes" | "select";
+export type ConfigSchemaItemType = "text" | "boolean" | "integer" | "text[]" | "pinglist" | "radio" | "timespan" | "color" | "color-hs" | "bgcolorcontrol" | "notifroutes" | "select";
 export type ConfigSchemaOptionItemType = "string" | "file";
 export type ConfigSchemaScopeType = "global" | "char" | "char.chancategory" | "char.chan" | "char.convo";
 export type ConfigSchemaScopeTypeSimple = "global" | "char" | "chan" | "convo";
@@ -102,6 +105,14 @@ function getScopeArray(def: ConfigSchemaScopeTypeSimple[]): ConfigSchemaScopeTyp
         result.push("char.convo");
     }
     return result;
+}
+
+function generateNumericOptions(min: number, max: number): ConfigSchemaSelectOptionDefinition[] {
+    const results: ConfigSchemaSelectOptionDefinition[] = [];
+    for (let i = min; i <= max; i++) {
+        results.push({ value: i.toString(), displayValue: i.toString() });
+    }
+    return results;
 }
 
 export const ConfigSchema: ConfigSchemaDefinition = {
@@ -160,11 +171,20 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                 {
                     id: "autoUrlPaste",
                     scope: getScopeArray(["global"]),
-                    title: "Automatically add [url] tags to pasted URLs.",
+                    title: "Automatically add [url] tags to pasted URLs",
                     description: "When pasting in a URL, automatically add [url] tags around the URL when appropriate.",
                     type: "boolean",
                     defaultValue: true,
                     configBlockKey: "autoUrlPaste"
+                },
+                {
+                    id: "eiconSearch.enabled",
+                    scope: getScopeArray(["global"]),
+                    title: "Enable EIcon Search",
+                    description: "Ctrl+E pops up an eicon search instead of just inserting [eicon][/eicon] tags.",
+                    type: "boolean",
+                    defaultValue: true,
+                    configBlockKey: "eiconSearch.enabled"
                 },
                 {
                     scope: getScopeArray(["global", "char", "chan", "convo"]),
@@ -500,15 +520,6 @@ export const ConfigSchema: ConfigSchemaDefinition = {
             description: "Settings that control how XarChat looks.",
             items: [
                 {
-                    id: "unseenIndicator",
-                    scope: getScopeArray(["global", "char", "chan"]),
-                    title: "Show Unseen Messages Indicator",
-                    description: "Show a white dot on channels where new unseen messages that do not include ping words have arrived.",
-                    type: "boolean",
-                    defaultValue: true,
-                    configBlockKey: "showUnseenIndicator"
-                },
-                {
                     id: "highlightMyMessages",
                     scope: getScopeArray(["global", "char", "chan", "convo"]),
                     title: "Highlight My Messages",
@@ -598,6 +609,70 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     type: "boolean",
                     defaultValue: "true",
                     configBlockKey: "collapseAds"
+                },
+                {
+                    id: "showChatTextboxToolbar",
+                    scope: getScopeArray(["global"]),
+                    title: "Show Chat Textbox Toolbar",
+                    description: "Show a BBCode editing toolbar above the chat entry textbox.",
+                    type: "boolean",
+                    defaultValue: false,
+                    configBlockKey: "chat.textbox.toolbarShown"
+                },
+                {
+                    id: "showChatTextboxStatusBar",
+                    scope: getScopeArray(["global"]),
+                    title: "Show Chat Textbox Toolbar",
+                    description: "Show a word/character count status bar below the chat entry textbox.",
+                    type: "boolean",
+                    defaultValue: false,
+                    configBlockKey: "chat.textbox.statusBarShown"
+                },
+                {
+                    scope: getScopeArray(["global"]),
+                    sectionTitle: "Unseen Messages",
+                    description: "",
+                    items: [
+                        {
+                            id: "unseenIndicator",
+                            scope: getScopeArray(["global", "char", "chan"]),
+                            title: "Track Unseen Messages",
+                            description: "",
+                            descriptionByScope: {
+                                "global": "Channels should track when new unseen messages that do not include ping words have arrived.",
+                                "char": "Channels should track when new unseen messages that do not include ping words have arrived.",
+                                "char.chancategory": "Channels in this category should track when new unseen messages that do not include ping words have arrived.",
+                                "char.chan": "This channel should track when new unseen messages that do not include ping words have arrived.",
+                                "char.convo": "invalid"
+                            },
+                            type: "boolean",
+                            defaultValue: true,
+                            configBlockKey: "showUnseenIndicator"
+                        },
+                        {
+                            id: "unseenIndicatorStyle",
+                            scope: getScopeArray(["global"]),
+                            title: "Unseen Messages Indicator Style",
+                            description: "Choose how a channel shows that it has unseen messages that do not include ping words. (This only appears if the channel is tracking unseen messages.)",
+                            type: "select",
+                            selectOptions: [
+                                { value: "standard", displayValue: "Dot on Window Edge (Default)" },
+                                { value: "title", displayValue: "Dot on Channel Title" },
+                                { value: "highlight", displayValue: "Highlight Background Color" },
+                            ],
+                            defaultValue: "standard",
+                            configBlockKey: "unseenIndicatorStyle"
+                        },
+                        {
+                            id: "unseenIndicatorHighlightColor",
+                            scope: getScopeArray(["global"]),
+                            title: "Unseen Messages Indicator Highlight Color",
+                            description: "Select a background color to highlight channels that have unseen messages. (Only used when the indicator style is set to highlight background color.)",
+                            type: "bgcolorcontrol",
+                            defaultValue: "246;36;1",
+                            configBlockKey: "unseenIndicatorHighlightColor"
+                        },
+                    ]
                 },
                 {
                     scope: getScopeArray(["global"]),
@@ -693,7 +768,7 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                         },
                         {
                             scope: getScopeArray(["global"]),
-                            sectionTitle: "Friends",
+                            sectionTitle: "Friends and Bookmarks",
                             items: [
                                 {
                                     id: "useFriendColor",
@@ -712,6 +787,24 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                                     type: "color",
                                     defaultValue: "#00FF00",
                                     configBlockKey: "color.friend"
+                                },
+                                {
+                                    id: "useBookmarkColor",
+                                    scope: getScopeArray(["global"]),
+                                    title: "Use Bookmark Color",
+                                    description: "Colorize bookmarks' names with a distinct 'Bookmark' color.",
+                                    type: "boolean",
+                                    defaultValue: false,
+                                    configBlockKey: "useBookmarkColor"
+                                },
+                                {
+                                    scope: getScopeArray(["global"]),
+                                    id: "color.bookmark",
+                                    title: "Bookmark",
+                                    description: "",
+                                    type: "color",
+                                    defaultValue: "#FCBA03",
+                                    configBlockKey: "color.bookmark"
                                 }
                             ]
                         },
@@ -795,6 +888,88 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                         }
                     ]
                 },
+                {
+                    scope: getScopeArray(["global", "char", "chan", "convo"]),
+                    sectionTitle: "Profiles",
+                    items: [
+                        {
+                            id: "profileLimitIndent",
+                            scope: getScopeArray(["global", "char"]),
+                            title: "Limit Indentation",
+                            description: "Limit excessive indentation in profiles.",
+                            type: "boolean",
+                            defaultValue: true,
+                            configBlockKey: "profileLimitIndent"
+                        }
+                    ]
+                },
+                {
+                    scope: getScopeArray(["global", "char", "chan", "convo"]),
+                    sectionTitle: "EIcons",
+                    items: [
+                        {
+                            id: "eiconDisplaySize",
+                            scope: getScopeArray(["global", "char", "chan", "convo"]),
+                            title: "EIcon Display Size",
+                            description: "",
+                            descriptionByScope: {
+                                "global": "Select a size to display eicon images.",
+                                "char": "Select a size to display eicon images when signed in as \"$MYCHAR$\".",
+                                "char.chancategory": "Select a size to display eicon images for channels in the \"$CHANCATEGORY$\" category.",
+                                "char.chan": "Select a size to display eicon images in this channel.",
+                                "char.convo": "Select a size to display eicon images in PM conversations with \"$CONVOCHAR$\"."
+                            },
+                            type: "select",
+                            selectOptions: [
+                                { value: "small", displayValue: "Small" },
+                                { value: "normal", displayValue: "Normal" },
+                                { value: "large", displayValue: "Large" }
+                            ],
+                            defaultValue: "normal",
+                            configBlockKey: "eiconDisplaySize"
+                        },
+                        // {
+                        //     id: "eiconMaxCountChat",
+                        //     scope: getScopeArray(["global", "char", "chan", "convo"]),
+                        //     title: "Maximum EIcons per Message",
+                        //     description: "",
+                        //     descriptionByScope: {
+                        //         "global": "Maximum number of eicons to show per message.",
+                        //         "char": "Maximum number of eicons to show per message when signed in as \"$MYCHAR$\".",
+                        //         "char.chancategory": "Maximum number of eicons to show per message for channels in the \"$CHANCATEGORY$\" category.",
+                        //         "char.chan": "Maximum number of eicons to show per message in this channel.",
+                        //         "char.convo": "Maximum number of eicons to show per message in PM conversations with \"$CONVOCHAR$\"."
+                        //     },
+                        //     type: "select",
+                        //     selectOptions: [
+                        //         { value: "none", displayValue: "No Limit" },
+                        //         ...generateNumericOptions(0, 20)
+                        //     ],
+                        //     defaultValue: "none",
+                        //     configBlockKey: "eiconMaxCountChat"
+                        // },
+                        // {
+                        //     id: "eiconMaxCountAd",
+                        //     scope: getScopeArray(["global", "char", "chan"]),
+                        //     title: "Maximum EIcons per Ad",
+                        //     description: "",
+                        //     descriptionByScope: {
+                        //         "global": "Maximum number of eicons to show per ad.",
+                        //         "char": "Maximum number of eicons to show per ad when signed in as \"$MYCHAR$\".",
+                        //         "char.chancategory": "Maximum number of eicons to show per ad for channels in the \"$CHANCATEGORY$\" category.",
+                        //         "char.chan": "Maximum number of eicons to show per ad in this channel.",
+                        //         "char.convo": "INVALID"
+                        //     },
+                        //     type: "select",
+                        //     selectOptions: [
+                        //         { value: "none", displayValue: "No Limit" },
+                        //         ...generateNumericOptions(0, 20)
+                        //     ],
+                        //     defaultValue: "none",
+                        //     configBlockKey: "eiconMaxCountAd"
+                        // }
+                    ]
+                }
             ]
         },
         {
