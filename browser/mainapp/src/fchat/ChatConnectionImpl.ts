@@ -1456,4 +1456,22 @@ export class ChatConnectionImpl implements ChatConnection {
             throw new Error(error ?? "Unknown error.");
         }
     }
+
+    async submitReportAsync(logId: number, text: string, channel: string): Promise<void> {
+        await this.bracketedSendAsync({
+            code: "SFC", body: {
+                action: "report",
+                logid: logId,
+                report: text,
+                tab: channel
+            }
+        }, (recvMsg) => {
+            if (recvMsg.code == "SYS" && JSON.stringify(recvMsg.body).indexOf("have been alerted") != -1) {
+                recvMsg.handled = true;
+            }
+            else {
+                ERRAsFailure(recvMsg);
+            }
+        });
+    }
 }

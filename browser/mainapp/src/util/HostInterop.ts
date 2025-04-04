@@ -43,6 +43,7 @@ export interface IHostInterop {
     get isInXarChatHost(): boolean;
     get devMode(): boolean;
     launchUrl(app: AppViewModel, url: string, forceExternal: boolean): void;
+    launchCharacterReport(app: AppViewModel, name: CharacterName): Promise<void>;
     getImagePreviewPopupUrlAsync(url: string): Promise<(string | null)>;
     appReady(): void;
     minimizeWindow(): void;
@@ -655,6 +656,13 @@ class XarHost2Interop implements IXarHost2HostInterop {
             }
         }
         catch (e) { }
+    }
+
+    async launchCharacterReport(app: AppViewModel, name: CharacterName): Promise<void> {
+        this.launchUrl(
+            app,
+            `https://www.f-list.net/tickets2.php?report=${encodeURIComponent(name.value)}`,
+            true);
     }
 
     async getImagePreviewPopupUrlAsync(url: string): Promise<string | null> {
