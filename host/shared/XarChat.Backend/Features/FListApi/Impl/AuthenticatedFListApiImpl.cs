@@ -253,10 +253,9 @@ namespace XarChat.Backend.Features.FListApi.Impl
             }
 
             System.Diagnostics.Debug.WriteLine($"submitreport {reportSubmitCharacter}->{reportTargetCharacter}");
-            // TODO:
-            //var result = await PerformAuthenticatedRequest<SubmitReportResponse>("api/report-submit.php", formData,
-            //    SourceGenerationContext.Default.SubmitReportResponse, cancellationToken);
-            var result = new SubmitReportResponse() { LogId = null };
+            var result = await PerformAuthenticatedRequest<SubmitReportResponse>("api/report-submit.php", formData,
+                SourceGenerationContext.Default.SubmitReportResponse, cancellationToken);
+            //var result = new SubmitReportResponse() { LogId = null };
 
             return result;
         }

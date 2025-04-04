@@ -20,7 +20,7 @@ namespace XarChat.Backend.Features.FListApi
     public class SubmitReportResponse
     {
         [JsonPropertyName("log_id")]
-        public int? LogId { get; set; }
+        public string? LogId { get; set; }
     }
 
     public class GetAllMemosResponse

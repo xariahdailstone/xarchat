@@ -138,11 +138,6 @@ export class CharacterProfileDetailViewModel extends ObservableBase {
         this.parent.close(0);
     }
 
-    async submitReport() {
-        const vm = new ReportViewModel(this.activeLoginViewModel, ReportSource.PROFILE_DIALOG, this.character, undefined);
-        const wasReported = await this.activeLoginViewModel.appViewModel.showDialogAsync(vm);
-    }
-
     @observableProperty
     openPrivateMessageTab: (() => void) | null = null;
 

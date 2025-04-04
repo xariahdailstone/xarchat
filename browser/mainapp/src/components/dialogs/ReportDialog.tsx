@@ -62,9 +62,9 @@ export class ReportDialog extends DialogComponentBase<ReportViewModel> {
         }
         else if (vm.targetCharacter) {
             let reportWhat = "a general report for the character";
-            if (vm.reportSource == ReportSource.PROFILE_DIALOG) {
-                reportWhat = "a report about the profile of the character";
-            }
+            // if (vm.reportSource == ReportSource.PROFILE_DIALOG) {
+            //     reportWhat = "a report about the profile of the character";
+            // }
 
             reportInfoText = <>
                 <div classList={[ "info-text" ]}>

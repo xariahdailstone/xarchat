@@ -2,6 +2,7 @@ import { CharacterName } from "../../shared/CharacterName";
 import { CancellationToken } from "../../util/CancellationTokenSource";
 import { HTMLUtils } from "../../util/HTMLUtils";
 import { HostInterop } from "../../util/HostInterop";
+import { KeyCodes } from "../../util/KeyCodes";
 import { ObservableValue } from "../../util/Observable";
 import { ObservableBase, observableProperty } from "../../util/ObservableBase";
 import { Collection } from "../../util/ObservableCollection";
@@ -67,8 +68,36 @@ export class CharacterDetailPopupViewModel extends ContextPopupViewModel {
     }
 
     async submitReport() {
-        const vm = new ReportViewModel(this.session, ReportSource.PROFILE_POPUP, this.char, this.channelViewModel ?? undefined);
-        const wasReported = await this.parent.showDialogAsync(vm);
+        if (!this.session.selectedChannel) {
+            const presult = await this.parent.promptAsync<boolean>({
+                message: "To report chat behavior for this character, select the chat tab displaying the behavior you want to report first. " +
+                    "If you want to report the character as a whole (not related to any specific behavior in chat), click the 'Report Character' button " +
+                    "below to be redirected to the f-list.net website's ticket reporting system.",
+                title: "Reporting Character",
+                closeBoxResult: false,
+                buttons: [
+                    {
+                        title: "Cancel",
+                        resultValue: false,
+                        style: DialogButtonStyle.CANCEL,
+                        shortcutKeyCode: KeyCodes.ESCAPE
+                    },
+                    {
+                        title: "Report Character",
+                        resultValue: true,
+                        style: DialogButtonStyle.NORMAL,
+                        shortcutKeyCode: KeyCodes.RETURN
+                    }
+                ]
+            });
+            if (presult) {
+                HostInterop.launchCharacterReport(this.parent, this.char);
+            }
+        }
+        else {
+            const vm = new ReportViewModel(this.session, ReportSource.PROFILE_POPUP, this.char, this.session.selectedChannel ?? undefined);
+            const wasReported = await this.parent.showDialogAsync(vm);
+        }
     }
 
     async kick() {

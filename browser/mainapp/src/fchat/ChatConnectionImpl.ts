@@ -1458,14 +1458,20 @@ export class ChatConnectionImpl implements ChatConnection {
     }
 
     async submitReportAsync(logId: number, text: string, channel: string): Promise<void> {
-        // TODO:
-        // await this.bracketedSendAsync({
-        //     code: "SFC", body: {
-        //         action: "report",
-        //         logid: logId,
-        //         report: text,
-        //         tab: channel
-        //     }
-        // });
+        await this.bracketedSendAsync({
+            code: "SFC", body: {
+                action: "report",
+                logid: logId,
+                report: text,
+                tab: channel
+            }
+        }, (recvMsg) => {
+            if (recvMsg.code == "SYS" && JSON.stringify(recvMsg.body).indexOf("have been alerted") != -1) {
+                recvMsg.handled = true;
+            }
+            else {
+                ERRAsFailure(recvMsg);
+            }
+        });
     }
 }
