@@ -19,6 +19,7 @@ import { ChannelViewModel } from "./ChannelViewModel.js";
 import { ChatChannelUserViewModel, ChatChannelViewModel } from "./ChatChannelViewModel.js";
 import { ColorThemeViewModel } from "./ColorThemeViewModel.js";
 import { PMConvoChannelViewModel } from "./PMConvoChannelViewModel.js";
+import { AboutViewModel } from "./dialogs/AboutViewModel.js";
 import { AlertOptions, AlertViewModel } from "./dialogs/AlertViewModel.js";
 import { AppInitializeViewModel } from "./dialogs/AppInitializeViewModel.js";
 import { DialogViewModel } from "./dialogs/DialogViewModel.js";
@@ -333,8 +334,16 @@ export class AppViewModel extends ObservableBase {
         await this.showDialogAsync(dlg);
     }
 
+    async showAboutDialogAsync() {
+        const dlg = new AboutViewModel(this);
+        await this.showDialogAsync(dlg);
+    }
+
     getMainContextMenuItems(ctxVm: ContextMenuPopupViewModel<() => void>, activeLoginViewModel?: ActiveLoginViewModel) {
-        ctxVm.addMenuItem("Settings", () => {
+        ctxVm.addMenuItem("About XarChat...", () => {
+            this.showAboutDialogAsync();
+        });
+        ctxVm.addMenuItem("Settings...", () => {
             this.showSettingsDialogAsync(activeLoginViewModel);
         });
         ctxVm.addSeparator();
