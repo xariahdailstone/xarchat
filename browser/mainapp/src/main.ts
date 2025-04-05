@@ -16,6 +16,7 @@ import { ObservableBase } from "./util/ObservableBase.js";
 import { hookRequestAnimationFrame } from "./util/RequestAnimationFrameHook.js";
 import { polyfillRequestIdleCallback } from "./util/RequestIdleCallbackPolyfill.js";
 import { setStylesheetAdoption } from "./util/StyleSheetPolyfill.js";
+import { XarChatUtils } from "./util/XarChatUtils.js";
 import { ActiveLoginViewModel } from "./viewmodel/ActiveLoginViewModel.js";
 import { AppViewModel } from "./viewmodel/AppViewModel.js";
 import { ChannelMessageViewModel, ChannelViewModel } from "./viewmodel/ChannelViewModel.js";
@@ -73,8 +74,20 @@ function createTestButton(vm: AppViewModel) {
     document.body.appendChild(btn);
 }
 
+function setClientVersionData() {
+    const p = new URLSearchParams(document.location.search);
+    const ver = p.get("ClientVersion");
+    const platform = p.get("ClientPlatform");
+    const branch = p.get("ClientBranch");
+    if (ver) { XarChatUtils.clientVersion = ver; }
+    if (platform) { XarChatUtils.clientPlatform = platform; }
+    if (branch) { XarChatUtils.clientBranch = branch; }
+}
+
 //alert("in main.ts");
 onReady(async () => {
+    setClientVersionData();
+
     const elMain = document.createElement("x-maininterface");
     elMain.id = "elMain";
     document.body.insertBefore(elMain, document.body.firstChild);

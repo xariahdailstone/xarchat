@@ -1220,7 +1220,7 @@ export class ChatConnectionImpl implements ChatConnection {
                 character: characterName.value,
                 ticket: ticket,
                 cname: "XarChat",
-                cversion: XarChatUtils.clientVersion
+                cversion: XarChatUtils.getFullClientVersionString()
             }
         });
 
