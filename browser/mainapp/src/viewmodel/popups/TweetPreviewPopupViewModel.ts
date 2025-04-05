@@ -119,7 +119,7 @@ export class TweetPreviewPopupViewModel extends PopupViewModel {
                         await TaskUtils.delay(0, CancellationToken.NONE);
                     }
                     else {
-                        console.warn("can't set-scale popup, no contentWindow");
+                        this.logger.logWarn("can't set-scale popup, no contentWindow");
                     }
                     this.element = elIFrame;
                     ps.resolve({

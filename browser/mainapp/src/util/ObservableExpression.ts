@@ -164,12 +164,12 @@ class ObservableExpressionInner<T> implements IDisposable {
         private readonly onValueChanged: (value: T | undefined) => (null | void | IDisposable),
         private readonly onErrorChanged?: (err: any | undefined) => (null | void | IDisposable)) {
 
-        //console.log("new oexpr", this.expression);
+        //this.logger.logDebug("new oexpr", this.expression);
         this.reevaluate();
     }
 
     dispose() {
-        //console.log("disposing oexpr", this.expression);
+        //this.logger.logDebug("disposing oexpr", this.expression);
         this._disposed = true;
         this.setValueAndError(ObservableExpression.NO_VALUE, ObservableExpression.NO_VALUE);
         this.cleanupDependencyListeners();
@@ -217,7 +217,7 @@ class ObservableExpressionInner<T> implements IDisposable {
 
     private reevaluate() {
         if (this._disposed) return;
-        //console.log("reevaluating expr", this.expression);
+        //this.logger.logDebug("reevaluating expr", this.expression);
 
         this.cleanupDependencyListeners();
 
@@ -227,17 +227,17 @@ class ObservableExpressionInner<T> implements IDisposable {
 
         {
             using rmDisposable = Observable.addReadMonitor((vm, propName, propValue) => {
-                //console.log("addReadMonitor", vm, propName, propValue);
+                //this.logger.logDebug("addReadMonitor", vm, propName, propValue);
                 this.addDependencyListener(vm, propName);
             });
 
             try {
                 pendingResult = this.expression();
                 hasPendingResult = true;
-                //console.log("oexpr result", pendingResult);
+                //this.logger.logDebug("oexpr result", pendingResult);
             }
             catch (e) {
-                //console.log("oexpr err", e);
+                //this.logger.logDebug("oexpr err", e);
                 pendingError = e;
                 hasPendingResult = false;
             }
@@ -257,7 +257,7 @@ class ObservableExpressionInner<T> implements IDisposable {
                     }
                 });
                 this._dependencyListeners.push({ viewModel: vm, propertyName: propName, listener: newListener });
-                //console.log("expr depends on", propName, vm);
+                //this.logger.logDebug("expr depends on", propName, vm);
             }
             catch { }
         }

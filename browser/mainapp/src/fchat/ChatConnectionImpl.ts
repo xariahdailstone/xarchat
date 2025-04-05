@@ -1220,7 +1220,7 @@ export class ChatConnectionImpl implements ChatConnection {
                 character: characterName.value,
                 ticket: ticket,
                 cname: "XarChat",
-                cversion: XarChatUtils.clientVersion
+                cversion: XarChatUtils.getFullClientVersionString()
             }
         });
 
@@ -1455,5 +1455,23 @@ export class ChatConnectionImpl implements ChatConnection {
         else {
             throw new Error(error ?? "Unknown error.");
         }
+    }
+
+    async submitReportAsync(logId: number, text: string, channel: string): Promise<void> {
+        await this.bracketedSendAsync({
+            code: "SFC", body: {
+                action: "report",
+                logid: logId,
+                report: text,
+                tab: channel
+            }
+        }, (recvMsg) => {
+            if (recvMsg.code == "SYS" && JSON.stringify(recvMsg.body).indexOf("have been alerted") != -1) {
+                recvMsg.handled = true;
+            }
+            else {
+                ERRAsFailure(recvMsg);
+            }
+        });
     }
 }

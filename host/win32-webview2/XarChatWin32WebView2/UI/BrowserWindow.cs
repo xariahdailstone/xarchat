@@ -387,27 +387,34 @@ namespace MinimalWin32Test.UI
             return allScreenMetrics.ToString();
         }
 
-        private void MaybeUpdateWindowState()
+        private async void MaybeUpdateWindowState()
         {
-            Task.Run(async () =>
+            _app.Post(async () =>
             {
-                var sp = await _backend.GetServiceProviderAsync();
-                var eventSink = sp.GetRequiredService<IXCHostSession>();
-                var ws = this.WindowState;
-                switch (ws)
+                try
                 {
-                    case WindowState.Normal:
-                        OnWindowRestored();
-                        eventSink.WindowRestored();
-                        break;
-                    case WindowState.Minimized:
-                        OnWindowMinimized();
-                        eventSink.WindowMinimized();
-                        break;
-                    case WindowState.Maximized:
-                        OnWindowMaximized();
-                        eventSink.WindowMaximized();
-                        break;
+                    var sp = await _backend.GetServiceProviderAsync();
+                    var eventSink = sp.GetRequiredService<IXCHostSession>();
+                    var ws = this.WindowState;
+                    switch (ws)
+                    {
+                        case WindowState.Normal:
+                            OnWindowRestored();
+                            eventSink.WindowRestored();
+                            break;
+                        case WindowState.Minimized:
+                            OnWindowMinimized();
+                            eventSink.WindowMinimized();
+                            break;
+                        case WindowState.Maximized:
+                            OnWindowMaximized();
+                            eventSink.WindowMaximized();
+                            break;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine(ex.Message);
                 }
             });
         }

@@ -121,7 +121,7 @@ export class ActiveLoginViewModel extends ObservableBase {
                         this.refreshPingMentionCount();
                         break;
                     case StdObservableCollectionChangeType.CLEARED:
-                        console.warn("unhandled clear");
+                        this.logger.logWarn("unhandled clear");
                         break;
                 }
             }
@@ -153,7 +153,7 @@ export class ActiveLoginViewModel extends ObservableBase {
                         }
                         break;
                     case StdObservableCollectionChangeType.CLEARED:
-                        console.warn("unhandled clear");
+                        this.logger.logWarn("unhandled clear");
                         break;
                 }
             }

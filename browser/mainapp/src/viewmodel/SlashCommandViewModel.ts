@@ -45,10 +45,14 @@ export class SlashCommandViewModel {
                 break;
             case "character":
                 {
-                    if (argumentStr.trim() == "") {
+                    let ax = argumentStr.trim();
+                    if (ax == "") {
                         throw new Error("Character name required.");
                     }
-                    argumentValue = CharacterName.create(argumentStr.trim());
+                    if (ax.startsWith('"') && ax.endsWith('"')) {
+                        ax = ax.substring(1, ax.length - 1);
+                    }
+                    argumentValue = CharacterName.create(ax);
                     argumentStr = "";
                 }
                 break;

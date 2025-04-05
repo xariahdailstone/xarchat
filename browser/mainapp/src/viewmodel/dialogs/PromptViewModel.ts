@@ -41,8 +41,9 @@ export class PromptForStringViewModel extends DialogViewModel<string | null> {
         this.message = options.message;
         this.messageAsHtml = options.messageAsHtml ?? false;
         this.value = options.initialValue ?? "";
+        this.validationFunc = options.validationFunc ?? null;
 
-        const confirmButtonVm = new DialogButtonViewModel({
+        this.confirmButtonVm = new DialogButtonViewModel({
             title: options.confirmButtonTitle ?? "OK",
             shortcutKeyCode: KeyCodes.RETURN,
             style: DialogButtonStyle.DEFAULT,
@@ -50,10 +51,25 @@ export class PromptForStringViewModel extends DialogViewModel<string | null> {
                 this.close(this.value);
             }
         });
-        this.buttons.add(confirmButtonVm);
+        this.buttons.add(this.confirmButtonVm);
+
+        if (options.cancelButtonTitle) {
+            const cancelButtonVm = new DialogButtonViewModel({
+                title: options.cancelButtonTitle,
+                shortcutKeyCode: KeyCodes.ESCAPE,
+                style: DialogButtonStyle.CANCEL,
+                onClick: () => {
+                    this.close(options.valueOnCancel ?? null)
+                } 
+            });
+        }
 
         this.closeBoxResult = options.valueOnCancel ?? null;
+
+        this.validateValue();
     }
+
+    private confirmButtonVm: DialogButtonViewModel;
 
     @observableProperty
     readonly message: string;
@@ -61,8 +77,25 @@ export class PromptForStringViewModel extends DialogViewModel<string | null> {
     @observableProperty
     readonly messageAsHtml: boolean;
 
+    private _value: string = null!;
     @observableProperty
-    value: string;
+    get value(): string { return this._value; }
+    set value(value: string) {
+        if (value !== this._value) {
+            this._value = value;
+            this.validateValue();
+        }
+    }
+
+    private validateValue() {
+        if (this.validationFunc) {
+            const isValid = this.validationFunc(this._value);
+            this.confirmButtonVm.enabled = isValid;
+        }
+    }
+
+    @observableProperty
+    readonly validationFunc: ((value: string) => boolean) | null;
 }
 
 export interface PromptOptions<TResult> {
@@ -90,4 +123,7 @@ export interface PromptForStringOptions {
     valueOnCancel?: string | null;
 
     confirmButtonTitle?: string;
+    cancelButtonTitle?: string;
+
+    validationFunc?: (value: string) => boolean;
 }

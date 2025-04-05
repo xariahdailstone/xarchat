@@ -136,15 +136,67 @@ function tryHandleEditShortcutKey(textarea: HTMLTextAreaElement, ev: KeyboardEve
 }
 
 export class BBCodeUtils {
-    static pasteWithAutoUrlization(origText: string, selStart: number, selEnd: number, pasteText: string): (null | [string, number | null]) {
+    static pasteWithAutoUrlization(origText: string, selStart: number, selEnd: number, pasteText: string): (null | [string, number | null, number | null]) {
         if (BBCodeUtils.isPastedUrl(pasteText)) {
-            if (BBCodeUtils.isCursorAtAutoUrlLocation(origText, selStart)) {
-                const firstPart = `[url=${pasteText}]`;
-                const secondPart = "[/url]";
-                return [firstPart + secondPart, firstPart.length];
+            if (selEnd == selStart) {
+                if (BBCodeUtils.isCursorAtAutoUrlLocation(origText, selStart)) {
+                    const firstPart = `[url=${pasteText}]`;
+                    const secondPart = "[/url]";
+                    return [firstPart + secondPart, firstPart.length, null];
+                }
+            }
+            else {
+                if (BBCodeUtils.isCursorAtAutoUrlLocation(origText, selStart)) {
+                    const selContent = BBCodeUtils.isSelectionAlreadyUrlTag(origText, selStart, selEnd, pasteText)
+                    if (selContent != null) {
+                        return [selContent, 0, selContent.length];
+                    }
+                    else {
+                        const innerPart = origText.substring(selStart, selEnd);
+                        const innerLT = this.getLeadingTrailingWhitespace(innerPart);
+
+                        const firstPart = `[url=${pasteText}]`;
+                        const thirdPart = "[/url]";
+                        const totalStr = innerLT[0] + firstPart + innerLT[1] + thirdPart + innerLT[2];
+                        return [totalStr, 0, totalStr.length];
+                    }
+                }
             }
         }
-        return [pasteText, null];
+        return [pasteText, null, null];
+    }
+
+    private static getLeadingTrailingWhitespace(str: string): [string, string, string] {
+        const strTrimStart = str.trimStart();
+        const strTrimEnd = str.trimEnd();
+        const strTrim = str.trim();
+
+        let leadingWhitespace = "";
+        if (str != strTrimStart) {
+            leadingWhitespace = str.substring(0, str.length - strTrimStart.length);
+        }
+
+        let trailingWhitespace = "";
+        if (str != strTrimEnd) {
+            trailingWhitespace = str.substring(strTrimEnd.length);
+        }
+
+        return [leadingWhitespace, strTrim, trailingWhitespace];
+    }
+
+    private static isSelectionAlreadyUrlTag(origText: string, selStart: number, selEnd: number, pasteText: string): string | null {
+        const prefix = `[url=${pasteText}]`;
+        const suffix = "[/url]";
+
+        const selStr = origText.substring(selStart, selEnd);
+        const selLT = this.getLeadingTrailingWhitespace(selStr);
+
+        const selStrTrimmed = selLT[1];
+
+        if (selStrTrimmed.toLowerCase().startsWith(prefix.toLowerCase()) && selStrTrimmed.toLowerCase().endsWith(suffix.toLowerCase())) {
+            return selLT[0] +  selStrTrimmed.substring(prefix.length, selStrTrimmed.length - suffix.length) + selLT[2];
+        }
+        return null;
     }
 
     private static isPastedUrl(pasteText: string) {
@@ -213,15 +265,20 @@ export class BBCodeUtils {
             if (!!(avm?.getConfigSettingById("autoUrlPaste"))) {
                let pasteText = ev.clipboardData?.getData("text") ?? "";
                 if (pasteText != "") {
-                    const selStart = textarea.selectionStart;
-                    const selEnd = textarea.selectionEnd;
+                    const selStart = Math.min(textarea.selectionStart, textarea.selectionEnd);
+                    const selEnd = Math.max(textarea.selectionStart, textarea.selectionEnd);
 
                     const effectivePaste = BBCodeUtils.pasteWithAutoUrlization(textarea.value, selStart, selEnd, pasteText);
                     //textarea.setSelectionRange(0, textarea.value.length, "forward");
                     if (effectivePaste) {
                         document.execCommand("insertText", false, effectivePaste[0]);
-                        if (effectivePaste[1]) {
-                            textarea.setSelectionRange(selStart + effectivePaste[1], selStart + effectivePaste[1], "forward");
+                        if (effectivePaste[1] != null) {
+                            if (effectivePaste[2] == null) {
+                                textarea.setSelectionRange(selStart + effectivePaste[1], selStart + effectivePaste[1], "forward");
+                            }
+                            else {
+                                textarea.setSelectionRange(selStart + effectivePaste[1], selStart +  effectivePaste[1] + effectivePaste[2], "forward");
+                            }
                         }
                         options.onTextChanged(textarea.value);
                     }

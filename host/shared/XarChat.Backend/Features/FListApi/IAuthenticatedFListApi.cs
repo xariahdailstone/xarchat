@@ -24,6 +24,14 @@ namespace XarChat.Backend.Features.FListApi
 
         Task<SaveMemoResponse> SaveMemoAsync(string name, string memo, CancellationToken cancellationToken);
 
+        Task<SubmitReportResponse> SubmitReportAsync(
+            string reportSubmitCharacter,
+            string reportText,
+            string log,
+            string channel,
+            string? reportTargetCharacter,
+            CancellationToken cancellationToken);
+
         Task<ProfileInfo> GetCharacterProfileAsync(string name, bool bypassCache, CancellationToken cancellationToken);
 
         Task<ProfileFriendsInfo> GetCharacterFriendsAsync(string name, CancellationToken cancellationToken);

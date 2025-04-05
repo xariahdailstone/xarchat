@@ -9,8 +9,10 @@ import { WhenChangeManager } from "../util/WhenChange.js";
 import { ChannelViewModel } from "../viewmodel/ChannelViewModel.js";
 import { ChatChannelMessageMode, ChatChannelViewModel } from "../viewmodel/ChatChannelViewModel.js";
 import { ConsoleChannelViewModel } from "../viewmodel/ConsoleChannelViewModel.js";
+import { ReportSource, ReportViewModel } from "../viewmodel/dialogs/ReportViewModel.js";
 import { PMConvoChannelViewModel } from "../viewmodel/PMConvoChannelViewModel.js";
 import { ChannelDescriptionPopupViewModel } from "../viewmodel/popups/ChannelDescriptionPopupViewModel.js";
+import { ContextMenuPopupViewModel } from "../viewmodel/popups/ContextMenuPopupViewModel.js";
 //import { ChannelHeaderFilter } from "./ChannelHeaderFilter.js";
 import { ComponentBase, componentElement } from "./ComponentBase.js";
 import { StatusDotLightweight } from "./StatusDot.js";
@@ -51,6 +53,19 @@ export class ChannelHeader extends ComponentBase<ChannelViewModel> {
 
         const elDescriptionShowMore = this.$("elDescriptionShowMore") as HTMLButtonElement;
 
+        this.elMain.addEventListener("contextmenu", (e: Event) => {
+            const vm = this.viewModel;
+            if (vm instanceof ChatChannelViewModel) {
+                const menuvm = new ContextMenuPopupViewModel<() => any>(vm.appViewModel, this.elMain);
+                menuvm.addMenuItem("Report Channel...", () => {
+                    const reportvm = new ReportViewModel(vm.activeLoginViewModel, ReportSource.CHANNEL_HEADER, undefined, vm);
+                    vm.appViewModel.showDialogAsync(reportvm);
+                });
+                menuvm.onValueSelected = (v) => v();
+                vm.appViewModel.popups.push(menuvm);
+            }
+            e.preventDefault();
+        });
         this.watchViewModel(v => {
             const elMain = this.elMain;
             elMain.classList.toggle("chatchannel", (v instanceof ChatChannelViewModel));
