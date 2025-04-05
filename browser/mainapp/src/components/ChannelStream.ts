@@ -13,6 +13,7 @@ import { getRoot } from "../util/GetRoot.js";
 import { HTMLUtils } from "../util/HTMLUtils.js";
 import { IterableUtils } from "../util/IterableUtils.js";
 import { ObservableValue } from "../util/Observable.js";
+import { FirstInAnimationFrameManager } from "../util/RequestAnimationFrameHook.js";
 import { ResizeObserverNice } from "../util/ResizeObserverNice.js";
 import { ScrollAnchorTo } from "../util/ScrollAnchorTo.js";
 import { URLUtils } from "../util/URLUtils.js";
@@ -29,6 +30,7 @@ enum ScrollSuppressionReason {
     CMCVNotReady = "CMCVNotReady",
     CMCVUpdatingElements = "CMCVUpdatingElements",
     ResettingScroll = "ResettingScroll",
+    ResettingScrollInternal = "ResettingScrollInternal",
     ScrollingStreamTo = "ScrollingStreamTo",
     ScrollingStreamToSmooth = "ScrollingStreamToSmooth",
 }
@@ -346,6 +348,8 @@ export class DefaultStreamScrollManager implements StreamScrollManager {
     ) {
 
         this._disposables.push(EventListenerUtil.addDisposableEventListener(containerElement, "scroll", (e: Event) => this.containerScrolled()));
+        this._disposables.push(EventListenerUtil.addDisposableEventListener(window, "resize", (e: Event) => this.resetScroll()));
+        this._disposables.push(EventListenerUtil.addDisposableEventListener(window, "focus", (e: Event) => this.resetScroll(false, true)));
     }
 
     private _disposables: IDisposable[] = [];
@@ -455,7 +459,7 @@ export class DefaultStreamScrollManager implements StreamScrollManager {
         }
     }
 
-    private _pendingResetScroll: (number | null) = null;
+    private readonly _pendingResetScroll: FirstInAnimationFrameManager = new FirstInAnimationFrameManager();
     private _nextUpdateIsSmooth: boolean = false;
     private _pendingScrollSmooth: boolean = false;
 
@@ -464,58 +468,67 @@ export class DefaultStreamScrollManager implements StreamScrollManager {
         window.setTimeout(() => this._nextUpdateIsSmooth = false, 100);
     }
 
-    resetScroll(smooth?: boolean) {
+    resetScroll(smooth?: boolean, immediate?: boolean) {
         this._pendingScrollSmooth = smooth ?? this._nextUpdateIsSmooth;
-        if (this._pendingResetScroll !== null) {
-            return;
+
+        if (!this._pendingResetScroll.hasPendingOrExecutingAnimationFrame) {
+            this.suppressScrollRecording(ScrollSuppressionReason.ResettingScroll);
+            this._pendingResetScroll.requestAnimationFrame(() => {
+                this.resetScrollInternal();
+                this.resumeScrollRecording(ScrollSuppressionReason.ResettingScroll);
+            });
         }
 
-        this.suppressScrollRecording(ScrollSuppressionReason.ResettingScroll);
-        this._pendingResetScroll = window.requestAnimationFrame(() => {
-            let isSmoothScroll = this._pendingScrollSmooth;
-            let isScrolledToMaximum: boolean;
-            let scrollToY: number;
-            //this.logger.logDebug("resetting scroll", this.scrolledTo);
-            if (this.scrolledTo) {
-                scrollToY = 0;
-                const scrollToEl = this.getElementByIdentity(this.scrolledTo.elementIdentity);
-                if (scrollToEl) {
-                    const pos = this.getElementPositioning(scrollToEl);
-                    scrollToY = pos.top + this.scrolledTo.scrollDepth;
-                    if (this.scrollAnchorTo == ScrollAnchorTo.BOTTOM) {
-                        scrollToY = Math.max(0, scrollToY - this.containerElement.clientHeight);
-                    }
+        if (immediate) {
+            this._pendingResetScroll.executeImmediately();
+        }
+    }
+
+    private resetScrollInternal() {
+        this.suppressScrollRecording(ScrollSuppressionReason.ResettingScrollInternal);
+
+        let isSmoothScroll = this._pendingScrollSmooth;
+        let isScrolledToMaximum: boolean;
+        let scrollToY: number;
+        //this.logger.logDebug("resetting scroll", this.scrolledTo);
+        if (this.scrolledTo) {
+            scrollToY = 0;
+            const scrollToEl = this.getElementByIdentity(this.scrolledTo.elementIdentity);
+            if (scrollToEl) {
+                const pos = this.getElementPositioning(scrollToEl);
+                scrollToY = pos.top + this.scrolledTo.scrollDepth;
+                if (this.scrollAnchorTo == ScrollAnchorTo.BOTTOM) {
+                    scrollToY = Math.max(0, scrollToY - this.containerElement.clientHeight);
                 }
-                // for (let el of this.enumerateAnchorElements) {
-                //     if (el.elementIdentity == this.scrolledTo.elementIdentity) {
-                //         const pos = this.getElementPositioning(el.element);
-                //         scrollToY = pos.top + this.scrolledTo.scrollDepth;
-                //         break;
-                //     }
-                // }
+            }
+            // for (let el of this.enumerateAnchorElements) {
+            //     if (el.elementIdentity == this.scrolledTo.elementIdentity) {
+            //         const pos = this.getElementPositioning(el.element);
+            //         scrollToY = pos.top + this.scrolledTo.scrollDepth;
+            //         break;
+            //     }
+            // }
+        }
+        else {
+            if (this.scrollAnchorTo == ScrollAnchorTo.TOP) {
+                scrollToY = DefaultStreamScrollManager.SCROLL_TO_END;
             }
             else {
-                if (this.scrollAnchorTo == ScrollAnchorTo.TOP) {
-                    scrollToY = DefaultStreamScrollManager.SCROLL_TO_END;
-                }
-                else {
-                    scrollToY = 0;
-                }
+                scrollToY = 0;
             }
+        }
 
-            isScrolledToMaximum = this.scrollStreamTo(scrollToY, isSmoothScroll);
-            //this.logger.logDebug("resetting scroll ==> ", scrollToY, isScrolledToMaximum);
-            if (isScrolledToMaximum && this._suppressionCount == 1) {
-                this.scrolledTo = null;
-            }
+        isScrolledToMaximum = this.scrollStreamTo(scrollToY, isSmoothScroll);
+        //this.logger.logDebug("resetting scroll ==> ", scrollToY, isScrolledToMaximum);
+        if (isScrolledToMaximum && this._suppressionCount == 1) {
+            this.scrolledTo = null;
+        }
 
-            this._knownSize.width = this.containerElement.clientWidth;
-            this._knownSize.cheight = this.containerElement.clientHeight;
-            this._knownSize.sheight = this.containerElement.scrollHeight - this.containerElement.clientHeight;
+        this._knownSize.width = this.containerElement.clientWidth;
+        this._knownSize.cheight = this.containerElement.clientHeight;
+        this._knownSize.sheight = this.containerElement.scrollHeight - this.containerElement.clientHeight;
 
-            this.resumeScrollRecording(ScrollSuppressionReason.ResettingScroll);
-            this._pendingResetScroll = null;
-        });
+        this.resumeScrollRecording(ScrollSuppressionReason.ResettingScrollInternal);
     }
 
     private static SCROLL_TO_END = 9999999;
