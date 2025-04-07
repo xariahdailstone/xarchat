@@ -561,6 +561,9 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
 
         const pinNode = cvm.canPin
             ? <button classList={["pin-icon"]} on={{
+                    "mousedown": (e: MouseEvent) => {
+                        suppressThisClickAsSelection();
+                    },
                     "click": (e: MouseEvent) => {
                         suppressThisClickAsSelection();
                         switch (e.button) {
@@ -574,6 +577,9 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
 
         const closeNode = cvm.canClose
             ? <button classList={["close-icon"]} on={{
+                    "mousedown": (e: MouseEvent) => {
+                        suppressThisClickAsSelection();
+                    },
                     "click": (e: MouseEvent) => {
                         suppressThisClickAsSelection();
                         cvm.close();
@@ -582,6 +588,16 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
             : null;
 
         const mainEvents: On = {
+            "mousedown": (e: MouseEvent) => {
+                if (!clickSuppressed) {
+                    if (e.button == MouseButton.LEFT) {
+                        cvm.parent.selectedChannel = cvm;
+                    }
+                }
+                else {
+                    clickSuppressed = false;
+                }
+            },
             "click": (e: MouseEvent) => {
                 if (!clickSuppressed) {
                     try {
