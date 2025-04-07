@@ -76,14 +76,20 @@ export class ChannelStream extends ComponentBase<ChannelViewModel> {
             const result = elMessageContainer.querySelector(`[data-messageid='${identity}']`) as (HTMLElement | null)
             return result;
         };
+
+        let currentScrollToVm: ChannelViewModel | null = null;
         this._scrollManager = new DefaultStreamScrollManager(elMessageContainer, iterateElements, getElementByIdentity, (v) => {
             //this.logger.logDebug("setting scrolledTo", v, this.viewModel?.collectiveName);
-            if (this.viewModel) {
-                if (v) {
-                    this.viewModel.scrolledTo = v;
-                }
-                else {
-                    this.viewModel.scrolledTo = null;
+            const vm = currentScrollToVm;
+            if (vm) {
+                if ((v ?? null) != vm.scrolledTo) {
+                    this.logger.logInfo("DefaultStreamScrollManager.scrolledTo change", v, vm.title);
+                    if (v) {
+                        vm.scrolledTo = v;
+                    }
+                    else {
+                        vm.scrolledTo = null;
+                    }
                 }
             }
         });
@@ -160,10 +166,20 @@ export class ChannelStream extends ComponentBase<ChannelViewModel> {
         this.watchExpr(vm => vm.newMessagesBelowNotify, v => {
             updateAlerts();
         });
-        this.watchExpr(vm => vm.scrolledTo, (v) => {
-            //this.log("scrolledTo change, resetscroll");
-            this._scrollManager.scrolledTo = v ?? null;
-            updateAlerts();
+        this.watchExpr(vm => [vm, vm.scrolledTo], (vx) => {
+            if (vx) {
+                const vm = vx[0];
+                const v = vx[1];
+                currentScrollToVm = vm;
+                if (v != this._scrollManager.scrolledTo) {
+                    this.logger.logInfo("vm.scrolledTo change", v, vm.title);
+                    this._scrollManager.scrolledTo = v ?? null;
+                }
+                updateAlerts();
+            }
+            else {
+                currentScrollToVm = null;
+            }
         });
         this.watchExpr(vm => vm.pendingSendsCount, len => {
             len = len ?? 0;
