@@ -4,8 +4,10 @@ import { AppViewModel } from "../AppViewModel";
 import { ContextPopupViewModel, PopupViewModel } from "./PopupViewModel";
 
 export class ContextMenuPopupViewModel<TSelectedValue> extends ContextPopupViewModel {
-    constructor(parent: AppViewModel, contextElement: HTMLElement) {
-        super(parent, contextElement);
+    constructor(parent: AppViewModel, contextElement: HTMLElement);
+    constructor(parent: AppViewModel, contextRect: DOMRect);
+    constructor(parent: AppViewModel, contextAnchor: HTMLElement | DOMRect) {
+        super(parent, contextAnchor);
         this.items = new StdObservableList<ContextMenuPopupItemViewModel<TSelectedValue>>();
     }
 

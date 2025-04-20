@@ -257,6 +257,7 @@ export class AppViewModel extends ObservableBase {
             for (let p of [...this.popups.iterateValues()]) {
                 p.dismissed();
             }
+            dialog.onShowing();
             this.dialogs.push(dialog);
         });
     }

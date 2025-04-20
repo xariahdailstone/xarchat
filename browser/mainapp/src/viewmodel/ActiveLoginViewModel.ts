@@ -173,6 +173,9 @@ export class ActiveLoginViewModel extends ObservableBase {
 
     get appViewModel() { return this.parent; }
 
+    @observableProperty
+    isLoggingIn: boolean = false;
+
     private readonly _serverVariables: ObservableValue<{ [key: string]: any }> = new ObservableValue({});
     get serverVariables() { return this._serverVariables.value; }
     updateServerVariable(varName: string, varValue: any) {

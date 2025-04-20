@@ -96,7 +96,9 @@ export class ChatConnectionFactoryImpl {
                 };
                 ws.onmessage = (e) => {
                     if (completed) {
-                        cci.processIncomingData(e.data);
+                        window.requestIdleCallback(() => {
+                            cci.processIncomingData(e.data);
+                        }, { timeout: 100 });
                     }
                 };
                 ws.onclose = (e) => {

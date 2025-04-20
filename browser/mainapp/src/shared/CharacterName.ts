@@ -7,6 +7,16 @@ const freg = new FinalizationRegistry<string>((heldValue) => {
 });
 
 export class CharacterName {
+    static isValidCharacterName(characterNameString: string): boolean {
+        if (characterNameString == null || characterNameString.length == 0 || characterNameString.length > 38) {
+            return false;
+        }
+        if (characterNameString.match(/[^A-Za-z0-9_ \-]/)) {
+            return false;
+        }
+        return true;
+    }
+
     static create(characterNameString: string): CharacterName {
         characterNameString = StringUtils.discardUnseen(characterNameString);
         const canonical = characterNameString.toLowerCase();

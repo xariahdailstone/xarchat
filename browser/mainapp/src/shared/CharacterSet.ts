@@ -96,6 +96,17 @@ export class CharacterSet {
     private readonly _size: ObservableValue<number> = new ObservableValue<number>(0);
     get size(): number { return this._size.value; }
 
+    forEachMatchingCharacter(startsWith: string, callback: (characterName: CharacterName) => void) {
+        startsWith = startsWith.toLowerCase();
+        this._statuses.forEachEntrySnapshotted(x => {
+            const cname = x[0];
+            const cstatus = x[1];
+            if (cname.canonicalValue.startsWith(startsWith)) {
+                callback(cname);
+            }
+        });
+    }
+
     setCharacterStatus(characterName: CharacterName, status: Partial<CharacterStatus>, asOf?: StatusLastChangeInfo): CharacterStatus {
         const existingStatus = this.getCharacterStatus(characterName);
 

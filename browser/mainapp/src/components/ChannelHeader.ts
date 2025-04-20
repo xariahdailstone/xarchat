@@ -53,13 +53,94 @@ export class ChannelHeader extends ComponentBase<ChannelViewModel> {
 
         const elDescriptionShowMore = this.$("elDescriptionShowMore") as HTMLButtonElement;
 
-        this.elMain.addEventListener("contextmenu", (e: Event) => {
+        this.elMain.addEventListener("contextmenu", (e: MouseEvent) => {
             const vm = this.viewModel;
             if (vm instanceof ChatChannelViewModel) {
-                const menuvm = new ContextMenuPopupViewModel<() => any>(vm.appViewModel, this.elMain);
+                const menuvm = new ContextMenuPopupViewModel<() => any>(vm.appViewModel, new DOMRect(e.clientX, e.clientY, 1, 1));
+                const isChanOp = vm.isEffectiveOp(vm.activeLoginViewModel.characterName);
+                const isChanOwner = vm.isEffectiveOwner(vm.activeLoginViewModel.characterName);
+
+                menuvm.addMenuItem("Copy BBCode Link to Channel", () => {
+                    navigator.clipboard.writeText(`[session=${vm.title}]${vm.name.value}[/session]`);
+                    menuvm.dismissed();
+                });
+
+                menuvm.addMenuItem("List Channel Operators", () => {
+                    vm.getChannelOpListAsync();
+                    menuvm.dismissed();
+                });
+
+                if (isChanOp) {
+                    menuvm.addSeparator();
+
+                    menuvm.addMenuItem("List Channel Bans", () => {
+                        vm.getBanListAsync();
+                        menuvm.dismissed();
+                    });
+                    menuvm.addMenuItem("Kick a Character From Channel...", () => {
+                        // TODO:
+                        vm.kickAsync();
+                        menuvm.dismissed();
+                    });
+                    menuvm.addMenuItem("Timeout a Character From Channel...", () => {
+                        // TODO:
+                        menuvm.dismissed();
+                    });
+                    menuvm.addMenuItem("Ban a Character From Channel...", () => {
+                        // TODO:
+                        vm.banAsync();
+                        menuvm.dismissed();
+                    });
+                    menuvm.addMenuItem("Unban a Character From Channel...", () => {
+                        // TODO:
+                        menuvm.dismissed();
+                    });
+
+                    menuvm.addMenuItem("Invite Character to Channel...", () => {
+                        vm.inviteAsync();
+                        menuvm.dismissed();
+                    });
+    
+                    menuvm.addSeparator();
+
+                    menuvm.addMenuItem("Open Channel to Public", () => {
+                        vm.changeChannelPrivacyStatusAsync("public");
+                        menuvm.dismissed();
+                    });
+                    menuvm.addMenuItem("Close Channel to Public", () => {
+                        vm.changeChannelPrivacyStatusAsync("private");
+                        menuvm.dismissed();
+                    });
+
+                    menuvm.addMenuItem("Change Channel Description...", () => {
+                        vm.changeDescriptionAsync();
+                        menuvm.dismissed();
+                    });
+                }
+                if (isChanOwner) {
+                    menuvm.addSeparator();
+
+                    menuvm.addMenuItem("Add Channel Operator...", () => {
+                        // TODO:
+                        menuvm.dismissed();
+                    });
+                    menuvm.addMenuItem("Remove Channel Operator...", () => {
+                        // TODO:
+                        menuvm.dismissed();
+                    });
+
+                    menuvm.addSeparator();
+                    menuvm.addMenuItem("Give Ownership of Channel...", () => {
+                        // TODO:
+                        menuvm.dismissed();
+                    });
+                }
+
+                menuvm.addSeparator();
                 menuvm.addMenuItem("Report Channel...", () => {
                     const reportvm = new ReportViewModel(vm.activeLoginViewModel, ReportSource.CHANNEL_HEADER, undefined, vm);
                     vm.appViewModel.showDialogAsync(reportvm);
+                    menuvm.dismissed();
                 });
                 menuvm.onValueSelected = (v) => v();
                 vm.appViewModel.popups.push(menuvm);

@@ -34,8 +34,28 @@ export abstract class PopupViewModel extends ObservableBase {
 export abstract class ContextPopupViewModel extends PopupViewModel {
     constructor(
         parent: AppViewModel,
-        public readonly contextElement: HTMLElement) {
+        clientRect: DOMRect);
+    constructor(
+        parent: AppViewModel,
+        contextElement: HTMLElement);
+    constructor(
+        parent: AppViewModel,
+        contextAnchor: HTMLElement | DOMRect);
+    constructor(
+        parent: AppViewModel,
+        contextAnchor: HTMLElement | DOMRect) {
             
         super(parent);
+        if (contextAnchor instanceof HTMLElement) {
+            this.contextElement = contextAnchor;
+            this.contextRect = null;
+        }
+        else {
+            this.contextElement = null;
+            this.contextRect = contextAnchor;
+        }
     }
+
+    readonly contextElement: HTMLElement | null;
+    readonly contextRect: DOMRect | null;
 }

@@ -44,6 +44,7 @@ export class LoginUtils {
                     const appSettings = appViewModel.appSettings;
 
                     activeLoginViewModel = new ActiveLoginViewModel(appViewModel, authApi, appSettings.savedChatStates.getOrCreate(character));
+                    activeLoginViewModel.isLoggingIn = true;
                     disposeALVMOnError = true;
                 }
                 else {
@@ -166,6 +167,7 @@ export class LoginUtils {
 
         appViewModel.currentlySelectedSession = ns;
         ns.connectionState = ChatConnectionState.CONNECTED;
+        ns.isLoggingIn = false;
         HostInterop.signalLoginSuccessAsync();
     }
 
@@ -214,5 +216,6 @@ export class LoginUtils {
 
         logger.logDebug("reconnectAsync: done reconnecting, setting state CONNECTED...");
         activeLoginViewModel.connectionState = ChatConnectionState.CONNECTED;
+        activeLoginViewModel.isLoggingIn = false;
     }
 }

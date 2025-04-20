@@ -78,15 +78,20 @@ body {
     --bg-main-textbox-btn-hover: hsl(var(--bg-base-hue), var(--bg-base-sat), calc(40% * var(--bg-brightness-scale))); /* #60626c; */
     --fg-main-textbox-btn-hover: hsl(var(--bg-base-hue), var(--fg-base-sat), calc(100% * var(--fg-brightness-scale)));
 
-    --bg-main-textbox-default-btn: #9B30FF;
+    --bg-main-textbox-default-btn: #9b30ff63;
     --fg-main-textbox-default-btn: hsl(var(--bg-base-hue), var(--fg-base-sat), calc(100% * var(--fg-brightness-scale)));
     --bg-main-textbox-default-btn-hover: #ab52ff;
     --fg-main-textbox-default-btn-hover: hsl(var(--bg-base-hue), var(--fg-base-sat), calc(100% * var(--fg-brightness-scale)));
 
-    --bg-main-textbox-backoff-btn: transparent;
+    --bg-main-textbox-cancel-btn: hsl(var(--bg-base-hue), var(--bg-base-sat), calc(23% * var(--bg-brightness-scale)));
+    --fg-main-textbox-cancel-btn: hsl(var(--bg-base-hue), var(--fg-base-sat), calc(100% * var(--fg-brightness-scale)));
+    --bg-main-textbox-cancel-btn-hover: hsl(var(--bg-base-hue), var(--bg-base-sat), calc(33% * var(--bg-brightness-scale)));
+    --fg-main-textbox-cancel-btn-hover: hsl(var(--bg-base-hue), var(--fg-base-sat), calc(100% * var(--fg-brightness-scale)));
+
+    --bg-main-textbox-backoff-btn: hsl(var(--bg-base-hue), var(--bg-base-sat), calc(23% * var(--bg-brightness-scale)));
     --fg-main-textbox-backoff-btn: hsl(var(--bg-base-hue), var(--fg-base-sat), calc(100% * var(--fg-brightness-scale)));
-    --bg-main-textbox-backoff-btn-hover: rgba(255, 255, 255, 0.1);
-    --fg-main-textbox-backoff-btn: hsl(var(--bg-base-hue), var(--fg-base-sat), calc(100% * var(--fg-brightness-scale)));
+    --bg-main-textbox-backoff-btn-hover: hsl(var(--bg-base-hue), var(--bg-base-sat), calc(33% * var(--bg-brightness-scale)));
+    --fg-main-textbox-backoff-btn-hover: hsl(var(--bg-base-hue), var(--fg-base-sat), calc(100% * var(--fg-brightness-scale)));
 
     --bg-main-textbox-warning-btn: maroon;
     --fg-main-textbox-warning-btn: hsl(var(--bg-base-hue), var(--fg-base-sat), calc(100% * var(--fg-brightness-scale)));

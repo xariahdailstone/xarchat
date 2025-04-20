@@ -572,19 +572,24 @@ export abstract class ChannelViewModel extends ObservableBase implements IDispos
 
     addRollMessage(timestamp: Date, rollData: RollData): ChannelMessageViewModel {
         const m = ChannelMessageViewModel.createRollMessage(this, timestamp, rollData);
-        this.addMessage(m, { fromReplay: (rollData.isHistorical ?? false) });
+        this.addMessage(m, { seen: (rollData.seen ?? false), fromReplay: (rollData.isHistorical ?? false) });
         return m;
     }
 
     addSpinMessage(spinData: BottleSpinData): ChannelMessageViewModel {
         const m = ChannelMessageViewModel.createSpinMessage(this, spinData);
-        this.addMessage(m, { fromReplay: (spinData.isHistorical ?? false) });
+        this.addMessage(m, { seen: (spinData.seen ?? false),fromReplay: (spinData.isHistorical ?? false) });
         return m;
     }
 
-    addSystemMessage(timestamp: Date, text: string, important: boolean = false, suppressPing: boolean = false): ChannelMessageViewModel {
+    addSystemMessage(timestamp: Date, text: string, 
+        important: boolean = false,
+        suppressPing: boolean = false,
+        seen: boolean = false,
+        isHistorical: boolean = false): ChannelMessageViewModel {
+
         const m = ChannelMessageViewModel.createSystemMessage(this, timestamp, text, important, suppressPing);
-        this.addMessage(m);
+        this.addMessage(m, { seen: (seen ?? false), fromReplay: (isHistorical ?? false) });
         return m;
     }
     
@@ -600,6 +605,8 @@ export abstract class ChannelViewModel extends ObservableBase implements IDispos
             m.dispose();
         }
 
+        this.unseenMessageCount = 0;
+        this.hasPing = false;
         this.recalculateMessagesToShow();
     }
 
@@ -632,6 +639,7 @@ export abstract class ChannelViewModel extends ObservableBase implements IDispos
     protected pingIfNecessary(message: ChannelMessageViewModel) {
         if (message.containsPing && !this.isTabActive && message.characterStatus.characterName != this.parent.characterName) {
             this.hasPing = true;
+            this.logger.logInfo("pinging due to message", this, message);
         }
     }
 

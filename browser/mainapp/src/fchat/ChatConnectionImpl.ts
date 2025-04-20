@@ -422,15 +422,26 @@ export class ChatConnectionImpl implements ChatConnection {
         this._incomingMessageBuffer.enqueue(data);
     }
 
+    private readonly FLOOD_LIMIT = 5;
+
     private _incomingDataLoopEnded = false;
     private async processIncomingDataLoop() {
         const cancellationToken = this._disposeCTS.token;
 
         try {
             let i = 0;
+            let handledMessageFloodCount = 0;
             while (true) { // TODO: exit condition
                 //this.logger.logDebug("readmsg", ++i);
                 const data = await this._incomingMessageBuffer.dequeueAsync(cancellationToken);
+                handledMessageFloodCount++;
+
+                // if (handledMessageFloodCount >= this.FLOOD_LIMIT) {
+                //     const ps = new PromiseSource<void>();
+                //     window.requestIdleCallback(() => { ps.tryResolve(); });
+                //     handledMessageFloodCount = 0;
+                // }
+
                 try {
                     //this.logger.logDebug("gotmsg", i);
                     const msg = this.parseChatMessage(data);

@@ -42,7 +42,7 @@ export class HTMLUtils {
         // cloner(el);
     }
 
-    private static htmlToFragment(html: string): DocumentFragment {
+    static htmlToFragment(html: string): DocumentFragment {
         const templ = document.createElement("template");
         templ.innerHTML = html;
         return templ.content;

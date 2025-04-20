@@ -7,7 +7,7 @@
 
 #elMain { 
     display: none; 
-    background: rgba(0, 0, 0, 0.01);
+    /* background: rgba(0, 0, 0, 0.01); */
     pointer-events: all;
 }
 
