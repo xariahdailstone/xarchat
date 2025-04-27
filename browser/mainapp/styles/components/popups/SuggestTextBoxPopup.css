@@ -1,0 +1,11 @@
+
+.menu-item-selected {
+    background: rgba(255, 255, 255, 0.2);
+    color: var(--fg-level-2-highlight);
+}
+
+.menu-header {
+    font-size: 80%;
+    font-weight: bold;
+    padding: 4px 4px;
+}

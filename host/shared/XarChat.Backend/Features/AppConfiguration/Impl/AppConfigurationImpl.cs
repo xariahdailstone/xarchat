@@ -320,7 +320,11 @@ namespace XarChat.Backend.Features.AppConfiguration.Impl
 		public bool EnableIndexDataCollection =>
 			Convert.ToBoolean(GetArbitraryValueString("EnableIndexDataCollection") ?? "true");
 
-		public IEnumerable<KeyValuePair<string, JsonNode>> GetAllArbitraryValues()
+        public bool DisableGpuAcceleration =>
+            (_commandLineOptions.DisableGpuAcceleration == true) ? true :
+            !(Convert.ToBoolean(GetArbitraryValueString("global.useGpuAcceleration") ?? "true"));
+
+        public IEnumerable<KeyValuePair<string, JsonNode>> GetAllArbitraryValues()
         {
             var acd = _appConfigData;
             return acd;

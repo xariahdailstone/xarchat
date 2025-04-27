@@ -2,6 +2,7 @@ import { asDisposable } from "../../util/Disposable";
 import { EventListenerUtil } from "../../util/EventListenerUtil";
 import { HTMLUtils } from "../../util/HTMLUtils";
 import { KeyCodes } from "../../util/KeyCodes";
+import { Collection } from "../../util/ObservableCollection";
 import { PromiseSource } from "../../util/PromiseSource";
 import { TransitionUtils } from "../../util/TransitionUtils";
 import { WhenChangeManager } from "../../util/WhenChange";
@@ -117,7 +118,7 @@ export class DialogFrame extends ComponentBase<DialogViewModel<any>> {
                 if (!this.viewModel) { return; }
                 const avm = this.viewModel.parent;
                 if (avm.dialogs.length > 0 && (avm.dialogs[avm.dialogs.length - 1] == this.viewModel)) {
-                    if (!this.shouldPreventKeyboardEventDefault(ev)) {
+                    if (!this.shouldPreventKeyboardEventDefault(ev) && !ev.defaultPrevented) {
                         const btn = this.getButtonForKeyboardEvent(ev);
                         if (btn) {
                             btn.onClick();
@@ -126,7 +127,7 @@ export class DialogFrame extends ComponentBase<DialogViewModel<any>> {
                         }
                     }
                 }
-            }, true);
+            } /* , true */);
 
             return asDisposable(() => {
                 keydownListener.dispose();

@@ -103,6 +103,11 @@ export interface ServerICHMessage {
     users: { identity: string }[];
 }
 
+export interface ServerRMOMessage {
+    channel: string;
+    mode: string;
+}
+
 export interface ServerIDNMessage {
     character: string;
 }

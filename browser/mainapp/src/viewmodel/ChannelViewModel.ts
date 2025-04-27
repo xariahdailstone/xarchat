@@ -6,7 +6,7 @@ import { CharacterName } from "../shared/CharacterName.js";
 import { CharacterSet, CharacterStatus } from "../shared/CharacterSet.js";
 import { OnlineStatus } from "../shared/OnlineStatus.js";
 import { TypingStatus } from "../shared/TypingStatus.js";
-import { BBCodeParseResult, BBCodeParser, ChatBBCodeParser } from "../util/bbcode/BBCode.js";
+import { BBCodeParseResult, BBCodeParser, ChatBBCodeParser, SystemMessageBBCodeParser } from "../util/bbcode/BBCode.js";
 import { CatchUtils } from "../util/CatchUtils.js";
 import { KeyValuePair } from "../util/collections/KeyValuePair.js";
 import { ReadOnlyStdObservableCollection, StdObservableCollectionChangeType } from "../util/collections/ReadOnlyStdObservableCollection.js";
@@ -170,8 +170,21 @@ export abstract class ChannelViewModel extends ObservableBase implements IDispos
         }
     }
 
+    protected getCanBottleSpin(): boolean {
+        const canSpin = this.performBottleSpinAsync != ChannelViewModel.prototype.performBottleSpinAsync;
+        return canSpin;
+    }
+
+    protected getCanRollDice(): boolean {
+        const canRoll = this.performRollAsync != ChannelViewModel.prototype.performRollAsync;
+        return canRoll;
+    }
+
     getSlashCommands(): SlashCommandViewModel[] {
-        return [
+        const canSpin = this.getCanBottleSpin();
+        const canRoll = this.getCanRollDice();
+
+        const commands: (SlashCommandViewModel | null)[] = [
             ...this.activeLoginViewModel.getSlashCommands(),
             new SlashCommandViewModel(
                 ["roll"],
@@ -182,7 +195,7 @@ export abstract class ChannelViewModel extends ObservableBase implements IDispos
                     const diceSpec = args[0] as string;
                     await this.performRollAsync(diceSpec);
                 }
-            ),
+            ).withShowInHelp(canRoll),
             new SlashCommandViewModel(
                 ["bottle"],
                 "Spin the Bottle",
@@ -191,7 +204,7 @@ export abstract class ChannelViewModel extends ObservableBase implements IDispos
                 async (context, args) => {
                     await this.performBottleSpinAsync();
                 }
-            ),
+            ).withShowInHelp(canSpin),
             new SlashCommandViewModel(
                 ["clear"],
                 "Clear Tab",
@@ -211,7 +224,9 @@ export abstract class ChannelViewModel extends ObservableBase implements IDispos
                     await this.createChannelAsync(newChanName);
                 }
             )
-        ]
+        ];
+
+        return commands.filter(x => x != null);
     }
 
     async processCommandInternalAsync(command: string): Promise<string> {
@@ -572,19 +587,24 @@ export abstract class ChannelViewModel extends ObservableBase implements IDispos
 
     addRollMessage(timestamp: Date, rollData: RollData): ChannelMessageViewModel {
         const m = ChannelMessageViewModel.createRollMessage(this, timestamp, rollData);
-        this.addMessage(m, { fromReplay: (rollData.isHistorical ?? false) });
+        this.addMessage(m, { seen: (rollData.seen ?? false), fromReplay: (rollData.isHistorical ?? false) });
         return m;
     }
 
     addSpinMessage(spinData: BottleSpinData): ChannelMessageViewModel {
         const m = ChannelMessageViewModel.createSpinMessage(this, spinData);
-        this.addMessage(m, { fromReplay: (spinData.isHistorical ?? false) });
+        this.addMessage(m, { seen: (spinData.seen ?? false),fromReplay: (spinData.isHistorical ?? false) });
         return m;
     }
 
-    addSystemMessage(timestamp: Date, text: string, important: boolean = false, suppressPing: boolean = false): ChannelMessageViewModel {
+    addSystemMessage(timestamp: Date, text: string, 
+        important: boolean = false,
+        suppressPing: boolean = false,
+        seen: boolean = false,
+        isHistorical: boolean = false): ChannelMessageViewModel {
+
         const m = ChannelMessageViewModel.createSystemMessage(this, timestamp, text, important, suppressPing);
-        this.addMessage(m);
+        this.addMessage(m, { seen: (seen ?? false), fromReplay: (isHistorical ?? false) });
         return m;
     }
     
@@ -600,6 +620,8 @@ export abstract class ChannelViewModel extends ObservableBase implements IDispos
             m.dispose();
         }
 
+        this.unseenMessageCount = 0;
+        this.hasPing = false;
         this.recalculateMessagesToShow();
     }
 
@@ -632,6 +654,7 @@ export abstract class ChannelViewModel extends ObservableBase implements IDispos
     protected pingIfNecessary(message: ChannelMessageViewModel) {
         if (message.containsPing && !this.isTabActive && message.characterStatus.characterName != this.parent.characterName) {
             this.hasPing = true;
+            this.logger.logInfo("pinging due to message", this, message);
         }
     }
 
@@ -1031,7 +1054,12 @@ export class ChannelMessageViewModel extends ObservableBase implements IDisposab
                 }
             }
 
-            const parseResult = ChatBBCodeParser.parse(effectiveText, { 
+            let parser = ChatBBCodeParser;
+            if (this.characterStatus.characterName == CharacterName.SYSTEM) {
+                parser = SystemMessageBBCodeParser;
+            }
+
+            const parseResult = parser.parse(effectiveText, { 
                 sink: this.activeLoginViewModel.bbcodeSink, 
                 addUrlDomains: true, 
                 appViewModel: this.appViewModel, 

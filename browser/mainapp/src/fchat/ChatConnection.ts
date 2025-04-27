@@ -54,8 +54,8 @@ export interface ChatConnection extends IDisposable {
     inviteToChannelAsync(channel: ChannelName, character: CharacterName): Promise<void>;
     channelSetOwnerAsync(channel: ChannelName, character: CharacterName): Promise<void>;
     unbanFromChannelAsync(channel: ChannelName, character: CharacterName): Promise<void>;
-    getChannelBanListAsync(channel: ChannelName): Promise<void>;
-    getChannelOpListAsync(channel: ChannelName): Promise<void>;
+    getChannelBanListAsync(channel: ChannelName): Promise<ChannelBanListInfo>;
+    getChannelOpListAsync(channel: ChannelName): Promise<ChannelOpListInfo>;
     channelAddOpAsync(channel: ChannelName, character: CharacterName): Promise<void>;
     channelRemoveOpAsync(channel: ChannelName, character: CharacterName): Promise<void>;
     channelSetModeAsync(channel: ChannelName, mode: "chat" | "ads" | "both"): Promise<void>;
@@ -71,6 +71,15 @@ export interface ChatConnection extends IDisposable {
     performPartnerSearchAsync(args: PartnerSearchArgs): Promise<PartnerSearchResult>;
 
     submitReportAsync(logId: number, text: string, channel: string): Promise<void>;
+}
+
+export interface ChannelOpListInfo {
+    channelTitle: string;
+    ops: CharacterName[];
+}
+export interface ChannelBanListInfo {
+    channelTitle: string;
+    bans: CharacterName[];
 }
 
 export interface PartnerSearchArgs {

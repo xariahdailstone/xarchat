@@ -1095,7 +1095,7 @@ export class ChatViewModelSink implements ChatConnectionSink {
         const ccvm = ns.getOrCreateChannel(channel);
         if (ccvm) {
             if (data.speakingCharacter == CharacterName.SYSTEM) {
-                ccvm.addSystemMessage(data.asOf ?? new Date(), data.message);
+                ccvm.addSystemMessage(data.asOf ?? new Date(), data.message, undefined, data.seen, data.isHistorical);
             }
             else if (data.isAd) {
                 ccvm.addAdMessage(data);

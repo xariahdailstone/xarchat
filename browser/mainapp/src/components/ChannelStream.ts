@@ -93,6 +93,7 @@ export class ChannelStream extends ComponentBase<ChannelViewModel> {
                 }
             }
         });
+        
         //this._scrollManager = new NullStreamScrollManager();
 
         // this one managed by connected/disconnected
@@ -191,6 +192,7 @@ export class ChannelStream extends ComponentBase<ChannelViewModel> {
         });
 
         this.whenConnected(() => {
+            this._scrollManager.enabled = true;
             const resizeObserver = new ResizeObserverNice((entries) => {
                 this._scrollManager.resetScroll();
             });
@@ -199,6 +201,7 @@ export class ChannelStream extends ComponentBase<ChannelViewModel> {
             this.resumeScrollRecording(ScrollSuppressionReason.NotConnectedToDocument);
         
             return asDisposable(() => {
+                this._scrollManager.enabled = false;
                 resizeObserver?.disconnect();
         
                 this.suppressScrollRecording(ScrollSuppressionReason.NotConnectedToDocument);
@@ -257,7 +260,7 @@ export class ChannelStream extends ComponentBase<ChannelViewModel> {
 
     get viewModel(): (ChannelViewModel | null) { return super.viewModel; }
 
-    private _scrollManager: StreamScrollManager;
+    private _scrollManager: DefaultStreamScrollManager;
 
     get hasTextSelection(): boolean {
         const elMessageContainer = this.$("elMessageContainer") as HTMLDivElement;
@@ -363,9 +366,32 @@ export class DefaultStreamScrollManager implements StreamScrollManager {
         private readonly scrolledToChanged: (value: AnchorElementScrollTo | null) => void
     ) {
 
-        this._disposables.push(EventListenerUtil.addDisposableEventListener(containerElement, "scroll", (e: Event) => this.containerScrolled()));
-        this._disposables.push(EventListenerUtil.addDisposableEventListener(window, "resize", (e: Event) => this.resetScroll()));
-        this._disposables.push(EventListenerUtil.addDisposableEventListener(window, "focus", (e: Event) => this.resetScroll(false, true)));
+        this._disposables.push(asDisposable(() => {
+            asDisposable(...this._enabledDisposables).dispose();
+            this._enabledDisposables = [];
+        }));
+    }
+
+    private _enabledDisposables: IDisposable[] = [];
+
+    private _enabled: boolean = false;
+    get enabled() { return this._enabled; }
+    set enabled(value) {
+        if (this._disposed) { value = false; }
+        if (value !== this._enabled) {
+            if (this._enabledDisposables) {
+                asDisposable(...this._enabledDisposables).dispose();
+                this._enabledDisposables = [];
+            }
+
+            this._enabled = value;
+
+            if (value) {
+                this._enabledDisposables.push(EventListenerUtil.addDisposableEventListener(this.containerElement, "scroll", (e: Event) => this.containerScrolled()));
+                this._enabledDisposables.push(EventListenerUtil.addDisposableEventListener(window, "resize", (e: Event) => this.resetScroll()));
+                this._enabledDisposables.push(EventListenerUtil.addDisposableEventListener(window, "focus", (e: Event) => this.resetScroll(false, true)));
+            }
+        }
     }
 
     private _disposables: IDisposable[] = [];
@@ -376,6 +402,7 @@ export class DefaultStreamScrollManager implements StreamScrollManager {
     dispose() {
         if (!this._disposed) {
             this._disposed = true;
+            this.enabled = false;
             for (let d of this._disposables) {
                 d.dispose();
             }

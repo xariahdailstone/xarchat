@@ -2,7 +2,7 @@
   "profiles": {
     "MinimalWin32Test": {
       "commandName": "Project",
-      "commandLineArgs": "-d -p C:\\Users\\drysa\\AppData\\Local\\XarChatz-debug -zzc E:\\src-XarChat\\browser\\mainapp --zzautoupdate:url=https://localhost:44314/xarchat/api/AutoUpdate/GetUpdateInfo --devtoolsonlaunch --zzshowinitwindow -zzw wss://flprox.evercrest.com/connect --disable-gpu"
+      "commandLineArgs": "-d -p C:\\Users\\drysa\\AppData\\Local\\XarChatz-debug -zzc E:\\src-XarChat\\browser\\mainapp --zzautoupdate:url=https://localhost:44314/xarchat/api/AutoUpdate/GetUpdateInfo --devtoolsonlaunch --zzshowinitwindow -zzw wss://flprox.evercrest.com/connect"
     }
   }
 }

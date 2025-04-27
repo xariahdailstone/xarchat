@@ -1,7 +1,11 @@
+import { CancellationToken } from "../../util/CancellationTokenSource";
 import { KeyCodes } from "../../util/KeyCodes";
 import { ObservableBase, observableProperty } from "../../util/ObservableBase";
 import { Collection } from "../../util/ObservableCollection";
+import { ActiveLoginViewModel } from "../ActiveLoginViewModel";
 import { AppViewModel } from "../AppViewModel";
+import { ChannelViewModel } from "../ChannelViewModel";
+import { SuggestionItem } from "../SuggestTextBoxViewModel";
 import { DialogButtonStyle, DialogButtonViewModel, DialogViewModel } from "./DialogViewModel";
 
 export class PromptViewModel<TResult> extends DialogViewModel<TResult> {
@@ -37,11 +41,10 @@ export class PromptForStringViewModel extends DialogViewModel<string | null> {
     constructor(parent: AppViewModel, options: PromptForStringOptions) {
         super(parent);
 
+        this._options = options;
+
         this.title = options.title ?? "";
-        this.message = options.message;
-        this.messageAsHtml = options.messageAsHtml ?? false;
         this.value = options.initialValue ?? "";
-        this.validationFunc = options.validationFunc ?? null;
 
         this.confirmButtonVm = new DialogButtonViewModel({
             title: options.confirmButtonTitle ?? "OK",
@@ -62,6 +65,7 @@ export class PromptForStringViewModel extends DialogViewModel<string | null> {
                     this.close(options.valueOnCancel ?? null)
                 } 
             });
+            this.buttons.add(cancelButtonVm);
         }
 
         this.closeBoxResult = options.valueOnCancel ?? null;
@@ -69,13 +73,33 @@ export class PromptForStringViewModel extends DialogViewModel<string | null> {
         this.validateValue();
     }
 
+    private _options: PromptForStringOptions;
+
     private confirmButtonVm: DialogButtonViewModel;
 
     @observableProperty
-    readonly message: string;
+    get message(): string { return this._options.message; }
 
     @observableProperty
-    readonly messageAsHtml: boolean;
+    get messageAsHtml(): boolean { return this._options.messageAsHtml ?? false; }
+
+    @observableProperty
+    get multiline() { return this._options.multiline ?? false; }
+
+    @observableProperty
+    get isBBCodeString() { return this._options.isBBCodeString ?? false; }
+
+    @observableProperty
+    get maxLength() { return this._options.maxLength; }
+
+    @observableProperty
+    get activeLoginViewModel() { return this._options.activeLoginViewModel; }
+
+    @observableProperty
+    get channelViewModel() { return this._options.channelViewModel; }
+
+    @observableProperty
+    get suggestionFunc() { return this._options.suggestionFunc; }
 
     private _value: string = null!;
     @observableProperty
@@ -90,12 +114,14 @@ export class PromptForStringViewModel extends DialogViewModel<string | null> {
     private validateValue() {
         if (this.validationFunc) {
             const isValid = this.validationFunc(this._value);
-            this.confirmButtonVm.enabled = isValid;
+            if (this.confirmButtonVm) {
+                this.confirmButtonVm.enabled = isValid;
+            }
         }
     }
 
     @observableProperty
-    readonly validationFunc: ((value: string) => boolean) | null;
+    get validationFunc(): ((value: string) => boolean) | null { return this._options.validationFunc ?? null; }
 }
 
 export interface PromptOptions<TResult> {
@@ -125,5 +151,12 @@ export interface PromptForStringOptions {
     confirmButtonTitle?: string;
     cancelButtonTitle?: string;
 
+    multiline?: boolean;
+    isBBCodeString?: boolean;
+    maxLength?: number;
+    activeLoginViewModel?: ActiveLoginViewModel;
+    channelViewModel?: ChannelViewModel;
+
     validationFunc?: (value: string) => boolean;
+    suggestionFunc?: (value: string, cancellationToken: CancellationToken) => Promise<SuggestionItem[]>;
 }

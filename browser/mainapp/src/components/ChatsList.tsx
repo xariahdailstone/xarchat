@@ -369,7 +369,7 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
 
     protected render(): (VNode | [VNode, IDisposable]) {
         const vm = this.viewModel;
-        if (!vm) { return <></>; }
+        if (!vm || vm.isLoggingIn) { return <></>; }
 
         return <>
             {this.renderScrollSection(vm)}
@@ -393,8 +393,8 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
     }
 
     private renderScrollSection(vm: ActiveLoginViewModel): VNode {
-
-        return <div key="scroller" id="scroller">
+        
+        return <div key={`scroller-${vm.characterName.canonicalValue}`} id="scroller">
             {this.renderPinnedChannelsSection(vm)}
             {this.renderUnpinnedChannelsSection(vm)}
             {this.renderPrivateMessagesSection(vm)}
