@@ -9,6 +9,7 @@ import { MouseButton } from "../util/EventListenerUtil";
 import { HTMLUtils } from "../util/HTMLUtils";
 import { ObservableValue } from "../util/Observable";
 import { ObservableExpression } from "../util/ObservableExpression";
+import { StringUtils } from "../util/StringUtils";
 import { URLUtils } from "../util/URLUtils";
 import { WhenChangeManager } from "../util/WhenChange";
 import { ChatBBCodeParser } from "../util/bbcode/BBCode";
@@ -141,7 +142,21 @@ export class CharactersCollectionView extends CollectionViewLightweight<KeyValue
         const elStatusDot = cStatusDot.element;
         disposables.push(cStatusDot);
 
-        const elName = EL("div", { class: "sectionitems-item-name" }, [ vm.value ]);
+        const elName = EL("div", { class: "sectionitems-item-name" }, [ ]);
+
+        const updateElName = () => {
+            HTMLUtils.clearChildren(elName);
+            elName.appendChild(document.createTextNode(vm.value));
+            if (this.activeLoginViewModel) {
+                const xnn = this.activeLoginViewModel.getConfigSettingById("nickname", { characterName: vm }) as (string | null | undefined);
+                if (!StringUtils.isNullOrWhiteSpace(xnn)) {
+                    elName.appendChild(document.createTextNode(" "));
+                    elName.appendChild(EL("span", { class: "nickname" }, [ `(${xnn})` ]));
+                }
+            }
+        };
+        updateElName();
+
         const elSubText = EL("div", { class: "sectionitems-item-subtext" }, [ "" ]);
 
         const el = EL("div", { class: "watchedchar" }, [
@@ -180,7 +195,8 @@ export class CharactersCollectionView extends CollectionViewLightweight<KeyValue
             const updateDisplay = (cs: CharacterStatus) => {
                 wcm.assign({ cs }, () => {
                     cStatusDot.status = cs.status;
-                    elName.innerText = cs.characterName.value;
+                    //elName.innerText = cs.characterName.value;
+                    updateElName();
                     const className = `gender-${CharacterGenderConvert.toString(cs.gender).toLowerCase()}`;
                     elName.classList.add(className);
                     elName.classList.toggle("char-is-bookmark", this.activeLoginViewModel!.bookmarks.has(cs.characterName));

@@ -6,22 +6,35 @@ import { getContentText } from "../BBCode";
 import { BBCodeTag } from "../BBCodeTag";
 
 export const BBCodeTagUser = new BBCodeTag("user", true, false, (context, arg, content) => {
-    const contentText = getContentText(content);
-
+    const origContentText = getContentText(content);
+    let contentText = origContentText.trim();
+    
     if (content.rawCloseTag == "") {
         return document.createTextNode(content.rawOpenTag + contentText);
     }
 
+    let nickname: (string | null) = null;
+    if (context.parseOptions.activeLoginViewModel && CharacterName.isValidCharacterName(contentText.trim())) {
+        const alvm = context.parseOptions.activeLoginViewModel;
+        const xnn = alvm.getConfigSettingById("nickname", { characterName: CharacterName.create(contentText.trim())}) as (string | null | undefined);
+        if (xnn) {
+            contentText = contentText.trim();
+            nickname = xnn;
+        }
+    }
+
     const x = EL("span", { 
         class: "bbcode-user", 
-        "data-target": getContentText(content),
-        "data-copycontent": `${content.rawOpenTag}${contentText}${content.rawCloseTag}`
+        "data-target": contentText,
+        "data-copycontent": `${content.rawOpenTag}${origContentText}${content.rawCloseTag}`
     }, [ 
         EL("div", {
             class: "bbcode-user-icon",
             "data-copycontent": ""
         }),
-        contentText 
+        origContentText,
+        nickname ? " " : null,
+        nickname ? EL("span", { class: "nickname" }, [ `(${nickname})` ]) : null
     ]);
     if (context.parseOptions.appViewModel != null && context.parseOptions.activeLoginViewModel != null) {
         const avm = context.parseOptions.appViewModel;

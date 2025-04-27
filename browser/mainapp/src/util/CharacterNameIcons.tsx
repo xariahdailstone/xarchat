@@ -5,6 +5,8 @@ import { ChannelViewModel } from "../viewmodel/ChannelViewModel";
 import { ChatChannelViewModel } from "../viewmodel/ChatChannelViewModel";
 import { asDisposable, IDisposable } from "./Disposable";
 import { EL } from "./EL";
+import { HTMLUtils } from "./HTMLUtils";
+import { StringUtils } from "./StringUtils";
 
 const ICON_SERVEROP = "\u{1F451}";  // crown emoji
 const ICON_CHANOWNER = "\u{1F48E}";  // gem emoji
@@ -39,6 +41,8 @@ interface EffectiveCharacterNameInfo {
     wrapperClasses: { [any: string]: boolean };
     additionalWrapperClasses: string[];
     displayIcons: { title: string, iconText: string }[];
+
+    nickname: string | null;
 }
 
 function getEffectiveCharacterNameInfo(character: CharacterName, vm: ChannelViewModel | ActiveLoginViewModel): EffectiveCharacterNameInfo {
@@ -54,7 +58,8 @@ function getEffectiveCharacterNameInfo(character: CharacterName, vm: ChannelView
         isIgnored: false,
         wrapperClasses: {},
         additionalWrapperClasses: [],
-        displayIcons: []
+        displayIcons: [],
+        nickname: null
     };
 
     const chatChannelVM = (vm instanceof ChatChannelViewModel) ? vm : null;
@@ -140,6 +145,13 @@ function getEffectiveCharacterNameInfo(character: CharacterName, vm: ChannelView
         res.additionalWrapperClasses.push("is-ignored");
     }
 
+    if (sessionVM) {
+        const nnsetting = sessionVM.getConfigSettingById("nickname", { characterName: character }) as (string | null | undefined);
+        if (!StringUtils.isNullOrWhiteSpace(nnsetting)) {
+            res.nickname = nnsetting;
+        }
+    }
+
     return res;
 }
 
@@ -159,6 +171,11 @@ export function getEffectiveCharacterNameVNodes(character: CharacterName, vm: Ch
     }
     else {
         nodes.push(character.value);
+    }
+
+    if (ecni.nickname) {
+        nodes.push(" ");
+        nodes.push(<span classList={["nickname"]}>({ecni.nickname})</span>);
     }
 
     return <span class={wrapperClasses}>{nodes}</span>;
@@ -188,6 +205,11 @@ export function getEffectiveCharacterNameDocFragment(character: CharacterName, v
         wrapperEl.appendChild(document.createTextNode(character.value));
     }
 
+    if (ecni.nickname) {
+        wrapperEl.appendChild(document.createTextNode(" "));
+        wrapperEl.appendChild(EL("SPAN", { class: "nickname" }, [ `(${ecni.nickname})` ]));
+    }
+
     return result;
 }
 
@@ -211,12 +233,13 @@ export function getEffectiveCharacterName(character: CharacterName, vm: ChannelV
         wrapperClasses.push(addtlClass);
     }
 
-    if (icons.length > 0) {
-        return `<span class="${wrapperClasses.join(' ')}">${icons.join('')} ${character.value}</span>`;
+    const nameStr = (icons.length > 0) ? ` ${character.value}` : character.value;
+    let nnStr = "";
+    if (ecni.nickname) {
+        nnStr = ` <span class="nickname">(${HTMLUtils.escapeHTML(ecni.nickname)})</span>`;
     }
-    else {
-        return `<span class="${wrapperClasses.join(' ')}">${character.value}</span>`;
-    }
+
+    return `<span class="${wrapperClasses.join(' ')}">${icons.join('')}${nameStr}${nnStr}</span>`;
 }
 
 export function getEffectiveCharacterNameWatcher(character: CharacterName, vm: ChannelViewModel | ActiveLoginViewModel, callback: (name: DocumentFragment) => void): IDisposable {

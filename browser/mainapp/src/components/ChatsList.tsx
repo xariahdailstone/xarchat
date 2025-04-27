@@ -14,6 +14,7 @@ import { HTMLUtils } from "../util/HTMLUtils.js";
 import { ObjectUniqueId } from "../util/ObjectUniqueId.js";
 import { ObservableExpression } from "../util/ObservableExpression.js";
 import { Optional } from "../util/Optional.js";
+import { StringUtils } from "../util/StringUtils.js";
 import { WhenChangeManager } from "../util/WhenChange.js";
 import { KeyValuePair } from "../util/collections/KeyValuePair.js";
 import { ActiveLoginViewModel } from "../viewmodel/ActiveLoginViewModel.js";
@@ -503,6 +504,7 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
         let typingIndicatorNode: VNode | null = null;
         let nameClasses: string[] = [];
         let title: string;
+        let nickname: (string | null) = null;
         let charStatusDot: VNode | null = null;
         if (isChatChannel) {
             const ccvm = cvm as ChatChannelViewModel;
@@ -540,6 +542,10 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
             }
 
             title = pcvm.character.value;
+            const xnickname = pcvm.getConfigSettingById("nickname") as (string | null | undefined);
+            if (!StringUtils.isNullOrWhiteSpace(xnickname)) {
+                nickname = xnickname;
+            }
 
             charStatusDot = StatusDotVNodeBuilder.getStatusDotVNode(cs);
         }
@@ -658,6 +664,10 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
             mainAttributes["data-has-alert"] = "true";
         }
 
+        const nicknameNode: VNode | null = nickname == null
+            ? null
+            : <span>{" "}<span classList={["nickname"]}>{`(${nickname})`}</span></span>;
+
         return <div key={itemKey} classList={["sectionitems-item"]} attrs={mainAttributes} on={mainEvents}>
             <div classList={["sectionitems-item-inner", 
                     isChatChannel ? "chatchannel" : isPMConvo ? "pmconvo" : "", 
@@ -671,7 +681,7 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
                     <div classList={["sectionitems-item-typingindicator-container"]}>{typingIndicatorNode}</div>
                 </div>
                 <div classList={["sectionitems-item-titleicon", cvm.hasPing ? "visible" : "not-visible"]}>{pingNode}</div>
-                <div classList={["sectionitems-item-name", ...nameClasses]}>{title}</div>
+                <div classList={["sectionitems-item-name", ...nameClasses]}>{title}{nicknameNode}</div>
                 <div classList={["pin-icon-container"]}>{pinNode}</div>
                 <div classList={["close-icon-container"]}>{closeNode}</div>
             </div>

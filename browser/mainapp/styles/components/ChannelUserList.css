@@ -58,6 +58,8 @@
     font-family: var(--chat-font-family);
     font-weight: bold;
 
+    overflow: hidden;
+    max-width: 100%;
 }
 
 .statusdot { grid-area: statusdot; }
@@ -67,4 +69,13 @@
     white-space: nowrap;
     text-overflow: ellipsis;
     overflow: hidden;
+}
+
+.character-link {
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+}
+.nickname {
+    font-weight: normal;
 }
