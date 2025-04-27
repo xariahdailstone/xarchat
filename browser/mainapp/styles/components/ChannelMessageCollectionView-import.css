@@ -107,6 +107,8 @@
 }
 */
 
+.nickname { font-weight: normal; }
+
 .messageitem.displaystyle-discord .message-content-container { display: flex; flex-direction: column; }
 .messageitem.displaystyle-discord:not(.system) {
     --icon-height: 42px;

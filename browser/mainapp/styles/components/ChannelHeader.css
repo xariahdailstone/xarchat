@@ -44,6 +44,10 @@
     grid-area: title;
 
     font-weight: bold;
+
+    .nickname {
+        font-weight: normal;
+    }
 }
 
 .online-status-container { grid-area: onlinestatus; display: none; }
