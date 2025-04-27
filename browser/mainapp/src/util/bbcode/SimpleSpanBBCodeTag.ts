@@ -6,13 +6,19 @@ export class SimpleSpanBBCodeTag extends BBCodeTag {
         tagName: string,
         options?: SimpleSpanBBCodeTagOptions
     ) {
-        super(tagName, true, false, (context, arg, content) => {
-            return EL(options?.htmlElementName ?? "div", {
-                class: options?.htmlClassName ?? `bbcode-${tagName.toLowerCase()}`,
-                "data-copyprefix": content.rawOpenTag,
-                "data-copysuffix": content.rawCloseTag,
-                "data-copyinline": "true"
-            }, content.nodes);
+        super({
+            tagName: tagName,
+            hasClosingTag: true,
+            acceptArg: false,
+            convert: (context, arg, content) => {
+                return EL(options?.htmlElementName ?? "div", {
+                    class: options?.htmlClassName ?? `bbcode-${tagName.toLowerCase()}`,
+                    "data-copyprefix": content.rawOpenTag,
+                    "data-copysuffix": content.rawCloseTag,
+                    "data-copyinline": "true"
+                }, content.nodes)
+            },
+            disallowedContainedTags: options?.disallowedContainedTags
         });
     }
 }
@@ -20,4 +26,5 @@ export class SimpleSpanBBCodeTag extends BBCodeTag {
 export interface SimpleSpanBBCodeTagOptions {
     htmlElementName?: string;
     htmlClassName?: string;
+    disallowedContainedTags?: string[];
 }

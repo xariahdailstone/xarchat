@@ -87,11 +87,17 @@ export class CharacterStatusEditDialog extends DialogComponentBase<CharacterStat
             }
         })
 
-        elTextarea.addEventListener("focus", () => {
-            this._textAreaHasFocus = true;
-        });
-        elTextarea.addEventListener("blur", () => {
-            this._textAreaHasFocus = false;
+        // elTextarea.addEventListener("focus", () => {
+        //     this._textAreaHasFocus = true;
+        // });
+        // elTextarea.addEventListener("blur", () => {
+        //     this._textAreaHasFocus = false;
+        // });
+        elTextarea.addEventListener("keydown", (ev: KeyboardEvent) => {
+            if (ev.keyCode == KeyCodes.RETURN && ev.shiftKey) {
+                //ev.preventDefault();
+                ev.stopPropagation();
+            }
         });
 
         elOnlineStatusSelect.addEventListener("change", () => {
@@ -105,14 +111,14 @@ export class CharacterStatusEditDialog extends DialogComponentBase<CharacterStat
         });
     }
 
-    private _textAreaHasFocus: boolean = false;
+    // private _textAreaHasFocus: boolean = false;
 
-    override shouldPreventKeyboardDefault(ev: KeyboardEvent): boolean {
-        if (this._textAreaHasFocus) {
-            if (ev.keyCode == KeyCodes.RETURN && ev.shiftKey) {
-                return true;
-            }
-        }
-        return false;
-    }
+    // override shouldPreventKeyboardDefault(ev: KeyboardEvent): boolean {
+    //     if (this._textAreaHasFocus) {
+    //         if (ev.keyCode == KeyCodes.RETURN && ev.shiftKey) {
+    //             return true;
+    //         }
+    //     }
+    //     return false;
+    // }
 }

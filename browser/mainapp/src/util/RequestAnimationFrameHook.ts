@@ -60,7 +60,7 @@ export function hookRequestAnimationFrame() {
             _currentTimeoutHandle = window.setTimeout(() => {
                 _currentTimeoutHandle = null;
                 processRAFEvents(window.performance.now());
-            }, 1000);
+            }, 250);
         }
         return myNumber;
     };

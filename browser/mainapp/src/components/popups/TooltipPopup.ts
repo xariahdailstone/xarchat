@@ -91,6 +91,14 @@ export class TooltipPopup extends ContextPopupBase<TooltipPopupViewModel> {
         this.watchExpr(vm => vm.text, v => {
             elBody.innerText = (v != null) ? v : "";
         });
+        this.whenConnectedWithViewModel(vm => {
+            if (vm.flashDisplay) {
+                this.elMain.classList.add("flash-display");
+                this.elMain.addEventListener("animationend", (e) => {
+                    vm.dismissed();
+                });
+            }
+        });
     }
 
     private static POSITION_STRATEGIES = [

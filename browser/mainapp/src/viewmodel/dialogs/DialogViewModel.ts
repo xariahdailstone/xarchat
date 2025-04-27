@@ -1,5 +1,7 @@
 import { CallbackSet } from "../../util/CallbackSet";
 import { SnapshottableSet } from "../../util/collections/SnapshottableSet";
+import { StdObservableSortedView } from "../../util/collections/StdObservableSortedView";
+import { StdObservableFilteredView, StdObservableSortedList } from "../../util/collections/StdObservableView";
 import { asDisposable, IDisposable } from "../../util/Disposable";
 import { KeyCodes } from "../../util/KeyCodes";
 import { ObservableBase, observableProperty } from "../../util/ObservableBase";
@@ -23,6 +25,8 @@ export abstract class DialogViewModel<TResult> extends ObservableBase {
     @observableProperty
     buttons: Collection<DialogButtonViewModel> = new Collection();
 
+    autoSortButtonsOnShow: boolean = true;
+
     @observableProperty
     captionButtons: Collection<DialogCaptionButtonViewModel> = new Collection();
 
@@ -32,6 +36,33 @@ export abstract class DialogViewModel<TResult> extends ObservableBase {
     @observableProperty
     get closed() { return this._closed; }
     private set closed(value: boolean) { this._closed = value;}
+
+    private getButtonSortOrder(btn: DialogButtonViewModel) { 
+        let baseValue: number;
+        switch (btn.style) {
+            case DialogButtonStyle.CANCEL:
+                baseValue = 0;
+                break;
+            case DialogButtonStyle.BACKOFF:
+                baseValue = 1000;
+                break;
+            case DialogButtonStyle.NORMAL:
+                baseValue = 2000;
+                break;
+            case DialogButtonStyle.DEFAULT:
+                baseValue = 3000;
+                break;
+        }
+        return baseValue + this.buttons.indexOf(btn);
+    }
+
+    onShowing() {
+        if (this.autoSortButtonsOnShow) {
+            this.buttons.sortBy((a, b) => {
+                return this.getButtonSortOrder(a) - this.getButtonSortOrder(b);
+            });
+        }
+    }
 
     close(result: TResult) {
         this.dialogResult = result;

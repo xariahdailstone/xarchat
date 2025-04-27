@@ -340,6 +340,10 @@
     text-overflow: ellipsis;
     text-wrap: nowrap;
     overflow: hidden;
+
+    .nickname {
+        color: var(--fg-level-3);
+    }
 }
 
 .pin-icon-container {

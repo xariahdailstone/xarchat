@@ -4,6 +4,7 @@ import { BBCodeParseOptions, ChatBBCodeParser } from "../util/bbcode/BBCode.js";
 import { asDisposable, IDisposable } from "../util/Disposable.js";
 import { HTMLUtils } from "../util/HTMLUtils.js";
 import { ResizeObserverNice } from "../util/ResizeObserverNice.js";
+import { StringUtils } from "../util/StringUtils.js";
 import { URLUtils } from "../util/URLUtils.js";
 import { WhenChangeManager } from "../util/WhenChange.js";
 import { ChannelViewModel } from "../viewmodel/ChannelViewModel.js";
@@ -53,13 +54,95 @@ export class ChannelHeader extends ComponentBase<ChannelViewModel> {
 
         const elDescriptionShowMore = this.$("elDescriptionShowMore") as HTMLButtonElement;
 
-        this.elMain.addEventListener("contextmenu", (e: Event) => {
+        this.elMain.addEventListener("contextmenu", (e: MouseEvent) => {
             const vm = this.viewModel;
             if (vm instanceof ChatChannelViewModel) {
-                const menuvm = new ContextMenuPopupViewModel<() => any>(vm.appViewModel, this.elMain);
+                const menuvm = new ContextMenuPopupViewModel<() => any>(vm.appViewModel, new DOMRect(e.clientX, e.clientY, 1, 1));
+                const isChanOp = vm.isEffectiveOp(vm.activeLoginViewModel.characterName);
+                const isChanOwner = vm.isEffectiveOwner(vm.activeLoginViewModel.characterName);
+
+                menuvm.addMenuItem("Copy BBCode Link to Channel", () => {
+                    navigator.clipboard.writeText(`[session=${vm.title}]${vm.name.value}[/session]`);
+                    menuvm.dismissed();
+                });
+
+                menuvm.addMenuItem("List Channel Operators", () => {
+                    vm.getChannelOpListAsync();
+                    menuvm.dismissed();
+                });
+
+                if (isChanOp) {
+                    menuvm.addSeparator();
+
+                    menuvm.addMenuItem("List Channel Bans", () => {
+                        vm.getBanListAsync();
+                        menuvm.dismissed();
+                    });
+                    menuvm.addMenuItem("Kick a Character From Channel...", () => {
+                        vm.kickAsync();
+                        menuvm.dismissed();
+                    });
+                    menuvm.addMenuItem("Timeout a Character From Channel...", () => {
+                        // TODO:
+                        vm.appViewModel.alertAsync("Not yet implemented, use the /timeout command instead.");
+                        menuvm.dismissed();
+                    });
+                    menuvm.addMenuItem("Ban a Character From Channel...", () => {
+                        vm.banAsync();
+                        menuvm.dismissed();
+                    });
+                    menuvm.addMenuItem("Unban a Character From Channel...", () => {
+                        vm.unbanAsync();
+                        menuvm.dismissed();
+                    });
+
+                    menuvm.addMenuItem("Invite Character to Channel...", () => {
+                        vm.inviteAsync();
+                        menuvm.dismissed();
+                    });
+    
+                    menuvm.addSeparator();
+
+                    menuvm.addMenuItem("Open Channel to Public", () => {
+                        vm.changeChannelPrivacyStatusAsync("public");
+                        menuvm.dismissed();
+                    });
+                    menuvm.addMenuItem("Close Channel to Public", () => {
+                        vm.changeChannelPrivacyStatusAsync("private");
+                        menuvm.dismissed();
+                    });
+
+                    menuvm.addMenuItem("Change Channel Description...", () => {
+                        vm.changeDescriptionAsync();
+                        menuvm.dismissed();
+                    });
+                }
+
+                if (isChanOwner) {
+                    menuvm.addSeparator();
+
+                    menuvm.addMenuItem("Add Channel Moderator...", () => {
+                        vm.opAsync();
+                        menuvm.dismissed();
+                    });
+                    menuvm.addMenuItem("Remove Channel Moderator...", () => {
+                        vm.deopAsync();
+                        menuvm.dismissed();
+                    });
+
+                    menuvm.addSeparator();
+                    menuvm.addMenuItem("Give Ownership of Channel...", () => {
+                        // TODO:
+                        vm.appViewModel.alertAsync("Not yet implemented, use the /makeowner command instead.");
+                        menuvm.dismissed();
+                    });
+                }
+
+                menuvm.addSeparator();
                 menuvm.addMenuItem("Report Channel...", () => {
                     const reportvm = new ReportViewModel(vm.activeLoginViewModel, ReportSource.CHANNEL_HEADER, undefined, vm);
                     vm.appViewModel.showDialogAsync(reportvm);
+                    menuvm.dismissed();
                 });
                 menuvm.onValueSelected = (v) => v();
                 vm.appViewModel.popups.push(menuvm);
@@ -74,9 +157,31 @@ export class ChannelHeader extends ComponentBase<ChannelViewModel> {
         this.watchExpr(vm => vm.iconUrl, v => {
             elIcon.src = v ? v : URLUtils.getEmptyImageUrl();
         });
-        this.watchExpr(vm => vm.title, v => {
-            elTitle.innerText = v ? v : "(none)";
-        });
+
+        const updateChannelTitle = () => {
+            const v = this.viewModel;
+            let nickname: (string | null) = null;
+            if (v) {
+                const xnn = v.getConfigSettingById("nickname") as (string | null | undefined);
+                if (!StringUtils.isNullOrWhiteSpace(xnn)) {
+                    nickname = xnn;
+                }
+            }
+            if (v && v.title) {
+                if (nickname) {
+                    elTitle.innerHTML = `${HTMLUtils.escapeHTML(v.title)} <span class="nickname">(${HTMLUtils.escapeHTML(nickname)})</span>`;
+                }
+                else {
+                    elTitle.innerText = v.title;
+                }
+            }
+            else {
+                elTitle.innerText = "(none)";    
+            }
+        };
+        this.watchExpr(vm => vm.title, updateChannelTitle);
+        this.watchExpr(vm => vm instanceof PMConvoChannelViewModel ? vm.getConfigSettingById("nickname") : null, updateChannelTitle);
+
         this.watchExprTyped(ChatChannelViewModel, vm => vm.messageMode, v => {
             let mode: string;
             switch (v) {

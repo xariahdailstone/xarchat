@@ -105,7 +105,7 @@ export class SettingsDialog extends DialogComponentBase<SettingsDialogViewModel>
             settingClasses.push("setting-item");
             switch (setting.schema.type) {
                 case "text":
-                    inner = this.renderSettingText(setting.schema);
+                    inner = this.renderSettingText(setting);
                     break;
                 case "boolean":
                     inner = this.renderSettingBoolean(setting);
@@ -183,9 +183,39 @@ export class SettingsDialog extends DialogComponentBase<SettingsDialogViewModel>
         }
     }
 
-    private renderSettingText(setting: ConfigSchemaItemDefinitionItem): VNode {
-        //return <input classList={["setting-entry", "setting-entry-text"]} attr-type="text"></input>
-        return <></>;
+    private renderSettingText(setting: SettingsDialogItemViewModel): VNode {
+
+        const hooks: Hooks = {
+            postpatch: (o, n) => {
+                const elInput = (n.elm as HTMLInputElement);
+                if (elInput.value != setting.value) {
+                    elInput.value = setting.value;
+                }
+            }
+        }
+
+        const onValueChange = (e: Event) => {
+            const txtValue = (e.target as HTMLInputElement).value;
+            if (setting.value != txtValue) {
+                setting.value = txtValue;
+            }
+        };
+
+        const attrs: Attrs = {
+            "text": "text"
+        };
+        if (setting.schema.maxLength != null) {
+            attrs["maxlength"] = setting.schema.maxLength.toString();
+        }
+
+        return <input classList={["setting-entry", "setting-entry-text", "themed"]}
+            attrs={attrs}
+            hook={hooks}
+            props={{ value: setting.value }}
+            on={{
+                "input": onValueChange,
+                "change": onValueChange
+            }}></input>
     }
 
     private renderSettingBoolean(setting: SettingsDialogItemViewModel): VNode {

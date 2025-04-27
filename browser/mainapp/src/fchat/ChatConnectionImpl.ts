@@ -7,9 +7,9 @@ import { TypingStatus, TypingStatusConvert } from "../shared/TypingStatus";
 import { AsyncBuffer } from "../util/AsyncBuffer";
 import { ChatChannelMessageMode, ChatChannelMessageModeConvert } from "../viewmodel/ChatChannelViewModel";
 import { BottleSpinData, ChatConnectionSink, ChatDisconnectReason, RollData, completeSink } from "./ChatConnectionSink";
-import { ServerADLMessage, ServerAOPMessage, ServerBROMessage, ServerCBUMessage, ServerCDSMessage, ServerCHAMessage, ServerCIUMessage, ServerCKUMessage, ServerCOAMessage, ServerCOLMessage, ServerCONMessage, ServerCORMessage, ServerCSOMessage, ServerCTUMessage, ServerERRMessage, ServerFLNMessage, ServerFRLMessage, ServerHLOMessage, ServerICHMessage, ServerIDNMessage, ServerIGNMessage, ServerJCHMessage, ServerLCHMessage, ServerLISMessage, ServerLRPMessage, ServerMSGMessage, ServerNLNMessage, ServerORSMessage, ServerPRIMessage, ServerRLLMessage, ServerRTBMessage, ServerSTAMessage, ServerSYSMessage, ServerTPNMessage, ServerVARMessage, ServerXHMMessage } from "./ServerMessages";
+import { ServerADLMessage, ServerAOPMessage, ServerBROMessage, ServerCBUMessage, ServerCDSMessage, ServerCHAMessage, ServerCIUMessage, ServerCKUMessage, ServerCOAMessage, ServerCOLMessage, ServerCONMessage, ServerCORMessage, ServerCSOMessage, ServerCTUMessage, ServerERRMessage, ServerFLNMessage, ServerFRLMessage, ServerHLOMessage, ServerICHMessage, ServerIDNMessage, ServerIGNMessage, ServerJCHMessage, ServerLCHMessage, ServerLISMessage, ServerLRPMessage, ServerMSGMessage, ServerNLNMessage, ServerORSMessage, ServerPRIMessage, ServerRLLMessage, ServerRMOMessage, ServerRTBMessage, ServerSTAMessage, ServerSYSMessage, ServerTPNMessage, ServerVARMessage, ServerXHMMessage } from "./ServerMessages";
 import { ChatMessage, Handleable, TypedChatMessage, HandleableTypedChatMessage, HandleableChatMessage } from "./ChatConnectionFactory";
-import { ChannelMetadata, ChatConnection, IdentificationFailedError, PartnerSearchArgs, PartnerSearchResult } from "./ChatConnection";
+import { ChannelBanListInfo, ChannelMetadata, ChannelOpListInfo, ChatConnection, IdentificationFailedError, PartnerSearchArgs, PartnerSearchResult } from "./ChatConnection";
 import { IncomingMessageSink } from "./IncomingMessageSink";
 import { PromiseSource } from "../util/PromiseSource";
 import { Mutex } from "../util/Mutex";
@@ -45,6 +45,9 @@ const ERRAsFailure = (msg: ChatMessage) => {
         throw new ServerError(msg);
     }
 };
+
+const COL_RESP_PREFIX = "Channel moderators for ";
+const CBL_RESP_PREFIX = "Channel bans for ";
 
 let nextChatConnId = 1;
 
@@ -422,15 +425,26 @@ export class ChatConnectionImpl implements ChatConnection {
         this._incomingMessageBuffer.enqueue(data);
     }
 
+    private readonly FLOOD_LIMIT = 5;
+
     private _incomingDataLoopEnded = false;
     private async processIncomingDataLoop() {
         const cancellationToken = this._disposeCTS.token;
 
         try {
             let i = 0;
+            let handledMessageFloodCount = 0;
             while (true) { // TODO: exit condition
                 //this.logger.logDebug("readmsg", ++i);
                 const data = await this._incomingMessageBuffer.dequeueAsync(cancellationToken);
+                handledMessageFloodCount++;
+
+                // if (handledMessageFloodCount >= this.FLOOD_LIMIT) {
+                //     const ps = new PromiseSource<void>();
+                //     window.requestIdleCallback(() => { ps.tryResolve(); });
+                //     handledMessageFloodCount = 0;
+                // }
+
                 try {
                     //this.logger.logDebug("gotmsg", i);
                     const msg = this.parseChatMessage(data);
@@ -725,6 +739,12 @@ export class ChatConnectionImpl implements ChatConnection {
         const u = msg.body.users.map(x => CharacterName.create(x.identity));
         this.sink.channelCharactersJoined(chanName, u, true);
 
+        msg.handled = true;
+    }
+
+    private handleRMOMessage(msg: HandleableTypedChatMessage<ServerRMOMessage>) {
+        const chanName = ChannelName.create(msg.body.channel);
+        this.sink.channelModeChanged(chanName, ChatChannelMessageModeConvert.toMode(msg.body.mode) ?? ChatChannelMessageMode.BOTH);
         msg.handled = true;
     }
 
@@ -1305,20 +1325,66 @@ export class ChatConnectionImpl implements ChatConnection {
         });
     }
 
-    async getChannelBanListAsync(channel: ChannelName): Promise<void> { 
+    async getChannelBanListAsync(channel: ChannelName): Promise<ChannelBanListInfo> { 
+        let result: ChannelBanListInfo = {
+            channelTitle: channel.value,
+            bans: []
+        };
+
         await this.bracketedSendAsync({
             code: "CBL", body: {
                 channel: channel.value
             }
+        }, (rmsg) => {
+            if (rmsg.code == "SYS" && (rmsg.body.message ?? "").startsWith(CBL_RESP_PREFIX)) {
+                const message = rmsg.body.message as string;
+                const colonPos = message.lastIndexOf(':');
+                result.channelTitle = message.substring(CBL_RESP_PREFIX.length, colonPos);
+                const opliststrs = message.substring(colonPos + 1).split(", ");
+                for (let opstr of opliststrs) {
+                    if (!StringUtils.isNullOrWhiteSpace(opstr)) {
+                        result.bans.push(CharacterName.create(opstr.trim()));
+                    }
+                }
+                rmsg.handled = true;
+            }
+            else {
+                ERRAsFailure(rmsg);
+            }
         });
+
+        return result;
     }
 
-    async getChannelOpListAsync(channel: ChannelName): Promise<void> { 
+    async getChannelOpListAsync(channel: ChannelName): Promise<ChannelOpListInfo> {
+        let result: ChannelOpListInfo = {
+            channelTitle: channel.value,
+            ops: []
+        };
+
         await this.bracketedSendAsync({
             code: "COL", body: {
                 channel: channel.value
             }
+        }, (rmsg) => {
+            if (rmsg.code == "SYS" && (rmsg.body.message ?? "").startsWith(COL_RESP_PREFIX)) {
+                const message = rmsg.body.message as string;
+                const colonPos = message.lastIndexOf(':');
+                result.channelTitle = message.substring(COL_RESP_PREFIX.length, colonPos);
+                const opliststrs = message.substring(colonPos + 1).split(", ");
+                for (let opstr of opliststrs) {
+                    if (!StringUtils.isNullOrWhiteSpace(opstr)) {
+                        result.ops.push(CharacterName.create(opstr.trim()));
+                    }
+                }
+                rmsg.handled = true;
+            }
+            else {
+                ERRAsFailure(rmsg);
+            }
         });
+
+        return result;
     }
 
     async channelAddOpAsync(channel: ChannelName, character: CharacterName): Promise<void> { 

@@ -7,7 +7,16 @@ import { PopupBase } from "./PopupFrame";
 
 export type Size = { width: number; height: number; };
 export type Rect = { x: number; y: number; width: number; height: number; };
-export type PositionTestFunc = (viewportSize: Size, aroundRect: Rect, desiredSize: Size) => Rect & { enforceSize?: boolean };
+export type PositionTestFuncResult = Rect & { 
+    enforceSize?: boolean, 
+    enforceMaxWidth?: boolean,
+    enforceMaxHeight?: boolean,
+    strictSize?: boolean, 
+    strictWidth?: boolean, 
+    strictHeight?: boolean 
+};
+export type PositionTestFunc = (viewportSize: Size, aroundRect: Rect, desiredSize: Size) => PositionTestFuncResult;
+
 function getRectOverlap(a: Rect, b: Rect): Rect {
     const top = Math.max(a.y, b.y);
     const left = Math.max(a.x, b.x);
@@ -143,13 +152,24 @@ export abstract class ContextPopupBase<TViewModel extends ContextPopupViewModel>
 
     protected getPoparoundRect(): Rect {
         const popFromElement = this.viewModel?.contextElement;
-        const isConnected = this.isComponentConnected;
-        const viewportRect = this.getViewportRect();
 
         let elRect: Rect;
-        if (popFromElement && isConnected) {
-            elRect = popFromElement.getClientRects().item(0)!;
-            elRect = { x: elRect.x - viewportRect.x, y: elRect.y - viewportRect.y, width: elRect.width, height: elRect.height };
+        const viewportRect = this.getViewportRect();
+
+        if (popFromElement) {
+            const isConnected = this.isComponentConnected;
+        
+            if (popFromElement && isConnected) {
+                elRect = popFromElement.getClientRects().item(0)!;
+                elRect = { x: elRect.x - viewportRect.x, y: elRect.y - viewportRect.y, width: elRect.width, height: elRect.height };
+            }
+            else {
+                elRect = { x: 0, y: 0, width: 0, height: 0 };
+            }
+        }
+        else if (this.viewModel?.contextRect) {
+            const cr = this.viewModel.contextRect;
+            elRect = { x: cr.x - viewportRect.x, y: cr.y - viewportRect.y, width: cr.width, height: cr.height };
         }
         else {
             elRect = { x: 0, y: 0, width: 0, height: 0 };
@@ -166,7 +186,7 @@ export abstract class ContextPopupBase<TViewModel extends ContextPopupViewModel>
     private positionPopup() {
         if (this.positionFrozen) { return; }
         
-        const popFromElement = this.viewModel?.contextElement;
+        //const popFromElement = this.viewModel?.contextElement;
         const isConnected = this.isComponentConnected;
 
         const viewportRect = this.getViewportRect();
@@ -183,11 +203,11 @@ export abstract class ContextPopupBase<TViewModel extends ContextPopupViewModel>
             ww: windowWidth, wh: windowHeight }, () => {
 
             try {
-                if (popFromElement && isConnected) {
+                if (/* popFromElement && */ isConnected) {
                     //const elRect = popFromElement.getClientRects().item(0)!;
                     const desiredSize = this.getMyDesiredSize();
                     const vpSize = viewportRect;
-                    let displayRect: ((Rect & { enforceSize?: boolean }) | null) = null;
+                    let displayRect: (PositionTestFuncResult | null) = null;
                     let bestSizeSoFar: number = 0;
 
                     for (let strat of this.getPositionStrategies()) {
@@ -207,9 +227,17 @@ export abstract class ContextPopupBase<TViewModel extends ContextPopupViewModel>
                     if (this.freezePosition) {
                         this.positionFrozen = true;
                     }
-                    if (displayRect?.enforceSize) {
+                    if (displayRect?.enforceSize || displayRect?.enforceMaxWidth) {
                         this.style.maxWidth = `${displayRect?.width ?? vpSize.width}px`;
+                    }
+                    if (displayRect?.enforceSize || displayRect?.enforceMaxHeight) {
                         this.style.maxHeight = `${displayRect?.height ?? vpSize.height}px`;
+                    }
+                    if (displayRect?.strictSize || displayRect?.strictWidth) {
+                        this.style.width = `${displayRect?.width ?? vpSize.width}px`;
+                    }
+                    if (displayRect?.strictSize || displayRect?.strictHeight) {
+                        this.style.height = `${displayRect?.height ?? vpSize.height}px`;
                     }
                 }
             }

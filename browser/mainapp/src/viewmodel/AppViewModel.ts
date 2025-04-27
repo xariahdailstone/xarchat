@@ -27,6 +27,7 @@ import { PromptForStringOptions, PromptForStringViewModel, PromptOptions, Prompt
 import { SettingsDialogViewModel } from "./dialogs/SettingsDialogViewModel.js";
 import { ContextMenuPopupViewModel } from "./popups/ContextMenuPopupViewModel.js";
 import { PopupViewModel } from "./popups/PopupViewModel.js";
+import { TooltipPopupViewModel } from "./popups/TooltipPopupViewModel.js";
 import { UIZoomNotifyPopupViewModel } from "./popups/UIZoomNotifyPopupViewModel.js";
 
 export class AppViewModel extends ObservableBase {
@@ -213,6 +214,14 @@ export class AppViewModel extends ObservableBase {
         this.hasUnseenMessages = newUnseen;
     }
 
+    flashTooltipAsync(message: string, contextElement: HTMLElement, clientX: number, clientY: number) {
+        const ttvm = new TooltipPopupViewModel(this, contextElement);
+        ttvm.mousePoint = { x: clientX, y: clientY };
+        ttvm.text = message;
+        ttvm.flashDisplay = true;
+        this.popups.push(ttvm);
+    }
+
     alertAsync(message: string, title?: string, options?: Partial<AlertOptions>): Promise<void> {
         return this.showDialogAsync(new AlertViewModel(this, message, title, options));
     }
@@ -257,6 +266,7 @@ export class AppViewModel extends ObservableBase {
             for (let p of [...this.popups.iterateValues()]) {
                 p.dismissed();
             }
+            dialog.onShowing();
             this.dialogs.push(dialog);
         });
     }

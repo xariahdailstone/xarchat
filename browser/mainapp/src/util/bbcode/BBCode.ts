@@ -22,6 +22,7 @@ import { BBCodeTagCollapse } from "./tags/BBCodeTagCollapse";
 import { BBCodeTagColor } from "./tags/BBCodeTagColor";
 import { BBCodeTagEIcon } from "./tags/BBCodeTagEIcon";
 import { BBCodeTagHR } from "./tags/BBCodeTagHR";
+import { BBCodeTagHTML } from "./tags/BBCodeTagHTML";
 import { BBCodeTagHeading } from "./tags/BBCodeTagHeading";
 import { BBCodeTagI } from "./tags/BBCodeTagI";
 import { BBCodeTagIcon } from "./tags/BBCodeTagIcon";
@@ -29,6 +30,7 @@ import { BBCodeTagImg } from "./tags/BBCodeTagImg";
 import { BBCodeTagIndent } from "./tags/BBCodeTagIndent";
 import { BBCodeTagJustify } from "./tags/BBCodeTagJustify";
 import { BBCodeTagLeft } from "./tags/BBCodeTagLeft";
+import { BBCodeTagList, BBCodeTagListItem } from "./tags/BBCodeTagList";
 import { BBCodeTagNoParse } from "./tags/BBCodeTagNoParse";
 import { BBCodeTagQuote } from "./tags/BBCodeTagQuote";
 import { BBCodeTagRight } from "./tags/BBCodeTagRight";
@@ -140,6 +142,17 @@ export class BBCodeParser {
         });
         const tail = () => serStack[serStack.length - 1];
 
+        const isCurrentlyAllowedTag = (checkTagName: string) => {
+            for (let se of serStack) {
+                if (se.tag) {
+                    if (!se.tag.isAllowedContainedTag(checkTagName)) {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        };
+
         for (let tok of tokens) {
             switch (tok.type) {
                 case "text":
@@ -158,8 +171,9 @@ export class BBCodeParser {
                                         contentBuilder: [],
                                         rawTextContentBuilder: []
                                     });
+                                    gotIt = true;
                                 }
-                                else {
+                                else if (isCurrentlyAllowedTag(tok.tagName!)) {
                                     const converted = potentialTag.convert(parseContext, tok.tagArgument, { 
                                         nodes: [], 
                                         rawText: [],
@@ -173,8 +187,11 @@ export class BBCodeParser {
                                         tail().contentBuilder.push(converted);
                                     }
                                     tail().rawTextContentBuilder.push(tok.tagOrig!);
+                                    gotIt = true;
                                 }
-                                gotIt = true;
+                                else {
+                                    gotIt = false;
+                                }
                                 break;
                             }
                         }
@@ -187,24 +204,37 @@ export class BBCodeParser {
                 case "closingtag":
                     {
                         if (tok.tagName!.toLowerCase() == tail().tag?.tagName.toLowerCase()) {
-                            const content = tail().contentBuilder;
-                            const contentText = tail().rawTextContentBuilder;
-                            const converted = tail().tag?.convert(parseContext, tail().openToken!.tagArgument, { 
-                                nodes: content,
-                                rawText: contentText,
-                                rawOpenTag: tail().openToken!.tagOrig!,
-                                rawCloseTag: tok.tagOrig!
-                            });
-                            const popped = serStack.pop();
-                            if (converted instanceof Node) {
-                                tail().contentBuilder.push(converted);
+                            const xtail = serStack.pop()!;
+                            const content = xtail.contentBuilder;
+                            const contentText = xtail.rawTextContentBuilder;
+                            if (isCurrentlyAllowedTag(tok.tagName!)) {
+                                const converted = xtail.tag?.convert(parseContext, xtail.openToken!.tagArgument, { 
+                                    nodes: content,
+                                    rawText: contentText,
+                                    rawOpenTag: xtail.openToken!.tagOrig!,
+                                    rawCloseTag: tok.tagOrig!
+                                });
+                                
+                                if (converted instanceof Node) {
+                                    tail().contentBuilder.push(converted);
+                                }
+                                else if (converted instanceof Array) {
+                                    tail().contentBuilder.push(...converted);
+                                }
+                                tail().rawTextContentBuilder.push(xtail.openToken?.tagOrig!);
+                                tail().rawTextContentBuilder.push(...contentText);
+                                tail().rawTextContentBuilder.push(tok.tagOrig!);
                             }
-                            else if (converted instanceof Array) {
-                                tail().contentBuilder.push(...converted);
+                            else {
+                                tail().contentBuilder.push(...this.toTextNodes(xtail.openToken!.tagOrig!));
+                                tail().rawTextContentBuilder.push(xtail.openToken!.tagOrig!);
+
+                                tail().contentBuilder.push(...content);
+                                tail().rawTextContentBuilder.push(...contentText);
+
+                                tail().contentBuilder.push(...this.toTextNodes(tok.tagOrig!));
+                                tail().rawTextContentBuilder.push(tok.tagOrig!);
                             }
-                            tail().rawTextContentBuilder.push(popped?.openToken?.tagOrig!);
-                            tail().rawTextContentBuilder.push(...contentText);
-                            tail().rawTextContentBuilder.push(tok.tagOrig!);
                         }
                         else {
                             tail().contentBuilder.push(...this.toTextNodes(tok.tagOrig!));
@@ -341,25 +371,36 @@ export class BBCodeParser {
     private convertRawTextUrlsInTextNode(textNode: Node, options: BBCodeParseOptions, subdisposables: IDisposable[]): Node {
         let txt = textNode.textContent ?? "";
 
-        let hasChange = false;
         const re = /https?\:\/\/(\S+)/g;
         const matches: RegExpExecArray[] = [];
         let m;
         while (m = re.exec(txt)) {
             matches.push(m);
         }
-        for (let mi = matches.length - 1; mi >= 0; mi--) {
-            hasChange = true;
-            const tmatch = matches[mi];
-            const beforeStr = txt.substr(0, tmatch.index);
-            const afterStr = txt.substr(tmatch.index + tmatch[0].length);
-            txt = beforeStr + "[url]" + tmatch[0] + "[/url]" + afterStr;
-        }
-        
-        if (hasChange) {
-            const pr = this.parse(txt, options);
-            subdisposables.push(pr);
-            return pr.element;
+
+        if (matches.length > 0) {
+            const replSpan = EL("span");
+
+            for (let mi = matches.length - 1; mi >= 0; mi--) {
+                const tmatch = matches[mi];
+                const beforeStr = txt.substr(0, tmatch.index);
+                const afterStr = txt.substr(tmatch.index + tmatch[0].length);
+
+                if (beforeStr != "") {
+                    replSpan.appendChild(document.createTextNode(beforeStr));
+                }
+
+                const pr = this.parse("[url]" + tmatch[0] + "[/url]", options);
+                subdisposables.push(pr);
+                pr.element.setAttribute("data-copycontent", tmatch[0]);
+                replSpan.appendChild(pr.element);
+
+                if (afterStr != "") {
+                    replSpan.appendChild(document.createTextNode(afterStr));
+                }
+            }
+            
+            return replSpan;
         }
         else {
             return textNode;
@@ -539,27 +580,10 @@ const chatTags: BBCodeTag[] = [
     BBCodeTagNoParse
 ];
 
-const profileTags: BBCodeTag[] = [
-    ...chatTags,
-    BBCodeTagHeading,
-    BBCodeTagIndent,
-    //BBCodeTagHR,
-    BBCodeTagCollapse,
-    BBCodeTagCenter,
-    BBCodeTagLeft,
-    BBCodeTagRight,
-    BBCodeTagJustify,
-    BBCodeTagBig,
-    BBCodeTagSmall,
-    BBCodeTagImg,
-    BBCodeTagQuote
-]
-
 const profileMinusInlinesTags: BBCodeTag[] = [
     ...chatTags,
     BBCodeTagHeading,
     BBCodeTagIndent,
-    //BBCodeTagHR,
     BBCodeTagCollapse,
     BBCodeTagCenter,
     BBCodeTagLeft,
@@ -569,6 +593,18 @@ const profileMinusInlinesTags: BBCodeTag[] = [
     BBCodeTagSmall,
     BBCodeTagQuote
 ]
+
+const profileTags: BBCodeTag[] = [
+    ...profileMinusInlinesTags,
+    BBCodeTagImg
+]
+
+const systemMessageTags: BBCodeTag[] = [
+    ...profileMinusInlinesTags,
+    BBCodeTagList,
+    BBCodeTagListItem,
+    BBCodeTagHTML
+];
 
 const chatParser = new BBCodeParser();
 chatParser.tags.push(...chatTags);
@@ -579,12 +615,17 @@ profileParser.tags.push(...profileTags);
 const profileMinusInlinesParser = new BBCodeParser({ enableHRProcessing: true });
 profileMinusInlinesParser.tags.push(...profileMinusInlinesTags);
 
+const systemMessageParser = new BBCodeParser({ enableHRProcessing: true });
+systemMessageParser.tags.push(...systemMessageTags);
+
 export const ChatBBCodeParser: BBCodeParser = chatParser;
 export const ProfileBBCodeParser: BBCodeParser = profileParser;
 export const ProfileNoInlinesBBCodeParser: BBCodeParser = profileMinusInlinesParser;
+export const SystemMessageBBCodeParser: BBCodeParser = systemMessageParser;
 
 export const RegisteredBBCodeParsers: { [key: string]: BBCodeParser | undefined } = {
     "chat": chatParser,
     "profile": profileParser,
-    "profilenoimg": profileMinusInlinesParser
+    "profilenoimg": profileMinusInlinesParser,
+    "systemmessage": systemMessageParser
 }
