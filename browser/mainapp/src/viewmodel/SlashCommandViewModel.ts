@@ -19,6 +19,13 @@ export class SlashCommandViewModel {
         public readonly onInvoke: (context: ChannelViewModel, args: unknown[]) => Promise<string | void>) {
     }
 
+    showInHelp: boolean = true;
+
+    withShowInHelp(value: boolean): this {
+        this.showInHelp = value;
+        return this;
+    }
+
     grabArgumentValue(argType: keyof ArgumentTypeMap, argumentStr: string): [string, any] {
         let argumentValue: any;
         switch (argType) {

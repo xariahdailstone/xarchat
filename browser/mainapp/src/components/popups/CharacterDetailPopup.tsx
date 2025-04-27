@@ -114,6 +114,7 @@ export class CharacterDetailPopup extends ContextPopupBase<CharacterDetailPopupV
                 ? <span classList="has-memo-icon" title={vm.memoText}> {"\u{1F4C4}"}</span>
                 : null;
 
+            const isSelf = vm.char == vm.session.characterName;
             const resNode = <div classList={[ "main-container", ...mainClasses ]}>
                 <img classList="character-icon" id="elCharacterIcon" attr-src={URLUtils.getAvatarImageUrl(character)} />
                 <div classList={["character-name", ...charNameClasses]} id="elCharacterName">{character.value}{hasNoteNode}</div>
@@ -134,7 +135,7 @@ export class CharacterDetailPopup extends ContextPopupBase<CharacterDetailPopupV
                 <div classList="character-statusmessage" id="elCharacterStatusMessage">{statusMessageParseResult?.asVNode()}</div>
                 <div classList="character-statusmessage-for" id="elCharacterStatusMessageFor">{statusMessageForInnerText}</div>
 
-                <div classList={["character-alsoinchannels", (vm.alsoInChannels.length > 0 ? "shown": "not-shown")]} id="elCharacterAlsoInChannels">
+                <div classList={["character-alsoinchannels", ((vm.alsoInChannels.length > 0 && !isSelf) ? "shown": "not-shown")]} id="elCharacterAlsoInChannels">
                     <div classList="character-alsoinchannels-title">Mutual Channels:</div>
                     <div classList="character-alsoinchannels-list">{this.renderAlsoInChannels(vm)}</div>
                 </div>

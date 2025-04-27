@@ -78,21 +78,20 @@ export class ChannelHeader extends ComponentBase<ChannelViewModel> {
                         menuvm.dismissed();
                     });
                     menuvm.addMenuItem("Kick a Character From Channel...", () => {
-                        // TODO:
                         vm.kickAsync();
                         menuvm.dismissed();
                     });
                     menuvm.addMenuItem("Timeout a Character From Channel...", () => {
                         // TODO:
+                        vm.appViewModel.alertAsync("Not yet implemented, use the /timeout command instead.");
                         menuvm.dismissed();
                     });
                     menuvm.addMenuItem("Ban a Character From Channel...", () => {
-                        // TODO:
                         vm.banAsync();
                         menuvm.dismissed();
                     });
                     menuvm.addMenuItem("Unban a Character From Channel...", () => {
-                        // TODO:
+                        vm.unbanAsync();
                         menuvm.dismissed();
                     });
 
@@ -117,21 +116,23 @@ export class ChannelHeader extends ComponentBase<ChannelViewModel> {
                         menuvm.dismissed();
                     });
                 }
+
                 if (isChanOwner) {
                     menuvm.addSeparator();
 
-                    menuvm.addMenuItem("Add Channel Operator...", () => {
-                        // TODO:
+                    menuvm.addMenuItem("Add Channel Moderator...", () => {
+                        vm.opAsync();
                         menuvm.dismissed();
                     });
-                    menuvm.addMenuItem("Remove Channel Operator...", () => {
-                        // TODO:
+                    menuvm.addMenuItem("Remove Channel Moderator...", () => {
+                        vm.deopAsync();
                         menuvm.dismissed();
                     });
 
                     menuvm.addSeparator();
                     menuvm.addMenuItem("Give Ownership of Channel...", () => {
                         // TODO:
+                        vm.appViewModel.alertAsync("Not yet implemented, use the /makeowner command instead.");
                         menuvm.dismissed();
                     });
                 }

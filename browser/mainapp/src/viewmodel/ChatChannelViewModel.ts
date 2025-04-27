@@ -31,6 +31,7 @@ import { ConfigureAutoAdsViewModel } from "./ConfigureAutoAdsViewModel.js";
 import { StringUtils } from "../util/StringUtils.js";
 import { CancellationToken } from "../util/CancellationTokenSource.js";
 import { SuggestionHeader, SuggestionItem } from "./SuggestTextBoxViewModel.js";
+import { HTMLUtils } from "../util/HTMLUtils.js";
 
 export class ChatChannelUserViewModel extends ObservableBase implements IDisposable {
     constructor(
@@ -558,7 +559,11 @@ export class ChatChannelViewModel extends ChannelViewModel {
                 "Gets the BBCode used to link to this channel.",
                 [],
                 async (context, args) => {
-                    return `Channel link code: [noparse][session=${this.title}]${this.name.value}[/session][/noparse]`;
+                    const linkCode = `[session=${this.title}]${this.name.value}[/session]`;
+                    const linkCopyScript = `navigator.clipboard.writeText(e.target.getAttribute('data-linkcode')); appViewModel.flashTooltipAsync('Copied!', e.target, e.clientX, e.clientY)`;
+                    const linkCodeAttr = HTMLUtils.escapeHTML(linkCode);
+                    return `Channel link code: [noparse=nocopy]${linkCode}[/noparse]`
+                        + HTMLUtils.getHtmlBBCodeTag(` <a class="bbcode-url" data-linkcode="${linkCodeAttr}" data-onclick="${linkCopyScript}">Click to Copy</a>`);
                 }
             ),
             new SlashCommandViewModel(
@@ -825,7 +830,7 @@ export class ChatChannelViewModel extends ChannelViewModel {
     //     }
     // }
 
-    private searchAllOnlineCharacters(value: string): SuggestionItem[] {
+    private searchAllOnlineCharacters(value: string, filterFunc?: (cn: CharacterName) => boolean): SuggestionItem[] {
         this.logger.logInfo("getting online char suggestions", value);
         if (StringUtils.isNullOrWhiteSpace(value)) {
             return [];
@@ -835,6 +840,8 @@ export class ChatChannelViewModel extends ChannelViewModel {
         const bookmarkMatches: string[] = [];
         const otherMatches: string[] = [];
         this.activeLoginViewModel.characterSet.forEachMatchingCharacter(value.trim(), cname => {
+            if (filterFunc && !filterFunc(cname)) { return; }
+
             const cs = this.activeLoginViewModel.characterSet.getCharacterStatus(cname);
             if (cs.isFriend) {
                 friendMatches.push(cname.value);
@@ -901,31 +908,19 @@ export class ChatChannelViewModel extends ChannelViewModel {
     async inviteAsync(char?: CharacterName) {
         this.verifyCurrentlyEffectiveOp();
         if (!char) {
-            const charName = await this.appViewModel.promptForStringAsync({
-                title: "Invite to Channel",
-                message: "Specify which character should be invited to the channel",
-                validationFunc: (value: string) => {
-                    if (this.isCharacterInChannel(CharacterName.create(value.trim())) ||
-                        !CharacterName.isValidCharacterName(value.trim())) { 
-                        return false; 
+            char = await this.promptForOnlineCharacterAsync(
+                "Invite to Channel",
+                "Specify which character should be invited to the channel",
+                {
+                    resultMustBeOnline: true,
+                    filterFunc: (cn: CharacterName) => {
+                        if (this.isCharacterInChannel(cn)) { 
+                            return false; 
+                        }
+                        return true;
                     }
-
-                    const cc = this.activeLoginViewModel.characterSet.getCharacterStatus(CharacterName.create(value.trim()));
-                    if (cc.status == OnlineStatus.OFFLINE) {
-                        return false;
-                    }
-
-                    return true;
-                },
-                suggestionFunc: async (value: string, cancellationToken: CancellationToken) => {
-                    const result = this.searchAllOnlineCharacters(value);
-                    return result;
                 }
-            });
-            if (!charName) {
-                return;
-            }
-            char = CharacterName.create(charName.trim());
+            );
         }
         if (char) {
             const cstat = this.activeLoginViewModel.characterSet.getCharacterStatus(char);
@@ -1041,12 +1036,37 @@ export class ChatChannelViewModel extends ChannelViewModel {
         }
     }
 
+    get isPublicChannel() { return !this.name.canonicalValue.startsWith("adh-"); }
+
+    protected override getCanBottleSpin(): boolean {
+        if (this.name.canonicalValue == "frontpage") { return false; }
+        if (this.isPublicChannel) { return false; }
+        if (this.messageMode == ChatChannelMessageMode.ADS_ONLY) { return false; }
+        return true;
+    }
+
+    protected override getCanRollDice(): boolean {
+        if (this.name.canonicalValue == "frontpage") { return false; }
+        if (this.messageMode == ChatChannelMessageMode.ADS_ONLY) { return false; }
+        return true;
+    }
+
     override async performRollAsync(rollSpecification: string): Promise<void> {
-        await this.activeLoginViewModel.chatConnection.channelPerformRollAsync(this.name, rollSpecification);
+        if (!this.getCanRollDice()) {
+            this.addSystemMessage(new Date(), "Cannot roll dice here.", true);
+        }
+        else {
+            await this.activeLoginViewModel.chatConnection.channelPerformRollAsync(this.name, rollSpecification);
+        }
     }
 
     override async performBottleSpinAsync(): Promise<void> {
-        await this.activeLoginViewModel.chatConnection.channelPerformBottleSpinAsync(this.name);
+        if (!this.getCanBottleSpin()) {
+            this.addSystemMessage(new Date(), "Cannot spin the bottle here.", true);
+        }
+        else {
+            await this.activeLoginViewModel.chatConnection.channelPerformBottleSpinAsync(this.name);
+        }
     }
 
     override ensureSelectableFilterSelected() {
@@ -1086,8 +1106,6 @@ export class ChatChannelViewModel extends ChannelViewModel {
     get canSendTextboxAsAd() { return this._cantSendAsAdReasons.value.length == 0; }
 
     async sendAdAsync(msgContent: string): Promise<void> {
-        if (StringUtils.isNullOrWhiteSpace(msgContent)) { return; }
-        
         try {
             await this.parent.chatConnection.checkChannelAdMessageAsync(this.name, msgContent);
         }
@@ -1135,21 +1153,18 @@ export class ChatChannelViewModel extends ChannelViewModel {
     }
 
     async sendTextboxAsAdAsync(): Promise<void> {
-        if (this.textBoxContent && this.textBoxContent != "" && this.canSendTextboxAsAd) {
+        if (this.textBoxContent && this.textBoxContent != "" && (this.canSendTextboxAsAd || this.textBoxContent.startsWith("/"))) {
             const msgContent = this.textBoxContent;
-            try {
-                await this.parent.chatConnection.checkChannelAdMessageAsync(this.name, msgContent);
-            }
-            catch (e) {
-                this.addSystemMessage(new Date(), `Cannot send: ${CatchUtils.getMessage(e)}`, true);
-                return;
-            }
-
-            this.textBoxContent = "";
 
             this.pendingSendsCount++;
             try {
-                await this.sendAdAsync(msgContent);
+                if (msgContent.startsWith("/")) {
+                    await this.processCommandAsync();
+                }
+                else {
+                    this.textBoxContent = "";
+                    await this.sendAdAsync(msgContent);
+                }
             }
             finally {
                 this.pendingSendsCount--;
@@ -1221,33 +1236,9 @@ export class ChatChannelViewModel extends ChannelViewModel {
     async kickAsync(name?: CharacterName) {
         this.verifyCurrentlyEffectiveOp();
         if (!name) {
-            const charName = await this.appViewModel.promptForStringAsync({
-                title: "Kick From Channel",
-                message: "Specify which character should be kicked from the channel",
-                validationFunc: (value: string) => {
-                    return this.isCharacterInChannel(CharacterName.create(value.trim())) &&
-                        CharacterName.isValidCharacterName(value.trim());
-                },
-                suggestionFunc: async (value: string, cancellationToken: CancellationToken) => {
-                    this.logger.logInfo("getting kick suggestions", value);
-                    if (StringUtils.isNullOrWhiteSpace(value)) {
-                        return [];
-                    }
-
-                    const results: string[] = [];
-                    this._allUsers.forEach(u => {
-                        if (u.character.canonicalValue.startsWith(value.toLowerCase())) {
-                            results.push(u.character.value);
-                        }
-                    });
-                    this.logger.logInfo("done getting kick suggestions", results);
-                    return results;
-                }
-            });
-            if (!charName) {
-                return;
-            }
-            name = CharacterName.create(charName.trim());
+            name = await this.promptForCharacterInChannelAsync(
+                "Kick From Channel",
+                "Specify which character should be kicked from the channel");
         }
         if (name) {
             await this.activeLoginViewModel.chatConnection.kickFromChannelAsync(this.name, name);
@@ -1263,63 +1254,187 @@ export class ChatChannelViewModel extends ChannelViewModel {
     }
 
     async getChannelOpListAsync() {
-        await this.activeLoginViewModel.chatConnection.getChannelOpListAsync(this.name);
+        const oplistinfo = await this.activeLoginViewModel.chatConnection.getChannelOpListAsync(this.name);
+        if (oplistinfo.ops.length == 0) {
+            this.addSystemMessage(new Date(), 
+                `Nobody is currently moderating [b]${oplistinfo.channelTitle}[/b].`,
+                false, true, false, false);
+        }
+        else {
+            this.addSystemMessage(new Date(), 
+                `Channel moderators for [b]${oplistinfo.channelTitle}[/b]: ` + oplistinfo.ops.map(cn => `[user]${cn.value}[/user]`).join(", "),
+                false, true, false, false);
+        }
     }
 
     async getBanListAsync() {
         this.verifyCurrentlyEffectiveOp();
-        await this.activeLoginViewModel.chatConnection.getChannelBanListAsync(this.name);
+        const banlistinfo = await this.activeLoginViewModel.chatConnection.getChannelBanListAsync(this.name);
+        if (banlistinfo.bans.length == 0) {
+            this.addSystemMessage(new Date(), 
+                `Nobody is currently banned from [b]${banlistinfo.channelTitle}[/b].`,
+                false, true, false, false);
+        }
+        else {
+            this.addSystemMessage(new Date(), 
+                `Channel bans for [b]${banlistinfo.channelTitle}[/b]: ` + banlistinfo.bans.map(cn => `[user]${cn.value}[/user]`).join(", "),
+                false, true, false, false);
+        }
     }
 
-    async opAsync(name: CharacterName) {
+    async opAsync(name?: CharacterName) {
         this.verifyCurrentlyEffectiveOp();
-        await this.activeLoginViewModel.chatConnection.channelAddOpAsync(this.name, name);
+        if (!name) {
+            name = await this.promptForCharacterInChannelAsync(
+                "Add Channel Moderator", 
+                "Specify which character should be added as a moderator for the channel");
+        }
+        if (name) {
+            await this.activeLoginViewModel.chatConnection.channelAddOpAsync(this.name, name);
+        }
     }
 
-    async deopAsync(name: CharacterName) {
+    async deopAsync(name?: CharacterName) {
         this.verifyCurrentlyEffectiveOp();
-        await this.activeLoginViewModel.chatConnection.channelRemoveOpAsync(this.name, name);
+        if (!name) {
+            name = await this.promptForCharacterInListAsync(
+                "Remove Channel Moderator", 
+                "Specify which character should be removed as a moderator for the channel",
+                [...this._channelOps], {
+                    resultMustBeInList: true
+                }
+            );
+        }
+        if (name) {
+            await this.activeLoginViewModel.chatConnection.channelRemoveOpAsync(this.name, name);
+        }
+    }
+
+    private async promptForOnlineCharacterAsync(
+        title: string, 
+        message: string,
+        options?: PromptForOnlineCharacterOptions): Promise<CharacterName | undefined> {
+
+        options ??= {};
+
+        const charName = await this.appViewModel.promptForStringAsync({
+            title: title,
+            message: message,
+            validationFunc: (value: string) => {
+                if (!CharacterName.isValidCharacterName(value.trim())) { return false; }
+
+                const cn = CharacterName.create(value.trim());
+
+                if (options.resultMustBeOnline ?? true) {
+                    const cc = this.activeLoginViewModel.characterSet.getCharacterStatus(cn);
+                    if (cc.status == OnlineStatus.OFFLINE) {
+                        return false;
+                    }
+                }
+
+                if (options.filterFunc) {
+                    return options.filterFunc(cn);
+                }
+                else {
+                    return true;
+                }
+            },
+            suggestionFunc: async (value: string, cancellationToken: CancellationToken) => {
+                const result = this.searchAllOnlineCharacters(value, options.filterFunc);
+                return result;
+            }
+        });
+        if (!charName) {
+            return undefined;
+        }
+        return CharacterName.create(charName.trim());
+    }
+
+    private async promptForCharacterInChannelAsync(title: string, message: string): Promise<CharacterName | undefined> {
+        const iclist: CharacterName[] = [];
+        this._allUsers.forEach(u => { iclist.push(u.character); });
+
+        const result = await this.promptForCharacterInListAsync(title, message, iclist);
+        return result;
+    }
+
+    private async promptForCharacterInListAsync(
+        title: string, message: string, 
+        charList: CharacterName[],
+        options?: PromptForCharacterInListOptions): Promise<CharacterName | undefined> {
+
+        options ??= {};
+
+        const charName = await this.appViewModel.promptForStringAsync({
+            title: title,
+            message: message,
+            validationFunc: (value: string) => {
+                if (!CharacterName.isValidCharacterName(value.trim())) { return false; }
+
+                if (options.resultMustBeInList ?? false) {
+                    const candidateResult = CharacterName.create(value);
+                    let foundInList = false;
+                    for (let x of charList) {
+                        if (CharacterName.equals(x, candidateResult)) {
+                            foundInList = true;
+                            break;
+                        }
+                    }
+                    if (!foundInList) {
+                        return false;
+                    }
+                }
+
+                return true;
+            },
+            suggestionFunc: async (value: string, cancellationToken: CancellationToken) => {
+                this.logger.logInfo("getting inlist suggestions", value);
+                if (StringUtils.isNullOrWhiteSpace(value)) {
+                    return [];
+                }
+
+                const results: string[] = [];
+                charList.forEach(c => {
+                    if (c.canonicalValue.startsWith(value.toLowerCase())) {
+                        results.push(c.value);
+                    }
+                });
+                this.logger.logInfo("done getting inlist suggestions", results);
+                return results;
+            }
+        });
+        if (!charName) {
+            return undefined;
+        }
+        return CharacterName.create(charName.trim());
     }
 
     async banAsync(name?: CharacterName) {
         this.verifyCurrentlyEffectiveOp();
         if (!name) {
-            const charName = await this.appViewModel.promptForStringAsync({
-                title: "Ban From Channel",
-                message: "Specify which character should be banned from the channel",
-                validationFunc: (value: string) => {
-                    return CharacterName.isValidCharacterName(value.trim()) &&
-                        CharacterName.isValidCharacterName(value.trim());
-                },
-                suggestionFunc: async (value: string, cancellationToken: CancellationToken) => {
-                    this.logger.logInfo("getting ban suggestions", value);
-                    if (StringUtils.isNullOrWhiteSpace(value)) {
-                        return [];
-                    }
-
-                    const results: string[] = [];
-                    this._allUsers.forEach(u => {
-                        if (u.character.canonicalValue.startsWith(value.toLowerCase())) {
-                            results.push(u.character.value);
-                        }
-                    });
-                    this.logger.logInfo("done getting ban suggestions", results);
-                    return results;
-                }
-            });
-            if (!charName) {
-                return;
-            }
-            name = CharacterName.create(charName.trim());
+            name = await this.promptForCharacterInChannelAsync(
+                "Ban From Channel", 
+                "Specify which character should be banned from the channel");
         }
         if (name) {
             await this.activeLoginViewModel.chatConnection.banFromChannelAsync(this.name, name);
         }
     }
 
-    async unbanAsync(name: CharacterName) {
+    async unbanAsync(name?: CharacterName) {
         this.verifyCurrentlyEffectiveOp();
-        await this.activeLoginViewModel.chatConnection.unbanFromChannelAsync(this.name, name);
+        if (!name) {
+            const banList = await this.activeLoginViewModel.chatConnection.getChannelBanListAsync(this.name);
+            name = await this.promptForCharacterInListAsync(
+                "Unban From Channel",
+                "Specify which character should be unbanned from the channel",
+                banList.bans, {
+                    resultMustBeInList: true
+                });
+        }
+        if (name) {
+            await this.activeLoginViewModel.chatConnection.unbanFromChannelAsync(this.name, name);
+        }
     }
 
     async changeOwnerAsync(name: CharacterName) {
@@ -1406,4 +1521,13 @@ export class ChatChannelMessageModeConvert {
                 return null;
         }
     }
+}
+
+interface PromptForOnlineCharacterOptions {
+    resultMustBeOnline?: boolean;
+    filterFunc?: (cn: CharacterName) => boolean;
+}
+
+interface PromptForCharacterInListOptions {
+    resultMustBeInList?: boolean;
 }

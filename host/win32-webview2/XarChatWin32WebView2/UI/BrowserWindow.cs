@@ -488,7 +488,7 @@ namespace MinimalWin32Test.UI
             {
                 var sp = await _backend.GetServiceProviderAsync();
                 var appDataFolder = sp.GetRequiredService<IAppDataFolder>().GetAppDataFolder();
-                var clOpts = sp.GetRequiredService<ICommandLineOptions>();
+                var appCfg = sp.GetRequiredService<IAppConfiguration>();
 
                 var browserArguments = new List<string>()
                 {
@@ -497,7 +497,7 @@ namespace MinimalWin32Test.UI
                     "--disable-web-security",
                     "--disable-background-timer-throttling"
                 };
-                if (clOpts.DisableGpuAcceleration)
+                if (appCfg.DisableGpuAcceleration)
                 {
                     browserArguments.Add("--disable-gpu");
                 }
@@ -555,7 +555,7 @@ namespace MinimalWin32Test.UI
                     { "wsport", wsPortNumber.ToString() },
                     { "windowid", cwId.ToString() }
                 };
-                if (_commandLineOptions.DisableGpuAcceleration)
+                if (appCfg.DisableGpuAcceleration)
                 {
                     launchParams.Add("nogpu", "1");
                 }

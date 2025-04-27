@@ -133,6 +133,15 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     notYetImplemented: true
                 },
                 {
+                    id: "useGpuAcceleration",
+                    scope: getScopeArray(["global"]),
+                    title: "GPU Acceleration Enabled",
+                    description: "Make use of your GPU to improve the performance of the XarChat user interface. (Changes to this setting require a restart of XarChat)",
+                    type: "boolean",
+                    defaultValue: true,
+                    configBlockKey: "useGpuAcceleration"
+                },
+                {
                     id: "autoIdle",
                     scope: getScopeArray(["global", "char"]),
                     title: "Auto Idle",

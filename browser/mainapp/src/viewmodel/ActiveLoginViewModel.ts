@@ -858,10 +858,14 @@ export class ActiveLoginViewModel extends ObservableBase {
                 async (context, args) => {
                     const vms = context.getSlashCommands();
                     const textBuilder = ["The following commands are available here:"];
+                    textBuilder.push("[list]");
                     for (let tvm of vms) {
-                        textBuilder.push(`[b]/${tvm.command[0]}[/b] - [i]${tvm.title}[/i]: ${tvm.description}`);
+                        if (tvm.showInHelp) {
+                            textBuilder.push(`[listitem][color=yellow][b]/${tvm.command[0]}[/b][/color] - [i]${tvm.title}[/i]: [indent]${tvm.description}[/indent][/listitem]`);
+                        }
                     }
-                    return textBuilder.join("\n");
+                    textBuilder.push("[/list]");
+                    return textBuilder.join("");
                 }
             ),
             new SlashCommandViewModel(

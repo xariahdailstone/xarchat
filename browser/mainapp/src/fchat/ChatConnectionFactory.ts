@@ -7,7 +7,7 @@ import { HostInterop } from "../util/HostInterop";
 import { IdleDetectionScreenState, IdleDetectionUserState } from "../util/IdleDetection";
 import { PromiseSource } from "../util/PromiseSource";
 import { SnapshottableSet } from "../util/collections/SnapshottableSet";
-import { ChannelMetadata, ChatConnection, PartnerSearchArgs, PartnerSearchResult } from "./ChatConnection";
+import { ChannelBanListInfo, ChannelMetadata, ChannelOpListInfo, ChatConnection, PartnerSearchArgs, PartnerSearchResult } from "./ChatConnection";
 import { ChatConnectionImpl } from "./ChatConnectionImpl";
 import { ChatConnectionSink } from "./ChatConnectionSink";
 import { ProfileInfo } from "./api/FListApi";
@@ -248,8 +248,8 @@ export class NullChatConnection implements ChatConnection {
     async inviteToChannelAsync(channel: ChannelName, character: CharacterName): Promise<void> { }
     async channelSetOwnerAsync(channel: ChannelName, character: CharacterName): Promise<void> { }
     async unbanFromChannelAsync(channel: ChannelName, character: CharacterName): Promise<void> { }
-    async getChannelBanListAsync(channel: ChannelName): Promise<void> { }
-    async getChannelOpListAsync(channel: ChannelName): Promise<void> { }
+    async getChannelBanListAsync(channel: ChannelName): Promise<ChannelBanListInfo> { throw new Error("unavailable"); }
+    async getChannelOpListAsync(channel: ChannelName): Promise<ChannelOpListInfo> { throw new Error("unavailable"); }
     async channelAddOpAsync(channel: ChannelName, character: CharacterName): Promise<void> { }
     async channelRemoveOpAsync(channel: ChannelName, character: CharacterName): Promise<void> { }
     async channelSetModeAsync(channel: ChannelName, mode: "chat" | "ads" | "both"): Promise<void> { }

@@ -334,3 +334,11 @@ body, .bbcode-eicons-normal {
     font-weight: bold;
     margin-bottom: 5px;
 }
+
+.bbcode-list {
+    list-style: disc;
+    padding-inline-start: 25px;
+    .bbcode-listitem {
+        margin: 0.2em;
+    }
+}

@@ -21,7 +21,10 @@ namespace XarChat.Backend.Features.AppConfiguration
 
 		bool EnableIndexDataCollection { get; }
 
-		IEnumerable<KeyValuePair<string, JsonNode>> GetAllArbitraryValues();
+        bool DisableGpuAcceleration { get; }
+
+
+        IEnumerable<KeyValuePair<string, JsonNode>> GetAllArbitraryValues();
 
         string? GetArbitraryValueString(string key);
 

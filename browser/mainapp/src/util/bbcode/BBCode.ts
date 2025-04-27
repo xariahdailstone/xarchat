@@ -22,6 +22,7 @@ import { BBCodeTagCollapse } from "./tags/BBCodeTagCollapse";
 import { BBCodeTagColor } from "./tags/BBCodeTagColor";
 import { BBCodeTagEIcon } from "./tags/BBCodeTagEIcon";
 import { BBCodeTagHR } from "./tags/BBCodeTagHR";
+import { BBCodeTagHTML } from "./tags/BBCodeTagHTML";
 import { BBCodeTagHeading } from "./tags/BBCodeTagHeading";
 import { BBCodeTagI } from "./tags/BBCodeTagI";
 import { BBCodeTagIcon } from "./tags/BBCodeTagIcon";
@@ -29,6 +30,7 @@ import { BBCodeTagImg } from "./tags/BBCodeTagImg";
 import { BBCodeTagIndent } from "./tags/BBCodeTagIndent";
 import { BBCodeTagJustify } from "./tags/BBCodeTagJustify";
 import { BBCodeTagLeft } from "./tags/BBCodeTagLeft";
+import { BBCodeTagList, BBCodeTagListItem } from "./tags/BBCodeTagList";
 import { BBCodeTagNoParse } from "./tags/BBCodeTagNoParse";
 import { BBCodeTagQuote } from "./tags/BBCodeTagQuote";
 import { BBCodeTagRight } from "./tags/BBCodeTagRight";
@@ -578,27 +580,10 @@ const chatTags: BBCodeTag[] = [
     BBCodeTagNoParse
 ];
 
-const profileTags: BBCodeTag[] = [
-    ...chatTags,
-    BBCodeTagHeading,
-    BBCodeTagIndent,
-    //BBCodeTagHR,
-    BBCodeTagCollapse,
-    BBCodeTagCenter,
-    BBCodeTagLeft,
-    BBCodeTagRight,
-    BBCodeTagJustify,
-    BBCodeTagBig,
-    BBCodeTagSmall,
-    BBCodeTagImg,
-    BBCodeTagQuote
-]
-
 const profileMinusInlinesTags: BBCodeTag[] = [
     ...chatTags,
     BBCodeTagHeading,
     BBCodeTagIndent,
-    //BBCodeTagHR,
     BBCodeTagCollapse,
     BBCodeTagCenter,
     BBCodeTagLeft,
@@ -608,6 +593,18 @@ const profileMinusInlinesTags: BBCodeTag[] = [
     BBCodeTagSmall,
     BBCodeTagQuote
 ]
+
+const profileTags: BBCodeTag[] = [
+    ...profileMinusInlinesTags,
+    BBCodeTagImg
+]
+
+const systemMessageTags: BBCodeTag[] = [
+    ...profileMinusInlinesTags,
+    BBCodeTagList,
+    BBCodeTagListItem,
+    BBCodeTagHTML
+];
 
 const chatParser = new BBCodeParser();
 chatParser.tags.push(...chatTags);
@@ -618,12 +615,17 @@ profileParser.tags.push(...profileTags);
 const profileMinusInlinesParser = new BBCodeParser({ enableHRProcessing: true });
 profileMinusInlinesParser.tags.push(...profileMinusInlinesTags);
 
+const systemMessageParser = new BBCodeParser({ enableHRProcessing: true });
+systemMessageParser.tags.push(...systemMessageTags);
+
 export const ChatBBCodeParser: BBCodeParser = chatParser;
 export const ProfileBBCodeParser: BBCodeParser = profileParser;
 export const ProfileNoInlinesBBCodeParser: BBCodeParser = profileMinusInlinesParser;
+export const SystemMessageBBCodeParser: BBCodeParser = systemMessageParser;
 
 export const RegisteredBBCodeParsers: { [key: string]: BBCodeParser | undefined } = {
     "chat": chatParser,
     "profile": profileParser,
-    "profilenoimg": profileMinusInlinesParser
+    "profilenoimg": profileMinusInlinesParser,
+    "systemmessage": systemMessageParser
 }

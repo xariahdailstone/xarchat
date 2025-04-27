@@ -18,6 +18,9 @@ export class TooltipPopupViewModel extends ContextPopupViewModel {
 
     @observableProperty
     mousePoint: { x: number, y: number } = { x: 0, y: 0 };
+
+    @observableProperty
+    flashDisplay: boolean = false;
 }
 
 const setupTooltipHandlingLogger: Logger = Logging.createLogger("setupTooltipHandling");
