@@ -16,6 +16,7 @@ export interface ConfigSchemaItemDefinitionItem {
     allowEmpty?: boolean;
     min?: number;
     max?: number;
+    maxLength?: number;
     defaultValue: unknown;
     configBlockKey: string;
     items?: ConfigSchemaItemDefinition[];
@@ -131,6 +132,15 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     defaultValue: true,
                     configBlockKey: "checkForUpdates",
                     notYetImplemented: true
+                },
+                {
+                    id: "useGpuAcceleration",
+                    scope: getScopeArray(["global"]),
+                    title: "GPU Acceleration Enabled",
+                    description: "Make use of your GPU to improve the performance of the XarChat user interface. (Changes to this setting require a restart of XarChat)",
+                    type: "boolean",
+                    defaultValue: true,
+                    configBlockKey: "useGpuAcceleration"
                 },
                 {
                     id: "autoIdle",
@@ -519,6 +529,16 @@ export const ConfigSchema: ConfigSchemaDefinition = {
             sectionTitle: "Display",
             description: "Settings that control how XarChat looks.",
             items: [
+                {
+                    id: "nickname",
+                    scope: getScopeArray(["convo"]),
+                    title: "Character Nickname",
+                    description: "Enter a nickname that will appear next to this character's name in most places where it gets displayed.",
+                    type: "text",
+                    maxLength: 40,
+                    defaultValue: "",
+                    configBlockKey: "nickname"
+                },
                 {
                     id: "highlightMyMessages",
                     scope: getScopeArray(["global", "char", "chan", "convo"]),

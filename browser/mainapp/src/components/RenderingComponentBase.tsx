@@ -139,7 +139,8 @@ export function makeRenderingComponent<TViewModel>(
     });
     component.addEventListener("connected", () => {
         isConnected = true;
-        refreshDOM();
+        //refreshDOM();
+        stateHasChanged();
     });
     component.addEventListener("disconnected", () => {
         isConnected = false;

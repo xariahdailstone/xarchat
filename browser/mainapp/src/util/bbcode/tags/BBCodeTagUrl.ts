@@ -97,7 +97,7 @@ export const BBCodeTagUrl = new BBCodeTag("url", true, true, (context, arg, cont
     catch { }
 
     if (!linkUrl.startsWith("http://") && !linkUrl.startsWith("https://") || (u == null)) {
-        return EL("span", { class: "bbcode-url-invalid" }, [ `[invalid URL: ${linkUrl}]` ]);
+        return EL("span", { class: "bbcode-url-invalid", "data-copycontent": content.rawOpenTag + content.rawText + content.rawCloseTag }, [ `{invalid URL: ${linkUrl}}` ]);
     }
 
     //content = (content.length > 0) ? content : [ document.createTextNode(arg ?? "") ];

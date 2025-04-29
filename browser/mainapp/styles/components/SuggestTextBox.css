@@ -1,0 +1,15 @@
+
+:host {
+}
+
+#elMain {
+    display: grid;
+    grid-template-rows: auto;
+    grid-template-columns: auto;
+    grid-template-areas: "elText";
+
+    #elText { grid-area: elText; }
+}
+
+#elText {
+}

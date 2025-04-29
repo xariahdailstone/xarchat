@@ -1,4 +1,10 @@
 
 export class XarChatUtils {
-    static readonly clientVersion: string = "0.5.0";
+    static clientVersion: string = "(unknown)";
+    static clientPlatform: string = "(unknown)";
+    static clientBranch: string = "(unknown)";
+
+    static getFullClientVersionString(): string {
+        return `${this.clientVersion}-${this.clientBranch}:${this.clientPlatform}`;
+    }
 }

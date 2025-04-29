@@ -3,11 +3,23 @@ import { BBCodeParser, getContentText } from "../BBCode";
 import { BBCodeTag } from "../BBCodeTag";
 
 export const BBCodeTagNoParse = new BBCodeTag("noparse", true, false, (context, arg, content) => {
-    const x = EL("span", {
-        class: "bbcode-noparse",
-        "data-copyprefix": content.rawOpenTag,
-        "data-copysuffix": content.rawCloseTag
-    }, [ getContentText(content) ]);
-    BBCodeParser.markElementAsExcludedFromAutoUrlization(x);
-    return x;
+    const argText = arg ?? "";
+    if (argText == "nocopy") {
+        const x = EL("span", {
+            class: "bbcode-noparse",
+            "data-copyprefix": "",
+            "data-copysuffix": ""
+        }, [ getContentText(content) ]);
+        BBCodeParser.markElementAsExcludedFromAutoUrlization(x);
+        return x;        
+    }
+    else {
+        const x = EL("span", {
+            class: "bbcode-noparse",
+            "data-copyprefix": content.rawOpenTag,
+            "data-copysuffix": content.rawCloseTag
+        }, [ getContentText(content) ]);
+        BBCodeParser.markElementAsExcludedFromAutoUrlization(x);
+        return x;
+    }
 });

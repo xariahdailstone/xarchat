@@ -340,11 +340,16 @@ export class ChannelTextBox extends ComponentBase<ChannelViewModel> {
 
     focusTextBox() {
         window.requestAnimationFrame(() => {
-            this.logger.logDebug("focusTextBox");
-            const elTextbox = this.$("elTextbox")! as HTMLTextAreaElement;
-            if (FocusMagnet.instance.ultimateFocus != elTextbox) {
-                elTextbox.focus();
-            }
+            // Workaround: when focusTextBox is called during viewActivated, the first RAF will have the view rendering
+            // being done, which will invalidate layout/styles.  To avoid a forced reflow due to focus(), we'll wait
+            // for the *next* animation frame.
+            window.requestAnimationFrame(() => {
+                this.logger.logDebug("focusTextBox");
+                const elTextbox = this.$("elTextbox")! as HTMLTextAreaElement;
+                if (FocusMagnet.instance.ultimateFocus != elTextbox) {
+                    elTextbox.focus();
+                }
+            });
         });
     }
 

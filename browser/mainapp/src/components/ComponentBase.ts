@@ -789,9 +789,13 @@ export function componentArea(area: string) {
     }
 }
 
-export function componentElement(elementName: string) {
+export function componentElement(elementName: string, extendsTagName?: string) {
     return function (target: any) {
         //alert(`componentElement elementName=${elementName} target=${target.name}`);
-        window.customElements.define(elementName, target);
+        const opts: ElementDefinitionOptions = {};
+        if (extendsTagName) {
+            opts["extends"] = extendsTagName;
+        }
+        window.customElements.define(elementName, target, opts);
     }
 }

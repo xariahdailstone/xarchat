@@ -14,6 +14,7 @@ import { CharacterProfileDetailSectionInfoViewModel } from "./CharacterProfileDe
 import { CharacterProfileDetailSummaryInfoViewModel } from "./CharacterProfileDetailSummaryInfoViewModel";
 import { CharacterGuestbookPostViewModel, CharacterGuestbookViewModel } from "./CharacterGuestbookViewModel";
 import { PromiseSource } from "../../../util/PromiseSource";
+import { ReportSource, ReportViewModel } from "../ReportViewModel";
 
 
 export class CharacterProfileDetailViewModel extends ObservableBase {

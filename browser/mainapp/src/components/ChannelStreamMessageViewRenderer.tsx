@@ -4,6 +4,7 @@ import { jsx, Fragment, VNode, init, propsModule, styleModule, eventListenersMod
 import { CharacterLinkUtils } from "../util/CharacterLinkUtils";
 import { KeyValuePair } from "../util/collections/KeyValuePair";
 import { ReadOnlyStdObservableCollection } from "../util/collections/ReadOnlyStdObservableCollection";
+import { DateUtils, TimeSpanUtils } from "../util/DateTimeUtils";
 import { asDisposable, asNamedDisposable, DisposableOwnerField, IDisposable } from "../util/Disposable";
 import { HTMLUtils } from "../util/HTMLUtils";
 import { IterableUtils } from "../util/IterableUtils";
@@ -221,302 +222,6 @@ export class ChannelStreamMessageViewRenderer implements IDisposable {
         const result = renderer.render(vm);
         return result;
     }
-
-    protected renderx(vm: ReadOnlyStdObservableCollection<KeyValuePair<any, ChannelMessageViewModel>> | null): [VNode, IDisposable] {
-        if (!vm) { return [<></>, asDisposable()]; }
-
-        const resultDisposables: IDisposable[] = [];
-
-        const messageNodes: VNode[] = [];
-        for (let kvp of vm.iterateValues()) {
-            const mvm = kvp.value;
-            const rmResult = this.renderMessage(vm, mvm);
-            messageNodes.push(rmResult[0]);
-            resultDisposables.push(rmResult[1]);
-        }
-
-        const resVNode = <>{messageNodes}</>;
-        return [resVNode, asDisposable(...resultDisposables)];
-    }
-
-    renderMessage(vm: ReadOnlyStdObservableCollection<KeyValuePair<any, ChannelMessageViewModel>>, mvm: ChannelMessageViewModel): [VNode, IDisposable] {
-        switch (mvm.type) {
-            case ChannelMessageType.CHAT:
-            case ChannelMessageType.AD:
-            case ChannelMessageType.ROLL:
-            case ChannelMessageType.SPIN:
-            case ChannelMessageType.SYSTEM:
-            case ChannelMessageType.SYSTEM_IMPORTANT:
-                return this.renderStandardUserElement(mvm);
-            case ChannelMessageType.LOG_NAV_PROMPT:
-                return this.createLogNavUserElement(mvm);
-            case ChannelMessageType.TYPING_STATUS_INDICATOR:
-                return this.createTypingStatusElement(mvm);
-        }
-    }
-
-    private renderStandardUserElement(vm: ChannelMessageViewModel): [VNode, IDisposable] {
-        const resultDisposables: IDisposable[] = [];
-        //let resultDisposable: IDisposable = EmptyDisposable;
-
-        const mainClasses: string[] = [];
-
-        const displayStyle = vm.channelViewModel?.messageDisplayStyle ?? ChannelMessageDisplayStyle.FCHAT;
-        let isSystemMessage = vm.type == ChannelMessageType.SYSTEM || vm.type == ChannelMessageType.SYSTEM_IMPORTANT;
-
-        let emoteStyle: ("none" | "normal" | "possessive") = "none";
-        if (vm.type == ChannelMessageType.CHAT && vm.text.startsWith("/me ")) {
-            emoteStyle = "normal";
-        }
-        else if (vm.type == ChannelMessageType.CHAT && vm.text.startsWith("/me's ")) {
-            emoteStyle = "possessive";
-        }
-
-        let isImportant = vm.type == ChannelMessageType.SYSTEM_IMPORTANT;
-        if (vm.type == ChannelMessageType.CHAT && vm.text.startsWith("/warn ")) {
-            const isChanOp = vm.channelViewModel?.isEffectiveOp(vm.characterStatus.characterName) ?? false;
-            if (isChanOp) {
-                isImportant = true;
-            }
-        }
-
-        let elIcon: VNode | null = null;
-        if (displayStyle == ChannelMessageDisplayStyle.DISCORD) {
-            elIcon = <img classList={["icon"]} attr-src={URLUtils.getAvatarImageUrl(vm.characterStatus.characterName)} />;
-        }
-
-        let tsText: string;
-        let copyText: string = "[" + ( areSameDate(new Date(), vm.timestamp) ? dtf.format(vm.timestamp) : dtfWithDate.format(vm.timestamp) ) + "]";
-        if (displayStyle == ChannelMessageDisplayStyle.DISCORD) {
-            tsText = ( areSameDate(new Date(), vm.timestamp) ? ("Today at " + dtf.format(vm.timestamp)) : (dtfDate.format(vm.timestamp) + " at " + dtf.format(vm.timestamp)) )
-        }
-        else {
-            tsText = copyText;
-        }
-        const elTimestamp = <span classList={["timestamp"]} attrs={{
-                "data-copycontent": `[sub]${copyText}[/sub]`
-            }}>{tsText}</span>
-
-        let elDiceIcon: VNode | null = null;
-        if (vm.type == ChannelMessageType.ROLL) {
-            elDiceIcon = <span classList={["dice-icon"]} attr-title="Dice Roll">{"\u{1F3B2} "}</span>;
-        }
-        else if (vm.type == ChannelMessageType.SPIN) {
-            elDiceIcon = <span classList={["dice-icon"]} attr-title="Bottle Spin">{"\u{1F37E} "}</span>;
-        }
-        else if (vm.type == ChannelMessageType.CHAT && isImportant) {
-            elDiceIcon = <span classList={["dice-icon"]} attr-title="Alert">{"\u{1F6D1} "}</span>;
-        }
-        else if (vm.type == ChannelMessageType.AD) {
-            elDiceIcon = <span classList={["dice-icon"]} attr-title="Ad">{"\u{1F4E2} "}</span>;
-        }
-
-        let targetContainer: VNode[] = [];
-
-        if (!isSystemMessage) {
-            var sdVNode = StatusDotVNodeBuilder.getStatusDotVNode(vm.characterStatus);
-            sdVNode.data ??= {};
-            sdVNode.data.class ??= {};
-            sdVNode.data.class["character-status"] = true;
-            sdVNode.data.attrs ??= {};
-            sdVNode.data.attrs["data-copycontent"] = "";
-            targetContainer.push(sdVNode);
-
-            targetContainer.push(<span classList={["character-status-spacer"]} attrs={{
-                    "data-copycontent": ""
-                }}>{" "}</span>);
-        }
-
-        const usernameClasses: string[] = [];
-        usernameClasses.push("character");
-        const usernameAttrs: { [key: string]: string } = {};
-
-        let elUsername: VNode;
-        if (!isSystemMessage) {
-            elUsername = CharacterLinkUtils.createStaticCharacterLinkVNode(vm.activeLoginViewModel, vm.characterStatus.characterName, vm.characterStatus, vm.channelViewModel);
-            elUsername.data ??= {};
-            elUsername.data.attrs ??= {};
-            elUsername.data.attrs["data-copycontent"] = `[user]${vm.characterStatus.characterName.value}[/user]`;
-            elUsername.data.class ??= {};
-            elUsername.data.class["character"] = true;
-        }
-        else {
-            elUsername = <span classList={["character"]}>System</span>;
-        }
-        targetContainer.push(elUsername);
-
-
-        let spacerText = "";
-        switch (vm.type) {
-            case ChannelMessageType.ROLL:
-                spacerText = " ";
-                break;
-            case ChannelMessageType.SPIN:
-                spacerText = " ";
-                break;
-            case ChannelMessageType.CHAT:
-                if (emoteStyle == "none") {
-                    spacerText = ": "
-                }
-                else if (emoteStyle == "normal") {
-                    spacerText = " ";
-                }
-                else if (emoteStyle == "possessive") {
-                    spacerText = "'s ";
-                }
-                break;
-            case ChannelMessageType.AD:
-                spacerText = ": ";
-                break;
-            case ChannelMessageType.SYSTEM:
-            case ChannelMessageType.SYSTEM_IMPORTANT:
-                spacerText = ": ";
-                break;
-        }
-        const elUsernameSpacer = document.createElement("span");
-        elUsernameSpacer.classList.add("character-spacer");
-        elUsernameSpacer.innerText = spacerText;
-        targetContainer.push(<span classList={["character-spacer"]}>{spacerText}</span>);
-
-
-        vm.incrementParsedTextUsage();
-        resultDisposables.push(asDisposable(() => vm.decrementParsedTextUsage()));
-        targetContainer.push(<span classList={["messagetext"]}>{vm.parseResult.asVNode()}</span>);
-
-        const toggleMainClass = (name: string, shouldHave: boolean) => {
-            if (shouldHave) {
-                mainClasses.push(name);
-            }
-        };
-        toggleMainClass("emote", (emoteStyle != "none"));
-        toggleMainClass("ad", (vm.type == ChannelMessageType.AD));
-        toggleMainClass("roll", (vm.type == ChannelMessageType.ROLL));
-        toggleMainClass("spin", (vm.type == ChannelMessageType.SPIN));
-        toggleMainClass("chat", (vm.type == ChannelMessageType.CHAT));
-        toggleMainClass("system", isSystemMessage);
-        toggleMainClass("important", isImportant);
-        toggleMainClass("has-ping", vm.containsPing);
-        toggleMainClass("from-me", CharacterName.equals(vm.characterStatus.characterName, vm.activeLoginViewModel.characterName));
-        
-
-
-        //if (displayStyle == ChannelMessageDisplayStyle.DISCORD && emoteStyle != "none") {
-            const mcContent = targetContainer;
-            targetContainer = [<span classList={[ "message-content" ]}>{mcContent}</span>];
-        //}
-
-        mainClasses.push("messageitem");
-        mainClasses.push(`displaystyle-${displayStyle.toString().toLowerCase()}`);
-        const innerNode = <div classList={mainClasses} props={{
-                "__vm": vm
-            }}>
-            {elIcon}
-            {elTimestamp}
-            <span classList={["timestamp-spacer"]}>{" "}</span>
-            {elDiceIcon}
-            {targetContainer}
-        </div>;
-
-        const uniqueMessageId = vm.uniqueMessageId.toString();
-
-        const collapseAds = vm.type == ChannelMessageType.AD && (vm.channelViewModel?.getConfigSettingById("collapseAds") ?? false);
-        if (collapseAds) {
-            const collapseHostStyles: string[] = [];
-            let collapseBtnEl: VNode;
-            if (vm.isOversized) {
-                collapseHostStyles.push("is-oversized");
-                if (vm.collapsed) {
-                    collapseHostStyles.push("collapsed");
-                    collapseBtnEl = <div classList={["collapse-button-container"]} attrs={{
-                            "data-copycontent": ""
-                        }}><button classList={["collapse-button"]} attrs={{
-                            "data-copycontent": "",
-                            "data-iscollapsebutton": "true"
-                        }} on={{
-                            "click": () => {
-                                vm.collapsed = false;
-                            }
-                        }}>Expand</button></div>;  
-                }
-                else {
-                    collapseHostStyles.push("expanded");
-                    collapseBtnEl = <div classList={["collapse-button-container"]} attrs={{
-                            "data-copycontent": ""
-                        }}><button classList={["collapse-button"]} attrs={{
-                            "data-copycontent": "",
-                            "data-iscollapsebutton": "true"
-                        }} on={{
-                            "click": () => {
-                                vm.collapsed = true;
-                            }
-                        }}>Collapse</button></div>;  
-                }
-            }
-            else {
-                collapseHostStyles.push("collapsed");
-                collapseBtnEl = <div classList={["collapse-button-container"]} attrs={{
-                    "data-copycontent": ""
-                }}><button classList={["collapse-button"]} attrs={{
-                    "data-copycontent": "",
-                    "data-iscollapsebutton": "true"
-                }}>Expand</button></div>;  
-            }
-
-            let outerEl = <div key={`msg-${uniqueMessageId}`} classList={["collapse-host", "collapsible", ...collapseHostStyles]} attrs={{
-                    "data-messageid": uniqueMessageId,
-                    "data-copyinline": "true"
-                }}>{collapseBtnEl}{innerNode}</div>;
-            return [outerEl, asDisposable(...resultDisposables)];
-            // TODO: AdCollapseManager.add(vm, outerEl, elMain);
-        }
-        else {
-            let outerEl = <div key={`msg-${uniqueMessageId}`} classList={["collapse-host"]} attrs={{
-                    "data-messageid": uniqueMessageId,
-                    "data-copyinline": "true"
-                }}>{innerNode}</div>;
-            return [outerEl, asDisposable(...resultDisposables)];
-        }
-    }
-
-    private createLogNavUserElement(vm: ChannelMessageViewModel): [VNode, IDisposable] {
-        let resultDisposables: IDisposable[] = [];
-
-        vm.incrementParsedTextUsage();
-        resultDisposables.push(asDisposable(() => vm.decrementParsedTextUsage()));
-
-        const uniqueMessageId = vm.uniqueMessageId.toString();
-
-        let resultEl = <div key={`msg-${uniqueMessageId}`} classList={["collapse-host"]} attrs={{
-                "data-messageid": vm.uniqueMessageId.toString(),
-                "data-copyinline": "true"
-            }}>
-                <div classList={["messageitem", "messageitem-lognav"]} on={{
-                        "click": () => {
-                            if (vm.onClick) {
-                                vm.onClick();
-                            }
-                        }
-                    }}>
-                    <div classList={["lognavtext"]}>{vm.parseResult.asVNode()}</div>
-                </div>
-            </div>;
-
-        return [resultEl, asDisposable(...resultDisposables)];
-    }
-
-    private createTypingStatusElement(vm: ChannelMessageViewModel): [VNode, IDisposable] {
-        const resultDisposables: IDisposable[] = [];
-
-        vm.incrementParsedTextUsage();
-        resultDisposables.push(asDisposable(() => vm.decrementParsedTextUsage()));
-
-        const uniqueMessageId = vm.uniqueMessageId.toString();
-        let resultEl = <div key={`msg-${uniqueMessageId}`} classList={["messageitem", "typingstatusindicator"]}>
-            <span classList={["messagetext"]}>{vm.text != "" ? vm.parseResult.asVNode() : " "}</span>
-        </div>;
-
-        return [resultEl, asDisposable(...resultDisposables)];
-    }
 }
 
 interface MessageRenderer {
@@ -588,7 +293,10 @@ class ChannelStreamMessageViewRendererFChat implements MessageRenderer {
         let tsText: string;
         let copyText: string = "[" + ( areSameDate(new Date(), vm.timestamp) ? dtf.format(vm.timestamp) : dtfWithDate.format(vm.timestamp) ) + "]";
         if (displayStyle == ChannelMessageDisplayStyle.DISCORD) {
-            tsText = ( areSameDate(new Date(), vm.timestamp) ? ("Today at " + dtf.format(vm.timestamp)) : (dtfDate.format(vm.timestamp) + " at " + dtf.format(vm.timestamp)) )
+            tsText = 
+                areSameDate(new Date(), vm.timestamp) ? ("Today at " + dtf.format(vm.timestamp))
+                : areSameDate(DateUtils.addMilliseconds(new Date(), TimeSpanUtils.fromDays(-1)), vm.timestamp) ? ("Yesterday at " + dtf.format(vm.timestamp)) 
+                : (dtfDate.format(vm.timestamp) + " at " + dtf.format(vm.timestamp));
         }
         else {
             tsText = copyText;
@@ -868,7 +576,10 @@ class ChannelStreamMessageViewRendererDiscord implements MessageRenderer {
     }
 
     private getTimestampDisplay(dt: Date) {
-        const tsText = ( areSameDate(new Date(), dt) ? ("Today at " + dtf.format(dt)) : (dtfDate.format(dt) + " at " + dtf.format(dt)) );        
+        const tsText = 
+            areSameDate(new Date(), dt) ? ("Today at " + dtf.format(dt))
+            : areSameDate(DateUtils.addMilliseconds(new Date(), TimeSpanUtils.fromDays(-1)), dt) ? ("Yesterday at " + dtf.format(dt)) 
+            : (dtfDate.format(dt) + " at " + dtf.format(dt));
         return tsText;
     }
 
@@ -889,7 +600,8 @@ class ChannelStreamMessageViewRendererDiscord implements MessageRenderer {
             !isImportant
             && (vm.type == ChannelMessageType.CHAT)
             && previousRMC != null
-            && CharacterName.equals(previousRMC.speakingCharacterName, vm.characterStatus.characterName);
+            && CharacterName.equals(previousRMC.speakingCharacterName, vm.characterStatus.characterName)
+            && this.areWithinMessageCombineInterval(previousRMC.lastTimestamp, vm.timestamp);
         const canIncludeSubsequent = 
             !isImportant
             && (vm.type == ChannelMessageType.CHAT);
@@ -1042,6 +754,10 @@ class ChannelStreamMessageViewRendererDiscord implements MessageRenderer {
             }
         }
     }
+    areWithinMessageCombineInterval(a: Date, b: Date) {
+        const diffMs = Math.abs(a.getTime() - b.getTime());
+        return diffMs < TimeSpanUtils.fromMinutes(2);
+    }
 
     private renderStandardUserElementBody(vm: ChannelMessageViewModel, resultDisposables: IDisposable[], previousRMC: PreviousRenderedMessageContainer | null): VNode {
         const mainClasses: string[] = [];
@@ -1186,11 +902,11 @@ class ChannelStreamMessageViewRendererDiscord implements MessageRenderer {
 
         let timestampHintNode: VNode | null = null;
         if (previousRMC != null) {
-            const prevTSStr = this.getTimestampDisplay(previousRMC.lastTimestamp);
-            const thisTSStr = this.getTimestampDisplay(vm.timestamp);
-            if (thisTSStr != prevTSStr) {
-                timestampHintNode = <div classList={[ "timestamp" ]} attrs={{ "data-copycontent": "" }}>{thisTSStr}</div>;
-            }
+            // const prevTSStr = this.getTimestampDisplay(previousRMC.lastTimestamp);
+            // const thisTSStr = this.getTimestampDisplay(vm.timestamp);
+            // if (thisTSStr != prevTSStr) {
+            //     timestampHintNode = <div classList={[ "timestamp" ]} attrs={{ "data-copycontent": "" }}>{thisTSStr}</div>;
+            // }
         }
 
         return <div classList={[ "message-content", ...mainClasses ]}>{timestampHintNode}<span classList={["header-info"]}>{copyPrefix.join("")}</span>{targetContainer}</div>;

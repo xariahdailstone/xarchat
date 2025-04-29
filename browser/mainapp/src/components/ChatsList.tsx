@@ -14,6 +14,7 @@ import { HTMLUtils } from "../util/HTMLUtils.js";
 import { ObjectUniqueId } from "../util/ObjectUniqueId.js";
 import { ObservableExpression } from "../util/ObservableExpression.js";
 import { Optional } from "../util/Optional.js";
+import { StringUtils } from "../util/StringUtils.js";
 import { WhenChangeManager } from "../util/WhenChange.js";
 import { KeyValuePair } from "../util/collections/KeyValuePair.js";
 import { ActiveLoginViewModel } from "../viewmodel/ActiveLoginViewModel.js";
@@ -369,7 +370,7 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
 
     protected render(): (VNode | [VNode, IDisposable]) {
         const vm = this.viewModel;
-        if (!vm) { return <></>; }
+        if (!vm || vm.isLoggingIn) { return <></>; }
 
         return <>
             {this.renderScrollSection(vm)}
@@ -393,8 +394,8 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
     }
 
     private renderScrollSection(vm: ActiveLoginViewModel): VNode {
-
-        return <div key="scroller" id="scroller">
+        
+        return <div key={`scroller-${vm.characterName.canonicalValue}`} id="scroller">
             {this.renderPinnedChannelsSection(vm)}
             {this.renderUnpinnedChannelsSection(vm)}
             {this.renderPrivateMessagesSection(vm)}
@@ -503,6 +504,7 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
         let typingIndicatorNode: VNode | null = null;
         let nameClasses: string[] = [];
         let title: string;
+        let nickname: (string | null) = null;
         let charStatusDot: VNode | null = null;
         if (isChatChannel) {
             const ccvm = cvm as ChatChannelViewModel;
@@ -540,6 +542,10 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
             }
 
             title = pcvm.character.value;
+            const xnickname = pcvm.getConfigSettingById("nickname") as (string | null | undefined);
+            if (!StringUtils.isNullOrWhiteSpace(xnickname)) {
+                nickname = xnickname;
+            }
 
             charStatusDot = StatusDotVNodeBuilder.getStatusDotVNode(cs);
         }
@@ -561,6 +567,9 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
 
         const pinNode = cvm.canPin
             ? <button classList={["pin-icon"]} on={{
+                    "mousedown": (e: MouseEvent) => {
+                        suppressThisClickAsSelection();
+                    },
                     "click": (e: MouseEvent) => {
                         suppressThisClickAsSelection();
                         switch (e.button) {
@@ -574,6 +583,9 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
 
         const closeNode = cvm.canClose
             ? <button classList={["close-icon"]} on={{
+                    "mousedown": (e: MouseEvent) => {
+                        suppressThisClickAsSelection();
+                    },
                     "click": (e: MouseEvent) => {
                         suppressThisClickAsSelection();
                         cvm.close();
@@ -582,6 +594,16 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
             : null;
 
         const mainEvents: On = {
+            "mousedown": (e: MouseEvent) => {
+                if (!clickSuppressed) {
+                    if (e.button == MouseButton.LEFT) {
+                        cvm.parent.selectedChannel = cvm;
+                    }
+                }
+                else {
+                    clickSuppressed = false;
+                }
+            },
             "click": (e: MouseEvent) => {
                 if (!clickSuppressed) {
                     try {
@@ -642,6 +664,10 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
             mainAttributes["data-has-alert"] = "true";
         }
 
+        const nicknameNode: VNode | null = nickname == null
+            ? null
+            : <span>{" "}<span classList={["nickname"]}>{`(${nickname})`}</span></span>;
+
         return <div key={itemKey} classList={["sectionitems-item"]} attrs={mainAttributes} on={mainEvents}>
             <div classList={["sectionitems-item-inner", 
                     isChatChannel ? "chatchannel" : isPMConvo ? "pmconvo" : "", 
@@ -655,7 +681,7 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
                     <div classList={["sectionitems-item-typingindicator-container"]}>{typingIndicatorNode}</div>
                 </div>
                 <div classList={["sectionitems-item-titleicon", cvm.hasPing ? "visible" : "not-visible"]}>{pingNode}</div>
-                <div classList={["sectionitems-item-name", ...nameClasses]}>{title}</div>
+                <div classList={["sectionitems-item-name", ...nameClasses]}>{title}{nicknameNode}</div>
                 <div classList={["pin-icon-container"]}>{pinNode}</div>
                 <div classList={["close-icon-container"]}>{closeNode}</div>
             </div>

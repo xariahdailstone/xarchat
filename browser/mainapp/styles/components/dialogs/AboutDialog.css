@@ -1,0 +1,33 @@
+
+#elMain {
+    width: 400px;
+    height: auto;
+}
+.about-container {
+    display: grid;
+    grid-template-columns: auto;
+    grid-template-rows: auto auto;
+    grid-template-areas:
+        "title"
+        "version";
+
+    padding: 10px 10px;
+
+    .about-title { grid-area: title; }
+    .about-version { grid-area: version; }
+
+    .about-title { 
+        align-self: center;
+        justify-self: center;
+        font-size: 24pt;
+        font-weight: bold;
+        margin-bottom: 10px;
+    }
+
+    .about-version {
+        align-self: center;
+        justify-self: center;
+        font-size: 85%;
+        font: var(--chat-font);
+    }
+}
