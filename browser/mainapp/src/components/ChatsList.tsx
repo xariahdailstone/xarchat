@@ -7,7 +7,7 @@ import { TypingStatus } from "../shared/TypingStatus.js";
 import { Attrs, Fragment, jsx, On, VNode } from "../snabbdom/index.js";
 import { AnimationFrameUtils } from "../util/AnimationFrameUtils.js";
 import { addCharacterGenderListenerLightweight, addCharacterOnlineStatusListenerLightweight } from "../util/CharacterOnlineStatusListenerLightweight.js";
-import { IDisposable, asDisposable, disposeWithThis } from "../util/Disposable.js";
+import { ConvertibleToDisposable, IDisposable, asDisposable, disposeWithThis } from "../util/Disposable.js";
 import { EL } from "../util/EL.js";
 import { EventListenerUtil, MouseButton } from "../util/EventListenerUtil.js";
 import { HTMLUtils } from "../util/HTMLUtils.js";
@@ -47,10 +47,11 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
         super();
 
         this.whenConnected(() => {
-            const disposables: IDisposable[] = [];
+            const disposables: ConvertibleToDisposable[] = [];
+            const addDisposable = (x: ConvertibleToDisposable) => disposables.push(x);
 
-            disposables.push(this.setupScrollerAlertsNotifications());
-            disposables.push(this.setupChannelDragHosts());
+            this.setupScrollerAlertsNotifications(addDisposable);
+            this.setupChannelDragHosts(addDisposable);
 
             return asDisposable(...disposables);
         });
@@ -59,8 +60,15 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
     private scrollToNextAlertAbove: ((() => void) | null) = null;
     private scrollToNextAlertBelow: ((() => void) | null) = null;
 
-    private setupScrollerAlertsNotifications(): IDisposable {
+    private setupScrollerAlertsNotifications(addDisposable: (x: ConvertibleToDisposable) => void): void {
         let io: IntersectionObserver | null = null;
+        addDisposable(() => {
+            if (io) {
+                io.disconnect();
+                io = null;
+            }
+        });
+
         const elementsNotVisibleAbove = new Map<HTMLElement, number>();
         const elementsNotVisibleBelow = new Map<HTMLElement, number>();
         let lastHasAlertElements = new Set<HTMLElement>();
@@ -156,6 +164,8 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
                 recalculateAlertDisplay();
             }
         });
+        addDisposable(() => mo.disconnect());
+
         mo.observe(this.elMain, {
             subtree: true,
             childList: true,
@@ -165,19 +175,15 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
         const winResizeEvt = EventListenerUtil.addDisposableEventListener(window, "resize", () => {
             recalculateAlertDisplay();
         });
+        addDisposable(winResizeEvt);
+
         const appWindowStateChanged = new ObservableExpression(
             () => this.viewModel?.appViewModel.appWindowState,
             (v) => { recalculateAlertDisplay(); },
             (e) => { recalculateAlertDisplay(); });
+        addDisposable(appWindowStateChanged);
 
-        return asDisposable(() => {
-            if (io) {
-                io.disconnect();
-                io = null;
-            }
-            winResizeEvt?.dispose();
-            appWindowStateChanged?.dispose();
-            mo.disconnect();
+        addDisposable(() => {
             this.scrollToNextAlertAbove = null;
             this.scrollToNextAlertBelow = null;
         });
@@ -207,7 +213,7 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
         return false;
     }
 
-    private setupChannelDragHosts(): IDisposable {
+    private setupChannelDragHosts(addDisposable: (x: ConvertibleToDisposable) => void): void {
         const existingDragDropHosts = new Map<HTMLElement, IDisposable>();
 
         const mo = new MutationObserver(entries => {
@@ -228,19 +234,18 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
             }
         });
 
-        mo.observe(this.elMain, {
-            subtree: true,
-            childList: true,
-            attributes: true
-        });
-
-        return asDisposable(() => {
-            mo.disconnect();
-
+        addDisposable(() => mo.disconnect());
+        addDisposable(() => {
             for (let d of existingDragDropHosts.values()) {
                 d.dispose();
             }
             existingDragDropHosts.clear();
+        });
+
+        mo.observe(this.elMain, {
+            subtree: true,
+            childList: true,
+            attributes: true
         });
     }
 
