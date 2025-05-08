@@ -223,13 +223,18 @@ export abstract class ComponentBase<TViewModel> extends HTMLElement {
     protected get isComponentConnected() { return this._isComponentConnected; }
 
     private connectedCallback() {
-        this._isComponentConnected = true;
-        this.parentComponent = this.findParentComponent();
-        //this.logger.logDebug(`${this.constructor.name} connected`, this.parentComponent);
-        this.viewModelContextUpdated();
-        try { this.connectedToDocument(); } catch { }
-        this.setupWhenConnecteds();
-        this.raiseConnectedEvent();
+        try {
+            this._isComponentConnected = true;
+            this.parentComponent = this.findParentComponent();
+            //this.logger.logDebug(`${this.constructor.name} connected`, this.parentComponent);
+            this.viewModelContextUpdated();
+            this.connectedToDocument();
+            this.setupWhenConnecteds();
+            this.raiseConnectedEvent();
+        }
+        catch (e) {
+            this.logger.logError("connectedCallback failed", e);
+        }
     }
 
     protected connectedToDocument() { }
@@ -238,13 +243,18 @@ export abstract class ComponentBase<TViewModel> extends HTMLElement {
     private disconnectedCallback() {
         //this.logger.logDebug(`${this.constructor.name} disconnected`);
         this.logger.logDebug("disconnecting");
-        this._isComponentConnected = false;
-        this.parentComponent = null;
-        this.viewModelContextUpdated();
-        this.disconnectedFromDocument();
-        this.teardownWhenConnecteds();
-        this.raiseDisconnectedEvent();
-        this.logger.logDebug("disconnected");
+        try {
+            this._isComponentConnected = false;
+            this.parentComponent = null;
+            this.viewModelContextUpdated();
+            this.disconnectedFromDocument();
+            this.teardownWhenConnecteds();
+            this.raiseDisconnectedEvent();
+            this.logger.logDebug("disconnected"); 
+        } 
+        catch (e) { 
+            this.logger.logError("disconnectedCallback failed", e);
+        }
     }
 
     private _inAttributeChangedCallback: boolean = false;
@@ -425,8 +435,13 @@ export abstract class ComponentBase<TViewModel> extends HTMLElement {
             invoke: (isConnected: boolean) => {
                 lastResult.value = null;
                 if (isConnected) {
-                    const tresult = createFunc();
-                    lastResult.value = tresult ?? null;
+                    try {
+                        const tresult = createFunc();
+                        lastResult.value = tresult ?? null;
+                    }
+                    catch {
+                        lastResult.value = null;
+                    }
                 }
             }, 
             lastResult: lastResult };
