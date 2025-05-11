@@ -94,38 +94,49 @@ export class EIconSearchDialog extends DialogComponentBase<EIconSearchDialogView
             return false;
         });
         elKeyboardNavTextbox.addEventListener("keydown", (e) => {
+            let handled = false;
             if (this.viewModel) {
                 if (e.keyCode == KeyCodes.UP_ARROW) {
                     //this.logger.logDebug("up");
                     elSetView.moveKeyboardSelectionUp();
+                    handled = true;
                 }
                 else if (e.keyCode == KeyCodes.LEFT_ARROW) {
                     //this.logger.logDebug("left");
                     elSetView.moveKeyboardSelectionLeft();
+                    handled = true;
                 }
                 else if (e.keyCode == KeyCodes.RIGHT_ARROW) {
                     //this.logger.logDebug("right");
                     elSetView.moveKeyboardSelectionRight();
+                    handled = true;
                 }
                 else if (e.keyCode == KeyCodes.DOWN_ARROW) {
                     //this.logger.logDebug("down");
                     elSetView.moveKeyboardSelectionDown();
+                    handled = true;
                 }
                 else if (e.keyCode == KeyCodes.RETURN) {
                     //this.logger.logDebug("return");
                     elSetView.confirmKeyboardSelection();
+                    handled = true;
                 }
             }
             if (e.keyCode == KeyCodes.TAB) {
+                handled = true;
                 return false;
             }
 
-            e.preventDefault();
-            return true;
+            if (handled) {
+                e.preventDefault();
+                return true;
+            }
         });
         elKeyboardNavTextbox.addEventListener("focusout", () => {
             elSetView.setKeyboardSelectionTo(null);
         });
+        elKeyboardNavTextbox.addEventListener("input", (e) => { elKeyboardNavTextbox.value = ""; });
+        elKeyboardNavTextbox.addEventListener("change", (e) => { elKeyboardNavTextbox.value = ""; });
 
         this.$("elSetView")?.addEventListener("eiconselected", (e) => {
             const eiconName = (e as any).eiconName;
