@@ -167,7 +167,8 @@ body, .bbcode-eicons-normal {
     color: #FFCBDB !important;
     text-shadow: #000 0px 1px 2px;
 }
-.bbcode-color-gray {
+.bbcode-color-gray,
+.bbcode-color-grey {
     color: #D3D3D3 !important;
     text-shadow: #000 0px 1px 2px;
 }
