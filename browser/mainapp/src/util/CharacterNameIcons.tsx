@@ -64,7 +64,7 @@ function getEffectiveCharacterNameInfo(character: CharacterName, vm: ChannelView
 
     const chatChannelVM = (vm instanceof ChatChannelViewModel) ? vm : null;
     const sessionVM = (vm instanceof ChannelViewModel) ? vm.parent
-        : (vm instanceof ActiveLoginViewModel) ? vm
+        : (ActiveLoginViewModel.isInstance(vm)) ? vm
         : null;
 
     if (chatChannelVM && chatChannelVM.channelOps.has(character)) {

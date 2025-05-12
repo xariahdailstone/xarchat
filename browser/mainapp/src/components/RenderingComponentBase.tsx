@@ -191,7 +191,7 @@ export abstract class RenderingComponentBase<TViewModel> extends ComponentBase<T
         }
 
         while (tvm) {
-            if (tvm instanceof ActiveLoginViewModel) {
+            if (ActiveLoginViewModel.isInstance(tvm)) {
                 alvm = tvm;
                 break;
             }

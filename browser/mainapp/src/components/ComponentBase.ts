@@ -601,7 +601,7 @@ export class ComponentCharacterStatusListener implements IDisposable {
 
         let cvm = this.component.viewModel;
         while (cvm) {
-            if (cvm instanceof ActiveLoginViewModel) {
+            if (ActiveLoginViewModel.isInstance(cvm)) {
                 return cvm;
             }
             

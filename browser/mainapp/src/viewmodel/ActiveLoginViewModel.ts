@@ -26,7 +26,7 @@ import { StdObservableCollectionChangeType } from "../util/collections/ReadOnlyS
 import { LoginUtils } from "../util/LoginUtils.js";
 import { OperationCancelledError } from "../util/PromiseSource.js";
 import { IterableUtils } from "../util/IterableUtils.js";
-import { AppSettings, SavedChatState, SavedChatStateJoinedChannel } from "../settings/AppSettings.js";
+import { AppSettings, PingWordsSet, SavedChatState, SavedChatStateJoinedChannel } from "../settings/AppSettings.js";
 import { CharacterStatusEditorPopupViewModel } from "./popups/CharacterStatusEditorPopupViewModel.js";
 import { OnlineStatus } from "../shared/OnlineStatus.js";
 import { Logger, Logging } from "../util/Logger.js";
@@ -49,13 +49,143 @@ declare const XCHost: any;
 
 let nextViewModelId = 1;
 
-export class ActiveLoginViewModel extends ObservableBase {
+export interface ActiveLoginViewModel extends Observable {
+    readonly parent: AppViewModel;
+    readonly appViewModel: AppViewModel;
+    readonly authenticatedApi: FListAuthenticatedApi;
+    readonly savedChatState: SavedChatState;
+
+    isLoggingIn: boolean;
+
+    readonly serverVariables: { [key: string]: any };
+    updateServerVariable(varName: string, varValue: any): void;
+
+    readonly miscTabs: ObservableCollection<MiscTabViewModel>;
+
+    chatConnection: ChatConnection;
+    readonly chatConnectionConnected: (ChatConnection | null);
+    connectionState: ChatConnectionState;
+
+    isServerOp(name: CharacterName): boolean;
+
+    autoReconnectInSec: number | null;
+    beginAutoReconnectCountdown(): void;
+
+    characterName: CharacterName;
+
+    addedToLogins(): void;
+    removingFromLogins(): void;
+
+    readonly serverOps: CharacterNameSet;
+    readonly watchedChars: CharacterNameSet;
+    readonly friends: CharacterNameSet;
+    readonly bookmarks: CharacterNameSet;
+    readonly interests: CharacterNameSet;
+
+    readonly onlineWatchedChars: CharacterNameSet;
+    readonly onlineFriends: CharacterNameSet;
+    readonly onlineBookmarks: CharacterNameSet;
+
+    readonly lookingWatchedChars: CharacterNameSet;
+    readonly lookingFriends: CharacterNameSet;
+    readonly lookingBookmarks: CharacterNameSet;
+
+    watchedListFilter: WatchedListFilterType;
+
+    readonly ignoredChars: CharacterNameSet;
+
+    readonly openChannels: Collection<ChatChannelViewModel>;
+    readonly openChannelsByChannelName: Map<ChannelName, ChatChannelViewModel>;
+
+    readonly console: ConsoleChannelViewModel;
+    readonly partnerSearch: PartnerSearchViewModel;
+
+    readonly pingWords: PingWordsSet;
+
+    hasUnseenMessages: boolean;
+    hasPings: boolean;
+ 
+    readonly pinnedChannels: Collection<ChatChannelViewModel>;
+    readonly unpinnedChannels: Collection<ChatChannelViewModel>;
+    readonly pmConversations: Collection<PMConvoChannelViewModel>;
+
+    updateChannelPinState(ch: ChatChannelViewModel): void;
+    updatePMConvoOrdering(ch: PMConvoChannelViewModel): void;
+
+    channelsCollapsed: boolean;
+    pinnedChannelsCollapsed: boolean;
+    pmConvosCollapsed: boolean;
+
+    bbcodeSink: BBCodeParseSink;
+
+    getOrCreateChannel(channel: ChannelName, title?: string): ChatChannelViewModel;
+    getChannel(channel: ChannelName): ChatChannelViewModel | null;
+    closeChannel(channel: ChannelName): void;
+    setChannelOrdering(names: ChannelName[]): void;
+    reorderChannel(name: ChannelName, where: ("before" | "after"), relTo: ChannelViewModel): void;
+
+    getOrCreatePmConvo(convoCharacter: CharacterName, transient?: boolean): (PMConvoChannelViewModel | null);
+    getPmConvo(convoCharacter: CharacterName): PMConvoChannelViewModel | null;
+    closePmConvo(convoCharacter: CharacterName): void;
+    activatePMConvo(char: CharacterName): void;
+
+    leftListSelectedPane: LeftListSelectedPane;
+    selectedTab: (SelectableTab | null);
+    selectedChannel: (ChannelViewModel | null);
+
+    isActiveSession: boolean;
+    isSelectedSession: boolean;
+    appWindowActiveChanged(): void;
+
+    readonly characterSet: CharacterSet;
+
+    getMyProfileInfo(cancellationToken: CancellationToken): Promise<ProfileInfo>;
+    getMyFriendsListInfo(cancellationToken: CancellationToken): Promise<FriendsList>;
+    expireMyFriendsListInfo(): void;
+
+    showAddChannels(): void;
+
+    cachedPublicChannelListExpiresAt: Date | null;
+    cachedPublicChannelList: ChannelMetadata[] | null;
+    cachedPrivateChannelListExpiresAt: Date | null;
+    cachedPrivateChannelList: ChannelMetadata[] | null;
+
+    showCharacterStatusPopup(el: HTMLElement): void;
+
+    getSlashCommands(): SlashCommandViewModel[];
+    processCommandAsync(command: string, commandCOntext: ChannelViewModel): Promise<string>;
+
+    idleStateChanged(): void;
+
+    showMainContextMenu(contextElement: HTMLElement): void;
+
+    openLogViewer(logsFor: CharacterName, dateAnchor: DateAnchor, date: Date, target: ChannelName | CharacterName): void;
+
+    getConfigSettingById(configSettingId: string, channel?: GetConfigSettingChannelViewModel | null): unknown;
+    getConfigEntryHierarchical(key: string, channel?: GetConfigSettingChannelViewModel | null): unknown;
+    getFirstConfigEntryHierarchical(keys: string[], channel?: GetConfigSettingChannelViewModel | null): unknown | null;
+
+    readonly toastManager: InAppToastManagerViewModel;
+}
+
+const IsActiveLoginViewModel = Symbol("Is ActiveLoginViewModel");
+export const ActiveLoginViewModel = {
+    markAsInstance(obj: object) {
+        (obj as any)[IsActiveLoginViewModel] = true;
+    },
+    isInstance(obj: unknown): obj is ActiveLoginViewModel {
+        return !!((obj as any)[IsActiveLoginViewModel]);
+    }
+};
+
+export class ActiveLoginViewModelImpl extends ObservableBase implements ActiveLoginViewModel {
     constructor(
         public readonly parent: AppViewModel,
         public readonly authenticatedApi: FListAuthenticatedApi,
         public readonly savedChatState: SavedChatState) {
 
         super();
+        ActiveLoginViewModel.markAsInstance(this);
 
         this.addPropertyListener("pmConvosCollapsed", (e) => {
             this.logger.logWarn("pmConvosCollapsed changed", e.propertyName, e.propertyValue);

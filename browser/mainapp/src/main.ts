@@ -18,7 +18,7 @@ import { polyfillRequestIdleCallback } from "./util/RequestIdleCallbackPolyfill.
 import { setStylesheetAdoption } from "./util/StyleSheetPolyfill.js";
 import { XarChatUtils } from "./util/XarChatUtils.js";
 import { ActiveLoginViewModel } from "./viewmodel/ActiveLoginViewModel.js";
-import { AppViewModel } from "./viewmodel/AppViewModel.js";
+import { AppViewModel, AppViewModelImpl } from "./viewmodel/AppViewModel.js";
 import { ChannelMessageViewModel, ChannelViewModel } from "./viewmodel/ChannelViewModel.js";
 import { ChatChannelViewModel } from "./viewmodel/ChatChannelViewModel.js";
 import { AppInitializeViewModel } from "./viewmodel/dialogs/AppInitializeViewModel.js";
@@ -145,7 +145,7 @@ onReady(async () => {
     window.addEventListener("dragover", (e) => { e.preventDefault(); e.dataTransfer!.dropEffect = "none"; return false; });
     window.addEventListener("drop", (e) => { e.preventDefault(); return false; });
 
-    let vm = new AppViewModel(cb);
+    let vm = new AppViewModelImpl(cb);
     (window as any)["__vm"] = vm;
     //vm.pingWords = [ "xariah" ];
 

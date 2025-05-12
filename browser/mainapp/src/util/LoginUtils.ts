@@ -43,7 +43,7 @@ export class LoginUtils {
 
                     const appSettings = appViewModel.appSettings;
 
-                    activeLoginViewModel = new ActiveLoginViewModel(appViewModel, authApi, appSettings.savedChatStates.getOrCreate(character));
+                    activeLoginViewModel = appViewModel.createActiveLoginViewModel(authApi, appSettings.savedChatStates.getOrCreate(character));
                     activeLoginViewModel.isLoggingIn = true;
                     disposeALVMOnError = true;
                 }

@@ -1,7 +1,7 @@
 import { ConfigSchema, ConfigSchemaScopeType, getConfigSchemaItemById } from "../configuration/ConfigSchemaItem.js";
-import { FListApi } from "../fchat/api/FListApi.js";
+import { FListApi, FListAuthenticatedApi } from "../fchat/api/FListApi.js";
 import { HostInteropApi } from "../fchat/api/HostInteropApi.js";
-import { AppSettings } from "../settings/AppSettings.js";
+import { AppSettings, SavedChatState, SavedChatStateJoinedChannel } from "../settings/AppSettings.js";
 import { RawSavedWindowLocation } from "../settings/RawAppSettings.js";
 import { ChannelName } from "../shared/ChannelName.js";
 import { CharacterName } from "../shared/CharacterName.js";
@@ -14,7 +14,7 @@ import { Collection, CollectionChangeEvent, CollectionChangeType } from "../util
 import { PromiseSource } from "../util/PromiseSource.js";
 import { UpdateCheckerClient, UpdateCheckerState } from "../util/UpdateCheckerClient.js";
 import { StdObservableCollectionChangeType } from "../util/collections/ReadOnlyStdObservableCollection.js";
-import { ActiveLoginViewModel } from "./ActiveLoginViewModel.js";
+import { ActiveLoginViewModel, ActiveLoginViewModelImpl } from "./ActiveLoginViewModel.js";
 import { ChannelViewModel } from "./ChannelViewModel.js";
 import { ChatChannelUserViewModel, ChatChannelViewModel } from "./ChatChannelViewModel.js";
 import { ColorThemeViewModel } from "./ColorThemeViewModel.js";
@@ -30,7 +30,79 @@ import { PopupViewModel } from "./popups/PopupViewModel.js";
 import { TooltipPopupViewModel } from "./popups/TooltipPopupViewModel.js";
 import { UIZoomNotifyPopupViewModel } from "./popups/UIZoomNotifyPopupViewModel.js";
 
-export class AppViewModel extends ObservableBase {
+export interface AppViewModel extends Observable {
+    isInStartup: boolean;
+    readonly colorTheme: ColorThemeViewModel;
+
+    updateCheckerState: UpdateCheckerState;
+    relaunchToApplyUpdateAsync(): Promise<void>;
+
+    initialized: boolean;
+    statusMessage: string | null;
+
+    zoomNotifyPopup: UIZoomNotifyPopupViewModel | null;
+    interfaceZoom: number;
+
+    readonly configBlock: ConfigBlock;
+    flistApi: FListApi;
+
+    appSettings: AppSettings;
+
+    appWindowState: HostWindowState;
+    readonly showTitlebar: boolean;
+    readonly windowTitle: string;
+
+    readonly dialogs: Collection<DialogViewModel<any>>;
+    readonly popups: Collection<PopupViewModel>;
+
+    leftBarWidth: number;
+    readonly logins: Collection<ActiveLoginViewModel>;
+    currentlySelectedSession: ActiveLoginViewModel | null;
+
+    isWindowActive: boolean;
+    collapseAds: boolean;
+    collapseHeight: number;
+
+    hasPings: boolean;
+    hasUnseenMessages: boolean;
+
+    flashTooltipAsync(message: string, contextElement: HTMLElement, clientX: number, clientY: number): Promise<void>;
+    alertAsync(message: string, title?: string, options?: Partial<AlertOptions>): Promise<void>;
+    promptAsync<TResult>(options: PromptOptions<TResult>): Promise<TResult>;
+    promptForStringAsync(options: PromptForStringOptions): Promise<string | null>;
+
+    launchUrlAsync(url: string, forceExtermal?: boolean): Promise<void>;
+
+    readonly noGpuMode: boolean;
+
+    launchUpdateUrlAsync(): Promise<void>;
+    showDialogAsync<TResult>(dialog: DialogViewModel<TResult>): Promise<TResult>;
+
+    applicationWindowMoved(data: RawSavedWindowLocation): void;
+
+    userState: IdleDetectionUserState;
+    screenState: IdleDetectionScreenState;
+    idleAfterSec: number | null;
+
+    showSettingsDialogAsync(activeLoginViewModel?: ActiveLoginViewModel, interlocutor?: CharacterName): Promise<void>;
+    showSettingsDialogForChannelAsync(activeLoginViewModel: ActiveLoginViewModel, channel: ChannelViewModel): Promise<void>;
+
+    showAboutDialogAsync(): Promise<void>;
+
+    getMainContextMenuItems(ctxVm: ContextMenuPopupViewModel<() => void>, activeLoginViewModel?: ActiveLoginViewModel): void;
+
+    getConfigSettingById(configSettingId: string, alvm?: { characterName: CharacterName } | null, channel?: GetConfigSettingChannelViewModel | null): unknown;
+    setConfigSettingById(configSettingId: string, newValue: any, alvm?: { characterName: CharacterName } | null, channel?: GetConfigSettingChannelViewModel | null): void;
+
+    getConfigEntryHierarchical(key: string, alvm?: { characterName: CharacterName } | null, channel?: GetConfigSettingChannelViewModel | null): unknown;
+    getFirstConfigEntryHierarchical(keys: string[], alvm?: { characterName: CharacterName } | null, channel?: GetConfigSettingChannelViewModel | null): unknown;
+
+    soundNotification(event: AppNotifyEvent): void;
+
+    createActiveLoginViewModel(authenticatedApi: FListAuthenticatedApi, savedChatState: SavedChatState): ActiveLoginViewModel;
+}
+
+export class AppViewModelImpl extends ObservableBase implements AppViewModel {
     constructor(configBlock: ConfigBlock) {
         super();
 
@@ -91,6 +163,10 @@ export class AppViewModel extends ObservableBase {
                 this.updateCheckerState = state;
             });
         })();
+    }
+
+    createActiveLoginViewModel(authenticatedApi: FListAuthenticatedApi, savedChatState: SavedChatState): ActiveLoginViewModel {
+        return new ActiveLoginViewModelImpl(this, authenticatedApi, savedChatState);
     }
 
     isInStartup: boolean = true;
@@ -214,7 +290,7 @@ export class AppViewModel extends ObservableBase {
         this.hasUnseenMessages = newUnseen;
     }
 
-    flashTooltipAsync(message: string, contextElement: HTMLElement, clientX: number, clientY: number) {
+    async flashTooltipAsync(message: string, contextElement: HTMLElement, clientX: number, clientY: number) {
         const ttvm = new TooltipPopupViewModel(this, contextElement);
         ttvm.mousePoint = { x: clientX, y: clientY };
         ttvm.text = message;
