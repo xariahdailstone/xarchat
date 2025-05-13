@@ -443,12 +443,14 @@ export class ChatChannelViewModel extends ChannelViewModel {
     updateUserInLists(character: CharacterName | null) {
         if (!character) return;
 
+        const cs = this.parent.characterSet.getCharacterStatus(character);
+
         let uvm = this._allUsers.get(character);
         let isInChannel = uvm != null;
         let isModerator = isInChannel 
             && (CharacterName.equals(this._channelOwner, character) || this._channelOps.has(character) || this.parent.serverOps.has(character));
-        let isWatched = isInChannel && !isModerator && (this.parent.watchedChars.has(character));
-        let isLooking = isInChannel && !isModerator && !isWatched && (this.parent.characterSet.getCharacterStatus(character).status == OnlineStatus.LOOKING);
+        let isWatched = isInChannel && !isModerator && (cs.isFriend || cs.isBookmark || cs.isInterest);
+        let isLooking = isInChannel && !isModerator && !isWatched && (cs.status == OnlineStatus.LOOKING);
         let isOther = isInChannel && !isModerator && !isWatched && !isLooking;
 
         const alreadyModerator = this._usersModerators.has(character);

@@ -1,4 +1,4 @@
-import { AppViewModel } from "../../viewmodel/AppViewModel";
+import { AppViewModel, GetConfigSettingChannelViewModel } from "../../viewmodel/AppViewModel";
 import { SettingsDialogSectionViewModel, SettingsDialogItemViewModel, SettingsDialogSettingViewModel, SettingsDialogTabViewModel, SettingsDialogViewModel } from "../../viewmodel/dialogs/SettingsDialogViewModel";
 import { componentArea, componentElement } from "../ComponentBase";
 import { makeRenderingComponent, RenderingComponentBase } from "../RenderingComponentBase";
@@ -6,7 +6,7 @@ import { DialogBorderType, DialogComponentBase, dialogViewFor } from "./DialogFr
 import { Fragment, init, jsx, VNode, styleModule, toVNode, propsModule, eventListenersModule, h, Hooks, Attrs, On } from "../../snabbdom/index.js";
 import { IterableUtils } from "../../util/IterableUtils";
 import { HTMLUtils } from "../../util/HTMLUtils";
-import { ConfigSchemaItemDefinitionItem, PingLineItemDefinition, PingLineItemMatchStyle, PingLineItemMatchStyleConvert } from "../../configuration/ConfigSchemaItem";
+import { ConfigSchemaItemDefinitionItem, EnableIfOptions, PingLineItemDefinition, PingLineItemMatchStyle, PingLineItemMatchStyleConvert } from "../../configuration/ConfigSchemaItem";
 import { ColorHSSelectPopup } from "../popups/ColorHSSelectPopup";
 import { ColorHSSelectPopupViewModel } from "../../viewmodel/popups/ColorHSSelectPopupViewModel";
 import { HostInterop } from "../../util/HostInterop";
@@ -14,6 +14,7 @@ import { NotificationRouting, NotificationRoutingTargetSetting } from "../../con
 import { ColorRGBSelectPopupViewModel } from "../../viewmodel/popups/ColorRGBSelectPopupViewModel";
 import { ThemeToggle } from "../ThemeToggle";
 import { Collection } from "../../util/ObservableCollection";
+import { ChannelName } from "../../shared/ChannelName";
 
 @componentArea("dialogs")
 @componentElement("x-settingsdialog")
@@ -45,7 +46,7 @@ export class SettingsDialog extends DialogComponentBase<SettingsDialogViewModel>
                         { vm.selectedTab ? this.renderTreeViewPane(vm.selectedTab.settings) : "" }
                     </div>
                     <div classList={["tabpanel"]}>
-                        { vm.selectedTab ? this.renderTabPane(vm.selectedTab) : "" }
+                        { vm.selectedTab ? this.renderTabPane(vm, vm.selectedTab) : "" }
                     </div>
                 </div>
             </div>;
@@ -86,20 +87,20 @@ export class SettingsDialog extends DialogComponentBase<SettingsDialogViewModel>
         </div>;
     }
 
-    private renderTabPane(tab: SettingsDialogTabViewModel): VNode {
+    private renderTabPane(vm: SettingsDialogViewModel, tab: SettingsDialogTabViewModel): VNode {
         return <div classList={["tabpane", "tabpane-standard"]}>
             <div classList={["tabpane-description"]}>{ tab.tabInstructions }</div>
-            { IterableUtils.asQueryable(tab.settings).select(x => this.renderSetting(x)).toArray() }
+            { IterableUtils.asQueryable(tab.settings).select(x => this.renderSetting(vm, x)).toArray() }
         </div>;
     }
 
-    private renderSetting(setting: SettingsDialogSettingViewModel): VNode {
+    private renderSetting(vm: SettingsDialogViewModel, setting: SettingsDialogSettingViewModel): VNode {
         let inner: VNode;
         let settingClasses: string[] = ["setting"];
 
         if (setting instanceof SettingsDialogSectionViewModel) {
             settingClasses.push("setting-group");
-            inner = <div classList={["setting-group-container"]}>{IterableUtils.asQueryable(setting.settings).select(x => this.renderSetting(x)).toArray()}</div>;
+            inner = <div classList={["setting-group-container"]}>{IterableUtils.asQueryable(setting.settings).select(x => this.renderSetting(vm, x)).toArray()}</div>;
         }
         else if (setting instanceof SettingsDialogItemViewModel) {
             settingClasses.push("setting-item");
@@ -149,6 +150,33 @@ export class SettingsDialog extends DialogComponentBase<SettingsDialogViewModel>
         if (setting.isDisabled) {
             settingClasses.push("setting-is-disabled");
         }
+        if (setting instanceof SettingsDialogItemViewModel && setting.schema.enableIf) {
+            const eiFunc = setting.schema.enableIf;
+            const eiOpts: EnableIfOptions = {
+                myCharacterName: setting.scope.myCharacter,
+                channelCategory: setting.scope.categoryName,
+                channelName: setting.scope.targetChannel ? ChannelName.create(setting.scope.targetChannel) : undefined,
+                interlocutorName: setting.scope.pmConvoCharacter,
+                getConfigEntryById: (id: string) => {
+                    let xx: GetConfigSettingChannelViewModel | undefined;
+                    if (setting.scope.categoryName && setting.scope.targetChannel) {
+                        xx = { channelCategory: setting.scope.categoryName, channelTitle: setting.scope.targetChannel };
+                    }
+                    else if (setting.scope.pmConvoCharacter) {
+                        xx = { characterName: setting.scope.pmConvoCharacter };
+                    }
+
+                    return vm.parent.getConfigSettingById(id,
+                        setting.scope.myCharacter ? { characterName: setting.scope.myCharacter } : null,
+                        xx
+                    );
+                }
+            };
+            if (!eiFunc(eiOpts)) {
+                settingClasses.push("setting-is-disabled");
+            }
+        }
+
         return <div classList={settingClasses} data-sectiontitle={setting.title} props={{ "inert": setting.isDisabled }}>
             <div classList={["setting-title"]}>{setting.title}</div>
             <div classList={["setting-description"]}>{setting.description}</div>

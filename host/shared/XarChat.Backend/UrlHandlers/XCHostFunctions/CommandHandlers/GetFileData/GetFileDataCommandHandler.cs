@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using XarChat.Backend.Common;
+using XarChat.Backend.Features.AppDataFolder;
 using XarChat.Backend.Features.AppFileServer;
 using static XarChat.Backend.UrlHandlers.XCHostFunctions.WebSocketXCHostSession;
 
@@ -13,10 +15,14 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.GetFileDat
     internal class GetFileDataCommandHandler : AsyncXCHostCommandHandlerBase<GetCssDataArgs>
     {
         private readonly IAppFileServer _appFileServer;
+        private readonly IAppDataFolder _appDataFolder;
 
-        public GetFileDataCommandHandler(IAppFileServer appFileServer)
+        public GetFileDataCommandHandler(
+            IAppFileServer appFileServer,
+            IAppDataFolder appDataFolder)
         {
             _appFileServer = appFileServer;
+            _appDataFolder = appDataFolder;
         }
 
         protected override async Task HandleCommandAsync(GetCssDataArgs args, CancellationToken cancellationToken)
@@ -24,7 +30,14 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.GetFileDat
             string data;
             try
             {
-                data = await _appFileServer.GetFileContentAsStringAsync(args.Url, cancellationToken);
+                if (args.Url == "/customcss")
+                {
+                    data = await GetCustomCssDataAsync();
+                }
+                else
+                {
+                    data = await _appFileServer.GetFileContentAsStringAsync(args.Url, cancellationToken);
+                }
             }
             catch
             {
@@ -44,6 +57,36 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.GetFileDat
                     MessageId = args.MessageId,
                     Data = data
                 }, SourceGenerationContext.Default.GotCssDataResult));
+        }
+
+        private async Task<string> GetCustomCssDataAsync()
+        {
+            var adf = _appDataFolder.GetAppDataFolder();
+            List<string> cssFilesSorted;
+            try
+            {
+                var customCssDir = Path.Combine(adf, "customcss");
+                cssFilesSorted = Directory.GetFiles(customCssDir, "*.css").OrderBy(f => f).ToList();
+            }
+            catch
+            {
+                cssFilesSorted = [];
+            }
+
+            var resultSb = new StringBuilder();
+            foreach (var cssFile in cssFilesSorted)
+            {
+                try
+                {
+                    using var f = File.OpenText(cssFile);
+                    var cssContent = await f.ReadToEndAsync();
+                    resultSb.AppendLine($"/* File {cssFile} */");
+                    resultSb.AppendLine(cssContent);
+                }
+                catch { }
+            }
+
+            return resultSb.ToString();
         }
     }
 

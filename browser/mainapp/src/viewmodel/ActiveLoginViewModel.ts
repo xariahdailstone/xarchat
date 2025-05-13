@@ -338,6 +338,28 @@ export class ActiveLoginViewModel extends ObservableBase {
 
     // watchedChars = superset of friends + bookmarks + interests
     readonly watchedChars: CharacterNameSet = new CharacterNameSet();
+    updateWatchedCharsSet() {
+        let toRemove: CharacterName[] | null = null;
+        for (let n of this.watchedChars.iterateValues()) {
+            if (!this.friends.has(n.key) && !this.bookmarks.has(n.key) && !this.interests.has(n.key)) {
+                toRemove ??= [];
+                toRemove.push(n.key);
+            }
+        }
+        if (toRemove) {
+            for (let n of toRemove) {
+                this.watchedChars.delete(n);
+            }
+        }
+
+        for (let coll of [this.friends, this.bookmarks, this.interests]) {
+            for (let n of coll.iterateValues()) {
+                if (!this.watchedChars.has(n.key)) {
+                    this.watchedChars.add(n.key);
+                }
+            }
+        }
+    }
 
     readonly friends: CharacterNameSet = new CharacterNameSet();
 
@@ -880,6 +902,15 @@ export class ActiveLoginViewModel extends ObservableBase {
                         this.activatePMConvo(targetCharName);
                     }
                     return "";
+                }
+            ),
+            new SlashCommandViewModel(
+                ["devtools"],
+                "Show Developer Tools",
+                "Opens the browser developer tools for the XarChat user interface.",
+                [],
+                async (context, args) => {
+                    HostInterop.showDevTools();
                 }
             )
         ];
