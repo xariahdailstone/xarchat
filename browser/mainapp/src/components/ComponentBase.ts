@@ -119,6 +119,7 @@ export abstract class ComponentBase<TViewModel> extends HTMLElement {
 
         const elMain = document.createElement("div");
         elMain.id = "elMain";
+        elMain.classList.add(`component-${this.constructor.name}`);
         elMain.style.opacity = "0";
         this._sroot.appendChild(elMain);
 
@@ -131,7 +132,7 @@ export abstract class ComponentBase<TViewModel> extends HTMLElement {
 
         let commonLoaded = false;
         let compLoaded = false;
-        this.addMultipleStyleSheetsAsync(this.requiredStylesheets).then(() => {
+        this.addMultipleStyleSheetsAsync([...this.requiredStylesheets, ...this.postRequiredStylesheets]).then(() => {
             this.elMain.style.removeProperty("opacity");
         });
 
@@ -179,6 +180,10 @@ export abstract class ComponentBase<TViewModel> extends HTMLElement {
             ...this.coreRequiredStylesheets,
             ...this.myRequiredStylesheets
         ]
+    }
+
+    protected get postRequiredStylesheets() {
+        return ["/customcss"];
     }
 
     private static _nextUniqueId = 1;

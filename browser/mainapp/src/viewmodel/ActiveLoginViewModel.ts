@@ -881,6 +881,15 @@ export class ActiveLoginViewModel extends ObservableBase {
                     }
                     return "";
                 }
+            ),
+            new SlashCommandViewModel(
+                ["devtools"],
+                "Show Developer Tools",
+                "Opens the browser developer tools for the XarChat user interface.",
+                [],
+                async (context, args) => {
+                    HostInterop.showDevTools();
+                }
             )
         ];
     }

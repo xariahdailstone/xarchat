@@ -71,6 +71,7 @@ using XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.ConfigData;
 using XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.EIconSearch;
 using XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.ZoomLevel;
 using XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.GetMemo;
+using XarChat.Backend.Features.StyleUpdateWatcher;
 
 namespace XarChat.Backend
 {
@@ -316,6 +317,8 @@ namespace XarChat.Backend
             {
                 services.AddSingleton<IMemoryHinter, NullMemoryHinter>();
             }
+
+            services.AddHostedService<StyleUpdateWatcher>();
         }
 
         private void SetupXCHostCommandHandlers(IServiceCollection services)
