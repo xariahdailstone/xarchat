@@ -164,12 +164,21 @@ export class ChatViewModelSink implements ChatConnectionSink {
         options: {
             text: string,
             eventName: RoutedNotificationEventName
+            perCharEventName?: string,
             targetChannel?: ChannelName,
             targetCharacter?: CharacterName,
             suppressPing?: boolean
         }
     ) {
-        const cfg = this.viewModel.getConfigSettingById(getFullRoutedNotificationConfigName(options.eventName)) as string;
+        let cfg = this.viewModel.getConfigSettingById(getFullRoutedNotificationConfigName(options.eventName)) as string;
+
+        if (options.perCharEventName && options.targetCharacter) {
+            const isEnabled = this.viewModel.getConfigSettingById("perCharMessageRouting.enabled", { characterName: options.targetCharacter }) as string;
+            if (isEnabled == "override") {
+                cfg = this.viewModel.getConfigSettingById(`perCharMessageRouting.${options.perCharEventName}.routing`, { characterName: options.targetCharacter }) as string;
+            }
+        }
+
         const nr = new NotificationRouting(cfg);
         const targets = new Map<ChannelViewModel, boolean>();
         if (nr.console != "no") {
@@ -371,7 +380,7 @@ export class ChatViewModelSink implements ChatConnectionSink {
         }
 
         for (let char of characters) {
-            ns.watchedChars.add(char);
+            //ns.watchedChars.add(char);
             ns.bookmarks.add(char);
             if (!isInitial) {
                 const msg = `[user]${char.value}[/user] was added to your bookmarks.`;
@@ -392,13 +401,14 @@ export class ChatViewModelSink implements ChatConnectionSink {
                 // });
             }
         }
+        ns.updateWatchedCharsSet();
         ns.expireMyFriendsListInfo()
     }
 
     bookmarkCharactersRemoved(characters: CharacterName[]): void {
         const ns = this.viewModel;
         for (let char of characters) {
-            ns.watchedChars.delete(char);
+            //ns.watchedChars.delete(char);
             ns.bookmarks.delete(char);
 
             const msg = `[user]${char.value}[/user] was removed from your bookmarks.`;
@@ -417,6 +427,7 @@ export class ChatViewModelSink implements ChatConnectionSink {
             //     targetCharacter: char
             // });
         }
+        ns.updateWatchedCharsSet();
         ns.expireMyFriendsListInfo()
     }
 
@@ -469,7 +480,7 @@ export class ChatViewModelSink implements ChatConnectionSink {
 
     friendAdded(character: CharacterName): void {
         const ns = this.viewModel;
-        ns.watchedChars.add(character);
+        //ns.watchedChars.add(character);
         ns.friends.add(character);
 
         const msg = `[user]${character.value}[/user] was added as a friend.`;
@@ -488,12 +499,13 @@ export class ChatViewModelSink implements ChatConnectionSink {
         //     targetCharacter: character
         // });
 
+        ns.updateWatchedCharsSet();
         ns.expireMyFriendsListInfo();
     }
 
     friendRemoved(character: CharacterName): void {
         const ns = this.viewModel;
-        ns.watchedChars.delete(character);
+        //ns.watchedChars.delete(character);
         ns.friends.delete(character);
 
         const msg = `[user]${character.value}[/user] is no longer a friend.`;
@@ -512,6 +524,7 @@ export class ChatViewModelSink implements ChatConnectionSink {
         //     targetCharacter: character
         // });
 
+        ns.updateWatchedCharsSet();
         ns.expireMyFriendsListInfo();
     }
 
@@ -537,7 +550,7 @@ export class ChatViewModelSink implements ChatConnectionSink {
 
     interestAdded(character: CharacterName): void {
         const ns = this.viewModel;
-        ns.watchedChars.add(character);
+        //ns.watchedChars.add(character);
         ns.interests.add(character);
 
         const msg = `[user]${character.value}[/user] was added as an interest.`;
@@ -556,12 +569,13 @@ export class ChatViewModelSink implements ChatConnectionSink {
         //     targetCharacter: character
         // });
 
+        ns.updateWatchedCharsSet();
         ns.expireMyFriendsListInfo();
     }
 
     interestRemoved(character: CharacterName): void {
         const ns = this.viewModel;
-        ns.watchedChars.delete(character);
+        //ns.watchedChars.delete(character);
         ns.interests.delete(character);
 
         const msg = `[user]${character.value}[/user] is no longer an interest.`;
@@ -580,6 +594,7 @@ export class ChatViewModelSink implements ChatConnectionSink {
         //     targetCharacter: character
         // });
 
+        ns.updateWatchedCharsSet();
         ns.expireMyFriendsListInfo();
     }
 
@@ -690,6 +705,7 @@ export class ChatViewModelSink implements ChatConnectionSink {
                         this.sendRoutedNotification({
                             text: msgText,
                             eventName: eventName,
+                            perCharEventName: "statusUpdate",
                             targetCharacter: s.characterName
                         });
                     }
@@ -718,6 +734,7 @@ export class ChatViewModelSink implements ChatConnectionSink {
             this.sendRoutedNotification({
                 text: `[user]${character.value}[/user] came online.`, 
                 eventName: eventName,
+                perCharEventName: "onlineChange",
                 targetCharacter: character
             });
         }
@@ -747,6 +764,7 @@ export class ChatViewModelSink implements ChatConnectionSink {
             this.sendRoutedNotification({
                 text: `[user]${character.value}[/user] went offline.`, 
                 eventName: eventName,
+                perCharEventName: "onlineChange",
                 targetCharacter: character
             });
         }
