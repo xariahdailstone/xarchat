@@ -38,7 +38,8 @@ namespace XarChat.Backend.Features.StyleUpdateWatcher
                     !_appConfiguration.ContentDirectory.StartsWith("res:"))
                 {
                     tasks.Add(ExecuteForDirectoryAsync(
-                        Path.Combine(_appConfiguration.ContentDirectory, "styles"),
+                        Path.Combine(_appConfiguration.ContentDirectory),
+                        "styles",
                         "styles/$",
                         stoppingToken));
                 }
@@ -47,7 +48,8 @@ namespace XarChat.Backend.Features.StyleUpdateWatcher
                 if (adf is not null) 
                 {
                     tasks.Add(ExecuteForDirectoryAsync(
-                        Path.Combine(adf, "customcss"), 
+                        adf,
+                        "customcss", 
                         "/customcss", 
                         stoppingToken));
                 }
@@ -64,21 +66,22 @@ namespace XarChat.Backend.Features.StyleUpdateWatcher
         }
 
         protected async Task ExecuteForDirectoryAsync(
-            string localDirectory, string webPath, CancellationToken stoppingToken)
+            string localDirectory, string watchSubPath, string webPath, CancellationToken stoppingToken)
         {
             var stylesDir = localDirectory;
             var fi = new FileInfo(localDirectory);
-            var stripBaseDir = fi.FullName;
+            var stripBaseDir = Path.Combine(fi.FullName, watchSubPath);
 
             using var fsw = new FileSystemWatcher(stylesDir);
             fsw.Filter = "*.css";
             fsw.IncludeSubdirectories = true;
-            fsw.Changed += async (o, e) =>
+
+            async Task HandleChange(string fn)
             {
                 var myGuid = Guid.NewGuid();
                 lock (_lock)
                 {
-                    _lastUpdateGuids[e.FullPath] = myGuid;
+                    _lastUpdateGuids[fn] = myGuid;
                 }
 
                 await Task.Delay(100, CancellationToken.None);
@@ -86,13 +89,13 @@ namespace XarChat.Backend.Features.StyleUpdateWatcher
                 lock (_lock)
                 {
                     Guid testGuid = Guid.NewGuid();
-                    if (_lastUpdateGuids.TryGetValue(e.FullPath, out testGuid))
+                    if (_lastUpdateGuids.TryGetValue(fn, out testGuid))
                     {
                         if (testGuid != myGuid)
                         {
                             return;
                         }
-                        _lastUpdateGuids.Remove(e.FullPath);
+                        _lastUpdateGuids.Remove(fn);
                     }
                     else
                     {
@@ -101,12 +104,31 @@ namespace XarChat.Backend.Features.StyleUpdateWatcher
                 }
 
                 if (/*e.ChangeType == WatcherChangeTypes.Changed &&*/
-                    Path.GetExtension(e.FullPath) == ".css")
+                    fn.StartsWith(stripBaseDir, StringComparison.OrdinalIgnoreCase) &&
+                    Path.GetExtension(fn) == ".css")
                 {
                     var sendPath = webPath.Replace("$",
-                        e.FullPath.Substring(stripBaseDir.Length).Replace("\\", "/").TrimStart('/'));
+                        fn.Substring(stripBaseDir.Length).Replace("\\", "/").TrimStart('/'));
                     _windowControl.StylesheetChanged(sendPath);
                 }
+            }
+
+            fsw.Created += async (o, e) =>
+            {
+                await HandleChange(e.FullPath);
+            };
+            fsw.Deleted += async (o, e) =>
+            {
+                await HandleChange(e.FullPath);
+            };
+            fsw.Renamed += async (o, e) =>
+            {
+                await HandleChange(e.OldFullPath);
+                await HandleChange(e.FullPath);
+            };
+            fsw.Changed += async (o, e) =>
+            {
+                await HandleChange(e.FullPath);
             };
             fsw.EnableRaisingEvents = true;
 
