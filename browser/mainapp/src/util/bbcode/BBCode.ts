@@ -19,7 +19,7 @@ import { BBCodeTagB } from "./tags/BBCodeTagB";
 import { BBCodeTagBig } from "./tags/BBCodeTagBig";
 import { BBCodeTagCenter } from "./tags/BBCodeTagCenter";
 import { BBCodeTagCollapse } from "./tags/BBCodeTagCollapse";
-import { BBCodeTagColor } from "./tags/BBCodeTagColor";
+import { BBCodeTagColor, BBCodeTagColorPermissive } from "./tags/BBCodeTagColor";
 import { BBCodeTagEIcon } from "./tags/BBCodeTagEIcon";
 import { BBCodeTagHR } from "./tags/BBCodeTagHR";
 import { BBCodeTagHTML } from "./tags/BBCodeTagHTML";
@@ -581,7 +581,8 @@ const chatTags: BBCodeTag[] = [
 ];
 
 const profileMinusInlinesTags: BBCodeTag[] = [
-    ...chatTags,
+    ...chatTags.filter(x => x != BBCodeTagColor),
+    BBCodeTagColorPermissive,
     BBCodeTagHeading,
     BBCodeTagIndent,
     BBCodeTagCollapse,
