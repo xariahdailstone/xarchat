@@ -107,7 +107,7 @@ export class NicknameSet implements Observable, IDisposable, NicknameSource {
         for (let ss of this._activeSubsets.values()) {
             if (ss.chars.has(charName)) {
 
-            }
+    }
         }
     }
     addValueSubscription(propertyPath: string, handler: (value: any) => any): ValueSubscription {
