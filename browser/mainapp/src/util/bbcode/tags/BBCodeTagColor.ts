@@ -16,3 +16,12 @@ export const BBCodeTagColor = new BBCodeTag("color", true, true, (context, arg, 
             ]);
     }
 });
+
+export const BBCodeTagColorPermissive = new BBCodeTag("color", true, true, (context, arg, content) => {
+    if ((arg ?? "").match(ColorsPattern)) {
+        return EL("span", { class: `bbcode-color-${arg}`, "data-copyprefix": content.rawOpenTag, "data-copysuffix": content.rawCloseTag }, content.nodes);
+    }
+    else {
+        return EL("span", { class: `bbcode-color-invalid`, "data-copyprefix": content.rawOpenTag, "data-copysuffix": content.rawCloseTag }, content.nodes);
+    }
+});

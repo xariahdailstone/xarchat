@@ -64,6 +64,9 @@ export class LoginUtils {
                 return { activeLoginViewModel: activeLoginViewModel, chatConnection: cc };
             }
             catch (e) {
+                if (disposeALVMOnError) {
+                    activeLoginViewModel?.dispose();
+                }
                 // try { cc?.dispose(); }
                 // catch { }
 

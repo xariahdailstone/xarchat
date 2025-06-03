@@ -3,6 +3,8 @@ import { CallbackSet, NamedCallbackSet } from "./CallbackSet.js";
 import { SnapshottableMap } from "./collections/SnapshottableMap.js";
 import { SnapshottableSet } from "./collections/SnapshottableSet.js";
 import { IDisposable, EmptyDisposable, asDisposable } from "./Disposable.js";
+import { testEquality } from "./Equality.js";
+import { ObjectUniqueId } from "./ObjectUniqueId.js";
 import { setupValueSubscription, ValueSubscriptionImpl } from "./ObservableBase.js";
 import { ObservableExpression } from "./ObservableExpression.js";
 
@@ -129,13 +131,13 @@ export class Observable {
         }
     }
 
-    static publishNamedRead(name: string, gotValue: unknown) {
-        const o = new DynamicNameObservable(name);
+    static publishNamedRead(name: NamedObservableName, gotValue: unknown) {
+        const o = DynamicNameObservable.getOrCreate(name);
         Observable.publishRead(o, "value", gotValue);
     }
 
-    static publishNamedUpdate(name: string, value: unknown) {
-        const o = new DynamicNameObservable(name);
+    static publishNamedUpdate(name: NamedObservableName, value: unknown) {
+        const o = DynamicNameObservable.getOrCreate(name);
         o.raisePropertyChangeEvent("value", value);
     }
 
@@ -165,11 +167,54 @@ export class Observable {
     }
 }
 
+export type NamedObservableName = string; // | CompoundObservableName;
+
+export class CompoundObservableName {
+    constructor(private readonly parts: any[]) {
+    }
+
+    equals(other: CompoundObservableName): boolean {
+        if (other.parts.length != this.parts.length) { return false; }
+        for (let i = 0; i < this.parts.length; i++) {
+            const a = this.parts[i];
+            const b = other.parts[i];
+            if (!testEquality(a, b)) { return false; }
+        }
+        return true;
+    }
+}
+
+const activeDynamicNamedObservables = new Map<string, WeakRef<DynamicNameObservable>>();
+const dynamicNamedFinRef = new FinalizationRegistry<{ name: string, id: number }>(hv => {
+    const x = activeDynamicNamedObservables.get(hv.name);
+    if (x) {
+        const dno = x.deref();
+        if (!dno || ObjectUniqueId.get(dno) == hv.id) {
+            activeDynamicNamedObservables.delete(hv.name);
+        }
+    }
+});
+
 class DynamicNameObservable implements Observable {
+    static getOrCreate(name: NamedObservableName) {
+        const x = activeDynamicNamedObservables.get(name);
+        if (x) {
+            const dno = x.deref();
+            if (dno) {
+                return dno;
+            }
+        }
+        const newDNO = new DynamicNameObservable(name);
+        activeDynamicNamedObservables.set(name, new WeakRef(newDNO));
+        dynamicNamedFinRef.register(newDNO, { name: name, id: ObjectUniqueId.get(newDNO) });
+        return newDNO;
+    }
+
+
     private static _listeners2: NamedCallbackSet<string, PropertyChangeEventListener> = new NamedCallbackSet("DynamicNameObservable");
 
     constructor(
-        private readonly name: string) {
+        private readonly name: NamedObservableName) {
     }
 
     addEventListener(eventName: "propertychange", handler: PropertyChangeEventListener): IDisposable {
@@ -177,7 +222,7 @@ class DynamicNameObservable implements Observable {
             return DynamicNameObservable._listeners2.add(this.name, handler);
         }
         else {
-            return asDisposable();
+            return EmptyDisposable;
         }
     }
 

@@ -2,6 +2,8 @@ import { Props } from "../../node_modules/snabbdom/build/index.js";
 import { ChannelName } from "../shared/ChannelName.js";
 import { CharacterGenderConvert } from "../shared/CharacterGender.js";
 import { CharacterName } from "../shared/CharacterName.js";
+import { CharacterSubSet } from "../shared/CharacterSet.js";
+import { NicknameSet, NicknameSource } from "../shared/NicknameSet.js";
 import { OnlineStatus } from "../shared/OnlineStatus.js";
 import { TypingStatus } from "../shared/TypingStatus.js";
 import { Attrs, Fragment, jsx, On, VNode } from "../snabbdom/index.js";
@@ -377,8 +379,19 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
         const vm = this.viewModel;
         if (!vm || vm.isLoggingIn) { return <></>; }
 
-        return <>
-            {this.renderScrollSection(vm)}
+        const disposables: ConvertibleToDisposable[] = [];
+        const addDisposable = (d: ConvertibleToDisposable) => disposables.push(d);
+
+        const charStatusSubSet = vm.characterSet.createSubSet([]);
+        const csssVer = charStatusSubSet.version;
+        addDisposable(charStatusSubSet);
+        //addDisposable(charStatusSubSet.addStatusUpdateListener(() => this.stateHasChanged()));
+
+        const nicknameSubSet = vm.nicknameSet.createSubSet();
+        addDisposable(nicknameSubSet);
+
+        return [<>
+            {this.renderScrollSection(vm, charStatusSubSet, nicknameSubSet)}
             <div key="new-alerts-above" id="elNewAlertsAbove" classList={["new-alerts", "new-alerts-above", "hidden"]} on={{
                     "click": () => {
                         if (this.scrollToNextAlertAbove) {
@@ -395,26 +408,28 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
                     }
                 }}>
                 <x-iconimage attr-src="assets/ui/channel-ping.svg" classList={["new-alerts-ping-icon"]}></x-iconimage><div classList={["new-alerts-text"]}>Alerts Below</div></div>
-        </>;
+        </>, asDisposable(...disposables)];
     }
 
-    private renderScrollSection(vm: ActiveLoginViewModel): VNode {
+    private renderScrollSection(vm: ActiveLoginViewModel, charStatusSubSet: CharacterSubSet, nicknameSubSet: NicknameSource): VNode {
         
+        const unseenDotStyle = vm.getConfigSettingById("unseenIndicatorStyle") as string;
+
         return <div key={`scroller-${vm.characterName.canonicalValue}`} id="scroller">
-            {this.renderPinnedChannelsSection(vm)}
-            {this.renderUnpinnedChannelsSection(vm)}
-            {this.renderPrivateMessagesSection(vm)}
+            {this.renderPinnedChannelsSection(vm, unseenDotStyle)}
+            {this.renderUnpinnedChannelsSection(vm, unseenDotStyle)}
+            {this.renderPrivateMessagesSection(vm, unseenDotStyle, charStatusSubSet, nicknameSubSet)}
         </div>;
     }
 
-    private renderPrivateMessagesSection(vm: ActiveLoginViewModel): VNode | null {
+    private renderPrivateMessagesSection(vm: ActiveLoginViewModel, unseenDotStyle: string, charStatusSubSet: CharacterSubSet, nicknameSubSet: NicknameSource): VNode | null {
         if (vm.pmConversations.length == 0) { return null; }
 
         const isExpanded = !vm.pmConvosCollapsed;
 
         const chanNodes: VNode[] = [];
         for (let pcvm of vm.pmConversations.iterateValues()) {
-            chanNodes.push(this.renderChannelItem(pcvm, false));
+            chanNodes.push(this.renderChannelItem(pcvm, false, charStatusSubSet, nicknameSubSet));
         }
 
         const result = this.renderCollapsibleSection({
@@ -422,6 +437,7 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
             id: "pmConvos",
             title: `Private Messages (${vm.pmConversations.length})`,
             isExpanded: isExpanded,
+            unseenDotStyle: unseenDotStyle,
             toggleCollapse: () => { vm.pmConvosCollapsed = isExpanded; },
             supportDragDrop: false,
             getHeaderDot: () => !isExpanded ? this.renderHeaderDot(
@@ -438,7 +454,7 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
         return result;
     }
 
-    private renderUnpinnedChannelsSection(vm: ActiveLoginViewModel): VNode | null {
+    private renderUnpinnedChannelsSection(vm: ActiveLoginViewModel, unseenDotStyle: string): VNode | null {
         const sectionTitle = (vm.pinnedChannels.length > 0) ? "Other Channels" : "Channels";
         const isExpanded = !vm.channelsCollapsed;
 
@@ -453,6 +469,7 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
             id: "unpinnedChannels",
             title: `${sectionTitle} (${vm.unpinnedChannels.length.toLocaleString()})`,
             isExpanded: isExpanded,
+            unseenDotStyle: unseenDotStyle,
             toggleCollapse: () => { vm.channelsCollapsed = isExpanded; },
             supportDragDrop: true,
             addChannelButton: true,
@@ -470,7 +487,7 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
         return result;
     }
 
-    private renderPinnedChannelsSection(vm: ActiveLoginViewModel): VNode | null {
+    private renderPinnedChannelsSection(vm: ActiveLoginViewModel, unseenDotStyle: string): VNode | null {
         if (vm.pinnedChannels.length == 0) { return null; }
 
         const isExpanded = !vm.pinnedChannelsCollapsed;
@@ -485,6 +502,7 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
             id: "pinnedChannels",
             title: `Pinned Channels (${vm.pinnedChannels.length})`,
             isExpanded: isExpanded,
+            unseenDotStyle: unseenDotStyle,
             toggleCollapse: () => { vm.pinnedChannelsCollapsed = isExpanded; },
             supportDragDrop: true,
             getHeaderDot: () => !isExpanded ? this.renderHeaderDot(
@@ -501,9 +519,11 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
         return result;
     }
 
-    private renderChannelItem(cvm: ChannelViewModel, supportsDragDrop: boolean): VNode {
+    private renderChannelItem(cvm: ChannelViewModel, supportsDragDrop: boolean, charStatusSubSet?: CharacterSubSet, nicknameSubSet?: NicknameSource): VNode {
         const isChatChannel = cvm instanceof ChatChannelViewModel;
         const isPMConvo = cvm instanceof PMConvoChannelViewModel;
+
+        const cvmState = cvm.channelState;
 
         let itemKey: string | undefined;
         let typingIndicatorNode: VNode | null = null;
@@ -514,11 +534,11 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
         if (isChatChannel) {
             const ccvm = cvm as ChatChannelViewModel;
             itemKey = `channel-${ccvm.name.canonicalValue}`;
-            title = ccvm.title ?? "(none)";
+            title = cvmState.title ?? "(none)";
         }
         else if (isPMConvo) {
             const pcvm = cvm as PMConvoChannelViewModel;
-            const cs = cvm.activeLoginViewModel.characterSet.getCharacterStatus(pcvm.character);
+            const cs = charStatusSubSet ? charStatusSubSet.rawAddChar(pcvm.character) : cvm.activeLoginViewModel.characterSet.getCharacterStatus(pcvm.character);
 
             if (cs.status == OnlineStatus.OFFLINE) {
                 nameClasses.push("gender-offline");
@@ -547,7 +567,7 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
             }
 
             title = pcvm.character.value;
-            const xnickname = pcvm.getConfigSettingById("nickname") as (string | null | undefined);
+            const xnickname = nicknameSubSet ? nicknameSubSet.get(pcvm.character) : pcvm.activeLoginViewModel.nicknameSet.get(pcvm.character);
             if (!StringUtils.isNullOrWhiteSpace(xnickname)) {
                 nickname = xnickname;
             }
@@ -570,7 +590,7 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
             clickSuppressed = true;
         };
 
-        const pinNode = cvm.canPin
+        const pinNode = cvmState.canPin
             ? <button classList={["pin-icon"]} on={{
                     "mousedown": (e: MouseEvent) => {
                         suppressThisClickAsSelection();
@@ -586,7 +606,7 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
                 }}><x-iconimage attr-src="assets/ui/pin-icon.svg"></x-iconimage></button>
             : null;
 
-        const closeNode = cvm.canClose
+        const closeNode = cvmState.canClose
             ? <button classList={["close-icon"]} on={{
                     "mousedown": (e: MouseEvent) => {
                         suppressThisClickAsSelection();
@@ -651,7 +671,7 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
                     const ownerId = ObjectUniqueId.get(ownerEl);
                     currentChannelDragData = {
                         [DragDataChannelName]: cvm.name,
-                        [DragDataChannelTitle]: cvm.title,
+                        [DragDataChannelTitle]: cvmState.title,
                         [DragDataOwnerId]: ownerId
                     };
                 }
@@ -723,7 +743,7 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
                 }}>+</button>;
         }
 
-        const unseenDotStyle = options.vm.getConfigSettingById("unseenIndicatorStyle");
+        const unseenDotStyle = options.unseenDotStyle;
 
         return <div key={id} id={id} classList={["section", `unseendot-${unseenDotStyle}`]}>
             <div classList={["sectiontitle"]}>
@@ -749,6 +769,7 @@ interface SectionOptions {
     id: string,
     title: string,
     isExpanded: boolean,
+    unseenDotStyle: string,
     toggleCollapse: () => void,
     supportDragDrop: boolean,
     addChannelButton?: boolean,

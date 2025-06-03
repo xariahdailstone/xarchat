@@ -122,7 +122,7 @@ export class MainInterface extends ComponentBase<AppViewModel> {
                 }
                 e.preventDefault();
             }
-        }, { passive: false });
+        }, { passive: true });
         this.watchExpr(vm => vm.interfaceZoom, izoom => {
             if (izoom != null) {
                 //document.documentElement.style.zoom = izoom.toString();
