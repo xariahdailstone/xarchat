@@ -69,10 +69,12 @@
 }
 #elMain.status-message-shown .status-message {
     opacity: 1;
+    will-change: opacity;
     transition: opacity 0.2s;
 }
 #elMain:not(.status-message-shown) .status-message {
     opacity: 0;
+    will-change: opacity;
     transition: opacity 0.5s;
 }
 

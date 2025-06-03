@@ -70,7 +70,6 @@ export class CharacterLinkUtils {
     }
 }
 
-
 export class MassCharacterLinkManager implements IDisposable, Observable {
     constructor(
         private readonly session: ActiveLoginViewModel,

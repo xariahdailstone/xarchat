@@ -2,6 +2,7 @@ import { h } from "../snabbdom/h";
 import { CallbackSet } from "../util/CallbackSet";
 import { SnapshottableMap } from "../util/collections/SnapshottableMap";
 import { asDisposable, DisposableOwnerField, IDisposable, ObjectDisposedError } from "../util/Disposable";
+import { ObjectUniqueId } from "../util/ObjectUniqueId";
 import { Observable, PropertyChangeEvent, PropertyChangeEventListener, ValueSubscription } from "../util/Observable";
 import { setupValueSubscription } from "../util/ObservableBase";
 import { ObservableExpression } from "../util/ObservableExpression";
@@ -10,7 +11,11 @@ import { ActiveLoginViewModel } from "../viewmodel/ActiveLoginViewModel";
 import { AppViewModel } from "../viewmodel/AppViewModel";
 import { CharacterName } from "./CharacterName";
 
-export class NicknameSet implements Observable, IDisposable {
+export interface NicknameSource {
+    get(character: CharacterName): (string | null);
+}
+
+export class NicknameSet implements Observable, IDisposable, NicknameSource {
     constructor(
         private readonly session: ActiveLoginViewModel) {
 
@@ -97,6 +102,13 @@ export class NicknameSet implements Observable, IDisposable {
     }
     raisePropertyChangeEvent(propertyName: string, propValue: unknown): void {
         this._propChangeCallbackSet.invoke(new PropertyChangeEvent(propertyName, propValue));
+
+        const charName = CharacterName.create(propertyName);
+        for (let ss of this._activeSubsets.values()) {
+            if (ss.chars.has(charName)) {
+
+    }
+        }
     }
     addValueSubscription(propertyPath: string, handler: (value: any) => any): ValueSubscription {
         return setupValueSubscription(this, propertyPath, handler);
@@ -113,5 +125,50 @@ export class NicknameSet implements Observable, IDisposable {
     rawGet(character: CharacterName): (string | null) {
         const res = this._nicknameMap.get(character) ?? null;
         return res;
+    }
+
+    private _activeSubsets: Set<NicknameSubSet> = new Set();
+
+    createSubSet(): (NicknameSource & IDisposable) {
+        const newSS = new NicknameSubSet(this);
+        this._activeSubsets.add(newSS);
+        return newSS;
+    }
+
+    dropSubSet(ss: NicknameSubSet) {
+        this._activeSubsets.delete(ss);
+    }
+}
+
+class NicknameSubSet implements IDisposable, NicknameSource {
+    constructor(
+        private readonly nicknameSet: NicknameSet) {
+
+        Observable.publishNamedRead(`NicknameSubSet#${ObjectUniqueId.get(this)}`, null);
+    }
+
+    raiseChange() {
+        Observable.publishNamedUpdate(`NicknameSubSet#${ObjectUniqueId.get(this)}`, 1);
+    }
+
+    readonly chars: Set<CharacterName> = new Set();
+
+    private _isDisposed = false;
+    get isDisposed() { return this._isDisposed; }
+
+    dispose(): void {
+        if (!this._isDisposed) {
+            this._isDisposed = true;
+            this.nicknameSet.dropSubSet(this);
+        }
+    }
+
+    [Symbol.dispose](): void {
+        return this.dispose();
+    }
+
+    get(character: CharacterName): (string | null) {
+        this.chars.add(character);
+        return this.nicknameSet.rawGet(character);
     }
 }

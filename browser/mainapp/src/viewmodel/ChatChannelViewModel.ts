@@ -181,10 +181,10 @@ export class ChatChannelViewModel extends ChannelViewModel {
     }
 
     @observableProperty
-    get title() { return this._title; }
+    get title() { return super.title; }
     set title(value) {
-        if (value !== this._title) {
-            this._title = value;
+        if (value !== super.title) {
+            super.title = value;
             this.parent.updateChannelPinState(this);
         }
     }

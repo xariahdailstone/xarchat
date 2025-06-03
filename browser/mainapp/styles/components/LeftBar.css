@@ -23,6 +23,7 @@
         "instanceselectpanel";
 
     overflow: hidden;
+    contain: layout paint size;
 }
 
 #elListSelectPanel {

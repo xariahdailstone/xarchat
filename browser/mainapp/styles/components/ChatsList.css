@@ -184,6 +184,8 @@
     --itembgcolor: var(--bg-level-3);
     background: var(--itembgcolor);
 
+    contain: layout paint;
+
     &.selected {
         --itembgcolor: var(--bg-level-3);
         background: var(--bg-level-3-highlight);
