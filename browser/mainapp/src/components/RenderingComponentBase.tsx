@@ -93,12 +93,18 @@ export function makeRenderingComponent<TViewModel>(
             }
         });
         try {
+            logger.logDebug("render() start");
+            const renderStart = performance.now();
+
             let renderResult: (VNode | [VNode, IDisposable]);
             try {
                 renderResult = options.render();
+                const renderEnd = performance.now();
+                logger.logDebug(`render() complete, took ${renderEnd - renderStart}ms`)
             }
             catch (e) {
-                logger.logError("Failed to render", component.constructor.name, e);
+                const renderEnd = performance.now();
+                logger.logError(`render() failed, took ${renderEnd - renderStart}ms`, e);
                 throw e;
             }
             let newVNode: VNode;

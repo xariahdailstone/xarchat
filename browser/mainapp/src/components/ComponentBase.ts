@@ -1,5 +1,6 @@
 import { CharacterName } from "../shared/CharacterName.js";
 import { CharacterStatus } from "../shared/CharacterSet.js";
+import { ArrayUtils } from "../util/ArrayUtils.js";
 import { CancellationToken, CancellationTokenSource } from "../util/CancellationTokenSource.js";
 import { SnapshottableMap } from "../util/collections/SnapshottableMap.js";
 import { SnapshottableSet } from "../util/collections/SnapshottableSet.js";
@@ -13,7 +14,7 @@ import { ObjectUniqueId } from "../util/ObjectUniqueId.js";
 import { Observable, ValueSubscription } from "../util/Observable.js";
 import { ObservableBase } from "../util/ObservableBase.js";
 import { Collection } from "../util/ObservableCollection.js";
-import { ObservableExpression } from "../util/ObservableExpression.js";
+import { DelayedObservableExpression, ObservableExpression } from "../util/ObservableExpression.js";
 import { Optional } from "../util/Optional.js";
 import { Predicate } from "../util/Predicate.js";
 import { OperationCancelledError } from "../util/PromiseSource.js";
@@ -398,11 +399,19 @@ export abstract class ComponentBase<TViewModel> extends HTMLElement {
         const result = this.whenConnectedWithViewModel((vm) => {
             const lastReturnedDisposable = new DisposableOwnerField();
 
-            const oexpr = new ObservableExpression(
+            const oexpr = new DelayedObservableExpression(
+                `${this.constructor.name}-watchExpr`,
                 () => expr(vm), 
                 v => {
-                    const vcResult = valueChanged(v);
-                    lastReturnedDisposable.value = vcResult ?? null;
+                    let shouldUpdate = true;
+                    if (v instanceof Array && lastReturnedDisposable instanceof Array) {
+                        shouldUpdate = !ArrayUtils.areEquivalent(v, lastReturnedDisposable);
+                    }
+
+                    if (shouldUpdate) {
+                        const vcResult = valueChanged(v);
+                        lastReturnedDisposable.value = vcResult ?? null;
+                    }
                 });
             
             return asNamedDisposable(`${this.constructor.name}_watchExprRegistration`, () => {

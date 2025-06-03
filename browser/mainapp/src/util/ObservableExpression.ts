@@ -1,5 +1,6 @@
 import { CallbackSet } from "./CallbackSet";
 import { CancellationToken } from "./CancellationTokenSource";
+import { delayExecuteAsync } from "./DelayCodeUtils";
 import { IDisposable } from "./Disposable";
 import { testEquality } from "./Equality";
 import { Logging } from "./Logger";
@@ -91,7 +92,11 @@ export class ObservableExpression<T> implements IDisposable {
         onValueChanged: (value: T | undefined) => (null | void | IDisposable),
         onErrorChanged?: (err: any | undefined) => (null | void | IDisposable)) {
 
-        this._innerOE = new ObservableExpressionInner<T>("unnamed", expression, onValueChanged, onErrorChanged);
+        this._innerOE = new ObservableExpressionInner<T>("unnamed", {
+            expression: expression, 
+            onValueChanged: onValueChanged, 
+            onErrorChanged: onErrorChanged
+        });
         obsExpressionFinalizationRegistry.register(this, this._innerOE);
     }
 
@@ -131,7 +136,11 @@ export class NamedObservableExpression<T> implements IDisposable {
         onValueChanged: (value: T | undefined) => (null | void | IDisposable),
         onErrorChanged?: (err: any | undefined) => (null | void | IDisposable)) {
 
-        this._innerOE = new ObservableExpressionInner<T>(name, expression, onValueChanged, onErrorChanged);
+        this._innerOE = new ObservableExpressionInner<T>(name, {
+            expression: expression, 
+            onValueChanged: onValueChanged, 
+            onErrorChanged: onErrorChanged
+        });
         obsExpressionFinalizationRegistry.register(this, this._innerOE);
     }
 
@@ -162,30 +171,93 @@ export class NamedObservableExpression<T> implements IDisposable {
     get error(): (any | undefined) { return this._innerOE?.error; }
 }
 
+export class DelayedObservableExpression<T> implements IDisposable {
+    static NO_VALUE = new ObservableExpressionNoValueClass();
+
+    constructor(
+        name: string,
+        expression: () => T,
+        onValueChanged: (value: T | undefined) => (null | void),
+        onErrorChanged?: (err: any | undefined) => (null | void)) {
+
+        let currentActiveExecute: number = 0;
+
+        const wrappedOnValueChanged = (value: T | undefined) => {
+            const myExecute = currentActiveExecute++;
+            currentActiveExecute = myExecute;
+            delayExecuteAsync(() => {
+                if (currentActiveExecute == myExecute && !this.isDisposed) {
+                    onValueChanged(value);
+                }
+            });
+        };
+        const wrappedOnErrorChanged = onErrorChanged 
+            ? (err: any | undefined) => {
+                const myExecute = currentActiveExecute++;
+                currentActiveExecute = myExecute;
+                delayExecuteAsync(() => {
+                    if (currentActiveExecute == myExecute && !this.isDisposed) {
+                        onErrorChanged(err);
+                    }
+                })
+            }
+            : undefined;
+
+        this._innerOE = new ObservableExpressionInner<T>(name, {
+            expression: expression, 
+            onValueChanged: wrappedOnValueChanged, 
+            onErrorChanged: wrappedOnErrorChanged
+        });
+        obsExpressionFinalizationRegistry.register(this, this._innerOE);
+    }
+
+    private _innerOE: ObservableExpressionInner<T> | null;
+
+    dispose() {
+        if (!this._disposed) {
+            this._disposed = true;
+
+            if (this._innerOE) {
+                obsExpressionFinalizationRegistry.unregister(this._innerOE);
+                this._innerOE.dispose();
+                this._innerOE = null;
+            }
+        }
+    }
+
+    [Symbol.dispose]() { this.dispose(); }
+
+    get isDisposed() { return this._disposed; }
+
+    private _disposed = false;
+
+    get hasValue() { return this._innerOE?.hasValue ?? false; }
+    get value(): (T | undefined) { return this._innerOE?.value; }
+
+    get hasError() { return this._innerOE?.hasError ?? false; }
+    get error(): (any | undefined) { return this._innerOE?.error; }
+}
+
+interface ObservableExpressionInnerOptions<T> {
+    expression: () => T,
+    onValueChanged: (value: T | undefined) => (null | void | IDisposable),
+    onErrorChanged?: (err: any | undefined) => (null | void | IDisposable)
+}
+
 class ObservableExpressionInner<T> implements IDisposable {
     static NO_VALUE = new ObservableExpressionNoValueClass();
 
     constructor(
         private readonly name: string,
-        expression: () => T,
-        onValueChanged: (value: T | undefined) => (null | void | IDisposable),
-        onErrorChanged?: (err: any | undefined) => (null | void | IDisposable)) {
+        options: ObservableExpressionInnerOptions<T>) {
 
-        this.callbacks = {
-            expression: expression,
-            onValueChanged: onValueChanged,
-            onErrorChanged: onErrorChanged
-        };
+        this.callbacks = options;
 
         //this.logger.logDebug("new oexpr", this.expression);
         this.reevaluate();
     }
 
-    private callbacks: {
-        expression: () => T,
-        onValueChanged: (value: T | undefined) => (null | void | IDisposable),
-        onErrorChanged?: (err: any | undefined) => (null | void | IDisposable)
-    } | null;
+    private callbacks: ObservableExpressionInnerOptions<T> | null;
 
     dispose() {
         //this.logger.logDebug("disposing oexpr", this.expression);

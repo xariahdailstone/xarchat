@@ -58,6 +58,7 @@ export class AppViewModel extends ObservableBase {
                         if (entry.item == this.currentlySelectedSession) {
                             this.currentlySelectedSession = this.logins[0] ?? null;
                         }
+                        entry.item.dispose();
                         break;
                     case StdObservableCollectionChangeType.CLEARED:
                         break;

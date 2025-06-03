@@ -8,3 +8,10 @@ export function testEquality(a: any, b: any): boolean {
     if (typeof b.constructor.equals == "function") return b.constructor.equals(a);
     return (a == b);
 }
+
+export interface Equatable {
+    equals(other: any): boolean;
+}
+export interface Hashable {
+    getHashCode(): number;
+}

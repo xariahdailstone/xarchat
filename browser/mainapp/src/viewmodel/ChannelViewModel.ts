@@ -519,7 +519,8 @@ export abstract class ChannelViewModel extends ObservableBase implements IDispos
                         gender: (loggedMessage.speakingCharacterGender as CharacterGender) ?? CharacterGender.NONE,
                         status: (loggedMessage.speakingCharacterOnlineStatus as OnlineStatus) ?? OnlineStatus.OFFLINE,
                         statusMessage: "",
-                        typingStatus: TypingStatus.IDLE
+                        typingStatus: TypingStatus.IDLE,
+                        nickname: activeLoginViewModel.nicknameSet.get(loggedMessage.speakingCharacter)
                     },
                     suppressPing: true,
                     type: ChannelMessageType.CHAT
@@ -538,7 +539,8 @@ export abstract class ChannelViewModel extends ObservableBase implements IDispos
                         isBookmark: activeLoginViewModel.bookmarks.has(loggedMessage.speakingCharacter),
                         isInterest: activeLoginViewModel.interests.has(loggedMessage.speakingCharacter),
                         statusMessage: "",
-                        typingStatus: TypingStatus.IDLE
+                        typingStatus: TypingStatus.IDLE,
+                        nickname: activeLoginViewModel.nicknameSet.get(loggedMessage.speakingCharacter)
                     },
                     suppressPing: true,
                     type: ChannelMessageType.ROLL

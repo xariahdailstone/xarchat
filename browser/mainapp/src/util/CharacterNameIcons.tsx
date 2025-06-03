@@ -1,4 +1,5 @@
 import { CharacterName } from "../shared/CharacterName";
+import { CharacterStatus, CharacterStatusNoEquals } from "../shared/CharacterSet";
 import { jsx, JsxVNodeChild, JsxVNodeChildren, VNode } from "../snabbdom/index.js";
 import { ActiveLoginViewModel } from "../viewmodel/ActiveLoginViewModel";
 import { ChannelViewModel } from "../viewmodel/ChannelViewModel";
@@ -45,7 +46,7 @@ interface EffectiveCharacterNameInfo {
     nickname: string | null;
 }
 
-function getEffectiveCharacterNameInfo(character: CharacterName, vm: ChannelViewModel | ActiveLoginViewModel): EffectiveCharacterNameInfo {
+function getEffectiveCharacterNameInfo(charOrStatus: CharacterName | CharacterStatusNoEquals, vm: ChannelViewModel | ActiveLoginViewModel): EffectiveCharacterNameInfo {
     const res: EffectiveCharacterNameInfo = {
         modType: "none",
         watchType: "none",
@@ -61,6 +62,8 @@ function getEffectiveCharacterNameInfo(character: CharacterName, vm: ChannelView
         displayIcons: [],
         nickname: null
     };
+
+    const character = charOrStatus instanceof CharacterName ? charOrStatus : charOrStatus.characterName;
 
     const chatChannelVM = (vm instanceof ChatChannelViewModel) ? vm : null;
     const sessionVM = (vm instanceof ChannelViewModel) ? vm.parent
@@ -145,8 +148,12 @@ function getEffectiveCharacterNameInfo(character: CharacterName, vm: ChannelView
         res.additionalWrapperClasses.push("is-ignored");
     }
 
-    if (sessionVM) {
-        const nnsetting = sessionVM.getConfigSettingById("nickname", { characterName: character }) as (string | null | undefined);
+    if (!(charOrStatus instanceof CharacterName)) {
+        res.nickname = charOrStatus.nickname
+    }
+    else if (sessionVM) {
+        const nnsetting = sessionVM.nicknameSet.get(character);
+        //const nnsetting = sessionVM.getConfigSettingById("nickname", { characterName: character }) as (string | null | undefined);
         if (!StringUtils.isNullOrWhiteSpace(nnsetting)) {
             res.nickname = nnsetting;
         }
@@ -155,10 +162,11 @@ function getEffectiveCharacterNameInfo(character: CharacterName, vm: ChannelView
     return res;
 }
 
-export function getEffectiveCharacterNameVNodes(character: CharacterName, vm: ChannelViewModel | ActiveLoginViewModel): JsxVNodeChildren {
+export function getEffectiveCharacterNameVNodes(charOrStatus: CharacterName | CharacterStatusNoEquals, vm: ChannelViewModel | ActiveLoginViewModel): JsxVNodeChildren {
     const nodes: JsxVNodeChild[] = [];
 
-    var ecni = getEffectiveCharacterNameInfo(character, vm);
+    const character = charOrStatus instanceof CharacterName ? charOrStatus : charOrStatus.characterName;
+    var ecni = getEffectiveCharacterNameInfo(charOrStatus, vm);
 
     const wrapperClasses = ecni.wrapperClasses;
 

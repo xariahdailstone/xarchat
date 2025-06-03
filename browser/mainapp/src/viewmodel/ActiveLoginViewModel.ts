@@ -4,7 +4,7 @@ import { ChannelName } from "../shared/ChannelName.js";
 import { CharacterName } from "../shared/CharacterName.js";
 import { CharacterSet } from "../shared/CharacterSet.js";
 import { BBCodeClickContext, BBCodeParseSink } from "../util/bbcode/BBCode.js";
-import { tryDispose, IDisposable, addOnDispose } from "../util/Disposable.js";
+import { tryDispose, IDisposable, addOnDispose, ConvertibleToDisposable, asDisposable } from "../util/Disposable.js";
 import { HostInterop } from "../util/HostInterop.js";
 import { Observable, ObservableValue, PropertyChangeEvent } from "../util/Observable.js";
 import { ObservableBase, observableProperty, observablePropertyExt } from "../util/ObservableBase.js";
@@ -44,18 +44,22 @@ import { InAppToastViewModel } from "./InAppToastViewModel.js";
 import { InAppToastManagerViewModel } from "./InAppToastManagerViewModel.js";
 import { PartnerSearchViewModel } from "./PartnerSearchViewModel.js";
 import { AutoAdManager } from "../util/AutoAdManager.js";
+import { NicknameSet } from "../shared/NicknameSet.js";
 
 declare const XCHost: any;
 
 let nextViewModelId = 1;
 
-export class ActiveLoginViewModel extends ObservableBase {
+export class ActiveLoginViewModel extends ObservableBase implements IDisposable {
     constructor(
         public readonly parent: AppViewModel,
         public readonly authenticatedApi: FListAuthenticatedApi,
         public readonly savedChatState: SavedChatState) {
 
         super();
+
+        this._nicknameSet = new NicknameSet(this);
+        this._disposeActions.push(() => this._nicknameSet.dispose());
 
         this.addPropertyListener("pmConvosCollapsed", (e) => {
             this.logger.logWarn("pmConvosCollapsed changed", e.propertyName, e.propertyValue);
@@ -90,7 +94,7 @@ export class ActiveLoginViewModel extends ObservableBase {
             this.notifyChannelsOfCharacterChange(chars);
         });
 
-        this.characterSet = new CharacterSet(this.ignoredChars, this.friends, this.bookmarks, this.interests);
+        this.characterSet = new CharacterSet(this.ignoredChars, this.friends, this.bookmarks, this.interests, this.nicknameSet);
         this.onlineWatchedChars = new FilteredWatchedCharsCharacterNameSet(this, this.watchedChars, cs => cs.status != OnlineStatus.OFFLINE);
         this.onlineFriends = new FilteredWatchedCharsCharacterNameSet(this, this.friends, cs => cs.status != OnlineStatus.OFFLINE);
         this.onlineBookmarks = new FilteredWatchedCharsCharacterNameSet(this, this.bookmarks, cs => cs.status != OnlineStatus.OFFLINE);
@@ -162,6 +166,22 @@ export class ActiveLoginViewModel extends ObservableBase {
         this.bbcodeSink = new ActiveLoginViewModelBBCodeSink(this, this._logger);
 
         this.getMyFriendsListInfo(CancellationToken.NONE);
+    }
+
+    private _isDisposed: boolean = false;
+    get isDisposed(): boolean { return this._isDisposed; }
+
+    private _disposeActions: ConvertibleToDisposable[] = [];
+
+    dispose(): void {
+        if (!this._isDisposed) {
+            this._isDisposed = true;
+            asDisposable(...this._disposeActions).dispose();
+            this._disposeActions = [];
+        }
+    }
+    [Symbol.dispose](): void {
+        this.dispose();
     }
 
     private readonly _chanPropChangeSym = Symbol("ActiveLoginViewModel.ChanPropChange");
@@ -307,6 +327,9 @@ export class ActiveLoginViewModel extends ObservableBase {
         this._autoReconnectCTS = null;
         this.autoReconnectInSec = null;
     }
+
+    private readonly _nicknameSet: NicknameSet;
+    get nicknameSet() { return this._nicknameSet; }
 
     private _characterName: CharacterName = CharacterName.create("");
     @observableProperty
