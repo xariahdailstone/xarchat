@@ -18,7 +18,6 @@ export class Stage extends ComponentBase<ActiveLoginViewModel> {
             const st = lst ? lst[1] : null;
 
             let createdEl: (ComponentBase<any> | null) = null;
-            this.logDebug("Stage viewModel change", ili, st);
 
             if (ili) {
                 createdEl = null;
@@ -37,13 +36,18 @@ export class Stage extends ComponentBase<ActiveLoginViewModel> {
             if (createdEl) {
                 createdEl.classList.add("actor");
                 createdEl.viewModel = st;
+                this.logDebug("Stage viewModel change", ili, st, createdEl);
                 this.elMain.appendChild(createdEl);
                 if (typeof (createdEl as any).viewActivated == "function") {
                     (createdEl as any).viewActivated();
                 }
                 return asDisposable(() => {
+                    this.logDebug("Stage viewModel remove", createdEl);
                     createdEl!.remove();
                 });
+            }
+            else {
+                this.logDebug("Stage viewModel change (no element)", ili, st, createdEl);
             }
         });
     }

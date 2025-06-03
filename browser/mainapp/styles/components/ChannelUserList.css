@@ -19,6 +19,8 @@
 
     overflow-x: hidden;
     overflow-y: auto;
+
+    contain: layout paint;
 }
 
 .usercount {
@@ -30,6 +32,7 @@
 
 .section {
     padding-bottom: 10px;
+    contain: layout paint;
 }
 
 .sectiontitle {
@@ -37,6 +40,10 @@
     font-variant: small-caps;
     text-transform: uppercase;
     padding: 10px;
+    contain: layout paint;
+}
+.sectionitems {
+    contain: layout paint;
 }
 
 .hidden {
@@ -60,6 +67,7 @@
 
     overflow: hidden;
     max-width: 100%;
+    contain: layout paint;
 }
 
 .statusdot { grid-area: statusdot; }

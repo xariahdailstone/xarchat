@@ -24,6 +24,11 @@ export class HTMLUtils {
             .replaceAll("\"", "&quot;");
     }
 
+    static unescapeHTML(escaped: string): string {
+        const doc = new DOMParser().parseFromString(escaped, "text/html");
+        return doc.documentElement.textContent ?? "";
+    }
+
     static clearChildren(el: HTMLElement | ShadowRoot) {
         let x: ChildNode | null = null;
         while (x = el.firstChild) {

@@ -1,3 +1,4 @@
+import { enterDelayingBlock } from "./DelayCodeUtils";
 import { IDisposable, asDisposable } from "./Disposable";
 
 export class AnimationFrameUtils {
@@ -14,7 +15,9 @@ export class AnimationFrameUtils {
             }
             
             try {
-                callback();
+                enterDelayingBlock(() => {
+                    callback();
+                });
             }
             catch { }
         };
