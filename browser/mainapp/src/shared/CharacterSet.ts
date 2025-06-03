@@ -1,9 +1,10 @@
+import { h } from "../snabbdom/h.js";
 import { CallbackSet, NamedCallbackSet } from "../util/CallbackSet.js";
 import { SnapshottableMap } from "../util/collections/SnapshottableMap.js";
 import { SnapshottableSet } from "../util/collections/SnapshottableSet.js";
 import { asDisposable, IDisposable, ObjectDisposedError } from "../util/Disposable.js";
-import { Observable, ObservableValue } from "../util/Observable.js";
-import { observableProperty } from "../util/ObservableBase.js";
+import { Observable, ObservableValue, PropertyChangeEvent, PropertyChangeEventListener, ValueSubscription } from "../util/Observable.js";
+import { observableProperty, setupValueSubscription } from "../util/ObservableBase.js";
 import { DictionaryChangeType } from "../util/ObservableKeyedLinkedList.js";
 import { CharacterNameSet } from "../viewmodel/CharacterNameSet.js";
 import { CharacterGender } from "./CharacterGender.js";
@@ -160,8 +161,13 @@ export class CharacterSet {
     }
 
     getCharacterStatus(characterName: CharacterName): CharacterStatusWithLastChangedInfo {
-        const result = this.getCharacterStatusInternal(characterName);
+        const result = this.rawGetCharacterStatus(characterName);
         Observable.publishNamedRead(`cs-${characterName.canonicalValue}`, result);
+        return result;
+    }
+
+    rawGetCharacterStatus(characterName: CharacterName): CharacterStatusWithLastChangedInfo {
+        const result = this.getCharacterStatusInternal(characterName);
         return result;
     }
 
@@ -373,6 +379,7 @@ export interface CharacterSubSet extends IDisposable {
     readonly version: number;
     readonly length: number;
     addChar(characterName: CharacterName): CharacterStatus;
+    rawAddChar(characterName: CharacterName): CharacterStatus;
     removeChar(characterName: CharacterName): void;
     addStatusUpdateListener(callback: (cs: CharacterStatus) => any): IDisposable;
 
@@ -445,6 +452,23 @@ class CharacterSubSetImpl implements IDisposable {
             const cs = this._characterSet!.getCharacterStatus(characterName);
             this._charStatuses.set(characterName, cs);
             this._version.value = this._version.value + 1;
+            return cs;
+        }
+        else {
+            return this._charStatuses.get(characterName)!;
+        }
+    }
+
+    rawAddChar(characterName: CharacterName): CharacterStatus {
+        if (this._isDisposed) {
+            throw new ObjectDisposedError(this);
+        }
+
+        if (!this._watchedChars.has(characterName)) {
+            this._watchedChars.add(characterName);
+            const cs = this._characterSet!.rawGetCharacterStatus(characterName);
+            this._charStatuses.set(characterName, cs);
+            //this._version.value = this._version.value + 1;
             return cs;
         }
         else {

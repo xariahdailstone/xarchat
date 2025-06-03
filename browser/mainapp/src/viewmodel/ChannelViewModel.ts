@@ -31,6 +31,13 @@ import { ChannelFiltersViewModel } from "./ChannelFiltersViewModel.js";
 import { MultiSelectPopupViewModel } from "./popups/MultiSelectPopupViewModel.js";
 import { SlashCommandViewModel } from "./SlashCommandViewModel.js";
 
+export interface ChannelViewModelState {
+    readonly canPin: boolean;
+    readonly isPinned: boolean;
+    readonly canClose: boolean;
+    readonly title: string;
+}
+
 export abstract class ChannelViewModel extends ObservableBase implements IDisposable {
     constructor(parent: ActiveLoginViewModel, title: string) {
         super();
@@ -80,10 +87,9 @@ export abstract class ChannelViewModel extends ObservableBase implements IDispos
     get activeLoginViewModel() { return this.parent; }
     get appViewModel() { return this.parent.appViewModel; }
 
-    protected _title: string = "";
     @observableProperty
-    get title(): string { return this._title; }
-    set title(value) { this._title = value; }
+    get title(): string { return this.channelState.title; }
+    set title(value) { this.channelState = { ...this.channelState, title: value }; }
 
     abstract get collectiveName(): string;
 
@@ -98,15 +104,24 @@ export abstract class ChannelViewModel extends ObservableBase implements IDispos
     showSettingsDialogAsync() { }
 
     @observableProperty
-    canClose: boolean = false;
+    channelState: ChannelViewModelState = {
+        canClose: false,
+        canPin: false,
+        isPinned: false,
+        title: ""
+    }
 
     @observableProperty
-    canPin: boolean = false;
+    get canClose(): boolean { return this.channelState.canClose; }
+    set canClose(value: boolean) { this.channelState = {...this.channelState, canClose: value }; }
 
-    private _isPinned: boolean = false;
     @observableProperty
-    get isPinned(): boolean { return this._isPinned; }
-    set isPinned(value: boolean) { this._isPinned = value; }
+    get canPin(): boolean { return this.channelState.canPin; }
+    set canPin(value: boolean) { this.channelState = {...this.channelState, canPin: value }; }
+
+    @observableProperty
+    get isPinned(): boolean { return this.channelState.isPinned; }
+    set isPinned(value: boolean) { this.channelState = { ...this.channelState, isPinned: value }; }
 
     @observableProperty
     userListWidth: number = 245;
