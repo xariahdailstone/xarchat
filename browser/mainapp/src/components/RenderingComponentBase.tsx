@@ -100,11 +100,11 @@ export function makeRenderingComponent<TViewModel>(
             try {
                 renderResult = options.render();
                 const renderEnd = performance.now();
-                logger.logDebug(`render() complete, took ${renderEnd - renderStart}ms`)
+                logger.logDebug(`render() complete, took ${renderEnd - renderStart}ms, ${myDepSet.count} deps`)
             }
             catch (e) {
                 const renderEnd = performance.now();
-                logger.logError(`render() failed, took ${renderEnd - renderStart}ms`, e);
+                logger.logError(`render() failed, took ${renderEnd - renderStart}ms, ${myDepSet.count} deps`, e);
                 throw e;
             }
             let newVNode: VNode;

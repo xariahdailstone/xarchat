@@ -3,7 +3,7 @@ import { CharacterName } from "../shared/CharacterName.js";
 import { CharacterStatus, CharacterSubSet } from "../shared/CharacterSet.js";
 import { OnlineStatusConvert } from "../shared/OnlineStatus.js";
 import { jsx, Fragment, VNode } from "../snabbdom/index.js";
-import { CharacterLinkUtils } from "../util/CharacterLinkUtils.js";
+import { CharacterLinkUtils, MassCharacterLinkManager } from "../util/CharacterLinkUtils.js";
 import { getEffectiveCharacterName, getEffectiveCharacterNameWatcher } from "../util/CharacterNameIcons.js";
 import { StringComparer } from "../util/Comparer.js";
 import { asDisposable, ConvertibleToDisposable, IDisposable } from "../util/Disposable.js";
@@ -86,34 +86,41 @@ export class ChannelUserList extends RenderingComponentBase<ChatChannelViewModel
         const vm = this.viewModel;
         if (!vm) return <></>;
 
+        const disposables: ConvertibleToDisposable[] = [];
+        const addDisposable = (d: ConvertibleToDisposable) => disposables.push(d);
+
+        const charLinkMgr = new MassCharacterLinkManager(vm.activeLoginViewModel, vm);
+        addDisposable(charLinkMgr);
+
         const totalUserCount = (vm.usersModerators.length + vm.usersWatched.length + vm.usersLooking.length + vm.usersOther.length);
         const joinFriendsAndBookmarks = vm.getConfigSettingById("joinFriendsAndBookmarks");
 
         const sectionNodes: (VNode | null)[] = [];
 
-        sectionNodes.push(this.renderSection(vm, "sec-mods", "elMods", "Moderators", this._characterSubSetModerators.value));
+        sectionNodes.push(this.renderSection(vm, charLinkMgr, "sec-mods", "elMods", "Moderators", this._characterSubSetModerators.value));
 
         if (joinFriendsAndBookmarks) {
-            sectionNodes.push(this.renderSection(vm, "sec-watched", "elWatched", "Friends/Bookmarks", this._characterSubSetWatched.value));
+            sectionNodes.push(this.renderSection(vm, charLinkMgr, "sec-watched", "elWatched", "Friends/Bookmarks", this._characterSubSetWatched.value));
         }
         else {
-            sectionNodes.push(this.renderSection(vm, "sec-friends", "elFriends", "Friends", this._characterSubSetWatched.value, cs => cs.isFriend));
-            sectionNodes.push(this.renderSection(vm, "sec-bookmarks", "elBookmarks", "Bookmarks", this._characterSubSetWatched.value, cs => !cs.isFriend));
+            sectionNodes.push(this.renderSection(vm, charLinkMgr, "sec-friends", "elFriends", "Friends", this._characterSubSetWatched.value, cs => cs.isFriend));
+            sectionNodes.push(this.renderSection(vm, charLinkMgr, "sec-bookmarks", "elBookmarks", "Bookmarks", this._characterSubSetWatched.value, cs => !cs.isFriend));
         }
-        sectionNodes.push(this.renderSection(vm, "sec-looking", "elLooking", "Looking", this._characterSubSetLooking.value));
+        sectionNodes.push(this.renderSection(vm, charLinkMgr, "sec-looking", "elLooking", "Looking", this._characterSubSetLooking.value));
 
         const othersTitle = (sectionNodes.filter(x => x != null).length == 0) ? "Everyone" : "Others";
-        sectionNodes.push(this.renderSection(vm, "sec-others", "elOthers", othersTitle, this._characterSubSetOther.value));
+        sectionNodes.push(this.renderSection(vm, charLinkMgr, "sec-others", "elOthers", othersTitle, this._characterSubSetOther.value));
 
-        return <>
+        return [<>
             <div key="sec-usercount" id="elUserCountContainer" classList={["usercount"]}>
                 {totalUserCount.toLocaleString()} in channel
             </div>
             {sectionNodes}
-        </>;
+        </>, asDisposable(...disposables)];
     }
     
     private renderSection(vm: ChatChannelViewModel,
+        charLinkMgr: MassCharacterLinkManager,
         key: string, id: string, title: string, 
         userList: CharacterSubSet | null,
         statusFilter?: (cs: CharacterStatus) => boolean): (VNode | null) {
@@ -130,9 +137,11 @@ export class ChannelUserList extends RenderingComponentBase<ChatChannelViewModel
                 continue;
             }
 
+            const charLinkVNode = charLinkMgr.getCharacterLinkVNodes(cs);
+
             const userVNode = <div key={`user-${cs.characterName.canonicalValue}`} classList={["useritem"]}>
                 { StatusDotVNodeBuilder.getStatusDotVNode(cs) }
-                { CharacterLinkUtils.createStaticCharacterLinkVNode(vm.activeLoginViewModel, cs.characterName, cs, vm) }
+                { charLinkVNode }
             </div>;
             userNodes.push(userVNode);
             userCount++;

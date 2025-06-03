@@ -3,6 +3,7 @@ import { CallbackSet, NamedCallbackSet } from "./CallbackSet.js";
 import { SnapshottableMap } from "./collections/SnapshottableMap.js";
 import { SnapshottableSet } from "./collections/SnapshottableSet.js";
 import { IDisposable, EmptyDisposable, asDisposable } from "./Disposable.js";
+import { testEquality } from "./Equality.js";
 import { setupValueSubscription, ValueSubscriptionImpl } from "./ObservableBase.js";
 import { ObservableExpression } from "./ObservableExpression.js";
 
@@ -129,12 +130,12 @@ export class Observable {
         }
     }
 
-    static publishNamedRead(name: string, gotValue: unknown) {
+    static publishNamedRead(name: NamedObservableName, gotValue: unknown) {
         const o = new DynamicNameObservable(name);
         Observable.publishRead(o, "value", gotValue);
     }
 
-    static publishNamedUpdate(name: string, value: unknown) {
+    static publishNamedUpdate(name: NamedObservableName, value: unknown) {
         const o = new DynamicNameObservable(name);
         o.raisePropertyChangeEvent("value", value);
     }
@@ -165,11 +166,28 @@ export class Observable {
     }
 }
 
+export type NamedObservableName = string; // | CompoundObservableName;
+
+export class CompoundObservableName {
+    constructor(private readonly parts: any[]) {
+    }
+
+    equals(other: CompoundObservableName): boolean {
+        if (other.parts.length != this.parts.length) { return false; }
+        for (let i = 0; i < this.parts.length; i++) {
+            const a = this.parts[i];
+            const b = other.parts[i];
+            if (!testEquality(a, b)) { return false; }
+        }
+        return true;
+    }
+}
+
 class DynamicNameObservable implements Observable {
     private static _listeners2: NamedCallbackSet<string, PropertyChangeEventListener> = new NamedCallbackSet("DynamicNameObservable");
 
     constructor(
-        private readonly name: string) {
+        private readonly name: NamedObservableName) {
     }
 
     addEventListener(eventName: "propertychange", handler: PropertyChangeEventListener): IDisposable {
@@ -177,7 +195,7 @@ class DynamicNameObservable implements Observable {
             return DynamicNameObservable._listeners2.add(this.name, handler);
         }
         else {
-            return asDisposable();
+            return EmptyDisposable;
         }
     }
 

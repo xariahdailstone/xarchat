@@ -27,7 +27,7 @@ const CLASS_ISBOOKMARK = "char-is-bookmark";
 const CLASS_ISWATCH = "char-is-watch";
 const CLASS_IGNORED = "char-is-ignored";
 
-interface EffectiveCharacterNameInfo {
+export interface EffectiveCharacterNameInfo {
     modType: "none" | "chanop" | "chanowner" | "serverop";
     watchType: "none" | "watch" | "bookmark" | "friend";
 
@@ -46,7 +46,10 @@ interface EffectiveCharacterNameInfo {
     nickname: string | null;
 }
 
-function getEffectiveCharacterNameInfo(charOrStatus: CharacterName | CharacterStatusNoEquals, vm: ChannelViewModel | ActiveLoginViewModel): EffectiveCharacterNameInfo {
+export type EffectiveCharacterNameInfoProvider = (charOrStatus: CharacterName | CharacterStatusNoEquals, vm: ChannelViewModel | ActiveLoginViewModel) => EffectiveCharacterNameInfo;
+
+export function getEffectiveCharacterNameInfo(
+    charOrStatus: CharacterName | CharacterStatusNoEquals, vm: ChannelViewModel | ActiveLoginViewModel, skipDependencies: boolean = false): EffectiveCharacterNameInfo {
     const res: EffectiveCharacterNameInfo = {
         modType: "none",
         watchType: "none",
@@ -78,25 +81,25 @@ function getEffectiveCharacterNameInfo(charOrStatus: CharacterName | CharacterSt
         res.modType = "chanowner";
         res.isChanOwner = true;
     }
-    if (sessionVM && sessionVM.serverOps.has(character)) {
+    if (sessionVM && (!skipDependencies ? sessionVM.serverOps.has(character) : sessionVM.serverOps.rawHas(character))) {
         res.modType = "serverop";
         res.isServerOp = true;
     }
 
-    if (sessionVM && sessionVM.watchedChars.has(character)) {
+    if (sessionVM && (!skipDependencies ? sessionVM.watchedChars.has(character) : sessionVM.watchedChars.rawHas(character))) {
         res.watchType = "watch";
         res.isWatch = true;
     }
-    if (sessionVM && sessionVM.bookmarks.has(character)) {
+    if (sessionVM && (!skipDependencies ? sessionVM.bookmarks.has(character) : sessionVM.bookmarks.rawHas(character))) {
         res.watchType = "bookmark";
         res.isBookmark = true;
     }
-    if (sessionVM && sessionVM.friends.has(character)) {
+    if (sessionVM && (!skipDependencies ? sessionVM.friends.has(character) : sessionVM.friends.rawHas(character))) {
         res.watchType = "friend";
         res.isFriend = true;
     }
 
-    if (sessionVM && sessionVM.ignoredChars.has(character)) {
+    if (sessionVM && (!skipDependencies ? sessionVM.ignoredChars.has(character) : sessionVM.ignoredChars.rawHas(character))) {
         res.isIgnored = true;
     }
 
@@ -152,7 +155,7 @@ function getEffectiveCharacterNameInfo(charOrStatus: CharacterName | CharacterSt
         res.nickname = charOrStatus.nickname
     }
     else if (sessionVM) {
-        const nnsetting = sessionVM.nicknameSet.get(character);
+        const nnsetting = (!skipDependencies ? sessionVM.nicknameSet.get(character) : sessionVM.nicknameSet.rawGet(character));
         //const nnsetting = sessionVM.getConfigSettingById("nickname", { characterName: character }) as (string | null | undefined);
         if (!StringUtils.isNullOrWhiteSpace(nnsetting)) {
             res.nickname = nnsetting;
@@ -163,10 +166,13 @@ function getEffectiveCharacterNameInfo(charOrStatus: CharacterName | CharacterSt
 }
 
 export function getEffectiveCharacterNameVNodes(charOrStatus: CharacterName | CharacterStatusNoEquals, vm: ChannelViewModel | ActiveLoginViewModel): JsxVNodeChildren {
-    const nodes: JsxVNodeChild[] = [];
-
     const character = charOrStatus instanceof CharacterName ? charOrStatus : charOrStatus.characterName;
-    var ecni = getEffectiveCharacterNameInfo(charOrStatus, vm);
+    const ecni = getEffectiveCharacterNameInfo(charOrStatus, vm);
+    return getEffectiveCharacterNameVNodes2(character, ecni);
+}
+
+export function getEffectiveCharacterNameVNodes2(character: CharacterName, ecni: EffectiveCharacterNameInfo): JsxVNodeChildren {
+    const nodes: JsxVNodeChild[] = [];
 
     const wrapperClasses = ecni.wrapperClasses;
 

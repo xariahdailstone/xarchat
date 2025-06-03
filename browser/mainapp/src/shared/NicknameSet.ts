@@ -105,8 +105,13 @@ export class NicknameSet implements Observable, IDisposable {
     private _nicknameMap: SnapshottableMap<CharacterName, string> = new SnapshottableMap();
 
     get(character: CharacterName): (string | null) {
-        const res = this._nicknameMap.get(character) ?? null;
+        const res = this.rawGet(character);
         Observable.publishRead(this, character.canonicalValue, res);
+        return res;
+    }
+
+    rawGet(character: CharacterName): (string | null) {
+        const res = this._nicknameMap.get(character) ?? null;
         return res;
     }
 }

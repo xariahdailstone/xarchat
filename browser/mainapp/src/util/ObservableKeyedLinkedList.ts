@@ -117,6 +117,49 @@ export interface ObservableOrderedDictionaryImplOptions {
     useQuickHas: boolean;
 }
 
+const KeyEventNameSetFReg = new FinalizationRegistry<KeyEventNameSet>(hv => {
+    hv.dispose();
+});
+class KeyEventNameSet {
+    constructor(owner: WeakKey) {
+        KeyEventNameSetFReg.register(owner, this);
+    }
+
+    private readonly _propSym = Symbol();
+    private readonly _proppedObjects = new Map<number, WeakRef<object>>();
+
+    dispose() {
+        for (let objref of this._proppedObjects.values()) {
+            const obj = objref.deref();
+            if (obj) {
+                delete (obj as any)[this._propSym];    
+            }
+        }
+        this._proppedObjects.clear();
+    }
+
+    get(key: any): string | null {
+        if (typeof key == "object") {
+            return (key as any)[this._propSym] ?? null;
+        }
+        return null;
+    }
+
+    set(key: any, value: string) {
+        if (typeof key == "object") {
+            (key as any)[this._propSym] = value;
+            this._proppedObjects.set(ObjectUniqueId.get(key), new WeakRef(key));
+        }
+    }
+
+    delete(key: any) {
+        if (typeof key == "object") {
+            delete (key as any)[this._propSym];
+            this._proppedObjects.delete(ObjectUniqueId.get(key));
+        }
+    }
+}
+
 export class ObservableOrderedDictionaryImpl<TKey, TItem> implements ObservableKeyExtractedOrderedDictionary<TKey, TItem> {
     constructor(
         private readonly keyExtractor: (item: TItem) => TKey, keyComparator?: (a: TKey, b: TKey) => number,
@@ -126,6 +169,8 @@ export class ObservableOrderedDictionaryImpl<TKey, TItem> implements ObservableK
         this._btree = new BTree(undefined, keyComparator);
         this._options = { useQuickHas: false, ...options };
         this._quickHasSet = this._options.useQuickHas ? new Set() : null;
+
+        this._keyEventNameSet = new KeyEventNameSet(this);
     }
 
     private static _nextId: number = 0;
@@ -134,6 +179,8 @@ export class ObservableOrderedDictionaryImpl<TKey, TItem> implements ObservableK
 
     private readonly _options: ObservableOrderedDictionaryImplOptions;
     private readonly _quickHasSet: Set<TKey> | null;
+
+    private readonly _keyEventNameSet: KeyEventNameSet;
 
     get(key: TKey): TItem | undefined {
         if (this._btree.has(key)) {
@@ -159,12 +206,27 @@ export class ObservableOrderedDictionaryImpl<TKey, TItem> implements ObservableK
         }
     }
 
-    private getHasEventName(key: TKey) { return `ObservableOrderedDictionaryImpl#${this._id}.has(${key})`; }
-    private getValueEventName(key: TKey) { return `ObservableOrderedDictionaryImpl#${this._id}.has(${key})`; }
+    private readonly _hasEventSym: symbol = Symbol();
+    private getHasEventName(key: TKey) { 
+        let result = this._keyEventNameSet.get(key);
+        if (result == null) {
+            result = `ObservableOrderedDictionaryImpl#${this._id}.has(${key})`;
+            this._keyEventNameSet.set(key, result);
+        }
+        return result;
+    }
+    private getValueEventName(key: TKey) { 
+        return this.getHasEventName(key);
+    }
 
     has(key: TKey): boolean {
-        const result = this._quickHasSet ? this._quickHasSet.has(key) : this._btree.has(key);
+        const result = this.rawHas(key);
         Observable.publishNamedRead(this.getHasEventName(key), result);
+        return result;
+    }
+
+    rawHas(key: TKey): boolean {
+        const result = this._quickHasSet ? this._quickHasSet.has(key) : this._btree.has(key);
         return result;
     }
 
