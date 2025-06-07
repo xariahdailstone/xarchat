@@ -8,6 +8,7 @@ import { OnlineStatus } from "../shared/OnlineStatus.js";
 import { TypingStatus } from "../shared/TypingStatus.js";
 import { Attrs, Fragment, jsx, On, VNode } from "../snabbdom/index.js";
 import { AnimationFrameUtils } from "../util/AnimationFrameUtils.js";
+import { AutohideElementsManager } from "../util/AutohideElementsManager.js";
 import { addCharacterGenderListenerLightweight, addCharacterOnlineStatusListenerLightweight } from "../util/CharacterOnlineStatusListenerLightweight.js";
 import { ConvertibleToDisposable, IDisposable, asDisposable, disposeWithThis } from "../util/Disposable.js";
 import { EL } from "../util/EL.js";
@@ -56,6 +57,18 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
             this.setupChannelDragHosts(addDisposable);
 
             return asDisposable(...disposables);
+        });
+        this.whenConnectedWithViewModel(vm => {
+            const hem = new AutohideElementsManager({
+                name: "ChatsList",
+                rootEl: this.elMain,
+                includePredicate: (el) => el.classList.contains("sectionitems-item"),
+                watchAttributes: ["class"],
+                intersectionMargin: "100% 0px 100% 0px"
+            });
+            return asDisposable(() => {
+                hem.dispose();
+            });
         });
     }
 

@@ -3,6 +3,7 @@ import { CharacterName } from "../shared/CharacterName.js";
 import { CharacterStatus, CharacterSubSet } from "../shared/CharacterSet.js";
 import { OnlineStatusConvert } from "../shared/OnlineStatus.js";
 import { jsx, Fragment, VNode } from "../snabbdom/index.js";
+import { AutohideElementsManager } from "../util/AutohideElementsManager.js";
 import { CharacterLinkUtils, MassCharacterLinkManager } from "../util/CharacterLinkUtils.js";
 import { getEffectiveCharacterName, getEffectiveCharacterNameWatcher } from "../util/CharacterNameIcons.js";
 import { StringComparer } from "../util/Comparer.js";
@@ -74,6 +75,19 @@ export class ChannelUserList extends RenderingComponentBase<ChatChannelViewModel
             }
 
             return asDisposable(...disposables);
+        });
+
+        this.whenConnectedWithViewModel(vm => {
+            const hem = new AutohideElementsManager({
+                name: "ChannelUserList",
+                rootEl: this.elMain,
+                includePredicate: (el) => el.classList.contains("useritem"),
+                watchAttributes: ["class"],
+                intersectionMargin: "100% 0px 100% 0px"
+            });
+            return asDisposable(() => {
+                hem.dispose();
+            });
         });
     }
 

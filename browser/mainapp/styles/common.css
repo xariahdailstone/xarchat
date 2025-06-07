@@ -58,7 +58,7 @@
     width: 16px;
 }
 *::-webkit-scrollbar-track {
-    background: transparent; /* rgba(0, 0, 0, 0.1); */
+    background: transparent;
     pointer-events: all;
 }
 *::-webkit-scrollbar-thumb {
@@ -78,8 +78,7 @@
     border: 4px solid transparent;
 }
 
-button.themed,
-.theme-button {
+button.themed, .theme-button {
     background: var(--bg-main-textbox-btn);
     color: var(--fg-main-textbox-btn);
     font: inherit;
@@ -90,24 +89,24 @@ button.themed,
     border: 1px solid transparent;
     cursor: pointer;
 
-    &:focus {
-        border: 1px solid var(--highlight-main-textbox);
-    }
-    &:not(:disabled):hover {
-        background: var(--bg-main-textbox-btn-hover);
-        color: var(--fg-main-textbox-btn-hover);    
-    }
+
 
     &.themed-is-default,
     &.style-default,
     &.theme-button-default {
         background: var(--bg-main-textbox-default-btn);
         color: var(--fg-main-textbox-default-btn);    
-
-        &:not(:disabled):hover {
-            background: var(--bg-main-textbox-default-btn-hover);
-            color: var(--fg-main-textbox-default-btn-hover);        
-        }
+    }
+    &.themed-is-default:hover,
+    &.style-default:hover,
+    &.theme-button-default:hover {
+        background: var(--bg-main-textbox-default-btn-hover);
+        color: var(--fg-main-textbox-default-btn-hover);     
+    }
+    &.themed-is-default:disabled,
+    &.style-default:disabled,
+    &.theme-button-default:disabled {
+        pointer-events: none;
     }
 
     &.themed-is-cancel,
@@ -115,23 +114,36 @@ button.themed,
     &.theme-button-cancel {
         background: var(--bg-main-textbox-cancel-btn);
         color: var(--fg-main-textbox-cancel-btn);    
-
-        &:not(:disabled):hover {
-            background: var(--bg-main-textbox-cancel-btn-hover);
-            color: var(--fg-main-textbox-cancel-btn-hover);
-        }
     }
+    &.themed-is-cancel:hover,
+    &.style-cancel:hover,
+    &.theme-button-cancel:hover {
+        background: var(--bg-main-textbox-cancel-btn-hover);
+        color: var(--fg-main-textbox-cancel-btn-hover);
+    }
+    &.themed-is-cancel:disabled,
+    &.style-cancel:disabled,
+    &.theme-button-cancel:disabled {
+        pointer-events: none;
+    }
+
 
     &.themed-is-backoff,
     &.style-backoff,
     &.theme-button-backoff {
         background: var(--bg-main-textbox-backoff-btn);
         color: var(--fg-main-textbox-backoff-btn);    
-
-        &:not(:disabled):hover {
-            background: var(--bg-main-textbox-backoff-btn-hover);
-            color: var(--fg-main-textbox-backoff-btn-hover);
-        }
+    }
+    &.themed-is-backoff:hover,
+    &.style-backoff:hover,
+    &.theme-button-backoff:hover {
+        background: var(--bg-main-textbox-backoff-btn-hover);
+        color: var(--fg-main-textbox-backoff-btn-hover);
+    }
+    &.themed-is-backoff:disabled,
+    &.style-backoff:disabled,
+    &.theme-button-backoff:disabled {
+        pointer-events: none;
     }
 
     &.themed-is-warning,
@@ -139,23 +151,39 @@ button.themed,
     &.theme-button-warning {
         background: var(--bg-main-textbox-warning-btn);
         color: var(--fg-main-textbox-warning-btn);
-
-        &:not(:disabled):hover {
-            background: var(--bg-main-textbox-warning-btn-hover);
-            color: var(--fg-main-textbox-warning-btn-hover);
-        }
     }
+    &.themed-is-warning:hover,
+    &.style-warning:hover,
+    &.theme-button-warning:hover {
+        background: var(--bg-main-textbox-warning-btn-hover);
+        color: var(--fg-main-textbox-warning-btn-hover);
+    }
+    &.themed-is-warning:disabled,
+    &.style-warning:disabled,
+    &.theme-button-warning:disabled {
+        pointer-events: none;
+    }        
 
     &.themed-smaller,
     &.theme-button-smaller {
         font-size: 80%;
         padding: 0.12em 0.6em;
     }
+}
+button.themed:disabled, .theme-button:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
 
-    &:disabled {
-        opacity: 0.5;
-        cursor: default;
-    }
+button.themed:focus, .theme-button:focus {
+    border: 1px solid var(--highlight-main-textbox);
+}
+button.themed:hover, .theme-button:hover {
+    background: var(--bg-main-textbox-btn-hover);
+    color: var(--fg-main-textbox-btn-hover);    
+}
+button.themed:disabled, .theme-button:disabled {
+    pointer-events: none;
 }
 
 input.themed,
@@ -167,14 +195,15 @@ input.theme-textbox {
     border: none;
     outline: none;
     border-bottom: 1px solid transparent;
+}
 
-    &:focus {
-        border-bottom: 1px solid var(--highlight-main-textbox);    
-    }
-
-    &::placeholder {
-        font-style: italic;    
-    }
+input.themed:focus,
+input.theme-textbox:focus {
+    border-bottom: 1px solid var(--highlight-main-textbox);    
+}
+input.themed::placeholder,
+input.theme-textbox::placeholder {
+    font-style: italic;    
 }
 
 textarea.themed,
@@ -186,14 +215,15 @@ textarea.theme-textbox {
     border: none;
     outline: none;
 
-    &:focus {
-        outline: 1px solid var(--highlight-main-textbox);    
-    }
-
     &::placeholder {
         font-style: italic;    
     }
 }
+textarea.themed:focus,
+textarea.theme-textbox:focus {
+    outline: 1px solid var(--highlight-main-textbox);    
+}
+
 
 select.themed,
 .theme-select {
@@ -205,20 +235,22 @@ select.themed,
     border: 1px solid transparent;
     outline: none;
 
-    &:focus {
-        border: 1px solid var(--highlight-main-textbox);    
-    }
-    &:hover {
-        background: var(--bg-main-textbox-btn-hover);
-        color: var(--fg-main-textbox-btn-hover);
-    }
-
     &.themed-smaller,
     &.theme-select-smaller {
         font-size: 80%;
         padding: 0.12em 0.6em;
     }
 }
+select.themed:focus,
+.theme-select:focus {
+    border: 1px solid var(--highlight-main-textbox);    
+}
+select.themed:hover,
+.theme-select:hover {
+    background: var(--bg-main-textbox-btn-hover);
+    color: var(--fg-main-textbox-btn-hover);
+}
+
 
 .character-link { cursor: pointer; }
 .hidden { display: none !important; }

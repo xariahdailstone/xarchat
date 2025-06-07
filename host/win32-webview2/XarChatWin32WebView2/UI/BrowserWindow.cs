@@ -500,6 +500,8 @@ namespace MinimalWin32Test.UI
                 if (appCfg.DisableGpuAcceleration)
                 {
                     browserArguments.Add("--disable-gpu");
+                    browserArguments.Add("--disable-gpu-compositing");
+                    browserArguments.Add("--disable-software-rasterizer");
                 }
 
                 WriteToStartupLog("BrowserWindow.OnHandleCreated - Creating CoreWebView2Environment");

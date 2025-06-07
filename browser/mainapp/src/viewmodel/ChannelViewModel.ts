@@ -5,6 +5,7 @@ import { CharacterGender } from "../shared/CharacterGender.js";
 import { CharacterName } from "../shared/CharacterName.js";
 import { CharacterSet, CharacterStatus } from "../shared/CharacterSet.js";
 import { OnlineStatus } from "../shared/OnlineStatus.js";
+import { PooledString, StringPool } from "../shared/StringPool.js";
 import { TypingStatus } from "../shared/TypingStatus.js";
 import { BBCodeParseResult, BBCodeParser, ChatBBCodeParser, SystemMessageBBCodeParser } from "../util/bbcode/BBCode.js";
 import { CatchUtils } from "../util/CatchUtils.js";
@@ -854,6 +855,8 @@ function registerCleanupDispose(cmvm: ChannelMessageViewModel, disposable: IDisp
     cleanupRegistry.register(cmvm, disposable);
 }
 
+const channelMessageContentStringPool = new StringPool("channelMessageContentStringPool");
+
 let nextUniqueMessageId: number = 1;
 export class ChannelMessageViewModel extends ObservableBase implements IDisposable {
     static createChatMessage(parent: ChannelViewModel, timestamp: Date, character: CharacterName, text: string,
@@ -990,15 +993,19 @@ export class ChannelMessageViewModel extends ObservableBase implements IDisposab
         public readonly timestamp: Date,
         public readonly type: ChannelMessageType,
         public readonly characterStatus: Omit<CharacterStatus, "equals">,
-        public readonly text: string,
+        text: string,
         public readonly suppressPing: boolean = false,
         public readonly onClick?: () => any
     ) {
         super();
+        this._pooledText = channelMessageContentStringPool.create(text);
         this._weakParent = parent ? new WeakRef<ChannelViewModel>(parent) : null;
         this.uniqueMessageId = nextUniqueMessageId++;
         this.containsPing = this.checkForPing();
     }
+
+    private _pooledText: PooledString;
+    get text(): string { return this._pooledText.value; }
 
     private _disposed: boolean = false;
     [Symbol.dispose]() { this.dispose(); }
