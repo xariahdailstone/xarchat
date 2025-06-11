@@ -143,7 +143,11 @@ export class CharacterSet {
             newStatus.statusMessage != existingStatus.statusMessage ||
             newStatus.typingStatus != existingStatus.typingStatus ||
             newStatus.gender != existingStatus.gender ||
-            newStatus.ignored != existingStatus.ignored;
+            newStatus.ignored != existingStatus.ignored ||
+            newStatus.isFriend != existingStatus.isFriend ||
+            newStatus.isBookmark != existingStatus.isBookmark ||
+            newStatus.isInterest != existingStatus.isInterest ||
+            newStatus.nickname != existingStatus.nickname;
 
         if (newStatus.status != OnlineStatus.OFFLINE) {
             this._statuses.set(characterName, newStatus);
@@ -394,6 +398,10 @@ class CharacterSubSetImpl implements IDisposable {
         for (let cs of initialChars.values()) {
             this._charStatuses.set(cs.characterName, cs);
         }
+    }
+
+    equals(other: any) {
+        return (this === other);
     }
 
     weakRef: WeakRef<CharacterSubSetImpl> | null = null;

@@ -15,9 +15,11 @@ import { EL } from "../util/EL.js";
 import { EventListenerUtil, MouseButton } from "../util/EventListenerUtil.js";
 import { HTMLUtils } from "../util/HTMLUtils.js";
 import { ObjectUniqueId } from "../util/ObjectUniqueId.js";
+import { Observable } from "../util/Observable.js";
 import { ObservableExpression } from "../util/ObservableExpression.js";
 import { Optional } from "../util/Optional.js";
 import { StringUtils } from "../util/StringUtils.js";
+import { SubrenderingManager } from "../util/SubrenderingManager.js";
 import { WhenChangeManager } from "../util/WhenChange.js";
 import { KeyValuePair } from "../util/collections/KeyValuePair.js";
 import { ActiveLoginViewModel } from "../viewmodel/ActiveLoginViewModel.js";
@@ -55,6 +57,15 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
 
             this.setupScrollerAlertsNotifications(addDisposable);
             this.setupChannelDragHosts(addDisposable);
+
+            this._chatSubrenderingManagerPMs = new SubrenderingManager("ChatsList");
+            // this._chatSubrenderingManagerChans = new SubrenderingManager("ChatsList");
+             addDisposable(() => {
+                 this._chatSubrenderingManagerPMs?.dispose();
+                 this._chatSubrenderingManagerPMs = null;
+            //     this._chatSubrenderingManagerChans?.dispose();
+            //     this._chatSubrenderingManagerChans = null;
+            });
 
             return asDisposable(...disposables);
         });
@@ -388,6 +399,9 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
         return asDisposable(...disposables);
     }
 
+    private _chatSubrenderingManagerPMs: SubrenderingManager | null = null;
+    //private _chatSubrenderingManagerChans: SubrenderingManager | null = null;
+
     protected render(): (VNode | [VNode, IDisposable]) {
         const vm = this.viewModel;
         if (!vm || vm.isLoggingIn) { return <></>; }
@@ -428,11 +442,19 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
         
         const unseenDotStyle = vm.getConfigSettingById("unseenIndicatorStyle") as string;
 
-        return <div key={`scroller-${vm.characterName.canonicalValue}`} id="scroller">
-            {this.renderPinnedChannelsSection(vm, unseenDotStyle)}
-            {this.renderUnpinnedChannelsSection(vm, unseenDotStyle)}
-            {this.renderPrivateMessagesSection(vm, unseenDotStyle, charStatusSubSet, nicknameSubSet)}
-        </div>;
+        this._chatSubrenderingManagerPMs?.mark();
+        //this._chatSubrenderingManagerChans?.mark();
+        try {
+            return <div key={`scroller-${vm.characterName.canonicalValue}`} id="scroller">
+                {this.renderPinnedChannelsSection(vm, unseenDotStyle)}
+                {this.renderUnpinnedChannelsSection(vm, unseenDotStyle)}
+                {this.renderPrivateMessagesSection(vm, unseenDotStyle, charStatusSubSet, nicknameSubSet)}
+            </div>;
+        }
+        finally {
+        //    this._chatSubrenderingManagerChans?.sweep();
+            this._chatSubrenderingManagerPMs?.sweep();
+        }
     }
 
     private renderPrivateMessagesSection(vm: ActiveLoginViewModel, unseenDotStyle: string, charStatusSubSet: CharacterSubSet, nicknameSubSet: NicknameSource): VNode | null {
@@ -442,7 +464,13 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
 
         const chanNodes: VNode[] = [];
         for (let pcvm of vm.pmConversations.iterateValues()) {
-            chanNodes.push(this.renderChannelItem(pcvm, false, charStatusSubSet, nicknameSubSet));
+            const cinode = this.renderChannelItem(pcvm, false, charStatusSubSet, nicknameSubSet);
+            // const cinode = this._chatSubrenderingManagerPMs?.getOrCreate(pcvm.character.canonicalValue, (rargs) => {
+            //     return this.renderChannelItem(pcvm, false, charStatusSubSet, nicknameSubSet);
+            // });
+            // if (cinode) {
+                 chanNodes.push(cinode);
+            // }
         }
 
         const result = this.renderCollapsibleSection({
@@ -473,7 +501,13 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
 
         const chanNodes: VNode[] = [];
         for (let ccvm of vm.unpinnedChannels.iterateValues()) {
-            chanNodes.push(this.renderChannelItem(ccvm, true));
+            const cnode = this.renderChannelItem(ccvm, true);
+            // const cnode = this._chatSubrenderingManagerChans?.getOrCreate(ccvm.name.canonicalValue, rargs => {
+            //     return this.renderChannelItem(ccvm, true);
+            // });
+            // if (cnode) {
+                chanNodes.push(cnode);
+            //}
         }
 
         // TODO: add "Add Channels" button
@@ -507,7 +541,13 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
 
         const chanNodes: VNode[] = [];
         for (let ccvm of vm.pinnedChannels.iterateValues()) {
-            chanNodes.push(this.renderChannelItem(ccvm, true));
+            const cnode = this.renderChannelItem(ccvm, true)
+            // const cnode = this._chatSubrenderingManagerChans?.getOrCreate(ccvm.name.canonicalValue, rargs => {
+            //     return this.renderChannelItem(ccvm, true);
+            // });
+            // if (cnode) {
+                chanNodes.push(cnode);
+            //}
         }
 
         const result = this.renderCollapsibleSection({
@@ -537,193 +577,209 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
         const isPMConvo = cvm instanceof PMConvoChannelViewModel;
 
         const cvmState = cvm.channelState;
-
-        let itemKey: string | undefined;
-        let typingIndicatorNode: VNode | null = null;
-        let nameClasses: string[] = [];
-        let title: string;
-        let nickname: (string | null) = null;
-        let charStatusDot: VNode | null = null;
-        if (isChatChannel) {
-            const ccvm = cvm as ChatChannelViewModel;
-            itemKey = `channel-${ccvm.name.canonicalValue}`;
-            title = cvmState.title ?? "(none)";
-        }
-        else if (isPMConvo) {
-            const pcvm = cvm as PMConvoChannelViewModel;
-            const cs = charStatusSubSet ? charStatusSubSet.rawAddChar(pcvm.character) : cvm.activeLoginViewModel.characterSet.getCharacterStatus(pcvm.character);
-
-            if (cs.status == OnlineStatus.OFFLINE) {
-                nameClasses.push("gender-offline");
-            }
-            else {
-                nameClasses.push(`gender-${CharacterGenderConvert.toString(cs.gender).toLowerCase()}`);
-                if (cs.isBookmark) {
-                    nameClasses.push("char-is-bookmark");
-                }
-                if (cs.isFriend) {
-                    nameClasses.push("char-is-friend");
-                }
-            }
-
-            itemKey = `pmconvo-${pcvm.character.canonicalValue}`;
-            switch (cs.typingStatus) {
-                case TypingStatus.NONE:
-                    typingIndicatorNode = null;
-                    break;
-                case TypingStatus.IDLE:
-                    typingIndicatorNode = <x-iconimage classList={["typingstatusindicator-icon","typingstatus-idle"]} attr-src="assets/ui/talking-idle.svg"></x-iconimage>;
-                    break;
-                case TypingStatus.TYPING:
-                    typingIndicatorNode = <x-iconimage classList={["typingstatusindicator-icon","typingstatus-active"]} attr-src="assets/ui/talking.svg"></x-iconimage>;
-                    break;
-            }
-
-            title = pcvm.character.value;
-            const xnickname = nicknameSubSet ? nicknameSubSet.get(pcvm.character) : pcvm.activeLoginViewModel.nicknameSet.get(pcvm.character);
-            if (!StringUtils.isNullOrWhiteSpace(xnickname)) {
-                nickname = xnickname;
-            }
-
-            charStatusDot = StatusDotVNodeBuilder.getStatusDotVNode(cs);
-        }
-        else {
-            itemKey = undefined;
-            title = "(None)";
-        }
-
         const isSelected = cvm.activeLoginViewModel.selectedChannel == cvm;
-        const showUnseenDot = cvm.hasUnseenMessages;
-        const pingNode = cvm.hasPing
-            ? <x-iconimage classList={["sectionitems-item-titleicon-image"]} attr-src="assets/ui/channel-ping.svg"></x-iconimage>
-            : null;
 
-        let clickSuppressed = false;
-        const suppressThisClickAsSelection = () => {
-            clickSuppressed = true;
-        };
+        const cs =  Observable.inReadSubScope(() => {
+            return (isPMConvo && charStatusSubSet) ? charStatusSubSet.rawAddChar((cvm as PMConvoChannelViewModel).character) : null;
+        });
 
-        const pinNode = cvmState.canPin
-            ? <button classList={["pin-icon"]} on={{
-                    "mousedown": (e: MouseEvent) => {
-                        suppressThisClickAsSelection();
-                    },
-                    "click": (e: MouseEvent) => {
-                        suppressThisClickAsSelection();
-                        switch (e.button) {
-                            case MouseButton.LEFT:
-                                cvm.isPinned = !cvm.isPinned;
-                                break;
+        const result = this._chatSubrenderingManagerPMs!.getOrCreate(cvm.collectiveName,
+            { 
+                isSelected: isSelected,
+                cs: cs,
+                supportsDragDrop: supportsDragDrop
+            },
+            (rargs) => {
+                const isSelected = rargs.additionalData.isSelected;
+                let itemKey: string | undefined;
+                let typingIndicatorNode: VNode | null = null;
+                let nameClasses: string[] = [];
+                let title: string;
+                let nickname: (string | null) = null;
+                let charStatusDot: VNode | null = null;
+                if (isChatChannel) {
+                    const ccvm = cvm as ChatChannelViewModel;
+                    itemKey = `channel-${ccvm.name.canonicalValue}`;
+                    title = cvmState.title ?? "(none)";
+                }
+                else if (isPMConvo) {
+                    const pcvm = cvm as PMConvoChannelViewModel;
+                    const cs = rargs.additionalData.cs!;
+
+                    if (cs.status == OnlineStatus.OFFLINE) {
+                        nameClasses.push("gender-offline");
+                    }
+                    else {
+                        nameClasses.push(`gender-${CharacterGenderConvert.toString(cs.gender).toLowerCase()}`);
+                        if (cs.isBookmark) {
+                            nameClasses.push("char-is-bookmark");
+                        }
+                        if (cs.isFriend) {
+                            nameClasses.push("char-is-friend");
                         }
                     }
-                }}><x-iconimage attr-src="assets/ui/pin-icon.svg"></x-iconimage></button>
-            : null;
 
-        const closeNode = cvmState.canClose
-            ? <button classList={["close-icon"]} on={{
-                    "mousedown": (e: MouseEvent) => {
-                        suppressThisClickAsSelection();
-                    },
-                    "click": (e: MouseEvent) => {
-                        suppressThisClickAsSelection();
-                        cvm.close();
+                    itemKey = `pmconvo-${pcvm.character.canonicalValue}`;
+                    switch (cs.typingStatus) {
+                        case TypingStatus.NONE:
+                            typingIndicatorNode = null;
+                            break;
+                        case TypingStatus.IDLE:
+                            typingIndicatorNode = <x-iconimage classList={["typingstatusindicator-icon","typingstatus-idle"]} attr-src="assets/ui/talking-idle.svg"></x-iconimage>;
+                            break;
+                        case TypingStatus.TYPING:
+                            typingIndicatorNode = <x-iconimage classList={["typingstatusindicator-icon","typingstatus-active"]} attr-src="assets/ui/talking.svg"></x-iconimage>;
+                            break;
                     }
-                }}><x-iconimage attr-src="assets/ui/close-icon.svg"></x-iconimage></button>
-            : null;
 
-        const mainEvents: On = {
-            "mousedown": (e: MouseEvent) => {
-                if (!clickSuppressed) {
-                    if (e.button == MouseButton.LEFT) {
-                        cvm.parent.selectedChannel = cvm;
+                    title = pcvm.character.value;
+                    const xnickname = nicknameSubSet ? nicknameSubSet.get(pcvm.character) : pcvm.activeLoginViewModel.nicknameSet.get(pcvm.character);
+                    if (!StringUtils.isNullOrWhiteSpace(xnickname)) {
+                        nickname = xnickname;
                     }
+
+                    charStatusDot = StatusDotVNodeBuilder.getStatusDotVNode(cs);
                 }
                 else {
-                    clickSuppressed = false;
+                    itemKey = undefined;
+                    title = "(None)";
                 }
-            },
-            "click": (e: MouseEvent) => {
-                if (!clickSuppressed) {
-                    try {
-                        switch (e.button) {
-                            case MouseButton.LEFT:
-                                cvm.parent.selectedChannel = cvm;
-                                break;
-                            case MouseButton.RIGHT:
-                                if (cvm instanceof PMConvoChannelViewModel) {
-                                    cvm.showCharacterContextPopup(e.target as HTMLElement);
-                                    e.preventDefault();
+
+                
+                const showUnseenDot = cvm.hasUnseenMessages;
+                const pingNode = cvm.hasPing
+                    ? <x-iconimage classList={["sectionitems-item-titleicon-image"]} attr-src="assets/ui/channel-ping.svg"></x-iconimage>
+                    : null;
+
+                let clickSuppressed = false;
+                const suppressThisClickAsSelection = () => {
+                    clickSuppressed = true;
+                };
+
+                const pinNode = cvmState.canPin
+                    ? <button classList={["pin-icon"]} on={{
+                            "mousedown": (e: MouseEvent) => {
+                                suppressThisClickAsSelection();
+                            },
+                            "click": (e: MouseEvent) => {
+                                suppressThisClickAsSelection();
+                                switch (e.button) {
+                                    case MouseButton.LEFT:
+                                        cvm.isPinned = !cvm.isPinned;
+                                        break;
                                 }
-                                break;
+                            }
+                        }}><x-iconimage attr-src="assets/ui/pin-icon.svg"></x-iconimage></button>
+                    : null;
+
+                const closeNode = cvmState.canClose
+                    ? <button classList={["close-icon"]} on={{
+                            "mousedown": (e: MouseEvent) => {
+                                suppressThisClickAsSelection();
+                            },
+                            "click": (e: MouseEvent) => {
+                                suppressThisClickAsSelection();
+                                cvm.close();
+                            }
+                        }}><x-iconimage attr-src="assets/ui/close-icon.svg"></x-iconimage></button>
+                    : null;
+
+                const mainEvents: On = {
+                    "mousedown": (e: MouseEvent) => {
+                        if (!clickSuppressed) {
+                            if (e.button == MouseButton.LEFT) {
+                                cvm.parent.selectedChannel = cvm;
+                            }
+                        }
+                        else {
+                            clickSuppressed = false;
+                        }
+                    },
+                    "click": (e: MouseEvent) => {
+                        if (!clickSuppressed) {
+                            try {
+                                switch (e.button) {
+                                    case MouseButton.LEFT:
+                                        cvm.parent.selectedChannel = cvm;
+                                        break;
+                                    case MouseButton.RIGHT:
+                                        if (cvm instanceof PMConvoChannelViewModel) {
+                                            cvm.showCharacterContextPopup(e.target as HTMLElement);
+                                            e.preventDefault();
+                                        }
+                                        break;
+                                }
+                            }
+                            catch { }
+                        }
+                        else {
+                            clickSuppressed = false;
+                        }
+                    },
+                    "contextmenu": (e: MouseEvent) => {
+                        if (cvm instanceof PMConvoChannelViewModel) {
+                            cvm.showCharacterContextPopup(e.target as HTMLElement);
                         }
                     }
-                    catch { }
-                }
-                else {
-                    clickSuppressed = false;
-                }
-            },
-            "contextmenu": (e: MouseEvent) => {
-                if (cvm instanceof PMConvoChannelViewModel) {
-                    cvm.showCharacterContextPopup(e.target as HTMLElement);
-                }
-            }
-        };
-        const mainAttributes: Attrs = {
-            "draggable": "true"
-        };
+                };
+                const mainAttributes: Attrs = {
+                    "draggable": "true"
+                };
 
-        if (supportsDragDrop) {
-            mainEvents["dragstart"] = (e: DragEvent) => {
-                this.logger.logDebug("dragstart");
-                if (cvm instanceof ChatChannelViewModel) {
-                    const dt = e.dataTransfer!;
-                    dt.effectAllowed = "move";
+                if (supportsDragDrop) {
+                    mainEvents["dragstart"] = (e: DragEvent) => {
+                        this.logger.logDebug("dragstart");
+                        if (cvm instanceof ChatChannelViewModel) {
+                            const dt = e.dataTransfer!;
+                            dt.effectAllowed = "move";
 
-                    const ownerEl = (e.target as HTMLElement).parentElement!;
-                    const ownerId = ObjectUniqueId.get(ownerEl);
-                    currentChannelDragData = {
-                        [DragDataChannelName]: cvm.name,
-                        [DragDataChannelTitle]: cvmState.title,
-                        [DragDataOwnerId]: ownerId
+                            const ownerEl = (e.target as HTMLElement).parentElement!;
+                            const ownerId = ObjectUniqueId.get(ownerEl);
+                            currentChannelDragData = {
+                                [DragDataChannelName]: cvm.name,
+                                [DragDataChannelTitle]: cvmState.title,
+                                [DragDataOwnerId]: ownerId
+                            };
+                        }
+                        else {
+                            e.preventDefault();
+                            return false;
+                        }
                     };
+                    mainEvents["dragend"] = (e: MouseEvent) => {
+                        this.logger.logDebug("dragend");
+                    };
+                    mainAttributes["data-channel-name"] = (cvm instanceof ChatChannelViewModel) ? cvm.name.canonicalValue : "";
                 }
-                else {
-                    e.preventDefault();
-                    return false;
+                if (cvm.hasPing) {
+                    mainAttributes["data-has-alert"] = "true";
                 }
-            };
-            mainEvents["dragend"] = (e: MouseEvent) => {
-                this.logger.logDebug("dragend");
-            };
-            mainAttributes["data-channel-name"] = (cvm instanceof ChatChannelViewModel) ? cvm.name.canonicalValue : "";
-        }
-        if (cvm.hasPing) {
-            mainAttributes["data-has-alert"] = "true";
-        }
 
-        const nicknameNode: VNode | null = nickname == null
-            ? null
-            : <span>{" "}<span classList={["nickname"]}>{`(${nickname})`}</span></span>;
+                const nicknameNode: VNode | null = nickname == null
+                    ? null
+                    : <span>{" "}<span classList={["nickname"]}>{`(${nickname})`}</span></span>;
 
-        return <div key={itemKey} classList={["sectionitems-item"]} attrs={mainAttributes} on={mainEvents}>
-            <div classList={["sectionitems-item-inner", 
-                    isChatChannel ? "chatchannel" : isPMConvo ? "pmconvo" : "", 
-                    isSelected ? "selected" : "not-selected"]}>
-                <div classList={["sectionitems-item-unseen-container", showUnseenDot ? "shown" : "not-shown"]}>{"\u{2B24}"}</div>
-                <div classList={["sectionitems-item-icon-container"]}>
-                    <div classList={["sectionitems-item-icon"]}>
-                        <x-iconimage classList={["iconimagelightweight-iconimage"]} attr-src={cvm.iconUrl}></x-iconimage>
+                return <div key={itemKey} classList={["sectionitems-item"]} attrs={mainAttributes} on={mainEvents}>
+                    <div classList={["sectionitems-item-inner", 
+                            isChatChannel ? "chatchannel" : isPMConvo ? "pmconvo" : "", 
+                            isSelected ? "selected" : "not-selected"]}>
+                        <div classList={["sectionitems-item-unseen-container", showUnseenDot ? "shown" : "not-shown"]}>{"\u{2B24}"}</div>
+                        <div classList={["sectionitems-item-icon-container"]}>
+                            <div classList={["sectionitems-item-icon"]}>
+                                <x-iconimage classList={["iconimagelightweight-iconimage"]} attr-src={cvm.iconUrl}></x-iconimage>
+                            </div>
+                            <div classList={["sectionitems-item-icondot"]}>{charStatusDot}</div>
+                            <div classList={["sectionitems-item-typingindicator-container"]}>{typingIndicatorNode}</div>
+                        </div>
+                        <div classList={["sectionitems-item-titleicon", cvm.hasPing ? "visible" : "not-visible"]}>{pingNode}</div>
+                        <div classList={["sectionitems-item-name", ...nameClasses]}>{title}{nicknameNode}</div>
+                        <div classList={["pin-icon-container"]}>{pinNode}</div>
+                        <div classList={["close-icon-container"]}>{closeNode}</div>
                     </div>
-                    <div classList={["sectionitems-item-icondot"]}>{charStatusDot}</div>
-                    <div classList={["sectionitems-item-typingindicator-container"]}>{typingIndicatorNode}</div>
-                </div>
-                <div classList={["sectionitems-item-titleicon", cvm.hasPing ? "visible" : "not-visible"]}>{pingNode}</div>
-                <div classList={["sectionitems-item-name", ...nameClasses]}>{title}{nicknameNode}</div>
-                <div classList={["pin-icon-container"]}>{pinNode}</div>
-                <div classList={["close-icon-container"]}>{closeNode}</div>
-            </div>
-        </div>;
+                </div>;
+            });
+
+        return result!;
     }
 
     private renderHeaderDot(key: string, hasPing: boolean, hasUnseen: boolean): VNode | null {

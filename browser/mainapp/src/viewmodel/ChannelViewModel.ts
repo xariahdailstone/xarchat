@@ -82,7 +82,7 @@ export abstract class ChannelViewModel extends ObservableBase implements IDispos
     }
     get isDisposed() { return this._disposed; }
 
-    @observableProperty
+    //@observableProperty
     readonly parent: ActiveLoginViewModel;
 
     get activeLoginViewModel() { return this.parent; }

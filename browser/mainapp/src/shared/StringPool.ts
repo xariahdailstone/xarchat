@@ -17,6 +17,7 @@ export class StringPool {
 
         const newValue = new PooledStringImpl(this, value);
         this.cachedStrings.set(value, new WeakRef(newValue));
+        this.freg.register(newValue, value);
         return newValue;
     }
 }

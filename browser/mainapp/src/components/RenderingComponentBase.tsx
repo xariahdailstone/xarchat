@@ -2,7 +2,7 @@ import { ComponentBase, componentElement } from "./ComponentBase.js";
 import { Fragment, init, jsx, VNode, styleModule, toVNode, propsModule, eventListenersModule } from "../snabbdom/index.js";
 import { DependencySet, Observable, isObservable } from "../util/Observable.js";
 import { ObservableBase } from "../util/ObservableBase.js";
-import { DisposableOwnerField, IDisposable, asDisposable } from "../util/Disposable.js";
+import { ConvertibleToDisposable, DisposableOwnerField, IDisposable, asDisposable } from "../util/Disposable.js";
 import { CharacterName } from "../shared/CharacterName.js";
 import { ActiveLoginViewModel } from "../viewmodel/ActiveLoginViewModel.js";
 import { CharacterSet, CharacterStatus } from "../shared/CharacterSet.js";
@@ -15,8 +15,12 @@ import { CharacterGender } from "../shared/CharacterGender.js";
 import { HTMLUtils } from "../util/HTMLUtils.js";
 import { valueSyncModule } from "../util/snabbdom/valueSyncHook.js";
 
+export interface RenderArguments {
+    addDisposable(disp: ConvertibleToDisposable): void;
+}
+
 export interface MakeRenderingComponentOptions {
-    render: () => (VNode | [VNode, IDisposable]);
+    render: (renderArgs: RenderArguments) => (VNode | [VNode, IDisposable]);
     afterRender?: () => (void | IDisposable | IDisposable[] | Iterable<IDisposable>);
 }
 export interface RenderingComponentFunctions {
@@ -97,8 +101,13 @@ export function makeRenderingComponent<TViewModel>(
             const renderStart = performance.now();
 
             let renderResult: (VNode | [VNode, IDisposable]);
+            const rdisposables: ConvertibleToDisposable[] = [];
             try {
-                renderResult = options.render();
+                renderResult = options.render({
+                    addDisposable(disp: ConvertibleToDisposable) {
+                        rdisposables.push(disp);
+                    }
+                });
                 const renderEnd = performance.now();
                 logger.logDebug(`render() complete, took ${renderEnd - renderStart}ms, ${myDepSet.count} deps`)
             }
@@ -110,11 +119,11 @@ export function makeRenderingComponent<TViewModel>(
             let newVNode: VNode;
             if (renderResult instanceof Array) {
                 newVNode = renderResult[0];
-                refreshDisposable = renderResult[1];
+                refreshDisposable = asDisposable(renderResult[1], ...rdisposables);
             }
             else {
                 newVNode = renderResult;
-                refreshDisposable = null;
+                refreshDisposable = asDisposable(...rdisposables);
             }
             currentVNode = patch(currentVNode, newVNode);
             
