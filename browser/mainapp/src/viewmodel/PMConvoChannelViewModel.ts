@@ -149,7 +149,7 @@ export class PMConvoChannelViewModel extends ChannelViewModel {
         // }
     }
 
-    @observableProperty
+    //@observableProperty
     readonly character: CharacterName;
 
     get collectiveName(): string { return `pm:${this.character.value}`; }

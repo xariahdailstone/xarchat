@@ -67,7 +67,10 @@
 
     overflow: hidden;
     max-width: 100%;
-    contain: layout paint;
+    contain: layout paint size;
+
+    width: 100%;
+    height: 16px;
 }
 
 .statusdot { grid-area: statusdot; }

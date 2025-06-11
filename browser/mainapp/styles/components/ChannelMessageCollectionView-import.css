@@ -351,11 +351,12 @@
     padding: 0;
     margin: 0;
     /* overflow: hidden; */
-    position: relative;
+    /* position: relative; */
 
     /* background: inherit; */
 
-    contain: paint;
+    contain: paint layout;
+    width: 100%;
     border-bottom: 1px solid var(--bg-level-2);
 
     --ad-collapse-max-height: calc(1px * var(--ad-collapse-max-height-numeric));
