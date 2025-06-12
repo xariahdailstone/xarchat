@@ -57,26 +57,49 @@ function tryHandleEditShortcutKey(textarea: HTMLTextAreaElement, ev: KeyboardEve
                 loadBack = true;
                 break;
             case KeyCodes.KEY_E:
-                // tesh.eicon();
-                const avm = options.appViewModelGetter();
-                if (avm) {
-                    if (avm.getConfigSettingById("eiconSearch.enabled")) {
-                        loadBack = true;
-                        (async () => {
-                            const pdialog = new EIconSearchDialogViewModel(avm);
-                            const dlgResult = await avm.showDialogAsync(pdialog);
-                            if (dlgResult) {
-                                tesh.eicon(dlgResult);
-                                textarea.value = tesh.value;
-                                textarea.setSelectionRange(tesh.selectionAt, tesh.selectionAt + tesh.selectionLength);
-                                options.onTextChanged(textarea.value);
-                            }
-                            textarea.focus();
-                        })();
+                {
+                    let avm: AppViewModel | null = null;
+                    const getAvm = () => { avm = avm ?? options.appViewModelGetter() ?? null; return avm; };
+
+                    let doWhat: ("nothing"|"search"|"tag") = "nothing";
+                    if (ev.altKey) {
+                        doWhat = "search";
                     }
                     else {
-                        tesh.eicon();
-                        loadBack = true;
+                        const avm = getAvm();
+                        if (avm) {
+                            if (avm.getConfigSettingById("eiconSearch.enabled")) {
+                                doWhat = "search";
+                            }
+                            else {
+                                doWhat = "tag";
+                            }
+                        }
+                    }
+
+                    if (doWhat == "search" && getAvm() == null) {
+                        doWhat = "tag";
+                    }
+
+                    switch (doWhat) {
+                        case "search":
+                            loadBack = true;
+                            (async () => {
+                                const avm = getAvm()!;
+                                const pdialog = new EIconSearchDialogViewModel(avm);
+                                const dlgResult = await avm.showDialogAsync(pdialog);
+                                if (dlgResult) {
+                                    tesh.eicon(dlgResult);
+                                    textarea.value = tesh.value;
+                                    textarea.setSelectionRange(tesh.selectionAt, tesh.selectionAt + tesh.selectionLength);
+                                    options.onTextChanged(textarea.value);
+                                }
+                                textarea.focus();
+                            })();
+                            break;
+                        case "tag":
+                            tesh.eicon();
+                            loadBack = true;
                     }
                 }
                 break;
