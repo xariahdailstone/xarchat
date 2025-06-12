@@ -1,4 +1,4 @@
-import { EIconSearchDialogViewModel } from "../../viewmodel/dialogs/EIconSearchDialogViewModel";
+import { EIconSearchDialogViewModel, EIconSearchStatus } from "../../viewmodel/dialogs/EIconSearchDialogViewModel";
 import { ComponentBase, componentArea, componentElement } from "../ComponentBase";
 import { DialogBorderType, DialogComponentBase, dialogViewFor } from "./DialogFrame";
 import { ContextPopupBase } from "../popups/ContextPopupBase";
@@ -9,6 +9,24 @@ import { SnapshottableSet } from "../../util/collections/SnapshottableSet";
 import { HTMLUtils } from "../../util/HTMLUtils";
 import { HostInterop } from "../../util/HostInterop";
 import { EIconUtils } from "../../util/EIconUtils";
+import { EventListenerUtil } from "../../util/EventListenerUtil";
+import { asDisposable, IDisposable } from "../../util/Disposable";
+
+type MoveNavResultUpDown = { accepted: false } | { accepted: true, exitedAtColumn?: number };
+type MoveNavResultLeftRight = { accepted: false } | { accepted: true, exited: boolean };
+interface KeyboardNavParticipant {
+    moveNavDown(): MoveNavResultUpDown;
+    moveNavUp(): MoveNavResultUpDown;
+    moveNavLeft(): MoveNavResultLeftRight;
+    moveNavRight(): MoveNavResultLeftRight;
+
+    acceptNavFromAbove(column: number): MoveNavResultUpDown;
+    acceptNavFromBelow(column: number): MoveNavResultUpDown;
+    acceptNavFromLeft(): MoveNavResultLeftRight;
+    acceptNavFromRight(): MoveNavResultLeftRight;
+
+    confirmKeyboardSelection(): boolean;
+}
 
 @componentArea("dialogs")
 @componentElement("x-eiconsearchdialog")
@@ -23,19 +41,42 @@ export class EIconSearchDialog extends DialogComponentBase<EIconSearchDialogView
                 <input class="theme-textbox searchbar-textbox" id="elTextbox" autocomplete="new-password" />
             </div>
             <div class="resultdisplay-container" id="elResultDisplayContainer">
-                <input class="keyboardnavtextbox" id="elKeyboardNavTextbox" />
                 <div class="resultdisplay-issearching">
                     <div class="resultdisplay-issearching-text">Searching...</div>
                 </div>
+                <div class="resultdisplay-welcomepage" id="elResultDisplayEmptyResults">
+                    <div class="resultdisplay-welcome">
+                        Enter your search criteria above, or choose from your most used or recently used
+                        eicons below.  Or from your favorites, if you've linked this character to
+                        xariah.net.
+                    </div>
+
+                    <div class="resultdisplay-sectiontitle">Your Favorite EIcons</div>
+                    <div class="resultdisplay-sectioncontents">xxx</div>
+
+                    <div class="resultdisplay-sectiontitle">Your Recently Used EIcons</div>
+                    <div class="resultdisplay-sectioncontents">xxx</div>
+
+                    <div class="resultdisplay-sectiontitle">Your Most Used EIcons</div>
+                    <div class="resultdisplay-sectioncontents">xxx</div>
+                </div>
                 <div class="resultdisplay-innercontainer" id="elResultDisplayInnerContainer">
+                    <div class="resultdisplay-sectiontitle">Search Results</div>
                     <x-eiconsetview class="resultdisplay-setview" id="elSetView"></x-eiconsetview>
+                </div>
+                <div class="resultdisplay-noresults" id="elResultDisplayInnerContainer">
+                    <div class="resultdisplay-sectiontitle">Search Results</div>
+                    <div class="resultdisplay-noresultstext">
+                        No results found :(
+                    </div>
                 </div>
             </div>
         `);
 
         const elTextbox = this.$("elTextbox") as HTMLInputElement;
-        const elKeyboardNavTextbox = this.$("elKeyboardNavTextbox") as HTMLInputElement;
+        //const elKeyboardNavTextbox = this.$("elKeyboardNavTextbox") as HTMLInputElement;
         const elResultDisplayContainer = this.$("elResultDisplayContainer") as HTMLDivElement;
+        const elResultDisplayEmptyResults = this.$("elResultDisplayEmptyResults") as HTMLDivElement;
         const elResultDisplayInnerContainer = this.$("elResultDisplayInnerContainer") as HTMLDivElement;
         const elSetView = this.$("elSetView") as EIconSetView;
 
@@ -55,27 +96,52 @@ export class EIconSearchDialog extends DialogComponentBase<EIconSearchDialogView
             }
         });
 
-        this.watchExpr(vm => vm.isSearching, isSearching => {
-            isSearching = isSearching ?? false;
+        this.watchExpr(vm => vm.searchState, searchState => {
+            const isSearching = searchState == EIconSearchStatus.SEARCHING;
+            const isWelcomePage = searchState == EIconSearchStatus.WELCOME_PAGE;
+            const isResultDisplay = searchState == EIconSearchStatus.RESULT_DISPLAY;
+            const hasResults = (this.viewModel && this.viewModel.searchResultCount > 0) ?? false;
+
             elResultDisplayContainer.classList.toggle("is-searching", isSearching);
-            if (!isSearching) {
+            elResultDisplayContainer.classList.toggle("is-welcome", isWelcomePage);
+            elResultDisplayContainer.classList.toggle("is-result-display", isResultDisplay && hasResults);
+            elResultDisplayContainer.classList.toggle("has-no-results", isResultDisplay && !hasResults);
+
+            if (isResultDisplay && hasResults) {
+                if (knm) {
+                    knm.participants = [ elSetView ];
+                }
                 elResultDisplayInnerContainer.scrollTo(0, 0);
                 elSetView.refreshDisplayImmediately();
             }
-        });
-
-        this.watchExpr(vm => vm.currentKeyboardSelectedEIcon, selEicon => {
-            if (selEicon == null) {
-                elKeyboardNavTextbox.disabled = true;
-                if (this.viewModel && !this.viewModel.closed) {
-                    elTextbox.focus();
+            else {
+                if (knm) {
+                    knm.participants = [ ];
                 }
             }
-            else {
-                elKeyboardNavTextbox.disabled = false;
-                elKeyboardNavTextbox.focus();
-            }
         });
+
+        let knm: KeyboardNavManager | null = null;
+        this.whenConnectedWithViewModel(vm => {
+            knm = new KeyboardNavManager(elTextbox, elResultDisplayContainer);
+            return asDisposable(() => {
+                knm?.dispose();
+                knm = null;
+            });
+        });
+
+        // this.watchExpr(vm => vm.currentKeyboardSelectedEIcon, selEicon => {
+        //     if (selEicon == null) {
+        //         elKeyboardNavTextbox.disabled = true;
+        //         if (this.viewModel && !this.viewModel.closed) {
+        //             elTextbox.focus();
+        //         }
+        //     }
+        //     else {
+        //         elKeyboardNavTextbox.disabled = false;
+        //         elKeyboardNavTextbox.focus();
+        //     }
+        // });
 
         elTextbox.addEventListener("keydown", (e) => {
             if (this.viewModel) {
@@ -84,59 +150,68 @@ export class EIconSearchDialog extends DialogComponentBase<EIconSearchDialogView
                     e.preventDefault();
                     return true;
                 }
-                if (e.keyCode == KeyCodes.DOWN_ARROW) {
-                    if (!this.viewModel.isSearching) {
-                        elSetView.setKeyboardSelectionTo(0);
+                else if (e.keyCode == KeyCodes.DOWN_ARROW) {
+                    if (this.viewModel.searchState == EIconSearchStatus.RESULT_DISPLAY && knm) {
+                        knm.enterViaTop();
+                    }
+                }
+                else if (e.keyCode == KeyCodes.UP_ARROW) {
+                    if (this.viewModel.searchState == EIconSearchStatus.RESULT_DISPLAY && knm) {
+                        knm.enterViaBottom();
                     }
                 }
             }
 
             return false;
         });
-        elKeyboardNavTextbox.addEventListener("keydown", (e) => {
-            let handled = false;
-            if (this.viewModel) {
-                if (e.keyCode == KeyCodes.UP_ARROW) {
-                    //this.logger.logDebug("up");
-                    elSetView.moveKeyboardSelectionUp();
-                    handled = true;
-                }
-                else if (e.keyCode == KeyCodes.LEFT_ARROW) {
-                    //this.logger.logDebug("left");
-                    elSetView.moveKeyboardSelectionLeft();
-                    handled = true;
-                }
-                else if (e.keyCode == KeyCodes.RIGHT_ARROW) {
-                    //this.logger.logDebug("right");
-                    elSetView.moveKeyboardSelectionRight();
-                    handled = true;
-                }
-                else if (e.keyCode == KeyCodes.DOWN_ARROW) {
-                    //this.logger.logDebug("down");
-                    elSetView.moveKeyboardSelectionDown();
-                    handled = true;
-                }
-                else if (e.keyCode == KeyCodes.RETURN) {
-                    //this.logger.logDebug("return");
-                    elSetView.confirmKeyboardSelection();
-                    handled = true;
-                }
-            }
-            if (e.keyCode == KeyCodes.TAB) {
-                handled = true;
-                return false;
-            }
+        // elKeyboardNavTextbox.addEventListener("keydown", (e) => {
+        //     let handled = false;
+        //     if (this.viewModel) {
+        //         if (e.keyCode == KeyCodes.UP_ARROW) {
+        //             //this.logger.logDebug("up");
+        //             elSetView.moveNavUp();
+        //             //elSetView.moveKeyboardSelectionUp();
+        //             handled = true;
+        //         }
+        //         else if (e.keyCode == KeyCodes.LEFT_ARROW) {
+        //             //this.logger.logDebug("left");
+        //             elSetView.moveNavLeft();
+        //             //elSetView.moveKeyboardSelectionLeft();
+        //             handled = true;
+        //         }
+        //         else if (e.keyCode == KeyCodes.RIGHT_ARROW) {
+        //             //this.logger.logDebug("right");
+        //             elSetView.moveNavRight();
+        //             //elSetView.moveKeyboardSelectionRight();
+        //             handled = true;
+        //         }
+        //         else if (e.keyCode == KeyCodes.DOWN_ARROW) {
+        //             //this.logger.logDebug("down");
+        //             elSetView.moveNavDown();
+        //             //elSetView.moveKeyboardSelectionDown();
+        //             handled = true;
+        //         }
+        //         else if (e.keyCode == KeyCodes.RETURN) {
+        //             //this.logger.logDebug("return");
+        //             elSetView.confirmKeyboardSelection();
+        //             handled = true;
+        //         }
+        //     }
+        //     if (e.keyCode == KeyCodes.TAB) {
+        //         handled = true;
+        //         return false;
+        //     }
 
-            if (handled) {
-                e.preventDefault();
-                return true;
-            }
-        });
-        elKeyboardNavTextbox.addEventListener("focusout", () => {
-            elSetView.setKeyboardSelectionTo(null);
-        });
-        elKeyboardNavTextbox.addEventListener("input", (e) => { elKeyboardNavTextbox.value = ""; });
-        elKeyboardNavTextbox.addEventListener("change", (e) => { elKeyboardNavTextbox.value = ""; });
+        //     if (handled) {
+        //         e.preventDefault();
+        //         return true;
+        //     }
+        // });
+        // elKeyboardNavTextbox.addEventListener("focusout", () => {
+        //     elSetView.setKeyboardSelectionTo(null);
+        // });
+        // elKeyboardNavTextbox.addEventListener("input", (e) => { elKeyboardNavTextbox.value = ""; });
+        // elKeyboardNavTextbox.addEventListener("change", (e) => { elKeyboardNavTextbox.value = ""; });
 
         this.$("elSetView")?.addEventListener("eiconselected", (e) => {
             const eiconName = (e as any).eiconName;
@@ -162,7 +237,7 @@ const EICON_GAP = 6;
 
 @componentArea("dialogs")
 @componentElement("x-eiconsetview")
-export class EIconSetView extends ComponentBase<EIconSearchDialogViewModel> {
+export class EIconSetView extends ComponentBase<EIconSearchDialogViewModel> implements KeyboardNavParticipant {
     constructor() {
         super();
 
@@ -442,7 +517,7 @@ export class EIconSetView extends ComponentBase<EIconSearchDialogViewModel> {
     private _keyboardSelectionIndicatorEl: HTMLDivElement | null = null;
 
     private determineMetrics(elVisibleIconsContainer: HTMLDivElement): CalculatedDisplayMetrics {
-        let remainingWidth = elVisibleIconsContainer.clientWidth;
+        let remainingWidth = elVisibleIconsContainer.clientWidth - 8;
         let rowWidth = 0;
 
         do {
@@ -490,64 +565,230 @@ export class EIconSetView extends ComponentBase<EIconSearchDialogViewModel> {
         }
     }
 
-    private setCurrentKeyboardPos(newPos: { x: number, y: number }) {
+    private setCurrentKeyboardPos(newPos: { x: number, y: number }): boolean {
         if (this._currentCalculatedDisplayMetrics) {
             const eiconCount = (this.viewModel?.searchResultCount ?? 0);
             const ccd = this._currentCalculatedDisplayMetrics;
             const newIndex = (newPos.y * ccd.iconsPerRow) + newPos.x;
             if (newIndex < eiconCount) {
                 this.setKeyboardSelectionTo(newIndex);
+                return true;
             }
+            else {
+                this.setKeyboardSelectionTo(null);
+                return false;
+            }
+        }
+        else {
+            return false;
         }
     }
 
-    moveKeyboardSelectionUp() {
+    // moveKeyboardSelectionUp() {
+    //     if (this._currentCalculatedDisplayMetrics && this._keyboardSelectionIndex != null) {
+    //         const curPos = this.getCurrentKeyboardPos()!;
+    //         if (curPos.y == 0) {
+    //             this.setKeyboardSelectionTo(null);
+    //         }
+    //         else {
+    //             curPos.y = curPos.y - 1;
+    //             this.setCurrentKeyboardPos(curPos);
+    //         }
+    //     }
+    // }
+
+    // moveKeyboardSelectionLeft() {
+    //     if (this._currentCalculatedDisplayMetrics && this._keyboardSelectionIndex != null) {
+    //         const curPos = this.getCurrentKeyboardPos()!;
+    //         if (curPos.x > 0) {
+    //             curPos.x = curPos.x - 1;
+    //             this.setCurrentKeyboardPos(curPos);
+    //         }
+    //     }    
+    // }
+
+    // moveKeyboardSelectionRight() {
+    //     if (this._currentCalculatedDisplayMetrics && this._keyboardSelectionIndex != null) {
+    //         const curPos = this.getCurrentKeyboardPos()!;
+    //         if (curPos.x < curPos.maxX) {
+    //             curPos.x = curPos.x + 1;
+    //             this.setCurrentKeyboardPos(curPos);
+    //         }
+    //     }
+    // }
+
+    // moveKeyboardSelectionDown() {
+    //     if (this._currentCalculatedDisplayMetrics && this._keyboardSelectionIndex != null) {
+    //         const curPos = this.getCurrentKeyboardPos()!;
+    //         if (curPos.y < curPos.maxY) {
+    //             curPos.y = curPos.y + 1;
+    //             this.setCurrentKeyboardPos(curPos);
+    //         }
+    //     }
+    // }
+
+    confirmKeyboardSelection(): boolean {
+        if (this.viewModel) {
+            this.viewModel.confirmKeyboardEntry();
+            return true;
+        }
+        else {
+            return false;
+        }
+        // TODO:
+    }
+
+    // KeyboardNavParticipant
+    private getKeyboardNavColumn(): number {
+        if (this._currentCalculatedDisplayMetrics && this._keyboardSelectionIndex != null) {
+            return this._keyboardSelectionIndex % this._currentCalculatedDisplayMetrics?.iconsPerRow;
+        }
+        else {
+            return 0;
+        }
+    }
+    moveNavDown(): MoveNavResultUpDown {
+        if (this._currentCalculatedDisplayMetrics && this._keyboardSelectionIndex != null) {
+            const curPos = this.getCurrentKeyboardPos()!;
+            curPos.y = curPos.y + 1;
+            const col = this.getKeyboardNavColumn();
+            if (this.setCurrentKeyboardPos(curPos)) {
+                return { accepted: true };
+            }
+            else {
+                return { accepted: true, exitedAtColumn: col };
+            }
+        }
+        else {
+            return { accepted: false };
+        }
+    }
+    moveNavUp(): MoveNavResultUpDown {
         if (this._currentCalculatedDisplayMetrics && this._keyboardSelectionIndex != null) {
             const curPos = this.getCurrentKeyboardPos()!;
             if (curPos.y == 0) {
+                const col = this.getKeyboardNavColumn();
                 this.setKeyboardSelectionTo(null);
+                return { accepted: true, exitedAtColumn: col };
             }
             else {
                 curPos.y = curPos.y - 1;
                 this.setCurrentKeyboardPos(curPos);
+                return { accepted: true };
             }
         }
+        else {
+            return { accepted: false };
+        }
     }
-
-    moveKeyboardSelectionLeft() {
+    moveNavLeft(): MoveNavResultLeftRight {
         if (this._currentCalculatedDisplayMetrics && this._keyboardSelectionIndex != null) {
             const curPos = this.getCurrentKeyboardPos()!;
             if (curPos.x > 0) {
                 curPos.x = curPos.x - 1;
                 this.setCurrentKeyboardPos(curPos);
+                return { accepted: true, exited: false };
             }
-        }    }
-
-    moveKeyboardSelectionRight() {
+            else if (curPos.y > 0) {
+                curPos.y = curPos.y - 1;
+                curPos.x = this._currentCalculatedDisplayMetrics.iconsPerRow - 1;
+                this.setCurrentKeyboardPos(curPos);
+                return { accepted: true, exited: false };
+            }
+            else {
+                return { accepted: true, exited: true };
+            }
+        }
+        else {
+            return { accepted: false };
+        }
+    }
+    moveNavRight(): MoveNavResultLeftRight {
         if (this._currentCalculatedDisplayMetrics && this._keyboardSelectionIndex != null) {
             const curPos = this.getCurrentKeyboardPos()!;
             if (curPos.x < curPos.maxX) {
                 curPos.x = curPos.x + 1;
-                this.setCurrentKeyboardPos(curPos);
+                return { accepted: true, exited: !this.setCurrentKeyboardPos(curPos) };
             }
-        }
-    }
-
-    moveKeyboardSelectionDown() {
-        if (this._currentCalculatedDisplayMetrics && this._keyboardSelectionIndex != null) {
-            const curPos = this.getCurrentKeyboardPos()!;
-            if (curPos.y < curPos.maxY) {
+            else {
                 curPos.y = curPos.y + 1;
-                this.setCurrentKeyboardPos(curPos);
+                curPos.x = 0;
+                return { accepted: true, exited: !this.setCurrentKeyboardPos(curPos) };
             }
+        }
+        else {
+            return { accepted: false };
         }
     }
 
-    confirmKeyboardSelection() {
-        if (this.viewModel) {
-            this.viewModel.confirmKeyboardEntry();
+    acceptNavFromAbove(column: number): MoveNavResultUpDown {
+        if (this._currentCalculatedDisplayMetrics) {
+            const curPos = { x: 0, y: 0 };
+            const canSelect = this.setCurrentKeyboardPos(curPos);
+            if (canSelect) {
+                return { accepted: true };
+            }
+            else {
+                return { accepted: false };
+            }
         }
-        // TODO:
+        else {
+            return { accepted: false };
+        }
+    }
+
+    acceptNavFromBelow(column: number): MoveNavResultUpDown {
+        if (this._currentCalculatedDisplayMetrics) {
+            const curPos = { x: this._currentCalculatedDisplayMetrics.rowCount - 1, y: column };
+            const canSelect = this.setCurrentKeyboardPos(curPos);
+            if (canSelect) {
+                return { accepted: true };
+            }
+            else {
+                const curPos2 = { x: this._currentCalculatedDisplayMetrics.rowCount - 2, y: column };
+                const canSelect2 = this.setCurrentKeyboardPos(curPos2);
+                if (canSelect2) {
+                    return { accepted: true };
+                }
+                else {
+                    return { accepted: false };
+                }
+            }
+        }
+        else {
+            return { accepted: false };
+        }
+    }
+
+    acceptNavFromLeft(): MoveNavResultLeftRight {
+        if (this._currentCalculatedDisplayMetrics) {
+            const eiconCount = (this.viewModel?.searchResultCount ?? 0);
+            if (eiconCount > 0) {
+                this.setKeyboardSelectionTo(0);
+                return { accepted: true, exited: false };
+            }
+            else {
+                return { accepted: true, exited: true };
+            }
+        }
+        else {
+            return { accepted: false };
+        }
+    }
+    acceptNavFromRight(): MoveNavResultLeftRight {
+        if (this._currentCalculatedDisplayMetrics) {
+            const eiconCount = (this.viewModel?.searchResultCount ?? 0);
+            if (eiconCount > 0) {
+                this.setKeyboardSelectionTo(eiconCount - 1);
+                return { accepted: true, exited: false };
+            }
+            else {
+                return { accepted: true, exited: true };
+            }
+        }
+        else {
+            return { accepted: false };
+        }
     }
 }
 
@@ -562,4 +803,209 @@ interface CalculatedDisplayMetrics {
     rowStartsAtX: number;
     neededYHeight: number;
     rowCount: number;
+}
+
+class KeyboardNavManager implements IDisposable {
+    constructor(
+        private readonly leftViaTopTextbox: HTMLElement,
+        private readonly myNavTextboxContainer: HTMLElement) {
+
+        const myNavTextbox = document.createElement("input");
+        myNavTextbox.type = "text";
+        myNavTextbox.classList.add("keyboardnavtextbox");
+        myNavTextboxContainer.appendChild(myNavTextbox);
+        this.myNavTextbox = myNavTextbox;
+
+        EventListenerUtil.addDisposableEventListener(myNavTextbox, "input", (e: Event) => {
+            myNavTextbox.value = "";
+        });
+        EventListenerUtil.addDisposableEventListener(myNavTextbox, "change", (e: Event) => {
+            myNavTextbox.value = "";
+        });
+        EventListenerUtil.addDisposableEventListener(myNavTextbox, "focusout", (e: Event) => {
+            this.setCurrentParticipantIndex(null);
+        });
+        EventListenerUtil.addDisposableEventListener(myNavTextbox, "keydown", (e: KeyboardEvent) => {
+            let handled = false;
+
+            let curParticipant = this.currentParticipant;
+            if (curParticipant) {
+                if (e.keyCode == KeyCodes.UP_ARROW) {
+                    const cpRes = curParticipant.moveNavUp();
+                    if (cpRes.accepted) {
+                        if (cpRes.exitedAtColumn != null) {
+                            const eac = cpRes.exitedAtColumn!;
+                            let targetIndex = this._currentParticipantIndex! - 1;
+                            let gotIt = false;
+                            while (targetIndex >= 0) {
+                                const testP = this.participants[targetIndex];
+                                const testPRes = testP.acceptNavFromBelow(eac);
+                                if (testPRes.accepted && testPRes.exitedAtColumn == null) {
+                                    this.setCurrentParticipantIndex(targetIndex);
+                                    gotIt = true;
+                                    break;
+                                }
+                                targetIndex--;
+                            }
+                            if (!gotIt) {
+                                this.setCurrentParticipantIndex(null);
+                            }
+                        }
+                    }
+                }
+                else if (e.keyCode == KeyCodes.DOWN_ARROW) {
+                    const cpRes = curParticipant.moveNavDown();
+                    if (cpRes.accepted) {
+                        if (cpRes.exitedAtColumn != null) {
+                            const eac = cpRes.exitedAtColumn!;
+                            let targetIndex = this._currentParticipantIndex! + 1;
+                            let gotIt = false;
+                            while (targetIndex < this.participants.length) {
+                                const testP = this.participants[targetIndex];
+                                const testPRes = testP.acceptNavFromAbove(eac);
+                                if (testPRes.accepted && testPRes.exitedAtColumn == null) {
+                                    this.setCurrentParticipantIndex(targetIndex);
+                                    gotIt = true;
+                                    break;
+                                }
+                                targetIndex++;
+                            }
+                            if (!gotIt) {
+                                this.setCurrentParticipantIndex(null);
+                            }
+                        }
+                    }
+                }                
+                else if (e.keyCode == KeyCodes.LEFT_ARROW) {
+                    const cpRes = curParticipant.moveNavLeft();
+                    if (cpRes.accepted) {
+                        if (cpRes.exited) {
+                            let targetIndex = this._currentParticipantIndex! - 1;
+                            let gotIt = false;
+                            while (targetIndex >= 0) {
+                                const testP = this.participants[targetIndex];
+                                const testPRes = testP.acceptNavFromRight();
+                                if (testPRes.accepted && !testPRes.exited) {
+                                    this.setCurrentParticipantIndex(targetIndex);
+                                    gotIt = true;
+                                    break;
+                                }
+                                targetIndex--;
+                            }
+                            if (!gotIt) {
+                                this.setCurrentParticipantIndex(null);
+                            }
+                        }
+                    }
+                }
+                else if (e.keyCode == KeyCodes.RIGHT_ARROW) {
+                    const cpRes = curParticipant.moveNavRight();
+                    if (cpRes.accepted) {
+                        if (cpRes.exited) {
+                            let targetIndex = this._currentParticipantIndex! + 1;
+                            let gotIt = false;
+                            while (targetIndex < this.participants.length) {
+                                const testP = this.participants[targetIndex];
+                                const testPRes = testP.acceptNavFromLeft();
+                                if (testPRes.accepted && !testPRes.exited) {
+                                    this.setCurrentParticipantIndex(targetIndex);
+                                    gotIt = true;
+                                    break;
+                                }
+                                targetIndex++;
+                            }
+                            if (!gotIt) {
+                                this.setCurrentParticipantIndex(null);
+                            }
+                        }
+                    }
+                }
+                else if (e.keyCode == KeyCodes.RETURN) {
+                    //this.logger.logDebug("return");
+                    curParticipant.confirmKeyboardSelection();
+                    handled = true;
+                }
+            }
+            if (e.keyCode == KeyCodes.TAB) {
+                handled = true;
+                return false;
+            }
+
+            if (handled) {
+                e.preventDefault();
+                return true;
+            }
+        });
+    }
+
+    private _isDisposed: boolean = false;
+    get isDisposed() { return this._isDisposed; }
+
+    dispose(): void {
+        if (!this._isDisposed) {
+            this._isDisposed = true;
+            this.myNavTextbox.remove();
+        }
+    }
+    [Symbol.dispose](): void {
+        this.dispose();
+    }
+
+    private readonly myNavTextbox: HTMLInputElement;
+
+    participants: KeyboardNavParticipant[] = [];
+    private _currentParticipantIndex: number | null = null;
+    private setCurrentParticipantIndex(value: number | null, setFocusOnNull: boolean = true) {
+        if (value !== this._currentParticipantIndex) {
+            this._currentParticipantIndex = value;
+            if (value == null) {
+                if (setFocusOnNull) {
+                    console.log("FOCUSING TOP TEXTBOX");
+                    this.leftViaTopTextbox.focus();
+                }
+                this.myNavTextbox.disabled = true;
+            }
+        }
+    }
+    private get currentParticipant() { 
+        if (this._currentParticipantIndex != null) {
+            return this.participants[this._currentParticipantIndex];
+        }
+        else {
+            return null;
+        }
+    }
+
+    exit() {
+        this.setCurrentParticipantIndex(null, false);
+    }
+
+    enterViaTop() {
+        for (let i = 0; i < this.participants.length; i++) {
+            const p = this.participants[i];
+            const anres: MoveNavResultLeftRight  = p.acceptNavFromLeft();
+            if (anres.accepted) {
+                if (!anres.exited) {
+                    this.setCurrentParticipantIndex(i);
+                    this.myNavTextbox.disabled = false;
+                    this.myNavTextbox.focus();
+                    return;
+                }
+            }
+        }
+    }
+    enterViaBottom() {
+        for (let i = this.participants.length - 1; i <= 0; i--) {
+            const p = this.participants[i];
+            const anres: MoveNavResultLeftRight  = p.acceptNavFromRight();
+            if (anres.accepted) {
+                if (!anres.exited) {
+                    this.setCurrentParticipantIndex(i);
+                    this.myNavTextbox.disabled = false;
+                    this.myNavTextbox.focus();
+                    return;
+                }
+            }
+        }
+    }
 }

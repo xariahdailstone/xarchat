@@ -34,6 +34,8 @@
 
 
 .resultdisplay-issearching { display: none; }
+.resultdisplay-welcomepage { display: none; }
+.resultdisplay-noresults { display: none; }
 .resultdisplay-innercontainer { 
     position: absolute;
 
@@ -46,32 +48,100 @@
     overflow-x: hidden;
 }
 .resultdisplay-setview {
-    position: absolute;
+    /* position: absolute; */
     top: 0px;
     left: 0px;
-    width: 100%;
-    height: 100%;
+    /* width: 100%; */
+    /* height: 100%; */
     /* background-color: orange; */
 }
 
-.resultdisplay-container.is-searching .resultdisplay-innercontainer { display: none; }
-.resultdisplay-container.is-searching .resultdisplay-issearching {
-    position: absolute;
+.resultdisplay-container.is-searching {
+    .resultdisplay-innercontainer { display: none; }
+    .resultdisplay-welcomepage { display: none; }
+    .resultdisplay-noresults { display: none; }
 
-    top: 0px;
-    left: 0px;
-    right: 0px;
-    bottom: 0px;
+    .resultdisplay-issearching {
+        position: absolute;
 
-    display: grid;
-    grid-template-rows: 1fr auto 2fr;
-    grid-template-columns: 1fr auto 1fr;
-    grid-template-areas: 
-        ". . ."
-        ". text ."
-        ". . .";
+        top: 0px;
+        left: 0px;
+        right: 0px;
+        bottom: 0px;
+
+        display: grid;
+        grid-template-rows: 1fr auto 2fr;
+        grid-template-columns: 1fr auto 1fr;
+        grid-template-areas: 
+            ". . ."
+            ". text ."
+            ". . .";
+
+        .resultdisplay-issearching-text { grid-area: text; }
+    }
 }
-.resultdisplay-container.is-searching .resultdisplay-issearching .resultdisplay-issearching-text { grid-area: text; }
+
+.resultdisplay-container.is-welcome {
+    .resultdisplay-issearching { display: none; }
+    .resultdisplay-innercontainer { display: none; }
+    .resultdisplay-noresults { display: none; }
+
+    .resultdisplay-welcomepage {
+        position: absolute;
+        display: block;
+     
+        top: 0px;
+        left: 0px;
+        right: 0px;
+        bottom: 0px;
+
+        overflow-y: auto;
+        overflow-x: hidden;
+
+        .resultdisplay-welcome {
+            text-align: center;
+            background: #227;
+            color: #ddd;
+            padding: 10px 10px;
+            margin-bottom: 20px;
+        }
+    }
+}
+
+.resultdisplay-container.has-no-results {
+    .resultdisplay-issearching { display: none; }
+    .resultdisplay-innercontainer { display: none; }
+    .resultdisplay-welcomepage { display: none; }
+
+    .resultdisplay-noresults {
+        position: absolute;
+        display: block;
+     
+        top: 0px;
+        left: 0px;
+        right: 0px;
+        bottom: 0px;
+
+        overflow-y: auto;
+        overflow-x: hidden;
+
+        .resultdisplay-noresultstext {
+            text-align: center;
+            padding: 10px 10px;
+            padding-top: 40px;
+            font-size: 125%;
+        }
+    }
+}
+
+.resultdisplay-sectiontitle {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.4);
+    color: rgba(255, 255, 255, 0.8);
+    padding-bottom: 4px;
+    font-size: 150%;
+    margin-top: 20px;
+    margin-bottom: 10px;
+}
 
 #elVisibleIconsContainer { overflow: hidden; }
 
@@ -79,3 +149,10 @@
     pointer-events: none;
     opacity: 0;
 }
+
+/* x-eiconsetview {
+    display: block;
+    margin-left: 5px;
+    margin-right: 5px;
+    width: calc(100% - 10px);
+} */

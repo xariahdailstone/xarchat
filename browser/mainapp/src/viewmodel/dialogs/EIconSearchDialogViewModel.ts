@@ -1,9 +1,16 @@
-import { HostInterop } from "../../util/HostInterop";
+import { EIconSearchResults, HostInterop } from "../../util/HostInterop";
 import { ObservableBase, observableProperty } from "../../util/ObservableBase";
 import { AppViewModel } from "../AppViewModel";
 import { DialogButtonStyle, DialogButtonViewModel, DialogViewModel } from "./DialogViewModel";
 import { ContextPopupViewModel } from "../popups/PopupViewModel";
 import { TaskUtils } from "../../util/TaskUtils";
+import { StringUtils } from "../../util/StringUtils";
+
+export enum EIconSearchStatus {
+    WELCOME_PAGE,
+    SEARCHING,
+    RESULT_DISPLAY
+}
 
 export class EIconSearchDialogViewModel extends DialogViewModel<string | null> {
     constructor(parent: AppViewModel) {
@@ -38,8 +45,32 @@ export class EIconSearchDialogViewModel extends DialogViewModel<string | null> {
         }
     }
 
+    private _isSearching: boolean = false;
+    private setIsSearching(value: boolean) {
+        if (value !== this._isSearching) {
+            this._isSearching = value;
+            this.updateIsSearchState();
+        }
+    }
+
+    private updateIsSearchState() {
+        let resultState: EIconSearchStatus;
+        if (this._isSearching) {
+            resultState = EIconSearchStatus.SEARCHING;
+        }
+        else if (this._searchText.trim() == "") {
+            resultState = EIconSearchStatus.WELCOME_PAGE;
+        }
+        else {
+            resultState = EIconSearchStatus.RESULT_DISPLAY;
+        }
+        if (resultState !== this.searchState) {
+            this.searchState = resultState;
+        }
+    }
+
     @observableProperty
-    isSearching: boolean = false;
+    searchState: EIconSearchStatus = EIconSearchStatus.WELCOME_PAGE;
 
     @observableProperty
     searchResultCount: number = 0;
@@ -62,7 +93,7 @@ export class EIconSearchDialogViewModel extends DialogViewModel<string | null> {
     // }
 
     async getSearchResultsAsync(startAt: number, count: number): Promise<EIconSearchResult[]> {
-        if (this.isSearching) { return []; }
+        if (this.searchState != EIconSearchStatus.RESULT_DISPLAY) { return []; }
 
         const searchingOnSearchKey = this._currentSearchKey;
 
@@ -84,7 +115,7 @@ export class EIconSearchDialogViewModel extends DialogViewModel<string | null> {
         const mySearchKey = {};
         this._currentSearchKey = mySearchKey;
 
-        this.isSearching = true;
+        this.setIsSearching(true);
         try {
             this.currentKeyboardSelectedEIcon = null;
             if (this._needsClear) {
@@ -97,17 +128,23 @@ export class EIconSearchDialogViewModel extends DialogViewModel<string | null> {
             if (this._currentSearchKey !== mySearchKey) { return; }
             if (this.searchText != searchText) { return; }
 
-            const results = await HostInterop.searchEIconsAsync(searchText, 0, 0);
+            let results: EIconSearchResults;
+            if (searchText.trim() != "") {
+                results = await HostInterop.searchEIconsAsync(searchText, 0, 0);
+            }
+            else {
+                results = { totalCount: 0, results: [] };
+            }
             this._needsClear = true;
             if (this._currentSearchKey !== mySearchKey) { return; }
 
-            this.isSearching = false;
             this._currentSearchText = searchText;
             this.searchResultCount = results.totalCount;
+            this.setIsSearching(false);
         }
         finally {
             if (this._currentSearchKey === mySearchKey) {
-                this.isSearching = false;
+                this.setIsSearching(false);
             }
         }
     }
