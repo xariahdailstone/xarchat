@@ -329,6 +329,9 @@ export class SettingsDialogItemViewModel extends SettingsDialogSettingViewModel 
                     case "integer":
                         this.assignIntegerValue(value);
                         break;
+                    case "number":
+                        this.assignNumberValue(value);
+                        break;
                     default:
                         this.logger.logError(`don't know how to assign ${this.schema.type}`);
                 }
@@ -350,6 +353,11 @@ export class SettingsDialogItemViewModel extends SettingsDialogSettingViewModel 
     }
 
     private assignIntegerValue(value: number | null) {
+        const k = this.getAppConfigKey();
+        this.scope.appViewModel.configBlock.set(k, value);
+    }
+
+    private assignNumberValue(value: number | null) {
         const k = this.getAppConfigKey();
         this.scope.appViewModel.configBlock.set(k, value);
     }

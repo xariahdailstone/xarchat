@@ -251,6 +251,13 @@ select.themed:hover,
     color: var(--fg-main-textbox-btn-hover);
 }
 
+input.themed.invalid-value,
+button.themed.invalid-value,
+select.themed.invalid-value {
+    outline: 2px solid red;
+}
 
 .character-link { cursor: pointer; }
 .hidden { display: none !important; }
+
+
