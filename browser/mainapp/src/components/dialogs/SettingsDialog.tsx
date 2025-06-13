@@ -3,7 +3,7 @@ import { SettingsDialogSectionViewModel, SettingsDialogItemViewModel, SettingsDi
 import { componentArea, componentElement } from "../ComponentBase";
 import { makeRenderingComponent, RenderingComponentBase } from "../RenderingComponentBase";
 import { DialogBorderType, DialogComponentBase, dialogViewFor } from "./DialogFrame";
-import { Fragment, init, jsx, VNode, styleModule, toVNode, propsModule, eventListenersModule, h, Hooks, Attrs, On } from "../../snabbdom/index.js";
+import { Fragment, init, jsx, VNode, styleModule, toVNode, propsModule, eventListenersModule, h, Hooks, Attrs, On, VNodeStyle } from "../../snabbdom/index.js";
 import { IterableUtils } from "../../util/IterableUtils";
 import { HTMLUtils } from "../../util/HTMLUtils";
 import { ConfigSchemaItemDefinitionItem, EnableIfOptions, PingLineItemDefinition, PingLineItemMatchStyle, PingLineItemMatchStyleConvert } from "../../configuration/ConfigSchemaItem";
@@ -16,7 +16,6 @@ import { ThemeToggle } from "../ThemeToggle";
 import { Collection } from "../../util/ObservableCollection";
 import { ChannelName } from "../../shared/ChannelName";
 import { StringUtils } from "../../util/StringUtils";
-import { VNodeStyle } from "../../../node_modules/snabbdom/build/index";
 
 @componentArea("dialogs")
 @componentElement("x-settingsdialog")
