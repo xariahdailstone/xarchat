@@ -81,6 +81,12 @@ export class AppViewModel extends ObservableBase {
                 }
             }
         });
+        this.configBlock.observe("global.autoIdle", v => {
+            this.updateAutoIdleSettings();
+        });
+        this.configBlock.observe("global.idleAfterMinutes", v => {
+            this.updateAutoIdleSettings();
+        });
 
         this.appWindowState = HostInterop.windowState;
         HostInterop.registerWindowStateChangeCallback((winState) => {
@@ -136,7 +142,6 @@ export class AppViewModel extends ObservableBase {
     get appSettings() { return this._appSettings; }
     set appSettings(value) {
         this._appSettings = value;
-        this.idleAfterSec = value.autoIdleSec ?? null;
     }
 
     @observableProperty
@@ -294,9 +299,8 @@ export class AppViewModel extends ObservableBase {
     @observableProperty
     screenState: IdleDetectionScreenState = "unlocked";
 
-    @observableProperty
-    get idleAfterSec() { return this._idleAfterSec; }
-    set idleAfterSec(value: number | null) {
+    private get idleAfterSec() { return this._idleAfterSec; }
+    private set idleAfterSec(value: number | null) {
         if (value != this._idleAfterSec) {
             const thisIdleAssign = {};
             this._idleAfterAssign = thisIdleAssign;
@@ -333,6 +337,14 @@ export class AppViewModel extends ObservableBase {
                 this.screenState = "unlocked";
             }
         }
+    }
+
+    private updateAutoIdleSettings() {
+        const autoIdleEnabled = !!this.configBlock.get("global.autoIdle");
+        const autoIdleSec = autoIdleEnabled 
+            ? Math.round((+(this.configBlock.get("global.idleAfterMinutes") ?? 10)) * 60)
+            : null;
+        this.idleAfterSec = autoIdleSec;
     }
 
     async showSettingsDialogAsync(activeLoginViewModel?: ActiveLoginViewModel, interlocutor?: CharacterName) {

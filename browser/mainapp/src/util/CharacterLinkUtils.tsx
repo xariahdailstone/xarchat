@@ -77,6 +77,14 @@ export class MassCharacterLinkManager implements IDisposable, Observable {
 
         Observable.publishRead(this, "value", false);
 
+        this._ccs = session.characterSet.createSubSet([]);
+        this._ccs.addStatusUpdateListener(cs => {
+            this.triggerUpdateFor(cs.characterName);
+        });
+        this._onDisposeActions.push(() => {
+            this._ccs.dispose();
+        });
+
         if (channel) {
             channel.addChannelOpsListener((chars) => {
                 for (let char of chars) {
@@ -145,6 +153,8 @@ export class MassCharacterLinkManager implements IDisposable, Observable {
         }
     }
 
+    private readonly _ccs: CharacterSubSet;
+
     private _cbSet: CallbackSet<PropertyChangeEventListener> = new CallbackSet("MassCharacterLinkManager");
 
     addEventListener(eventName: "propertychange", handler: PropertyChangeEventListener): IDisposable {
@@ -164,6 +174,7 @@ export class MassCharacterLinkManager implements IDisposable, Observable {
 
     getCharacterLinkVNodes(cs: CharacterStatusNoEquals) {
         this._chars.add(cs.characterName);
+        this._ccs.rawAddChar(cs.characterName);
         const result = CharacterLinkUtils.createStaticCharacterLinkVNode2(
             this.session, cs.characterName, cs, this.channel ?? null, getEffectiveCharacterNameInfo(cs, this.channel ?? this.session, true));
         return result;
