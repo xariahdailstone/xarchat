@@ -335,3 +335,10 @@
         margin-top: 7px;
     }
 }
+
+.setting-entry-integer,
+.setting-entry-number {
+    background: var(--bg-main-textbox-btn);
+    color: var(--fg-main-textbox-btn);
+    font: inherit;
+}

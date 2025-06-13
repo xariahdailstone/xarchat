@@ -19,6 +19,7 @@ export interface ConfigSchemaItemDefinitionItem {
     min?: number;
     max?: number;
     maxLength?: number;
+    fieldWidth?: string;
     defaultValue: unknown;
     configBlockKey: string;
     items?: ConfigSchemaItemDefinition[];
@@ -85,7 +86,8 @@ export interface PingLineItemDefinition {
 
 export type ConfigSchemaItemDefinition = (ConfigSchemaItemDefinitionItem | ConfigSchemaItemDefinitionSection);
 
-export type ConfigSchemaItemType = "text" | "boolean" | "integer" | "text[]" | "pinglist" | "radio" | "timespan" | "color" | "color-hs" | "bgcolorcontrol" | "notifroutes" | "select";
+export type ConfigSchemaItemType = "text" | "boolean" | "integer" | "number" | "text[]" | "pinglist" | 
+    "radio" | "timespan" | "color" | "color-hs" | "bgcolorcontrol" | "notifroutes" | "select";
 export type ConfigSchemaOptionItemType = "string" | "file";
 export type ConfigSchemaScopeType = "global" | "char" | "char.chancategory" | "char.chan" | "char.convo";
 export type ConfigSchemaScopeTypeSimple = "global" | "char" | "chan" | "convo";
@@ -154,24 +156,6 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     configBlockKey: "useGpuAcceleration"
                 },
                 {
-                    id: "autoIdle",
-                    scope: getScopeArray(["global", "char"]),
-                    title: "Auto Idle",
-                    description: "Automatically change your status to Idle when your computer input is idle.",
-                    type: "boolean",
-                    defaultValue: true,
-                    configBlockKey: "autoIdle"
-                },
-                {
-                    id: "autoAway",
-                    scope: getScopeArray(["global", "char"]),
-                    title: "Auto Away",
-                    description: "Automatically change your status to Away when your computer is locked.",
-                    type: "boolean",
-                    defaultValue: true,
-                    configBlockKey: "autoAway"
-                },
-                {
                     id: "autoReconnect",
                     scope: getScopeArray(["global", "char"]),
                     title: "Automatically Reconnect",
@@ -206,6 +190,50 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     type: "boolean",
                     defaultValue: true,
                     configBlockKey: "eiconSearch.enabled"
+                },
+                {
+                    scope: getScopeArray(["global"]),
+                    sectionTitle: "Auto Idle/Away",
+                    items: [
+                        {
+                            id: "autoAway",
+                            scope: getScopeArray(["global"]),
+                            title: "Auto Away",
+                            description: "Automatically change your status to Away when your computer is locked.",
+                            type: "boolean",
+                            defaultValue: true,
+                            configBlockKey: "autoAway"
+                        },                        
+                        {
+                            id: "autoIdle",
+                            scope: getScopeArray(["global"]),
+                            title: "Auto Idle",
+                            description: "Automatically change your status to Idle when your computer input is idle.",
+                            type: "boolean",
+                            defaultValue: true,
+                            configBlockKey: "autoIdle"
+                        },
+                        {
+                            id: "idleAfterMinutes",
+                            scope: getScopeArray(["global"]),
+                            title: "Auto Idle After",
+                            description: "How many minutes your computer must be idle before setting auto idle.",
+                            type: "number",
+                            min: 1,
+                            max: 60 * 24,
+                            defaultValue: 10,
+                            fieldWidth: "calc(9px * 5)",
+                            configBlockKey: "idleAfterMinutes",
+                            enableIf: (opts) => {
+                                if (opts.getConfigEntryById("autoIdle") == true) {
+                                    return true;
+                                }
+                                else {
+                                    return false;
+                                }
+                            }
+                        }                
+                    ]
                 },
                 {
                     scope: getScopeArray(["global", "char", "chan", "convo"]),

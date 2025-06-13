@@ -928,8 +928,10 @@ class XarHost2Interop implements IXarHost2HostInterop {
             monitorName: myIdleMonitorId,
             idleAfterMs: idleAfterMs
         }));
+        this.logger.logDebug("idle - addIdleMonitorRegistration", myIdleMonitorId);
 
         return asDisposable(() => {
+            this.logger.logDebug("idle - removeIdleMonitorRegistration", myIdleMonitorId);
             this.writeToXCHostSocket("removeIdleMonitorRegistration " + JSON.stringify({
                 monitorName: myIdleMonitorId
             }));
@@ -938,6 +940,7 @@ class XarHost2Interop implements IXarHost2HostInterop {
     }
 
     private handleIdleMonitorUpdate(monitorName: string, userState: IdleDetectionUserState, screenState: IdleDetectionScreenState) {
+        this.logger.logDebug("idle - handleIdleMonitorUpdate", monitorName, userState, screenState);
         const cb = this._idleDetectionCallbacks.get(monitorName);
         if (cb) {
             try { cb(userState, screenState); }
