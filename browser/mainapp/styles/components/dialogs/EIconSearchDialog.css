@@ -44,14 +44,15 @@
     right: 0px;
     bottom: 0px;
 
-    overflow-y: auto;
+    overflow-y: scroll;
     overflow-x: hidden;
 }
 .resultdisplay-setview {
-    /* position: absolute; */
+    /* position: relative; */
+    display: block;
     top: 0px;
     left: 0px;
-    /* width: 100%; */
+    width: 100%;
     /* height: 100%; */
     /* background-color: orange; */
 }
@@ -95,7 +96,7 @@
         right: 0px;
         bottom: 0px;
 
-        overflow-y: auto;
+        overflow-y: scroll;
         overflow-x: hidden;
 
         .resultdisplay-welcome {

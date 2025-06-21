@@ -53,7 +53,7 @@ export class AutoAdManager implements IDisposable {
                     const useEntry = entries[n % entries.length];
 
                     this._logger.logDebug(`Auto-sending ad to ${chan.title}`);
-                    try { await chan.sendAdAsync("[b=::XarChatAutoAdPost][/b]" + useEntry.adText); }
+                    try { await chan.sendAdAsync("[b=::XarChatAutoAdPost][/b]" + useEntry.adText, true); }
                     catch { }
 
                     await TaskUtils.delay(1000);

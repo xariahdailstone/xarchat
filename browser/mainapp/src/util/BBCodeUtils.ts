@@ -86,7 +86,8 @@ function tryHandleEditShortcutKey(textarea: HTMLTextAreaElement, ev: KeyboardEve
                             loadBack = true;
                             (async () => {
                                 const avm = getAvm()!;
-                                const pdialog = new EIconSearchDialogViewModel(avm);
+                                const sess = options.activeLoginViewModelGetter ? options.activeLoginViewModelGetter() ?? null : null;
+                                const pdialog = new EIconSearchDialogViewModel(avm, sess);
                                 const dlgResult = await avm.showDialogAsync(pdialog);
                                 if (dlgResult) {
                                     tesh.eicon(dlgResult);

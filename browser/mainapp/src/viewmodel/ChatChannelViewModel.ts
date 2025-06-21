@@ -1018,6 +1018,7 @@ export class ChatChannelViewModel extends ChannelViewModel {
                     await this.parent.chatConnection.channelSendMessageAsync(this.name, msgContent);
                 },
                 onSuccessAsync: async () => {
+                    this.parent.trackUsedEIconsInMessage(msgContent);
                     this.addChatMessage({
                         speakingCharacter: this.parent.characterName,
                         message: msgContent,
@@ -1107,7 +1108,7 @@ export class ChatChannelViewModel extends ChannelViewModel {
     @observableProperty
     get canSendTextboxAsAd() { return this._cantSendAsAdReasons.value.length == 0; }
 
-    async sendAdAsync(msgContent: string): Promise<void> {
+    async sendAdAsync(msgContent: string, isAutoAd: boolean = false): Promise<void> {
         try {
             await this.parent.chatConnection.checkChannelAdMessageAsync(this.name, msgContent);
         }
@@ -1137,6 +1138,9 @@ export class ChatChannelViewModel extends ChannelViewModel {
                 }, 1000 * 60 * 10);
             },
             onSuccessAsync: async () => {
+                if (!isAutoAd) {
+                    this.parent.trackUsedEIconsInMessage(msgContent);
+                }
                 this.addAdMessage({
                     speakingCharacter: this.parent.characterName,
                     message: msgContent,

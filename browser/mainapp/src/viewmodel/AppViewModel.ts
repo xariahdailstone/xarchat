@@ -84,9 +84,13 @@ export class AppViewModel extends ObservableBase {
         this.configBlock.observe("global.autoIdle", v => {
             this.updateAutoIdleSettings();
         });
+        this.configBlock.observe("global.autoAway", v => {
+            this.updateAutoIdleSettings();
+        });
         this.configBlock.observe("global.idleAfterMinutes", v => {
             this.updateAutoIdleSettings();
         });
+        this.updateAutoIdleSettings();
 
         this.appWindowState = HostInterop.windowState;
         HostInterop.registerWindowStateChangeCallback((winState) => {
@@ -123,6 +127,7 @@ export class AppViewModel extends ObservableBase {
 
     get interfaceZoom(): number { return +(this.configBlock.get("uiZoom") ?? 1); }
     set interfaceZoom(value: number) {
+        value = Math.round(value * 100) / 100;
         if (value != this.interfaceZoom) {
             this.configBlock.set("uiZoom", value);
 
@@ -315,6 +320,7 @@ export class AppViewModel extends ObservableBase {
                 this._appSettings.autoIdleSec = value;
             }
 
+            this.logger.logDebug("idleAfterSec set", value);
             if (value != null && value > 0) {
                 (async () => {
                     const id = await IdleDetection.createAsync(value, (userState, screenState) => {
@@ -340,7 +346,7 @@ export class AppViewModel extends ObservableBase {
     }
 
     private updateAutoIdleSettings() {
-        const autoIdleEnabled = !!this.configBlock.get("global.autoIdle");
+        const autoIdleEnabled = !!this.configBlock.get("global.autoIdle") || !!this.configBlock.get("global.autoAway");
         const autoIdleSec = autoIdleEnabled 
             ? Math.round((+(this.configBlock.get("global.idleAfterMinutes") ?? 10)) * 60)
             : null;

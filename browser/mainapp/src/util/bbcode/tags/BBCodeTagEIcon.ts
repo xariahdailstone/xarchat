@@ -73,6 +73,7 @@ export const BBCodeTagEIcon = new BBCodeTag("eicon", true, false,
             loadContentCTS.cancel();
             loadedEicon = null;
         });
+        context.addUsedEIcon(contentText);
 
         loadedEicon.getBlobUrlAsync(
             (context.parseOptions.eiconsUniqueLoadTag 

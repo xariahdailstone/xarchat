@@ -277,6 +277,7 @@ export class PMConvoChannelViewModel extends ChannelViewModel {
                     await this.parent.chatConnection.privateMessageSendAsync(this.character, msgContent);
                 },
                 onSuccessAsync: async () => {
+                    this.parent.trackUsedEIconsInMessage(msgContent);
                     this.addChatMessage({
                         isAd: false,
                         message: msgContent,

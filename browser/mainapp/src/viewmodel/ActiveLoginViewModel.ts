@@ -3,7 +3,7 @@ import { FListAuthenticatedApi, FriendsList, ProfileInfo } from "../fchat/api/FL
 import { ChannelName } from "../shared/ChannelName.js";
 import { CharacterName } from "../shared/CharacterName.js";
 import { CharacterSet } from "../shared/CharacterSet.js";
-import { BBCodeClickContext, BBCodeParseSink } from "../util/bbcode/BBCode.js";
+import { BBCodeClickContext, BBCodeParseSink, ChatBBCodeParser } from "../util/bbcode/BBCode.js";
 import { tryDispose, IDisposable, addOnDispose, ConvertibleToDisposable, asDisposable } from "../util/Disposable.js";
 import { HostInterop } from "../util/HostInterop.js";
 import { Observable, ObservableValue, PropertyChangeEvent } from "../util/Observable.js";
@@ -1005,6 +1005,7 @@ export class ActiveLoginViewModel extends ObservableBase implements IDisposable 
         if (autoIdleSetting || autoAwaySetting) {
             const userState = autoIdleSetting ? this.parent.userState : "active";
             const screenState = autoAwaySetting ? this.parent.screenState : "unlocked";
+            this.logger.logInfo("idleStateChanged", userState, screenState);
             this.chatConnectionConnected?.setIdleStatusAsync(userState, screenState);
         }
     }
@@ -1075,6 +1076,111 @@ export class ActiveLoginViewModel extends ObservableBase implements IDisposable 
     }
 
     readonly toastManager: InAppToastManagerViewModel;
+
+    // Called when an eicon loads the "no eicon" image
+    trackInvalidEIcon(eiconName: string) {
+        const eiconNameCanonical = eiconName.toLowerCase();
+
+        // Remove from recently-used list
+        {
+            const configBlockKey = `character.${this.characterName.canonicalValue}.recentlyUsedEIcons`;
+            let recentList: string[] = this.appViewModel.configBlock.get(configBlockKey) as (string[] | null | undefined) ?? [];
+            const rlIndex = recentList.indexOf(eiconNameCanonical);
+            if (rlIndex >= 0) {
+                recentList.splice(rlIndex, 1)
+                this.appViewModel.configBlock.set(configBlockKey, recentList);
+            }
+        }
+
+        // Remove from most-used list
+        {
+            const configBlockKey = `character.${this.characterName.canonicalValue}.mostUsedEIcons`;
+            let mostUsedList = {... this.appViewModel.configBlock.get(configBlockKey) as (Record<string, {lastUsed: number,count: number}> | null | undefined) ?? {} };
+            let muItem = mostUsedList[eiconNameCanonical];
+            if (muItem) {
+                delete mostUsedList[eiconNameCanonical];
+                this.appViewModel.configBlock.set(configBlockKey, mostUsedList);
+            }
+        }
+    }
+
+    trackUsedEIconsInMessage(msgContent: string) {
+        using parseResult = ChatBBCodeParser.parse(msgContent)
+        const usedSet = parseResult.usedEIcons;
+        usedSet.forEach(v => {
+            this.trackUsedEIcon(v);
+        });
+    }
+
+    // Called when this character sends a message containing an eicon
+    trackUsedEIcon(eiconName: string) {
+        const eiconNameCanonical = eiconName.toLowerCase();
+
+        // Add to recently-used list
+        {
+            const configBlockKey = `character.${this.characterName.canonicalValue}.recentlyUsedEIcons`;
+            let recentList: string[] = this.appViewModel.configBlock.get(configBlockKey) as (string[] | null | undefined) ?? [];
+            const rlIndex = recentList.indexOf(eiconNameCanonical);
+            if (rlIndex != 0) {
+                if (rlIndex >= 0) {
+                    recentList.splice(rlIndex, 1)
+                }
+                recentList.unshift(eiconNameCanonical);
+                while (recentList.length > 100) {
+                    recentList.pop();
+                }
+                this.appViewModel.configBlock.set(configBlockKey, recentList);
+            }
+        }
+
+        // Add to most used list
+        {
+            const configBlockKey = `character.${this.characterName.canonicalValue}.mostUsedEIcons`;
+            let mostUsedList = {... this.appViewModel.configBlock.get(configBlockKey) as (Record<string, {lastUsed: number,count: number}> | null | undefined) ?? {} };
+            let muItem = mostUsedList[eiconNameCanonical];
+            if (muItem) {
+                muItem.lastUsed = (new Date()).getTime();
+                muItem.count++;
+            }
+            else {
+                mostUsedList[eiconNameCanonical] = { lastUsed: (new Date()).getTime(), count: 1 };
+                while (Object.getOwnPropertyNames(mostUsedList).length > 100) {
+                    let leastRecentlyUsedKey: string | null = null;
+                    let leastRecentlyUsedItem: {lastUsed: number,count: number} | null = null;
+                    for (let item of Object.getOwnPropertyNames(mostUsedList).map(k => { return { key: k, value: mostUsedList[k] }; })) {
+                        const tkey = item.key;
+                        const titem = item.value;
+                        if (!leastRecentlyUsedItem || titem.lastUsed < leastRecentlyUsedItem.lastUsed) {
+                            leastRecentlyUsedKey = tkey;
+                            leastRecentlyUsedItem = titem;
+                        }
+                    }
+                    if (leastRecentlyUsedKey) {
+                        delete mostUsedList[leastRecentlyUsedKey];
+                    }
+                    else {
+                        break;
+                    }
+                }
+            }
+            this.appViewModel.configBlock.set(configBlockKey, mostUsedList);
+        }
+    }
+
+    getRecentlyUsedEIcons(): string[] {
+        const configBlockKey = `character.${this.characterName.canonicalValue}.recentlyUsedEIcons`;
+        const recentList: string[] = this.appViewModel.configBlock.get(configBlockKey) as (string[] | null | undefined) ?? [];
+        return recentList;
+    }
+
+    getMostUsedEIcons(): string[] {
+        const configBlockKey = `character.${this.characterName.canonicalValue}.mostUsedEIcons`;
+        const mostUsedList = {... this.appViewModel.configBlock.get(configBlockKey) as (Record<string, {lastUsed: number,count: number}> | null | undefined) ?? {} };
+        return [...Object.getOwnPropertyNames(mostUsedList)
+            .map(k => { return { key: k, value: mostUsedList[k] }; })
+            .sort((a, b) => b.value.count - a.value.count)
+            .map(e => e.key)];
+    }
 }
 
 export type SelectedChannel = ChannelViewModel | AddChannelsViewModel | LogSearchViewModel;

@@ -1,4 +1,4 @@
-import { EIconSearchDialogViewModel, EIconSearchStatus } from "../../viewmodel/dialogs/EIconSearchDialogViewModel";
+import { EIconResultSet, EIconSearchDialogViewModel, EIconSearchStatus } from "../../viewmodel/dialogs/EIconSearchDialogViewModel";
 import { ComponentBase, componentArea, componentElement } from "../ComponentBase";
 import { DialogBorderType, DialogComponentBase, dialogViewFor } from "./DialogFrame";
 import { ContextPopupBase } from "../popups/ContextPopupBase";
@@ -11,9 +11,12 @@ import { HostInterop } from "../../util/HostInterop";
 import { EIconUtils } from "../../util/EIconUtils";
 import { EventListenerUtil } from "../../util/EventListenerUtil";
 import { asDisposable, IDisposable } from "../../util/Disposable";
+import { Logger } from "../../util/Logger";
 
 type MoveNavResultUpDown = { accepted: false } | { accepted: true, exitedAtColumn?: number };
 type MoveNavResultLeftRight = { accepted: false } | { accepted: true, exited: boolean };
+type ConfirmSelectionResult = { accepted: false } | { accepted: true, eiconName: string };
+
 interface KeyboardNavParticipant {
     moveNavDown(): MoveNavResultUpDown;
     moveNavUp(): MoveNavResultUpDown;
@@ -25,7 +28,8 @@ interface KeyboardNavParticipant {
     acceptNavFromLeft(): MoveNavResultLeftRight;
     acceptNavFromRight(): MoveNavResultLeftRight;
 
-    confirmKeyboardSelection(): boolean;
+    confirmKeyboardSelection(): ConfirmSelectionResult;
+    exit(): void;
 }
 
 @componentArea("dialogs")
@@ -51,14 +55,30 @@ export class EIconSearchDialog extends DialogComponentBase<EIconSearchDialogView
                         xariah.net.
                     </div>
 
+                    <!--
                     <div class="resultdisplay-sectiontitle">Your Favorite EIcons</div>
-                    <div class="resultdisplay-sectioncontents">xxx</div>
+                    <div class="resultdisplay-sectioncontents">
+                        <div class="resultdisplay-hint" id="elFavoritesSetViewHint">
+                            Not yet implemented.
+                        </div>
+                    </div>
+                    -->
 
                     <div class="resultdisplay-sectiontitle">Your Recently Used EIcons</div>
-                    <div class="resultdisplay-sectioncontents">xxx</div>
+                    <div class="resultdisplay-sectioncontents">
+                        <div class="resultdisplay-hint" id="elRecentlyUsedSetViewHint">
+                            No eicons seen yet.  As you use eicons in chat, your most recently used eicons will be displayed here.
+                        </div>
+                        <x-eiconsetview class="resultdisplay-setview" id="elRecentlyUsedSetView" updatefast="true" maxrows="2"></x-eiconsetview>
+                    </div>
 
                     <div class="resultdisplay-sectiontitle">Your Most Used EIcons</div>
-                    <div class="resultdisplay-sectioncontents">xxx</div>
+                    <div class="resultdisplay-sectioncontents">
+                        <div class="resultdisplay-hint" id="elMostUsedSetViewHint">
+                            No eicons seen yet.  As you use eicons in chat, your most used eicons will be displayed here.
+                        </div>
+                        <x-eiconsetview class="resultdisplay-setview" id="elMostUsedSetView" updatefast="true" maxrows="2"></x-eiconsetview>
+                    </div>
                 </div>
                 <div class="resultdisplay-innercontainer" id="elResultDisplayInnerContainer">
                     <div class="resultdisplay-sectiontitle">Search Results</div>
@@ -79,6 +99,11 @@ export class EIconSearchDialog extends DialogComponentBase<EIconSearchDialogView
         const elResultDisplayEmptyResults = this.$("elResultDisplayEmptyResults") as HTMLDivElement;
         const elResultDisplayInnerContainer = this.$("elResultDisplayInnerContainer") as HTMLDivElement;
         const elSetView = this.$("elSetView") as EIconSetView;
+        const elRecentlyUsedSetView = this.$("elRecentlyUsedSetView") as EIconSetView;
+        const elMostUsedSetView = this.$("elMostUsedSetView") as EIconSetView;
+
+        const elRecentlyUsedSetViewHint = this.$("elRecentlyUsedSetViewHint") as HTMLDivElement;
+        const elMostUsedSetViewHint = this.$("elMostUsedSetViewHint") as HTMLDivElement;
 
         const bindTextToModel = () => {
             const txt = elTextbox.value;
@@ -96,11 +121,23 @@ export class EIconSearchDialog extends DialogComponentBase<EIconSearchDialogView
             }
         });
 
+        this.watchExpr(vm => vm.currentResultSet, crs => {
+            elSetView.viewModel = crs ?? null;
+        });
+        this.watchExpr(vm => vm.recentlyUsedEIcons, rui => {
+            elRecentlyUsedSetView.viewModel = rui ?? null;
+            elRecentlyUsedSetViewHint.style.display = (((rui ?? null)?.searchResultCount ?? 0) > 0) ? "none" : "block";
+        });
+        this.watchExpr(vm => vm.mostUsedEIcons, mui => {
+            elMostUsedSetView.viewModel = mui ?? null;
+            elMostUsedSetViewHint.style.display = (((mui ?? null)?.searchResultCount ?? 0) > 0) ? "none" : "block";
+        });
+
         this.watchExpr(vm => vm.searchState, searchState => {
             const isSearching = searchState == EIconSearchStatus.SEARCHING;
             const isWelcomePage = searchState == EIconSearchStatus.WELCOME_PAGE;
             const isResultDisplay = searchState == EIconSearchStatus.RESULT_DISPLAY;
-            const hasResults = (this.viewModel && this.viewModel.searchResultCount > 0) ?? false;
+            const hasResults = (this.viewModel && (this.viewModel.currentResultSet?.searchResultCount ?? 0) > 0) ?? false;
 
             elResultDisplayContainer.classList.toggle("is-searching", isSearching);
             elResultDisplayContainer.classList.toggle("is-welcome", isWelcomePage);
@@ -114,6 +151,12 @@ export class EIconSearchDialog extends DialogComponentBase<EIconSearchDialogView
                 elResultDisplayInnerContainer.scrollTo(0, 0);
                 elSetView.refreshDisplayImmediately();
             }
+            else if (isWelcomePage) {
+                if (knm) {
+                    knm.participants = [ elRecentlyUsedSetView, elMostUsedSetView ];
+                }
+                elRecentlyUsedSetView.refreshDisplayImmediately();
+            }
             else {
                 if (knm) {
                     knm.participants = [ ];
@@ -123,40 +166,44 @@ export class EIconSearchDialog extends DialogComponentBase<EIconSearchDialogView
 
         let knm: KeyboardNavManager | null = null;
         this.whenConnectedWithViewModel(vm => {
-            knm = new KeyboardNavManager(elTextbox, elResultDisplayContainer);
+            knm = new KeyboardNavManager(() => { 
+                    if (!vm.isClosed) {
+                        elTextbox.focus();
+                    }
+                }, 
+                () => {
+                    if (vm.searchState == EIconSearchStatus.RESULT_DISPLAY) {
+                        elResultDisplayInnerContainer.scrollTo({ top: 0, left: 0, behavior: "instant" });
+                    }
+                    else if (vm.searchState == EIconSearchStatus.WELCOME_PAGE) {
+                        elResultDisplayEmptyResults.scrollTo({ top: 0, left: 0, behavior: "instant" });
+                    }
+                },
+                elResultDisplayContainer, vm, this.logger);
             return asDisposable(() => {
                 knm?.dispose();
                 knm = null;
             });
         });
 
-        // this.watchExpr(vm => vm.currentKeyboardSelectedEIcon, selEicon => {
-        //     if (selEicon == null) {
-        //         elKeyboardNavTextbox.disabled = true;
-        //         if (this.viewModel && !this.viewModel.closed) {
-        //             elTextbox.focus();
-        //         }
-        //     }
-        //     else {
-        //         elKeyboardNavTextbox.disabled = false;
-        //         elKeyboardNavTextbox.focus();
-        //     }
-        // });
-
         elTextbox.addEventListener("keydown", (e) => {
             if (this.viewModel) {
+                const isKeyboardNavigable = 
+                    this.viewModel.searchState == EIconSearchStatus.RESULT_DISPLAY ||
+                    this.viewModel.searchState == EIconSearchStatus.WELCOME_PAGE;
+
                 if (e.keyCode == KeyCodes.RETURN) {
                     this.viewModel.confirmEntry();
                     e.preventDefault();
                     return true;
                 }
                 else if (e.keyCode == KeyCodes.DOWN_ARROW) {
-                    if (this.viewModel.searchState == EIconSearchStatus.RESULT_DISPLAY && knm) {
+                    if (isKeyboardNavigable && knm) {
                         knm.enterViaTop();
                     }
                 }
                 else if (e.keyCode == KeyCodes.UP_ARROW) {
-                    if (this.viewModel.searchState == EIconSearchStatus.RESULT_DISPLAY && knm) {
+                    if (isKeyboardNavigable && knm) {
                         knm.enterViaBottom();
                     }
                 }
@@ -213,10 +260,13 @@ export class EIconSearchDialog extends DialogComponentBase<EIconSearchDialogView
         // elKeyboardNavTextbox.addEventListener("input", (e) => { elKeyboardNavTextbox.value = ""; });
         // elKeyboardNavTextbox.addEventListener("change", (e) => { elKeyboardNavTextbox.value = ""; });
 
-        this.$("elSetView")?.addEventListener("eiconselected", (e) => {
-            const eiconName = (e as any).eiconName;
-            this.viewModel?.close(eiconName);
-        });
+        for (let setView of [elSetView, elRecentlyUsedSetView]) {
+            if (!setView) { continue; }
+            setView.addEventListener("eiconselected", (e) => {
+                const eiconName = (e as any).eiconName;
+                this.viewModel?.close(eiconName);
+            });
+        }
     }
 
     override get dialogBorderType(): DialogBorderType { return DialogBorderType.RIGHTPANE; }
@@ -237,7 +287,7 @@ const EICON_GAP = 6;
 
 @componentArea("dialogs")
 @componentElement("x-eiconsetview")
-export class EIconSetView extends ComponentBase<EIconSearchDialogViewModel> implements KeyboardNavParticipant {
+export class EIconSetView extends ComponentBase<EIconResultSet> implements KeyboardNavParticipant {
     constructor() {
         super();
 
@@ -250,17 +300,14 @@ export class EIconSetView extends ComponentBase<EIconSearchDialogViewModel> impl
             <div id="elBottomIndicator">bot</div>
         `);
 
-        this.watchExpr(vm => vm.searchResultCount, iconCount => {
+        this.whenConnectedWithViewModel(vm => {
             this.recalculateDisplay(true);
+            return setupTooltipHandling(this._sroot, vm.parent.parent);
         });
 
         this.elMain.addEventListener("scroll", () => {
             //this.logger.logDebug("ev elMain scroll fired");
             this.recalculateDisplay(false);
-        });
-
-        this.whenConnectedWithViewModel(vm => {
-            return setupTooltipHandling(this._sroot, vm.parent);
         });
     }
 
@@ -290,6 +337,8 @@ export class EIconSetView extends ComponentBase<EIconSearchDialogViewModel> impl
         this.recalculateDisplay(true);
     }
 
+    private get shouldUpdateFast(): boolean { return this.getAttribute("updatefast") == "true"; }
+
     private _recalcRequested = false;
     private _delayedRecalcTimer: number | null = null;
     private recalculateDisplay(immediately: boolean) {
@@ -301,17 +350,29 @@ export class EIconSetView extends ComponentBase<EIconSearchDialogViewModel> impl
         if (immediately) {
             if (!this._recalcRequested) {
                 this._recalcRequested = true;
-                window.requestAnimationFrame(() => {
+                if (this.shouldUpdateFast) {
                     this._recalcRequested = false;
                     this.recalculateDisplayInner();
-                });
+                }
+                else {
+                    window.requestAnimationFrame(() => {
+                        this._recalcRequested = false;
+                        this.recalculateDisplayInner();
+                    });
+                }
             }
         }
         else {
-            this._delayedRecalcTimer = window.setTimeout(() => { 
+            if (this.shouldUpdateFast) {
                 this._delayedRecalcTimer = null;
                 this.recalculateDisplay(true); 
-            }, 500);
+            }
+            else {
+                this._delayedRecalcTimer = window.setTimeout(() => { 
+                    this._delayedRecalcTimer = null;
+                    this.recalculateDisplay(true); 
+                }, 500);
+            }
         }
     }
 
@@ -329,6 +390,7 @@ export class EIconSetView extends ComponentBase<EIconSearchDialogViewModel> impl
 
             const displayMetrics = this.determineMetrics(elVisibleIconsContainer);
             this._currentCalculatedDisplayMetrics = displayMetrics;
+            if (displayMetrics == null) { return; }
             elVisibleIconsContainer.style.height = `${displayMetrics.neededYHeight}px`;
 
             const vicBoundingRect = elVisibleIconsContainer.getBoundingClientRect();
@@ -338,8 +400,11 @@ export class EIconSetView extends ComponentBase<EIconSearchDialogViewModel> impl
 
             elBeforeSentinel.style.top = "0px";
             elBeforeSentinel.style.height = `${startAtYPixel - 1}px`;
-            elAfterSentinel.style.top = `${endAtYPixel + 1}px`;
-            elAfterSentinel.style.height = `${displayMetrics.neededYHeight - (endAtYPixel + 1)}px`;
+
+            const afterSentinelTop = endAtYPixel + 1;
+            const afterSentinelHeight = Math.max(0, displayMetrics.neededYHeight - afterSentinelTop);
+            elAfterSentinel.style.top = `${afterSentinelTop}px`;
+            elAfterSentinel.style.height = `${afterSentinelHeight}px`;
 
             elTopIndicator.style.top = `${startAtYPixel}px`;
             elBottomIndicator.style.top = `${endAtYPixel - 1 - elBottomIndicator.offsetHeight}px`;
@@ -352,7 +417,7 @@ export class EIconSetView extends ComponentBase<EIconSearchDialogViewModel> impl
             const effectiveStartAtRow = Math.max(0, rawStartAtRow - actuallyVisibleRowCount);
             const effectiveEndAtRow = Math.min(displayMetrics.rowCount, rawEndAtRow + actuallyVisibleRowCount);
 
-            //this.logger.logDebug(`eicons visible on rows ${effectiveStartAtRow} to ${effectiveEndAtRow}`);
+            this.logger.logDebug(`eicons visible on rows ${effectiveStartAtRow} to ${effectiveEndAtRow}`);
 
             this.setVisibleEIcons(displayMetrics, (effectiveStartAtRow * displayMetrics.iconsPerRow), ((effectiveEndAtRow + 1) * displayMetrics.iconsPerRow));
         }
@@ -367,6 +432,7 @@ export class EIconSetView extends ComponentBase<EIconSearchDialogViewModel> impl
     private _currentSetVisibleKey: object = {};
     private async setVisibleEIcons(displayMetrics: CalculatedDisplayMetrics, startAt: number, endAt: number) {
         const elVisibleIconsContainer = this.$("elVisibleIconsContainer") as HTMLDivElement;
+        endAt = Math.min(endAt, displayMetrics.eiconCount);
 
         const myKey = {};
         this._currentSetVisibleKey = myKey;
@@ -385,12 +451,12 @@ export class EIconSetView extends ComponentBase<EIconSearchDialogViewModel> impl
 
         if (myKey !== this._currentSetVisibleKey) { return; }
 
-        if (curKeyboardSelResult.length > 0 && this.viewModel) {
-            this.viewModel.currentKeyboardSelectedEIcon = curKeyboardSelResult[0].eiconName;
-        }
-        else if (this.viewModel) {
-            this.viewModel.currentKeyboardSelectedEIcon = null;
-        }
+        // if (curKeyboardSelResult.length > 0 && this.viewModel) {
+        //     this.viewModel.currentKeyboardSelectedEIcon = curKeyboardSelResult[0].eiconName;
+        // }
+        // else if (this.viewModel) {
+        //     this.viewModel.currentKeyboardSelectedEIcon = null;
+        // }
 
         const getEIconBySearchIndex = (idx: number) => {
             if (idx >= startAt && idx < endAt) {
@@ -514,9 +580,22 @@ export class EIconSetView extends ComponentBase<EIconSearchDialogViewModel> impl
         }
     }
 
+    get maxRows(): (number | null) {
+        const mrValue = this.getAttribute("maxrows");
+        if (mrValue != null) {
+            return +mrValue;
+        }
+        else {
+            return null;
+        }
+    }
+
     private _keyboardSelectionIndicatorEl: HTMLDivElement | null = null;
 
-    private determineMetrics(elVisibleIconsContainer: HTMLDivElement): CalculatedDisplayMetrics {
+    private determineMetrics(elVisibleIconsContainer: HTMLDivElement): CalculatedDisplayMetrics | null {
+        if (elVisibleIconsContainer.clientWidth == 0) {
+            return null;
+        }
         let remainingWidth = elVisibleIconsContainer.clientWidth - 8;
         let rowWidth = 0;
 
@@ -528,16 +607,24 @@ export class EIconSetView extends ComponentBase<EIconSearchDialogViewModel> impl
         const consumedWidth = (rowWidth * EICON_WIDTH) + ((rowWidth - 1) * EICON_GAP);
         const unusedWidth = Math.max(0, elVisibleIconsContainer.clientWidth - consumedWidth);
 
-        const eiconCount = (this.viewModel?.searchResultCount ?? 0);
+        const effSearchResultCount = (this.maxRows != null) 
+            ? Math.min(this.viewModel?.searchResultCount ?? 0, rowWidth * this.maxRows) 
+            : (this.viewModel?.searchResultCount ?? 0);
+
+        const eiconCount = effSearchResultCount;
         const eiconRowCount = Math.ceil(eiconCount / rowWidth);
 
         const result = {
             iconsPerRow: rowWidth,
             rowStartsAtX: Math.floor(unusedWidth / 2),
             neededYHeight: (eiconRowCount * EICON_HEIGHT) + (Math.max(0, eiconRowCount - 1) * EICON_GAP),
-            rowCount: eiconRowCount
+            rowCount: eiconRowCount,
+
+            clientWidth: elVisibleIconsContainer.clientWidth,
+            clientHeight: elVisibleIconsContainer.clientHeight,
+            eiconCount: effSearchResultCount
         };
-        //this.logger.logDebug("displayMetrics", result);
+        this.logger.logDebug("displayMetrics", result);
         return result;
     }
 
@@ -567,7 +654,7 @@ export class EIconSetView extends ComponentBase<EIconSearchDialogViewModel> impl
 
     private setCurrentKeyboardPos(newPos: { x: number, y: number }): boolean {
         if (this._currentCalculatedDisplayMetrics) {
-            const eiconCount = (this.viewModel?.searchResultCount ?? 0);
+            const eiconCount = this._currentCalculatedDisplayMetrics.eiconCount;
             const ccd = this._currentCalculatedDisplayMetrics;
             const newIndex = (newPos.y * ccd.iconsPerRow) + newPos.x;
             if (newIndex < eiconCount) {
@@ -584,58 +671,18 @@ export class EIconSetView extends ComponentBase<EIconSearchDialogViewModel> impl
         }
     }
 
-    // moveKeyboardSelectionUp() {
-    //     if (this._currentCalculatedDisplayMetrics && this._keyboardSelectionIndex != null) {
-    //         const curPos = this.getCurrentKeyboardPos()!;
-    //         if (curPos.y == 0) {
-    //             this.setKeyboardSelectionTo(null);
-    //         }
-    //         else {
-    //             curPos.y = curPos.y - 1;
-    //             this.setCurrentKeyboardPos(curPos);
-    //         }
-    //     }
-    // }
-
-    // moveKeyboardSelectionLeft() {
-    //     if (this._currentCalculatedDisplayMetrics && this._keyboardSelectionIndex != null) {
-    //         const curPos = this.getCurrentKeyboardPos()!;
-    //         if (curPos.x > 0) {
-    //             curPos.x = curPos.x - 1;
-    //             this.setCurrentKeyboardPos(curPos);
-    //         }
-    //     }    
-    // }
-
-    // moveKeyboardSelectionRight() {
-    //     if (this._currentCalculatedDisplayMetrics && this._keyboardSelectionIndex != null) {
-    //         const curPos = this.getCurrentKeyboardPos()!;
-    //         if (curPos.x < curPos.maxX) {
-    //             curPos.x = curPos.x + 1;
-    //             this.setCurrentKeyboardPos(curPos);
-    //         }
-    //     }
-    // }
-
-    // moveKeyboardSelectionDown() {
-    //     if (this._currentCalculatedDisplayMetrics && this._keyboardSelectionIndex != null) {
-    //         const curPos = this.getCurrentKeyboardPos()!;
-    //         if (curPos.y < curPos.maxY) {
-    //             curPos.y = curPos.y + 1;
-    //             this.setCurrentKeyboardPos(curPos);
-    //         }
-    //     }
-    // }
-
-    confirmKeyboardSelection(): boolean {
+    confirmKeyboardSelection(): ConfirmSelectionResult {
         if (this.viewModel) {
-            this.viewModel.confirmKeyboardEntry();
-            return true;
+            const ksi = this._keyboardSelectionIndex;
+            if (ksi != null) {
+                const shouldBeEIcon = [...this._currentVisibleIcons.values().filter(cvi => cvi.eiconIndex == ksi)];
+                if (shouldBeEIcon.length > 0) {
+                    return { accepted: true, eiconName: shouldBeEIcon[0].eiconName };
+                }
+            }
         }
-        else {
-            return false;
-        }
-        // TODO:
+        
+        return { accepted: false };
     }
 
     // KeyboardNavParticipant
@@ -723,7 +770,7 @@ export class EIconSetView extends ComponentBase<EIconSearchDialogViewModel> impl
 
     acceptNavFromAbove(column: number): MoveNavResultUpDown {
         if (this._currentCalculatedDisplayMetrics) {
-            const curPos = { x: 0, y: 0 };
+            const curPos = { x: column, y: 0 };
             const canSelect = this.setCurrentKeyboardPos(curPos);
             if (canSelect) {
                 return { accepted: true };
@@ -739,13 +786,13 @@ export class EIconSetView extends ComponentBase<EIconSearchDialogViewModel> impl
 
     acceptNavFromBelow(column: number): MoveNavResultUpDown {
         if (this._currentCalculatedDisplayMetrics) {
-            const curPos = { x: this._currentCalculatedDisplayMetrics.rowCount - 1, y: column };
+            const curPos = { x: column, y: this._currentCalculatedDisplayMetrics.rowCount - 1 };
             const canSelect = this.setCurrentKeyboardPos(curPos);
             if (canSelect) {
                 return { accepted: true };
             }
             else {
-                const curPos2 = { x: this._currentCalculatedDisplayMetrics.rowCount - 2, y: column };
+                const curPos2 = { x: column, y: this._currentCalculatedDisplayMetrics.rowCount - 2 };
                 const canSelect2 = this.setCurrentKeyboardPos(curPos2);
                 if (canSelect2) {
                     return { accepted: true };
@@ -762,7 +809,7 @@ export class EIconSetView extends ComponentBase<EIconSearchDialogViewModel> impl
 
     acceptNavFromLeft(): MoveNavResultLeftRight {
         if (this._currentCalculatedDisplayMetrics) {
-            const eiconCount = (this.viewModel?.searchResultCount ?? 0);
+            const eiconCount = this._currentCalculatedDisplayMetrics.eiconCount;
             if (eiconCount > 0) {
                 this.setKeyboardSelectionTo(0);
                 return { accepted: true, exited: false };
@@ -777,7 +824,7 @@ export class EIconSetView extends ComponentBase<EIconSearchDialogViewModel> impl
     }
     acceptNavFromRight(): MoveNavResultLeftRight {
         if (this._currentCalculatedDisplayMetrics) {
-            const eiconCount = (this.viewModel?.searchResultCount ?? 0);
+            const eiconCount = this._currentCalculatedDisplayMetrics.eiconCount;
             if (eiconCount > 0) {
                 this.setKeyboardSelectionTo(eiconCount - 1);
                 return { accepted: true, exited: false };
@@ -789,6 +836,9 @@ export class EIconSetView extends ComponentBase<EIconSearchDialogViewModel> impl
         else {
             return { accepted: false };
         }
+    }
+    exit() {
+        this.setKeyboardSelectionTo(null);
     }
 }
 
@@ -803,12 +853,18 @@ interface CalculatedDisplayMetrics {
     rowStartsAtX: number;
     neededYHeight: number;
     rowCount: number;
+    eiconCount: number;
+
+    clientHeight: number;
 }
 
 class KeyboardNavManager implements IDisposable {
     constructor(
-        private readonly leftViaTopTextbox: HTMLElement,
-        private readonly myNavTextboxContainer: HTMLElement) {
+        private readonly focusTopLeftTextboxFunc: () => void,
+        private readonly scrollToTopFunc: () => void,
+        private readonly myNavTextboxContainer: HTMLElement,
+        private readonly viewModel: EIconSearchDialogViewModel,
+        private readonly logger: Logger) {
 
         const myNavTextbox = document.createElement("input");
         myNavTextbox.type = "text";
@@ -822,7 +878,16 @@ class KeyboardNavManager implements IDisposable {
         EventListenerUtil.addDisposableEventListener(myNavTextbox, "change", (e: Event) => {
             myNavTextbox.value = "";
         });
+        EventListenerUtil.addDisposableEventListener(myNavTextbox, "blur", (e: Event) => {
+            if (this._currentParticipantIndex != null) {
+                this.participants[this._currentParticipantIndex].exit();
+            }
+            this.setCurrentParticipantIndex(null);
+        });
         EventListenerUtil.addDisposableEventListener(myNavTextbox, "focusout", (e: Event) => {
+            if (this._currentParticipantIndex != null) {
+                this.participants[this._currentParticipantIndex].exit();
+            }
             this.setCurrentParticipantIndex(null);
         });
         EventListenerUtil.addDisposableEventListener(myNavTextbox, "keydown", (e: KeyboardEvent) => {
@@ -848,6 +913,7 @@ class KeyboardNavManager implements IDisposable {
                                 targetIndex--;
                             }
                             if (!gotIt) {
+                                this.scrollToTopFunc();
                                 this.setCurrentParticipantIndex(null);
                             }
                         }
@@ -922,7 +988,10 @@ class KeyboardNavManager implements IDisposable {
                 }
                 else if (e.keyCode == KeyCodes.RETURN) {
                     //this.logger.logDebug("return");
-                    curParticipant.confirmKeyboardSelection();
+                    const cksResult = curParticipant.confirmKeyboardSelection();
+                    if (cksResult.accepted) {
+                        this.viewModel.returnResult(cksResult.eiconName);
+                    }
                     handled = true;
                 }
             }
@@ -944,6 +1013,9 @@ class KeyboardNavManager implements IDisposable {
     dispose(): void {
         if (!this._isDisposed) {
             this._isDisposed = true;
+            if (this.currentParticipant) {
+                this.currentParticipant.exit();
+            }
             this.myNavTextbox.remove();
         }
     }
@@ -957,11 +1029,14 @@ class KeyboardNavManager implements IDisposable {
     private _currentParticipantIndex: number | null = null;
     private setCurrentParticipantIndex(value: number | null, setFocusOnNull: boolean = true) {
         if (value !== this._currentParticipantIndex) {
+            if (this._currentParticipantIndex != null) {
+                this.participants[this._currentParticipantIndex].exit();
+            }
             this._currentParticipantIndex = value;
             if (value == null) {
                 if (setFocusOnNull) {
-                    console.log("FOCUSING TOP TEXTBOX");
-                    this.leftViaTopTextbox.focus();
+                    this.logger.logDebug("FOCUSING TOP TEXTBOX");
+                    this.focusTopLeftTextboxFunc();
                 }
                 this.myNavTextbox.disabled = true;
             }
@@ -995,7 +1070,7 @@ class KeyboardNavManager implements IDisposable {
         }
     }
     enterViaBottom() {
-        for (let i = this.participants.length - 1; i <= 0; i--) {
+        for (let i = this.participants.length - 1; i >= 0; i--) {
             const p = this.participants[i];
             const anres: MoveNavResultLeftRight  = p.acceptNavFromRight();
             if (anres.accepted) {
