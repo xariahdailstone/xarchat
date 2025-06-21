@@ -185,8 +185,8 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                 {
                     id: "eiconSearch.enabled",
                     scope: getScopeArray(["global"]),
-                    title: "Enable EIcon Search",
-                    description: "Ctrl+E pops up an eicon search instead of just inserting [eicon][/eicon] tags.",
+                    title: "EIcon Search",
+                    description: "Use Ctrl+E to open the eicon search instead of just inserting [eicon][/eicon] tags. (When disabled, Ctrl+Alt+E opens eicon search instead.)",
                     type: "boolean",
                     defaultValue: true,
                     configBlockKey: "eiconSearch.enabled"

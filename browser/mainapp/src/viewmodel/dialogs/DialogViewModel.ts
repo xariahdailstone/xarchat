@@ -64,6 +64,8 @@ export abstract class DialogViewModel<TResult> extends ObservableBase {
         }
     }
 
+    get isClosed(): boolean { return this._closed; }
+
     close(result: TResult) {
         this.dialogResult = result;
         this.closed = true;
