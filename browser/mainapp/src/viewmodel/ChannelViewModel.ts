@@ -7,7 +7,7 @@ import { CharacterSet, CharacterStatus } from "../shared/CharacterSet.js";
 import { OnlineStatus } from "../shared/OnlineStatus.js";
 import { PooledString, StringPool } from "../shared/StringPool.js";
 import { TypingStatus } from "../shared/TypingStatus.js";
-import { BBCodeParseResult, BBCodeParser, ChatBBCodeParser, SystemMessageBBCodeParser } from "../util/bbcode/BBCode.js";
+import { BBCodeParseResult, BBCodeParser, ChatBBCodeParser, NullBBCodeParser, SystemMessageBBCodeParser } from "../util/bbcode/BBCode.js";
 import { CatchUtils } from "../util/CatchUtils.js";
 import { KeyValuePair } from "../util/collections/KeyValuePair.js";
 import { ReadOnlyStdObservableCollection, StdObservableCollectionChangeType } from "../util/collections/ReadOnlyStdObservableCollection.js";
@@ -454,6 +454,15 @@ export abstract class ChannelViewModel extends ObservableBase implements IDispos
     }
 
     addMessage(message: ChannelMessageViewModel, options?: AddMessageOptions) {
+        try {
+            this.addMessageInternal(message, options);
+        }
+        catch (e) {
+            console.error(e);
+        }
+    }
+
+    private addMessageInternal(message: ChannelMessageViewModel, options?: AddMessageOptions) {
         if ((options?.fromReplay ?? false) == true) {
             // Clear the window when receiving historical messages from extended connection
             this.populatedFromReplay = true;
@@ -615,13 +624,49 @@ export abstract class ChannelViewModel extends ObservableBase implements IDispos
         return m;
     }
 
-    addSystemMessage(timestamp: Date, text: string, 
-        important: boolean = false,
-        suppressPing: boolean = false,
-        seen: boolean = false,
-        isHistorical: boolean = false): ChannelMessageViewModel {
+    addSystemMessage(args: AddSystemMessageArgs): ChannelMessageViewModel;
+    addSystemMessage(
+        timestamp: Date, 
+        text: string, 
+        important?: boolean,
+        suppressPing?: boolean,
+        seen?: boolean,
+        isHistorical?: boolean,
+        isPlainText?: boolean): ChannelMessageViewModel;
+    addSystemMessage(
+        timestamp: Date | AddSystemMessageArgs, 
+        text?: string, 
+        important?: boolean,
+        suppressPing?: boolean,
+        seen?: boolean,
+        isHistorical?: boolean,
+        isPlainText?: boolean): ChannelMessageViewModel {
 
-        const m = ChannelMessageViewModel.createSystemMessage(this, timestamp, text, important, suppressPing);
+        if (!(timestamp instanceof Date)) {
+            const a = timestamp;
+            timestamp = a.timestamp;
+            text = a.text;
+            important = a.important;
+            suppressPing = a.suppressPing;
+            seen = a.seen;
+            isHistorical = a.isHistorical;
+            isPlainText = a.isPlainText;
+        }
+        text ??= "";
+        important ??= false;
+        suppressPing ??= false;
+        seen ??= false;
+        isHistorical ??= false;
+        isPlainText ??= false;
+
+        const m = ChannelMessageViewModel.createSystemMessage({
+            parent: this,
+            timestamp: timestamp,
+            text: text,
+            important: important,
+            suppressPing: suppressPing,
+            isPlainText: isPlainText
+        });
         this.addMessage(m, { seen: (seen ?? false), fromReplay: (isHistorical ?? false) });
         return m;
     }
@@ -857,6 +902,19 @@ function registerCleanupDispose(cmvm: ChannelMessageViewModel, disposable: IDisp
 
 const channelMessageContentStringPool = new StringPool("channelMessageContentStringPool");
 
+interface ChannelMessageViewModelConstructorArguments {
+    parent: ChannelViewModel | null;
+    activeLoginViewModel: ActiveLoginViewModel;
+    appViewModel: AppViewModel;
+    timestamp: Date;
+    type: ChannelMessageType;
+    characterStatus: Omit<CharacterStatus, "equals">;
+    text: string,
+    suppressPing?: boolean;
+    onClick?: () => any;
+    isPlainText?: boolean;
+}
+
 let nextUniqueMessageId: number = 1;
 export class ChannelMessageViewModel extends ObservableBase implements IDisposable {
     static createChatMessage(parent: ChannelViewModel, timestamp: Date, character: CharacterName, text: string,
@@ -868,9 +926,16 @@ export class ChannelMessageViewModel extends ObservableBase implements IDisposab
         const effCs = { ...cs };
         effCs.gender = gender ?? effCs.gender;
         effCs.status = onlineStatus ?? effCs.status;
-        const result = new ChannelMessageViewModel(
-            parent, parent.activeLoginViewModel, parent.appViewModel,
-            timestamp, ChannelMessageType.CHAT, effCs, text, isSelfMessage);
+        const result = new ChannelMessageViewModel({
+            parent: parent,
+            activeLoginViewModel: parent.activeLoginViewModel,
+            appViewModel: parent.appViewModel,
+            timestamp: timestamp,
+            type: ChannelMessageType.CHAT,
+            characterStatus: effCs,
+            text: text,
+            suppressPing: isSelfMessage
+        });
         return result;
     }
 
@@ -883,9 +948,16 @@ export class ChannelMessageViewModel extends ObservableBase implements IDisposab
         const effCs = { ...cs };
         effCs.gender = gender ?? effCs.gender;
         effCs.status = onlineStatus ?? effCs.status;
-        const result = new ChannelMessageViewModel(
-            parent, parent.activeLoginViewModel, parent.appViewModel,
-            timestamp, ChannelMessageType.AD, effCs, text, isSelfMessage);
+        const result = new ChannelMessageViewModel({
+            parent: parent,
+            activeLoginViewModel: parent.activeLoginViewModel,
+            appViewModel: parent.appViewModel,
+            timestamp: timestamp,
+            type: ChannelMessageType.AD,
+            characterStatus: effCs,
+            text: text,
+            suppressPing: isSelfMessage
+        });
         return result;
     }
 
@@ -906,9 +978,16 @@ export class ChannelMessageViewModel extends ObservableBase implements IDisposab
         messageBuilder.push("[b]");
         messageBuilder.push(rollData.endResult.toString());
         messageBuilder.push("[/b]");
-        const result = new ChannelMessageViewModel(
-            parent, parent.activeLoginViewModel, parent.appViewModel,
-            timestamp, ChannelMessageType.ROLL, effCs, messageBuilder.join(""), true);
+        const result = new ChannelMessageViewModel({
+            parent: parent,
+            activeLoginViewModel: parent.activeLoginViewModel,
+            appViewModel: parent.appViewModel,
+            timestamp: timestamp,
+            type: ChannelMessageType.ROLL,
+            characterStatus: effCs,
+            text: messageBuilder.join(""),
+            suppressPing: true
+        });
         return result;
     }
 
@@ -925,34 +1004,49 @@ export class ChannelMessageViewModel extends ObservableBase implements IDisposab
         messageBuilder.push("[user]");
         messageBuilder.push(spinData.targetCharacter.value);
         messageBuilder.push("[/user]");
-        const result = new ChannelMessageViewModel(
-            parent, parent.activeLoginViewModel, parent.appViewModel,
-            spinData.asOf ?? new Date(), ChannelMessageType.SPIN, effCs, messageBuilder.join(""), isSelfMessage);
+        const result = new ChannelMessageViewModel({
+            parent: parent,
+            activeLoginViewModel: parent.activeLoginViewModel,
+            appViewModel: parent.appViewModel,
+            timestamp: spinData.asOf ?? new Date(),
+            type: ChannelMessageType.SPIN,
+            characterStatus: effCs,
+            text: messageBuilder.join(""),
+            suppressPing: isSelfMessage
+        });
         return result;
     }
 
-    static createSystemMessage(parent: ChannelViewModel, timestamp: Date, text: string, important: boolean, suppressPing: boolean): ChannelMessageViewModel {
-        const cmt = important ? ChannelMessageType.SYSTEM_IMPORTANT : ChannelMessageType.SYSTEM;
-        const result = new ChannelMessageViewModel(
-            parent, parent.activeLoginViewModel, parent.appViewModel,
-            timestamp, 
-            cmt, 
-            CharacterSet.emptyStatus(CharacterName.create("System")),
-            text, 
-            suppressPing);
+    static createSystemMessage(args: CreateSystemMessageArgs): ChannelMessageViewModel {
+
+        const cmt = args.important ? ChannelMessageType.SYSTEM_IMPORTANT : ChannelMessageType.SYSTEM;
+        const result = new ChannelMessageViewModel({
+            parent: args.parent, 
+            activeLoginViewModel: args.parent.activeLoginViewModel, 
+            appViewModel: args.parent.appViewModel,
+            timestamp: args.timestamp, 
+            type: cmt, 
+            characterStatus: CharacterSet.emptyStatus(CharacterName.create("System")),
+            text: args.text, 
+            suppressPing: args.suppressPing,
+            isPlainText: args.isPlainText
+        });
 
         return result;
     }
 
     static createLogNavMessage(parent: ChannelViewModel, text: string, onClick: () => any): ChannelMessageViewModel {
-        const result = new ChannelMessageViewModel(
-            parent, parent.activeLoginViewModel, parent.appViewModel,
-            new Date(),
-            ChannelMessageType.LOG_NAV_PROMPT,
-            CharacterSet.emptyStatus(CharacterName.create("System")),
-            text,
-            true,
-            onClick);
+        const result = new ChannelMessageViewModel({
+            parent: parent,
+            activeLoginViewModel: parent.activeLoginViewModel,
+            appViewModel: parent.appViewModel,
+            timestamp: new Date(),
+            type: ChannelMessageType.LOG_NAV_PROMPT,
+            characterStatus: CharacterSet.emptyStatus(CharacterName.create("System")),
+            text: text,
+            suppressPing: true,
+            onClick: onClick
+        });
 
         return result;
     }
@@ -974,35 +1068,58 @@ export class ChannelMessageViewModel extends ObservableBase implements IDisposab
 
         const cs = parent.parent.characterSet.getCharacterStatus(character);
 
-        const result = new ChannelMessageViewModel(
-            parent, parent.activeLoginViewModel, parent.appViewModel,
-            new Date(),
-            ChannelMessageType.TYPING_STATUS_INDICATOR,
-            cs,
-            text,
-            true);
+        const result = new ChannelMessageViewModel({
+            parent: parent,
+            activeLoginViewModel: parent.activeLoginViewModel,
+            appViewModel: parent.appViewModel,
+            timestamp: new Date(),
+            type: ChannelMessageType.TYPING_STATUS_INDICATOR,
+            characterStatus: cs,
+            text: text,
+            suppressPing: true
+        });
 
         return result;
     }
 
 
     private constructor(
-        parent: ChannelViewModel | null,
-        public readonly activeLoginViewModel: ActiveLoginViewModel,
-        public readonly appViewModel: AppViewModel,
-        public readonly timestamp: Date,
-        public readonly type: ChannelMessageType,
-        public readonly characterStatus: Omit<CharacterStatus, "equals">,
-        text: string,
-        public readonly suppressPing: boolean = false,
-        public readonly onClick?: () => any
+        args: ChannelMessageViewModelConstructorArguments,
+        // parent: ChannelViewModel | null,
+        // public readonly activeLoginViewModel: ActiveLoginViewModel,
+        // public readonly appViewModel: AppViewModel,
+        // public readonly timestamp: Date,
+        // public readonly type: ChannelMessageType,
+        // public readonly characterStatus: Omit<CharacterStatus, "equals">,
+        // text: string,
+        // public readonly suppressPing: boolean = false,
+        // public readonly onClick?: () => any
     ) {
         super();
-        this._pooledText = channelMessageContentStringPool.create(text);
-        this._weakParent = parent ? new WeakRef<ChannelViewModel>(parent) : null;
+        this.activeLoginViewModel = args.activeLoginViewModel;
+        this.appViewModel = args.appViewModel;
+        this.timestamp = args.timestamp;
+        this.type = args.type;
+        this.characterStatus = args.characterStatus;
+        this.suppressPing = args.suppressPing ?? false;
+        this.onClick = args.onClick;
+        this.isPlainText = args.isPlainText ?? false;
+
+        this._pooledText = channelMessageContentStringPool.create(args.text);
+        this._weakParent = args.parent ? new WeakRef<ChannelViewModel>(args.parent) : null;
         this.uniqueMessageId = nextUniqueMessageId++;
         this.containsPing = this.checkForPing();
     }
+
+    public readonly activeLoginViewModel: ActiveLoginViewModel;
+    public readonly appViewModel: AppViewModel;
+    public readonly timestamp: Date;
+    public readonly type: ChannelMessageType;
+    public readonly characterStatus: Omit<CharacterStatus, "equals">;
+    public readonly suppressPing: boolean;
+    public readonly onClick: (() => any) | undefined;
+
+    private readonly isPlainText: boolean;
 
     private _pooledText: PooledString;
     get text(): string { return this._pooledText.value; }
@@ -1081,6 +1198,9 @@ export class ChannelMessageViewModel extends ObservableBase implements IDisposab
             let parser = ChatBBCodeParser;
             if (this.characterStatus.characterName == CharacterName.SYSTEM) {
                 parser = SystemMessageBBCodeParser;
+            }
+            if (this.isPlainText) {
+                parser = NullBBCodeParser;
             }
 
             const parseResult = parser.parse(effectiveText, { 
@@ -1163,10 +1283,16 @@ export class ChannelMessageViewModel extends ObservableBase implements IDisposab
         activeLoginViewModel: ActiveLoginViewModel,
         appViewModel: AppViewModel,
         serialized: SerializedChannelMessageViewModel) {
-        const result = new ChannelMessageViewModel(
-            parent, activeLoginViewModel, appViewModel,
-            serialized.timestamp, serialized.type,
-            serialized.characterStatus, serialized.text, serialized.suppressPing);
+        const result = new ChannelMessageViewModel({
+            parent: parent,
+            activeLoginViewModel: activeLoginViewModel,
+            appViewModel: appViewModel,
+            timestamp: serialized.timestamp,
+            type: serialized.type,
+            characterStatus: serialized.characterStatus,
+            text: serialized.text,
+            suppressPing: serialized.suppressPing
+        });
         return result;
     }
 }
@@ -1383,4 +1509,23 @@ export class MultiSelectChannelFilterOptionItem {
 export enum ChannelMessageDisplayStyle {
     FCHAT = "fchat",
     DISCORD = "discord"
+}
+
+interface AddSystemMessageArgs {
+    timestamp: Date;
+    text: string;
+    important?: boolean;
+    suppressPing?: boolean;
+    seen?: boolean;
+    isHistorical?: boolean;
+    isPlainText?: boolean;
+}
+
+interface CreateSystemMessageArgs {
+    parent: ChannelViewModel;
+    timestamp: Date;
+    text: string;
+    important: boolean;
+    suppressPing: boolean;
+    isPlainText: boolean;
 }

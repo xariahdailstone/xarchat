@@ -998,6 +998,8 @@ export class ActiveLoginViewModel extends ObservableBase implements IDisposable 
         // }
     }
 
+    debugProtocolDumpToConsole: boolean = false;
+
     idleStateChanged() {
         const autoIdleSetting = !!this.appViewModel.getConfigSettingById("autoIdle"); // !!this.getFirstConfigEntryHierarchical(["autoIdle"]);
         const autoAwaySetting = !!this.appViewModel.getConfigSettingById("autoAway"); // !!this.getFirstConfigEntryHierarchical(["autoAway"]);

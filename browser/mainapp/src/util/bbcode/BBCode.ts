@@ -100,6 +100,7 @@ export interface BBCodeParseResult extends IDisposable {
 
 export interface BBCodeParserSetupOptions {
     enableHRProcessing?: boolean;
+    enableAutoUrlization?: boolean;
 }
 
 export class BBCodeParser {
@@ -278,7 +279,9 @@ export class BBCodeParser {
         resFragment.append(...serStack[0].contentBuilder);
 
         const fixupDisposables: IDisposable[] = [];
-        this.fixupRawTextUrls(resFragment, parseContext.parseOptions, fixupDisposables);
+        if (this._parserOptions.enableAutoUrlization ?? true) {
+            this.fixupRawTextUrls(resFragment, parseContext.parseOptions, fixupDisposables);
+        }
         parseContext.disposables.push(...fixupDisposables);
 
         if (this._parserOptions.enableHRProcessing) {
@@ -626,14 +629,18 @@ profileMinusInlinesParser.tags.push(...profileMinusInlinesTags);
 const systemMessageParser = new BBCodeParser({ enableHRProcessing: true });
 systemMessageParser.tags.push(...systemMessageTags);
 
+const nullParser = new BBCodeParser({ enableHRProcessing: false, enableAutoUrlization: false });
+
 export const ChatBBCodeParser: BBCodeParser = chatParser;
 export const ProfileBBCodeParser: BBCodeParser = profileParser;
 export const ProfileNoInlinesBBCodeParser: BBCodeParser = profileMinusInlinesParser;
 export const SystemMessageBBCodeParser: BBCodeParser = systemMessageParser;
+export const NullBBCodeParser: BBCodeParser = nullParser;
 
 export const RegisteredBBCodeParsers: { [key: string]: BBCodeParser | undefined } = {
     "chat": chatParser,
     "profile": profileParser,
     "profilenoimg": profileMinusInlinesParser,
-    "systemmessage": systemMessageParser
+    "systemmessage": systemMessageParser,
+    "null": nullParser
 }

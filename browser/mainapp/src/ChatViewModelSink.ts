@@ -1259,4 +1259,34 @@ export class ChatViewModelSink implements ChatConnectionSink {
             ccvm.populatedFromReplay = true;
         }
     }
+
+    debugCommandReceived(cmd: string): void {
+        const ns = this.viewModel;
+        if (ns.debugProtocolDumpToConsole) {
+            ns.console.addSystemMessage({
+                timestamp: new Date(),
+                text: `[RECV] ${cmd}`,
+                important: false,
+                suppressPing: true,
+                seen: true,
+                isHistorical: false,
+                isPlainText: true
+            });
+        }
+    }
+
+    debugCommandSent(cmd: string): void {
+        const ns = this.viewModel;
+        if (ns.debugProtocolDumpToConsole) {
+            ns.console.addSystemMessage({
+                timestamp: new Date(),
+                text: `[SENT] ${cmd}`,
+                important: false,
+                suppressPing: true,
+                seen: true,
+                isHistorical: false,
+                isPlainText: true
+            });
+        }
+    }
 }

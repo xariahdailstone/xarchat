@@ -23,6 +23,8 @@ import { XarChatUtils } from "../util/XarChatUtils";
 import { Logger, Logging } from "../util/Logger";
 import { ImmutableList } from "../util/collections/ImmutableList";
 import { ObjectUniqueId } from "../util/ObjectUniqueId";
+import { HTMLUtils } from "../util/HTMLUtils";
+import { RateLimiter } from "../util/RateLimiter";
 
 export class ServerError extends Error {
     constructor(message: ChatMessage);
@@ -447,6 +449,7 @@ export class ChatConnectionImpl implements ChatConnection {
 
                 try {
                     //this.logger.logDebug("gotmsg", i);
+                    try { this.sink.debugCommandReceived(data); } catch { }
                     const msg = this.parseChatMessage(data);
 
                     try {
@@ -1221,7 +1224,9 @@ export class ChatConnectionImpl implements ChatConnection {
         if (msg.body) {
             builder.push(JSON.stringify(msg.body!));
         }
-        const maybePromise = this.onOutgoingData(builder.join(' '));
+        const msgtxt = builder.join(' ');
+        const maybePromise = this.onOutgoingData(msgtxt);
+        this.sink.debugCommandSent(msgtxt);
         if (maybePromise) {
             await maybePromise;
         }
@@ -1539,5 +1544,57 @@ export class ChatConnectionImpl implements ChatConnection {
                 ERRAsFailure(recvMsg);
             }
         });
+    }
+
+    private _getProfileInfoRateLimiter: RateLimiter = new RateLimiter(1, 1, 0.1); // 1 every 10 seconds
+
+    async getCharacterProfileInfoAsync(character: CharacterName, cancellationToken: CancellationToken): Promise<Record<string, string>> { 
+        const result: Record<string, string> = {};
+
+        await this._getProfileInfoRateLimiter.acquireAsync(1, cancellationToken);
+
+        let tryAgain = true;
+        while (tryAgain) {
+            tryAgain = false;
+
+            try {
+                await this.bracketedSendAsync({
+                    code: "PRO", body: {
+                        character: character.value
+                    }
+                }, (recvMsg) => {
+                    if (recvMsg.code == "PRD") {
+                        switch (recvMsg.body.type) {
+                            case "start":
+                                break;
+                            case "info":
+                                const key = recvMsg.body.key as string;
+                                const value = HTMLUtils.unescapeHTML(recvMsg.body.value as string);
+                                result[key] = value;
+                                break;
+                            case "end":
+                                break;
+                            default:
+                        }
+                        recvMsg.handled = true;
+                    }
+                    else if (recvMsg.code == "ERR" && recvMsg.body.number == 7) {
+                        tryAgain = true;
+                        recvMsg.handled = true;
+                        throw "rate limited";
+                    }
+                    else {
+                        ERRAsFailure(recvMsg);
+                    }
+                });
+            }
+            catch (e) {
+                if (tryAgain) {
+                    await TaskUtils.delay(1000, cancellationToken);
+                }
+            }
+        }
+
+        return result;
     }
 }

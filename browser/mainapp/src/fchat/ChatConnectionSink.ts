@@ -72,6 +72,9 @@ export interface ChatConnectionSink {
 
     markChannelReplaying(channelName: ChannelName): void;
     markPmConvoReplaying(characterName: CharacterName): void;
+
+    debugCommandReceived(cmd: string): void;
+    debugCommandSent(cmd: string): void;
 }
 
 export enum ChatDisconnectReason {

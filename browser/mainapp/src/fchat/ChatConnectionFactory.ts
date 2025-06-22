@@ -2,6 +2,7 @@ import { ChannelName } from "../shared/ChannelName";
 import { CharacterName } from "../shared/CharacterName";
 import { OnlineStatus } from "../shared/OnlineStatus";
 import { TypingStatus } from "../shared/TypingStatus";
+import { CancellationToken } from "../util/CancellationTokenSource";
 import { EventListenerUtil } from "../util/EventListenerUtil";
 import { HostInterop } from "../util/HostInterop";
 import { IdleDetectionScreenState, IdleDetectionUserState } from "../util/IdleDetection";
@@ -265,6 +266,8 @@ export class NullChatConnection implements ChatConnection {
     async performPartnerSearchAsync(args: PartnerSearchArgs): Promise<PartnerSearchResult> { throw new Error("unavailable"); }
 
     async submitReportAsync(logId: number, text: string, channel: string): Promise<void> { throw new Error("unavailable"); }
+
+    async getCharacterProfileInfoAsync(character: CharacterName, cancellationToken: CancellationToken): Promise<Record<string, string>> { return {}; }
 
     dispose(): void {
     }

@@ -2,6 +2,7 @@ import { ChannelName } from "../shared/ChannelName";
 import { CharacterName } from "../shared/CharacterName";
 import { OnlineStatus } from "../shared/OnlineStatus";
 import { TypingStatus } from "../shared/TypingStatus";
+import { CancellationToken } from "../util/CancellationTokenSource";
 import { IDisposable } from "../util/Disposable";
 import { IdleDetectionScreenState, IdleDetectionUserState } from "../util/IdleDetection";
 import { ChatChannelMessageMode } from "../viewmodel/ChatChannelViewModel";
@@ -71,6 +72,8 @@ export interface ChatConnection extends IDisposable {
     performPartnerSearchAsync(args: PartnerSearchArgs): Promise<PartnerSearchResult>;
 
     submitReportAsync(logId: number, text: string, channel: string): Promise<void>;
+
+    getCharacterProfileInfoAsync(character: CharacterName, cancellationToken: CancellationToken): Promise<Record<string, string>>;
 }
 
 export interface ChannelOpListInfo {
