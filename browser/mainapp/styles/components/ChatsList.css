@@ -184,6 +184,8 @@
     --itembgcolor: var(--bg-level-3);
     background: var(--itembgcolor);
 
+    contain: layout paint;
+
     &.selected {
         --itembgcolor: var(--bg-level-3);
         background: var(--bg-level-3-highlight);
@@ -225,6 +227,12 @@
     &:has(.sectionitems-item-unseen-container.shown) {
         background-color: var(--unseen-highlight);
     }
+}
+
+.sectionitems-item {
+    contain: paint layout size;
+    width: 100%;
+    height: 40px;
 }
 
 .sectionitems-item-unseen-container {

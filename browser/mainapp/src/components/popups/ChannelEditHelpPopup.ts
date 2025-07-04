@@ -77,6 +77,10 @@ export class ChannelEditHelpPopup extends ContextPopupBase<ChannelEditHelpPopupV
                     <td>Ctrl+E</td>
                     <td id="elCtrlEDescription">Show EIcon Search</td>
                 </tr>
+                <tr id="elCtrlAltERow">
+                    <td>Ctrl+Alt+E</td>
+                    <td>Show EIcon Search</td>
+                </tr>
                 <tr>
                     <td>Ctrl+N</td>
                     <td>No Parse</td>
@@ -85,12 +89,16 @@ export class ChannelEditHelpPopup extends ContextPopupBase<ChannelEditHelpPopupV
         `);
 
         const elCtrlEDescription = this.$("elCtrlEDescription") as HTMLElement;
+        const elCtrlAltERow = this.$("elCtrlAltERow") as HTMLDivElement;
+
         this.watchExpr(vm => vm.appViewModel.getConfigSettingById("eiconSearch.enabled"), searchEnabled => {
             if (!!searchEnabled) {
                 elCtrlEDescription.innerText = "Show EIcon Search";
+                elCtrlAltERow.style.display = "none";
             }
             else {
                 elCtrlEDescription.innerText = "EIcon";
+                elCtrlAltERow.style.display = "table-row";
             }
         });
     }

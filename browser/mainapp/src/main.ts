@@ -134,6 +134,8 @@ onReady(async () => {
     for (let f of allCssFiles) {
         await StyleLoader.loadAsync(f);
     }
+    const customCssStlyesheet = await StyleLoader.loadAsync("/customcss");
+    setStylesheetAdoption(document, [customCssStlyesheet]);
     loadDarkThemeCss();
 
     const p = new URLSearchParams(document.location.search);
@@ -184,6 +186,10 @@ document.addEventListener("keydown", (e) => {
     }
     else if (e.keyCode == KeyCodes.KEY_P && e.ctrlKey) {
         e.preventDefault();
+    }
+    else if (e.keyCode == KeyCodes.F11) {
+        e.preventDefault();
+        HostInterop.showDevTools();
     }
 });
 

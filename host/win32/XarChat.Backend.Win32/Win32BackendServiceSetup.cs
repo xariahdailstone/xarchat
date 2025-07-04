@@ -20,7 +20,6 @@ using XarChat.Backend.Win32.FileChooser;
 using XarChat.Backend.Win32.IdleDetection;
 using XarChat.Backend.Win32.MemoryHinter;
 using XarChat.Backend.Win32.NotificationBadge;
-using XarChat.Backend.Win32.StyleUpdateWatch;
 
 namespace XarChat.Backend.Win32
 {
@@ -46,8 +45,6 @@ namespace XarChat.Backend.Win32
             services.AddSingleton<IMemoryHinter, Win32MemoryHinter>();
             services.AddSingleton<IFileChooser, Win32FileChooser>();
             services.AddSingleton<ICrashLogWriterCallback, Win32CrashLogWriterCallback>();
-
-            services.AddHostedService<StyleUpdateWatcher>();
         }
     }
 }

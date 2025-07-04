@@ -102,9 +102,10 @@ class InstanceSelectPanelTab extends ComponentBase<ActiveLoginViewModel> {
             });
         });
 
-        elMain.addEventListener("click", () => {
+        elMain.addEventListener("mousedown", (ev) => {
             if (this.viewModel) {
                 this.viewModel.parent.currentlySelectedSession = this.viewModel;
+                ev.preventDefault();
             }
         });
     }

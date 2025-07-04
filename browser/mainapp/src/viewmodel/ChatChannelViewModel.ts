@@ -181,10 +181,10 @@ export class ChatChannelViewModel extends ChannelViewModel {
     }
 
     @observableProperty
-    get title() { return this._title; }
+    get title() { return super.title; }
     set title(value) {
-        if (value !== this._title) {
-            this._title = value;
+        if (value !== super.title) {
+            super.title = value;
             this.parent.updateChannelPinState(this);
         }
     }
@@ -443,12 +443,14 @@ export class ChatChannelViewModel extends ChannelViewModel {
     updateUserInLists(character: CharacterName | null) {
         if (!character) return;
 
+        const cs = this.parent.characterSet.getCharacterStatus(character);
+
         let uvm = this._allUsers.get(character);
         let isInChannel = uvm != null;
         let isModerator = isInChannel 
             && (CharacterName.equals(this._channelOwner, character) || this._channelOps.has(character) || this.parent.serverOps.has(character));
-        let isWatched = isInChannel && !isModerator && (this.parent.watchedChars.has(character));
-        let isLooking = isInChannel && !isModerator && !isWatched && (this.parent.characterSet.getCharacterStatus(character).status == OnlineStatus.LOOKING);
+        let isWatched = isInChannel && !isModerator && (cs.isFriend || cs.isBookmark || cs.isInterest);
+        let isLooking = isInChannel && !isModerator && !isWatched && (cs.status == OnlineStatus.LOOKING);
         let isOther = isInChannel && !isModerator && !isWatched && !isLooking;
 
         const alreadyModerator = this._usersModerators.has(character);
@@ -1016,6 +1018,7 @@ export class ChatChannelViewModel extends ChannelViewModel {
                     await this.parent.chatConnection.channelSendMessageAsync(this.name, msgContent);
                 },
                 onSuccessAsync: async () => {
+                    this.parent.trackUsedEIconsInMessage(msgContent);
                     this.addChatMessage({
                         speakingCharacter: this.parent.characterName,
                         message: msgContent,
@@ -1105,7 +1108,7 @@ export class ChatChannelViewModel extends ChannelViewModel {
     @observableProperty
     get canSendTextboxAsAd() { return this._cantSendAsAdReasons.value.length == 0; }
 
-    async sendAdAsync(msgContent: string): Promise<void> {
+    async sendAdAsync(msgContent: string, isAutoAd: boolean = false): Promise<void> {
         try {
             await this.parent.chatConnection.checkChannelAdMessageAsync(this.name, msgContent);
         }
@@ -1135,6 +1138,9 @@ export class ChatChannelViewModel extends ChannelViewModel {
                 }, 1000 * 60 * 10);
             },
             onSuccessAsync: async () => {
+                if (!isAutoAd) {
+                    this.parent.trackUsedEIconsInMessage(msgContent);
+                }
                 this.addAdMessage({
                     speakingCharacter: this.parent.characterName,
                     message: msgContent,

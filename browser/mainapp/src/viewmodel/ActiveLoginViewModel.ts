@@ -3,8 +3,8 @@ import { FListAuthenticatedApi, FriendsList, ProfileInfo } from "../fchat/api/FL
 import { ChannelName } from "../shared/ChannelName.js";
 import { CharacterName } from "../shared/CharacterName.js";
 import { CharacterSet } from "../shared/CharacterSet.js";
-import { BBCodeClickContext, BBCodeParseSink } from "../util/bbcode/BBCode.js";
-import { tryDispose, IDisposable, addOnDispose } from "../util/Disposable.js";
+import { BBCodeClickContext, BBCodeParseSink, ChatBBCodeParser } from "../util/bbcode/BBCode.js";
+import { tryDispose, IDisposable, addOnDispose, ConvertibleToDisposable, asDisposable } from "../util/Disposable.js";
 import { HostInterop } from "../util/HostInterop.js";
 import { Observable, ObservableValue, PropertyChangeEvent } from "../util/Observable.js";
 import { ObservableBase, observableProperty, observablePropertyExt } from "../util/ObservableBase.js";
@@ -45,18 +45,22 @@ import { InAppToastManagerViewModel } from "./InAppToastManagerViewModel.js";
 import { LogSearch2ViewModel } from "./newlogsearch/LogSearch2ViewModel.js";
 import { PartnerSearchViewModel } from "./PartnerSearchViewModel.js";
 import { AutoAdManager } from "../util/AutoAdManager.js";
+import { NicknameSet } from "../shared/NicknameSet.js";
 
 declare const XCHost: any;
 
 let nextViewModelId = 1;
 
-export class ActiveLoginViewModel extends ObservableBase {
+export class ActiveLoginViewModel extends ObservableBase implements IDisposable {
     constructor(
         public readonly parent: AppViewModel,
         public readonly authenticatedApi: FListAuthenticatedApi,
         public readonly savedChatState: SavedChatState) {
 
         super();
+
+        this._nicknameSet = new NicknameSet(this);
+        this._disposeActions.push(() => this._nicknameSet.dispose());
 
         this.addPropertyListener("pmConvosCollapsed", (e) => {
             this.logger.logWarn("pmConvosCollapsed changed", e.propertyName, e.propertyValue);
@@ -93,7 +97,7 @@ export class ActiveLoginViewModel extends ObservableBase {
             this.notifyChannelsOfCharacterChange(chars);
         });
 
-        this.characterSet = new CharacterSet(this.ignoredChars, this.friends, this.bookmarks, this.interests);
+        this.characterSet = new CharacterSet(this.ignoredChars, this.friends, this.bookmarks, this.interests, this.nicknameSet);
         this.onlineWatchedChars = new FilteredWatchedCharsCharacterNameSet(this, this.watchedChars, cs => cs.status != OnlineStatus.OFFLINE);
         this.onlineFriends = new FilteredWatchedCharsCharacterNameSet(this, this.friends, cs => cs.status != OnlineStatus.OFFLINE);
         this.onlineBookmarks = new FilteredWatchedCharsCharacterNameSet(this, this.bookmarks, cs => cs.status != OnlineStatus.OFFLINE);
@@ -165,6 +169,22 @@ export class ActiveLoginViewModel extends ObservableBase {
         this.bbcodeSink = new ActiveLoginViewModelBBCodeSink(this, this._logger);
 
         this.getMyFriendsListInfo(CancellationToken.NONE);
+    }
+
+    private _isDisposed: boolean = false;
+    get isDisposed(): boolean { return this._isDisposed; }
+
+    private _disposeActions: ConvertibleToDisposable[] = [];
+
+    dispose(): void {
+        if (!this._isDisposed) {
+            this._isDisposed = true;
+            asDisposable(...this._disposeActions).dispose();
+            this._disposeActions = [];
+        }
+    }
+    [Symbol.dispose](): void {
+        this.dispose();
     }
 
     private readonly _chanPropChangeSym = Symbol("ActiveLoginViewModel.ChanPropChange");
@@ -313,6 +333,9 @@ export class ActiveLoginViewModel extends ObservableBase {
         this.autoReconnectInSec = null;
     }
 
+    private readonly _nicknameSet: NicknameSet;
+    get nicknameSet() { return this._nicknameSet; }
+
     private _characterName: CharacterName = CharacterName.create("");
     @observableProperty
     get characterName(): CharacterName { return this._characterName; }
@@ -343,6 +366,28 @@ export class ActiveLoginViewModel extends ObservableBase {
 
     // watchedChars = superset of friends + bookmarks + interests
     readonly watchedChars: CharacterNameSet = new CharacterNameSet();
+    updateWatchedCharsSet() {
+        let toRemove: CharacterName[] | null = null;
+        for (let n of this.watchedChars.iterateValues()) {
+            if (!this.friends.has(n.key) && !this.bookmarks.has(n.key) && !this.interests.has(n.key)) {
+                toRemove ??= [];
+                toRemove.push(n.key);
+            }
+        }
+        if (toRemove) {
+            for (let n of toRemove) {
+                this.watchedChars.delete(n);
+            }
+        }
+
+        for (let coll of [this.friends, this.bookmarks, this.interests]) {
+            for (let n of coll.iterateValues()) {
+                if (!this.watchedChars.has(n.key)) {
+                    this.watchedChars.add(n.key);
+                }
+            }
+        }
+    }
 
     readonly friends: CharacterNameSet = new CharacterNameSet();
 
@@ -886,6 +931,15 @@ export class ActiveLoginViewModel extends ObservableBase {
                     }
                     return "";
                 }
+            ),
+            new SlashCommandViewModel(
+                ["devtools"],
+                "Show Developer Tools",
+                "Opens the browser developer tools for the XarChat user interface.",
+                [],
+                async (context, args) => {
+                    HostInterop.showDevTools();
+                }
             )
         ];
     }
@@ -950,12 +1004,13 @@ export class ActiveLoginViewModel extends ObservableBase {
     }
 
     idleStateChanged() {
-        const autoIdleSetting = !!this.getFirstConfigEntryHierarchical(["autoIdle"]);
-        const autoAwaySetting = !!this.getFirstConfigEntryHierarchical(["autoAway"]);
+        const autoIdleSetting = !!this.appViewModel.getConfigSettingById("autoIdle"); // !!this.getFirstConfigEntryHierarchical(["autoIdle"]);
+        const autoAwaySetting = !!this.appViewModel.getConfigSettingById("autoAway"); // !!this.getFirstConfigEntryHierarchical(["autoAway"]);
 
         if (autoIdleSetting || autoAwaySetting) {
             const userState = autoIdleSetting ? this.parent.userState : "active";
             const screenState = autoAwaySetting ? this.parent.screenState : "unlocked";
+            this.logger.logInfo("idleStateChanged", userState, screenState);
             this.chatConnectionConnected?.setIdleStatusAsync(userState, screenState);
         }
     }
@@ -1026,6 +1081,111 @@ export class ActiveLoginViewModel extends ObservableBase {
     }
 
     readonly toastManager: InAppToastManagerViewModel;
+
+    // Called when an eicon loads the "no eicon" image
+    trackInvalidEIcon(eiconName: string) {
+        const eiconNameCanonical = eiconName.toLowerCase();
+
+        // Remove from recently-used list
+        {
+            const configBlockKey = `character.${this.characterName.canonicalValue}.recentlyUsedEIcons`;
+            let recentList: string[] = this.appViewModel.configBlock.get(configBlockKey) as (string[] | null | undefined) ?? [];
+            const rlIndex = recentList.indexOf(eiconNameCanonical);
+            if (rlIndex >= 0) {
+                recentList.splice(rlIndex, 1)
+                this.appViewModel.configBlock.set(configBlockKey, recentList);
+            }
+        }
+
+        // Remove from most-used list
+        {
+            const configBlockKey = `character.${this.characterName.canonicalValue}.mostUsedEIcons`;
+            let mostUsedList = {... this.appViewModel.configBlock.get(configBlockKey) as (Record<string, {lastUsed: number,count: number}> | null | undefined) ?? {} };
+            let muItem = mostUsedList[eiconNameCanonical];
+            if (muItem) {
+                delete mostUsedList[eiconNameCanonical];
+                this.appViewModel.configBlock.set(configBlockKey, mostUsedList);
+            }
+        }
+    }
+
+    trackUsedEIconsInMessage(msgContent: string) {
+        using parseResult = ChatBBCodeParser.parse(msgContent)
+        const usedSet = parseResult.usedEIcons;
+        usedSet.forEach(v => {
+            this.trackUsedEIcon(v);
+        });
+    }
+
+    // Called when this character sends a message containing an eicon
+    trackUsedEIcon(eiconName: string) {
+        const eiconNameCanonical = eiconName.toLowerCase();
+
+        // Add to recently-used list
+        {
+            const configBlockKey = `character.${this.characterName.canonicalValue}.recentlyUsedEIcons`;
+            let recentList: string[] = this.appViewModel.configBlock.get(configBlockKey) as (string[] | null | undefined) ?? [];
+            const rlIndex = recentList.indexOf(eiconNameCanonical);
+            if (rlIndex != 0) {
+                if (rlIndex >= 0) {
+                    recentList.splice(rlIndex, 1)
+                }
+                recentList.unshift(eiconNameCanonical);
+                while (recentList.length > 100) {
+                    recentList.pop();
+                }
+                this.appViewModel.configBlock.set(configBlockKey, recentList);
+            }
+        }
+
+        // Add to most used list
+        {
+            const configBlockKey = `character.${this.characterName.canonicalValue}.mostUsedEIcons`;
+            let mostUsedList = {... this.appViewModel.configBlock.get(configBlockKey) as (Record<string, {lastUsed: number,count: number}> | null | undefined) ?? {} };
+            let muItem = mostUsedList[eiconNameCanonical];
+            if (muItem) {
+                muItem.lastUsed = (new Date()).getTime();
+                muItem.count++;
+            }
+            else {
+                mostUsedList[eiconNameCanonical] = { lastUsed: (new Date()).getTime(), count: 1 };
+                while (Object.getOwnPropertyNames(mostUsedList).length > 100) {
+                    let leastRecentlyUsedKey: string | null = null;
+                    let leastRecentlyUsedItem: {lastUsed: number,count: number} | null = null;
+                    for (let item of Object.getOwnPropertyNames(mostUsedList).map(k => { return { key: k, value: mostUsedList[k] }; })) {
+                        const tkey = item.key;
+                        const titem = item.value;
+                        if (!leastRecentlyUsedItem || titem.lastUsed < leastRecentlyUsedItem.lastUsed) {
+                            leastRecentlyUsedKey = tkey;
+                            leastRecentlyUsedItem = titem;
+                        }
+                    }
+                    if (leastRecentlyUsedKey) {
+                        delete mostUsedList[leastRecentlyUsedKey];
+                    }
+                    else {
+                        break;
+                    }
+                }
+            }
+            this.appViewModel.configBlock.set(configBlockKey, mostUsedList);
+        }
+    }
+
+    getRecentlyUsedEIcons(): string[] {
+        const configBlockKey = `character.${this.characterName.canonicalValue}.recentlyUsedEIcons`;
+        const recentList: string[] = this.appViewModel.configBlock.get(configBlockKey) as (string[] | null | undefined) ?? [];
+        return recentList;
+    }
+
+    getMostUsedEIcons(): string[] {
+        const configBlockKey = `character.${this.characterName.canonicalValue}.mostUsedEIcons`;
+        const mostUsedList = {... this.appViewModel.configBlock.get(configBlockKey) as (Record<string, {lastUsed: number,count: number}> | null | undefined) ?? {} };
+        return [...Object.getOwnPropertyNames(mostUsedList)
+            .map(k => { return { key: k, value: mostUsedList[k] }; })
+            .sort((a, b) => b.value.count - a.value.count)
+            .map(e => e.key)];
+    }
 }
 
 export type SelectedChannel = ChannelViewModel | AddChannelsViewModel | LogSearchViewModel | LogSearch2ViewModel;

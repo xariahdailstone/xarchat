@@ -1,4 +1,5 @@
 import { CharacterName } from "../shared/CharacterName";
+import { CharacterStatus, CharacterStatusNoEquals } from "../shared/CharacterSet";
 import { jsx, JsxVNodeChild, JsxVNodeChildren, VNode } from "../snabbdom/index.js";
 import { ActiveLoginViewModel } from "../viewmodel/ActiveLoginViewModel";
 import { ChannelViewModel } from "../viewmodel/ChannelViewModel";
@@ -26,7 +27,7 @@ const CLASS_ISBOOKMARK = "char-is-bookmark";
 const CLASS_ISWATCH = "char-is-watch";
 const CLASS_IGNORED = "char-is-ignored";
 
-interface EffectiveCharacterNameInfo {
+export interface EffectiveCharacterNameInfo {
     modType: "none" | "chanop" | "chanowner" | "serverop";
     watchType: "none" | "watch" | "bookmark" | "friend";
 
@@ -45,7 +46,10 @@ interface EffectiveCharacterNameInfo {
     nickname: string | null;
 }
 
-function getEffectiveCharacterNameInfo(character: CharacterName, vm: ChannelViewModel | ActiveLoginViewModel): EffectiveCharacterNameInfo {
+export type EffectiveCharacterNameInfoProvider = (charOrStatus: CharacterName | CharacterStatusNoEquals, vm: ChannelViewModel | ActiveLoginViewModel) => EffectiveCharacterNameInfo;
+
+export function getEffectiveCharacterNameInfo(
+    charOrStatus: CharacterName | CharacterStatusNoEquals, vm: ChannelViewModel | ActiveLoginViewModel, skipDependencies: boolean = false): EffectiveCharacterNameInfo {
     const res: EffectiveCharacterNameInfo = {
         modType: "none",
         watchType: "none",
@@ -62,6 +66,8 @@ function getEffectiveCharacterNameInfo(character: CharacterName, vm: ChannelView
         nickname: null
     };
 
+    const character = charOrStatus instanceof CharacterName ? charOrStatus : charOrStatus.characterName;
+
     const chatChannelVM = (vm instanceof ChatChannelViewModel) ? vm : null;
     const sessionVM = (vm instanceof ChannelViewModel) ? vm.parent
         : (vm instanceof ActiveLoginViewModel) ? vm
@@ -75,25 +81,25 @@ function getEffectiveCharacterNameInfo(character: CharacterName, vm: ChannelView
         res.modType = "chanowner";
         res.isChanOwner = true;
     }
-    if (sessionVM && sessionVM.serverOps.has(character)) {
+    if (sessionVM && (!skipDependencies ? sessionVM.serverOps.has(character) : sessionVM.serverOps.rawHas(character))) {
         res.modType = "serverop";
         res.isServerOp = true;
     }
 
-    if (sessionVM && sessionVM.watchedChars.has(character)) {
+    if (sessionVM && (!skipDependencies ? sessionVM.watchedChars.has(character) : sessionVM.watchedChars.rawHas(character))) {
         res.watchType = "watch";
         res.isWatch = true;
     }
-    if (sessionVM && sessionVM.bookmarks.has(character)) {
+    if (sessionVM && (!skipDependencies ? sessionVM.bookmarks.has(character) : sessionVM.bookmarks.rawHas(character))) {
         res.watchType = "bookmark";
         res.isBookmark = true;
     }
-    if (sessionVM && sessionVM.friends.has(character)) {
+    if (sessionVM && (!skipDependencies ? sessionVM.friends.has(character) : sessionVM.friends.rawHas(character))) {
         res.watchType = "friend";
         res.isFriend = true;
     }
 
-    if (sessionVM && sessionVM.ignoredChars.has(character)) {
+    if (sessionVM && (!skipDependencies ? sessionVM.ignoredChars.has(character) : sessionVM.ignoredChars.rawHas(character))) {
         res.isIgnored = true;
     }
 
@@ -145,8 +151,12 @@ function getEffectiveCharacterNameInfo(character: CharacterName, vm: ChannelView
         res.additionalWrapperClasses.push("is-ignored");
     }
 
-    if (sessionVM) {
-        const nnsetting = sessionVM.getConfigSettingById("nickname", { characterName: character }) as (string | null | undefined);
+    if (!(charOrStatus instanceof CharacterName)) {
+        res.nickname = charOrStatus.nickname
+    }
+    else if (sessionVM) {
+        const nnsetting = (!skipDependencies ? sessionVM.nicknameSet.get(character) : sessionVM.nicknameSet.rawGet(character));
+        //const nnsetting = sessionVM.getConfigSettingById("nickname", { characterName: character }) as (string | null | undefined);
         if (!StringUtils.isNullOrWhiteSpace(nnsetting)) {
             res.nickname = nnsetting;
         }
@@ -155,10 +165,14 @@ function getEffectiveCharacterNameInfo(character: CharacterName, vm: ChannelView
     return res;
 }
 
-export function getEffectiveCharacterNameVNodes(character: CharacterName, vm: ChannelViewModel | ActiveLoginViewModel): JsxVNodeChildren {
-    const nodes: JsxVNodeChild[] = [];
+export function getEffectiveCharacterNameVNodes(charOrStatus: CharacterName | CharacterStatusNoEquals, vm: ChannelViewModel | ActiveLoginViewModel): JsxVNodeChildren {
+    const character = charOrStatus instanceof CharacterName ? charOrStatus : charOrStatus.characterName;
+    const ecni = getEffectiveCharacterNameInfo(charOrStatus, vm);
+    return getEffectiveCharacterNameVNodes2(character, ecni);
+}
 
-    var ecni = getEffectiveCharacterNameInfo(character, vm);
+export function getEffectiveCharacterNameVNodes2(character: CharacterName, ecni: EffectiveCharacterNameInfo): JsxVNodeChildren {
+    const nodes: JsxVNodeChild[] = [];
 
     const wrapperClasses = ecni.wrapperClasses;
 

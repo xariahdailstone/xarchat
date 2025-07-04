@@ -19,7 +19,7 @@ import { BBCodeTagB } from "./tags/BBCodeTagB";
 import { BBCodeTagBig } from "./tags/BBCodeTagBig";
 import { BBCodeTagCenter } from "./tags/BBCodeTagCenter";
 import { BBCodeTagCollapse } from "./tags/BBCodeTagCollapse";
-import { BBCodeTagColor } from "./tags/BBCodeTagColor";
+import { BBCodeTagColor, BBCodeTagColorPermissive } from "./tags/BBCodeTagColor";
 import { BBCodeTagEIcon } from "./tags/BBCodeTagEIcon";
 import { BBCodeTagHR } from "./tags/BBCodeTagHR";
 import { BBCodeTagHTML } from "./tags/BBCodeTagHTML";
@@ -80,6 +80,7 @@ export interface BBCodeParseContext {
     parseOptions: BBCodeParseOptions;
     disposables: IDisposable[];
     addDisposable(d: ConvertibleToDisposable): any;
+    addUsedEIcon(eiconName: string): void;
 }
 
 export interface BBCodeTagContent {
@@ -92,6 +93,7 @@ export interface BBCodeTagContent {
 
 export interface BBCodeParseResult extends IDisposable {
     element: HTMLSpanElement;
+    usedEIcons: ReadonlySet<string>;
 
     asVNode(): VNode;
 }
@@ -121,6 +123,7 @@ export class BBCodeParser {
         };
         xoptions.sink = options?.sink ?? { userClick: ()=>{}, sessionClick: ()=>{}, webpageClick: ()=>{} };
 
+        const usedEIcons = new Set<string>();
         let contextIsDisposed = false;
         const parseContext: BBCodeParseContext = {
             parseOptions: xoptions,
@@ -132,6 +135,9 @@ export class BBCodeParser {
                 else {
                     asDisposable(d).dispose();
                 }
+            },
+            addUsedEIcon(eiconName: string) {
+                usedEIcons.add(eiconName.toLowerCase());
             }
         };
 
@@ -281,6 +287,7 @@ export class BBCodeParser {
 
         const result: BBCodeParseResult = {
             element: resFragment,
+            usedEIcons: usedEIcons,
             asVNode(): VNode {
                 let child = h('span', {hook: {
                     insert(vnode: VNode) {
@@ -581,7 +588,8 @@ const chatTags: BBCodeTag[] = [
 ];
 
 const profileMinusInlinesTags: BBCodeTag[] = [
-    ...chatTags,
+    ...chatTags.filter(x => x != BBCodeTagColor),
+    BBCodeTagColorPermissive,
     BBCodeTagHeading,
     BBCodeTagIndent,
     BBCodeTagCollapse,

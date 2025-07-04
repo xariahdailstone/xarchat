@@ -24,6 +24,7 @@
     height: 1.21em;
     max-width: 1.21em;
     max-height: 1.21em;
+    will-change: transform;
     transform: rotate(0deg);
     transition: transform 0.25s;
     --iconimage-max-width: 1.21em;

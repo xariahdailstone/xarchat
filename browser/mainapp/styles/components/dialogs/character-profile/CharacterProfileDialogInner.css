@@ -363,6 +363,7 @@
     margin: 0.15em;
     border-radius: 0.6em;
 
+    will-change: transform;
     transition: transform 0.25s;
     background-color: var(--custom-kink-color);
     color: black;

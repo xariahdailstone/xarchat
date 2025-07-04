@@ -19,8 +19,11 @@ class HeldCacheManagerImpl implements HeldCacheManager {
         const wrappedReleaseFunc = () => {
             this._releasableItems.delete(myKey);
             if (myTimeoutHandle) {
-                window.clearTimeout(myTimeoutHandle);
+                const mth = myTimeoutHandle;
                 myTimeoutHandle = null;
+                window.requestIdleCallback(() => {
+                    window.clearTimeout(mth);
+                })
             }
             try {
                 releaseFunc();
@@ -30,15 +33,20 @@ class HeldCacheManagerImpl implements HeldCacheManager {
 
         this._releasableItems.set(myKey, wrappedReleaseFunc);
         myTimeoutHandle = window.setTimeout(() => {
-            myTimeoutHandle = null;
-            wrappedReleaseFunc();
+            if (myTimeoutHandle != null) {
+                myTimeoutHandle = null;
+                wrappedReleaseFunc();
+            }
         }, releaseAfterMs);
 
         return asDisposable(() => {
             this._releasableItems.delete(myKey);
             if (myTimeoutHandle) {
-                window.clearTimeout(myTimeoutHandle);
+                const mth = myTimeoutHandle;
                 myTimeoutHandle = null;
+                window.requestIdleCallback(() => {
+                    window.clearTimeout(mth);
+                });
             }
         });
     }

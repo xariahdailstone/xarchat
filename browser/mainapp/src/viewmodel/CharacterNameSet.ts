@@ -10,7 +10,7 @@ import { ActiveLoginViewModel } from "./ActiveLoginViewModel";
 
 export class CharacterNameSet extends ObservableOrderedDictionaryImpl<CharacterName, CharacterName> {
     constructor() {
-        super(cn => cn, CharacterName.compare);
+        super(cn => cn, CharacterName.compare, { useQuickHas: true });
     }
 }
 

@@ -1,3 +1,5 @@
+import { ChannelName } from "../shared/ChannelName";
+import { CharacterName } from "../shared/CharacterName";
 import { IterableUtils } from "../util/IterableUtils";
 
 export interface ConfigSchemaDefinition {
@@ -17,16 +19,26 @@ export interface ConfigSchemaItemDefinitionItem {
     min?: number;
     max?: number;
     maxLength?: number;
+    fieldWidth?: string;
     defaultValue: unknown;
     configBlockKey: string;
     items?: ConfigSchemaItemDefinition[];
     notYetImplemented?: boolean;
     notifRouteOptions?: ConfigSchemaNotifRouteItemOptions;
+    enableIf?: (options: EnableIfOptions) => boolean;
 }
 
 export interface ConfigSchemaNotifRouteItemOptions {
     hasChannelContext?: boolean;
     hasCharacterContext?: boolean;
+}
+
+export interface EnableIfOptions {
+    myCharacterName?: CharacterName;
+    interlocutorName?: CharacterName;
+    channelCategory?: string;
+    channelName?: ChannelName;
+    getConfigEntryById: (id: string) => unknown;
 }
 
 export interface ConfigSchemaItemDefinitionSection {
@@ -74,7 +86,8 @@ export interface PingLineItemDefinition {
 
 export type ConfigSchemaItemDefinition = (ConfigSchemaItemDefinitionItem | ConfigSchemaItemDefinitionSection);
 
-export type ConfigSchemaItemType = "text" | "boolean" | "integer" | "text[]" | "pinglist" | "radio" | "timespan" | "color" | "color-hs" | "bgcolorcontrol" | "notifroutes" | "select";
+export type ConfigSchemaItemType = "text" | "boolean" | "integer" | "number" | "text[]" | "pinglist" | 
+    "radio" | "timespan" | "color" | "color-hs" | "bgcolorcontrol" | "notifroutes" | "select";
 export type ConfigSchemaOptionItemType = "string" | "file";
 export type ConfigSchemaScopeType = "global" | "char" | "char.chancategory" | "char.chan" | "char.convo";
 export type ConfigSchemaScopeTypeSimple = "global" | "char" | "chan" | "convo";
@@ -143,24 +156,6 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     configBlockKey: "useGpuAcceleration"
                 },
                 {
-                    id: "autoIdle",
-                    scope: getScopeArray(["global", "char"]),
-                    title: "Auto Idle",
-                    description: "Automatically change your status to Idle when your computer input is idle.",
-                    type: "boolean",
-                    defaultValue: true,
-                    configBlockKey: "autoIdle"
-                },
-                {
-                    id: "autoAway",
-                    scope: getScopeArray(["global", "char"]),
-                    title: "Auto Away",
-                    description: "Automatically change your status to Away when your computer is locked.",
-                    type: "boolean",
-                    defaultValue: true,
-                    configBlockKey: "autoAway"
-                },
-                {
                     id: "autoReconnect",
                     scope: getScopeArray(["global", "char"]),
                     title: "Automatically Reconnect",
@@ -190,11 +185,55 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                 {
                     id: "eiconSearch.enabled",
                     scope: getScopeArray(["global"]),
-                    title: "Enable EIcon Search",
-                    description: "Ctrl+E pops up an eicon search instead of just inserting [eicon][/eicon] tags.",
+                    title: "EIcon Search",
+                    description: "Use Ctrl+E to open the eicon search instead of just inserting [eicon][/eicon] tags. (When disabled, Ctrl+Alt+E opens eicon search instead.)",
                     type: "boolean",
                     defaultValue: true,
                     configBlockKey: "eiconSearch.enabled"
+                },
+                {
+                    scope: getScopeArray(["global"]),
+                    sectionTitle: "Auto Idle/Away",
+                    items: [
+                        {
+                            id: "autoAway",
+                            scope: getScopeArray(["global"]),
+                            title: "Auto Away",
+                            description: "Automatically change your status to Away when your computer is locked.",
+                            type: "boolean",
+                            defaultValue: true,
+                            configBlockKey: "autoAway"
+                        },                        
+                        {
+                            id: "autoIdle",
+                            scope: getScopeArray(["global"]),
+                            title: "Auto Idle",
+                            description: "Automatically change your status to Idle when your computer input is idle.",
+                            type: "boolean",
+                            defaultValue: true,
+                            configBlockKey: "autoIdle"
+                        },
+                        {
+                            id: "idleAfterMinutes",
+                            scope: getScopeArray(["global"]),
+                            title: "Auto Idle After",
+                            description: "How many minutes your computer must be idle before setting auto idle.",
+                            type: "number",
+                            min: 1,
+                            max: 60 * 24,
+                            defaultValue: 10,
+                            fieldWidth: "calc(9px * 5)",
+                            configBlockKey: "idleAfterMinutes",
+                            enableIf: (opts) => {
+                                if (opts.getConfigEntryById("autoIdle") == true) {
+                                    return true;
+                                }
+                                else {
+                                    return false;
+                                }
+                            }
+                        }                
+                    ]
                 },
                 {
                     scope: getScopeArray(["global", "char", "chan", "convo"]),
@@ -246,7 +285,7 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     ]
                 },
                 {
-                    scope: getScopeArray(["global", "char"]),
+                    scope: getScopeArray(["global", "char", "convo"]),
                     sectionTitle: "Notifications",
                     description: "Configure where notification messages for various events are displayed.",
                     items: [
@@ -518,6 +557,80 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                             configBlockKey: getFullRoutedNotificationConfigName("noteGet"),
                             notifRouteOptions: {
                                 hasCharacterContext: true
+                            }
+                        },
+                        {
+                            id: "perCharMessageRouting.enabled",
+                            scope: getScopeArray(["convo"]),
+                            title: "Customize Status Update Notifications",
+                            description: "",
+                            descriptionByScope: {
+                                "global": "Invalid setting.",
+                                "char": "Invalid setting.",
+                                "char.chancategory": "Invalid setting.",
+                                "char.chan": "Invalid setting.",
+                                "char.convo": "Should online/offline/status update notifications for \"$CONVOCHAR$\" be treated specially?"
+                            },
+                            type: "select",
+                            selectOptions: [
+                                { value: "default", displayValue: "Use Defaults" },
+                                { value: "override", displayValue: "Use Settings Below" }
+                            ],
+                            defaultValue: "default",
+                            configBlockKey: "perCharMessageRouting.enabled"
+                        },
+                        {
+                            id: "perCharMessageRouting.onlineChange.routing",
+                            scope: getScopeArray(["convo"]),
+                            title: "Customized Online/Offline Update Notification Routing",
+                            description: "",
+                            descriptionByScope: {
+                                "global": "Invalid setting.",
+                                "char": "Invalid setting.",
+                                "char.chancategory": "Invalid setting.",
+                                "char.chan": "Invalid setting.",
+                                "char.convo": "Use these routing settings for online/offline notifications for \"$CONVOCHAR$\""
+                            },
+                            type: "notifroutes",
+                            defaultValue: "console,currenttab,pmconvo",
+                            configBlockKey: "perCharMessageRouting.onlineChange.routing",
+                            notifRouteOptions: {
+                                hasCharacterContext: true
+                            },
+                            enableIf: (opts) => {
+                                if (opts.getConfigEntryById("perCharMessageRouting.enabled") == "override") {
+                                    return true;
+                                }
+                                else {
+                                    return false;
+                                }
+                            }
+                        },
+                        {
+                            id: "perCharMessageRouting.statusUpdate.routing",
+                            scope: getScopeArray(["convo"]),
+                            title: "Customized Status Update Notification Routing",
+                            description: "",
+                            descriptionByScope: {
+                                "global": "Invalid setting.",
+                                "char": "Invalid setting.",
+                                "char.chancategory": "Invalid setting.",
+                                "char.chan": "Invalid setting.",
+                                "char.convo": "Use these routing settings for status change notifications for \"$CONVOCHAR$\""
+                            },
+                            type: "notifroutes",
+                            defaultValue: "console,currenttab,pmconvo",
+                            configBlockKey: "perCharMessageRouting.statusUpdate.routing",
+                            notifRouteOptions: {
+                                hasCharacterContext: true
+                            },
+                            enableIf: (opts) => {
+                                if (opts.getConfigEntryById("perCharMessageRouting.enabled") == "override") {
+                                    return true;
+                                }
+                                else {
+                                    return false;
+                                }
                             }
                         }
                     ]

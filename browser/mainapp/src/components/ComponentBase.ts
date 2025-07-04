@@ -1,5 +1,6 @@
 import { CharacterName } from "../shared/CharacterName.js";
 import { CharacterStatus } from "../shared/CharacterSet.js";
+import { ArrayUtils } from "../util/ArrayUtils.js";
 import { CancellationToken, CancellationTokenSource } from "../util/CancellationTokenSource.js";
 import { SnapshottableMap } from "../util/collections/SnapshottableMap.js";
 import { SnapshottableSet } from "../util/collections/SnapshottableSet.js";
@@ -13,7 +14,7 @@ import { ObjectUniqueId } from "../util/ObjectUniqueId.js";
 import { Observable, ValueSubscription } from "../util/Observable.js";
 import { ObservableBase } from "../util/ObservableBase.js";
 import { Collection } from "../util/ObservableCollection.js";
-import { ObservableExpression } from "../util/ObservableExpression.js";
+import { DelayedObservableExpression, ObservableExpression } from "../util/ObservableExpression.js";
 import { Optional } from "../util/Optional.js";
 import { Predicate } from "../util/Predicate.js";
 import { OperationCancelledError } from "../util/PromiseSource.js";
@@ -119,6 +120,7 @@ export abstract class ComponentBase<TViewModel> extends HTMLElement {
 
         const elMain = document.createElement("div");
         elMain.id = "elMain";
+        elMain.classList.add(`component-${this.constructor.name}`);
         elMain.style.opacity = "0";
         this._sroot.appendChild(elMain);
 
@@ -131,7 +133,7 @@ export abstract class ComponentBase<TViewModel> extends HTMLElement {
 
         let commonLoaded = false;
         let compLoaded = false;
-        this.addMultipleStyleSheetsAsync(this.requiredStylesheets).then(() => {
+        this.addMultipleStyleSheetsAsync([...this.requiredStylesheets, ...this.postRequiredStylesheets]).then(() => {
             this.elMain.style.removeProperty("opacity");
         });
 
@@ -181,6 +183,10 @@ export abstract class ComponentBase<TViewModel> extends HTMLElement {
         ]
     }
 
+    protected get postRequiredStylesheets() {
+        return ["/customcss"];
+    }
+
     private static _nextUniqueId = 1;
     protected readonly uniqueId: number;
 
@@ -223,13 +229,18 @@ export abstract class ComponentBase<TViewModel> extends HTMLElement {
     protected get isComponentConnected() { return this._isComponentConnected; }
 
     private connectedCallback() {
-        this._isComponentConnected = true;
-        this.parentComponent = this.findParentComponent();
-        //this.logger.logDebug(`${this.constructor.name} connected`, this.parentComponent);
-        this.viewModelContextUpdated();
-        try { this.connectedToDocument(); } catch { }
-        this.setupWhenConnecteds();
-        this.raiseConnectedEvent();
+        try {
+            this._isComponentConnected = true;
+            this.parentComponent = this.findParentComponent();
+            //this.logger.logDebug(`${this.constructor.name} connected`, this.parentComponent);
+            this.viewModelContextUpdated();
+            this.connectedToDocument();
+            this.setupWhenConnecteds();
+            this.raiseConnectedEvent();
+        }
+        catch (e) {
+            this.logger.logError("connectedCallback failed", e);
+        }
     }
 
     protected connectedToDocument() { }
@@ -238,13 +249,18 @@ export abstract class ComponentBase<TViewModel> extends HTMLElement {
     private disconnectedCallback() {
         //this.logger.logDebug(`${this.constructor.name} disconnected`);
         this.logger.logDebug("disconnecting");
-        this._isComponentConnected = false;
-        this.parentComponent = null;
-        this.viewModelContextUpdated();
-        this.disconnectedFromDocument();
-        this.teardownWhenConnecteds();
-        this.raiseDisconnectedEvent();
-        this.logger.logDebug("disconnected");
+        try {
+            this._isComponentConnected = false;
+            this.parentComponent = null;
+            this.viewModelContextUpdated();
+            this.disconnectedFromDocument();
+            this.teardownWhenConnecteds();
+            this.raiseDisconnectedEvent();
+            this.logger.logDebug("disconnected"); 
+        } 
+        catch (e) { 
+            this.logger.logError("disconnectedCallback failed", e);
+        }
     }
 
     private _inAttributeChangedCallback: boolean = false;
@@ -383,11 +399,19 @@ export abstract class ComponentBase<TViewModel> extends HTMLElement {
         const result = this.whenConnectedWithViewModel((vm) => {
             const lastReturnedDisposable = new DisposableOwnerField();
 
-            const oexpr = new ObservableExpression(
+            const oexpr = new DelayedObservableExpression(
+                `${this.constructor.name}-watchExpr`,
                 () => expr(vm), 
                 v => {
-                    const vcResult = valueChanged(v);
-                    lastReturnedDisposable.value = vcResult ?? null;
+                    let shouldUpdate = true;
+                    if (v instanceof Array && lastReturnedDisposable instanceof Array) {
+                        shouldUpdate = !ArrayUtils.areEquivalent(v, lastReturnedDisposable);
+                    }
+
+                    if (shouldUpdate) {
+                        const vcResult = valueChanged(v);
+                        lastReturnedDisposable.value = vcResult ?? null;
+                    }
                 });
             
             return asNamedDisposable(`${this.constructor.name}_watchExprRegistration`, () => {
@@ -425,8 +449,13 @@ export abstract class ComponentBase<TViewModel> extends HTMLElement {
             invoke: (isConnected: boolean) => {
                 lastResult.value = null;
                 if (isConnected) {
-                    const tresult = createFunc();
-                    lastResult.value = tresult ?? null;
+                    try {
+                        const tresult = createFunc();
+                        lastResult.value = tresult ?? null;
+                    }
+                    catch {
+                        lastResult.value = null;
+                    }
                 }
             }, 
             lastResult: lastResult };
