@@ -54,6 +54,8 @@
 
 .ignored { opacity: 0.4; }
 
+
+
 *::-webkit-scrollbar {
     width: 16px;
 }

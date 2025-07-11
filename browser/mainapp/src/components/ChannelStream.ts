@@ -5,6 +5,7 @@ import { AutohideElementsManager } from "../util/AutohideElementsManager.js";
 import { BBCodeParser, ChatBBCodeParser } from "../util/bbcode/BBCode.js";
 import { CharacterLinkUtils } from "../util/CharacterLinkUtils.js";
 import { getEffectiveCharacterName, getEffectiveCharacterNameDocFragment } from "../util/CharacterNameIcons.js";
+import { ChatMessageUtils } from "../util/ChatMessageUtils.js";
 import { KeyValuePair } from "../util/collections/KeyValuePair.js";
 import { ReadOnlyStdObservableCollection } from "../util/collections/ReadOnlyStdObservableCollection.js";
 import { NumberComparer } from "../util/Comparer.js";

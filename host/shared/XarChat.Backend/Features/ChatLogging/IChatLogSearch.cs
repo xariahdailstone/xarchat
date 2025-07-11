@@ -73,6 +73,8 @@
 
     public class SearchPrivateMessagesWithCriterion : SearchStreamSpecCriterion
     {
+        public string MyCharacterName { get; set; }
+
         public string InterlocutorCharacterName { get; set; }
     }
 

@@ -44,6 +44,13 @@ export class StringUtils {
         return result;
     }
 
+    static leftPad(str: string, padChar: string, padLength: number) {
+        while (str.length < padLength) {
+            str = padChar + str;
+        }
+        return str;
+    }
+
     static numberToString(num: number, formatting: Intl.NumberFormatOptions) {
         const key = JSON.stringify(formatting);
         let v = intlNFCache.get(key);
