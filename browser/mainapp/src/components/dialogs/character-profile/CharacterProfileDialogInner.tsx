@@ -163,7 +163,8 @@ export class CharacterProfileDialogInner extends RenderingComponentBase<Characte
                         on={{ "click": () => { vm.profileDetails!.openInFList(); } }}>
                         <x-iconimage src="assets/ui/openexternal-icon.svg"></x-iconimage>
                     </button>
-                    <button classList="profile-button profile-button-openpm" data-tooltip="Open Private Message Tab" id="elBtnOpenPM">
+                    <button classList="profile-button profile-button-openpm" data-tooltip="Open Private Message Tab" id="elBtnOpenPM"
+                        on={{ "click": () => { vm.profileDetails!.openPrivateMessageTab(); }}}>
                         <x-iconimage src="assets/ui/openpm-icon.svg"></x-iconimage>
                     </button>
                     <button classList="profile-button profile-button-memo" data-tooltip="Add/Edit Memo" id="elBtnEditMemo"
