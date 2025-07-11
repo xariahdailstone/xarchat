@@ -1,5 +1,5 @@
 import { jsx, Fragment, VNode } from "../../snabbdom/index";
-import { VNodeTextInputBinding } from "../../util/bindings/VNodeBinding";
+import { VNodeDateTimeInputBinding, VNodeTextInputBinding } from "../../util/bindings/VNodeBinding";
 import { asDisposable, IDisposable, isDisposable, maybeDispose } from "../../util/Disposable";
 import { HTMLUtils } from "../../util/HTMLUtils";
 import { observableProperty } from "../../util/ObservableBase";
@@ -46,8 +46,12 @@ export class LogSearch2 extends RenderingComponentBase<LogSearch2ViewModel> {
             { this.renderTextSpecCriteria(vm, addDisposable) }
             { this.renderTimeSpecCriteria(vm, addDisposable) }
             <div classList={[ "search-criteria-buttons-container" ]}>
-                <button classList={[ "search-criteria-buttons-search" ]} props={{ "disabled": !criteria.isValid }}>Search</button>
-                <button classList={[ "search-criteria-buttons-reset" ]}>Reset</button>
+                <button classList={[ "search-criteria-buttons-search" ]} props={{ "disabled": !criteria.isValid }} on={{
+                    "click": (e) => { vm.performSearch(); }
+                }}>Search</button>
+                <button classList={[ "search-criteria-buttons-reset" ]} on={{
+                    "click": (e) => { vm.resetCriteria(); }
+                }}>Reset</button>
             </div>
         </div>;
 
@@ -140,17 +144,25 @@ export class LogSearch2 extends RenderingComponentBase<LogSearch2ViewModel> {
 
         return <div classList={[ "search-criteria-textspec-row" ]}>
             <div classList={[ "search-criteria-label", "search-criteria-textspec-label" ]}>Containing:</div>
-            <input classList={[ "search-criteria-field", "search-criteria-textspec-field" ]} attr-type="text" />
+            {cinput}
         </div>;
     }
 
     private renderTimeSpecCriteria(vm: LogSearch2ViewModel, addDisposable: (d: IDisposable) => void): VNode {
         const criteria = vm.searchCriteria;
 
+        const afterInput = <input classList={[ "search-criteria-field", "search-criteria-timespec-field-after"]} attr-type="datetime-local" />;
+        VNodeDateTimeInputBinding.bind(afterInput, criteria.searchAfter ?? null, (v) => criteria.searchAfter = v);
+
+        const beforeInput = <input classList={[ "search-criteria-field", "search-criteria-timespec-field-before"]} attr-type="datetime-local" />;
+        VNodeDateTimeInputBinding.bind(beforeInput, criteria.searchBefore ?? null, (v) => criteria.searchBefore = v);
+
         return <div classList={[ "search-criteria-timespec-row" ]}>
             <div classList={[ "search-criteria-label", "search-criteria-timespec-label" ]}>Timestamp:</div>
-            <input classList={[ "search-criteria-field", "search-criteria-timespec-field-after"]} attr-type="datetime-local" />
-            <input classList={[ "search-criteria-field", "search-criteria-timespec-field-before"]} attr-type="datetime-local" />
+            <div classList={[ "search-criteria-field", "search-criteria-timespec-field" ]}>
+                {afterInput}
+                {beforeInput}
+            </div>
         </div>;
     }
 }

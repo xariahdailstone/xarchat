@@ -21,6 +21,17 @@ export class LogSearch2ViewModel extends ObservableBase {
         this.assignResultSet(new LogSearch2DynamicResultSet(this, 3000));
     }
 
+    performSearch() {
+    }
+
+    resetCriteria() {
+        this.searchCriteria.speakingCharacter.value = "";
+        this.searchCriteria.streamSpec = null;
+        this.searchCriteria.searchText = "";
+        this.searchCriteria.searchAfter = null;
+        this.searchCriteria.searchBefore = null;
+    }
+
     private assignResultSet(rs: LogSearch2DynamicResultSet | null) {
         if (rs) {
             this.currentResultSet = rs;
@@ -104,7 +115,7 @@ class LogSearch2DynamicResultSet {
         }
 
         // TODO: for testing
-        await TaskUtils.delay(500, cancellationToken);
+        //await TaskUtils.delay(500, cancellationToken);
 
         this._cachedItems = buildingResults;
         return { items: IterableUtils.asQueryable(buildingResults).orderBy(i => i[0]).select(i => i[1]).toArray(), startIdx: index };

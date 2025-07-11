@@ -13,15 +13,15 @@ export class SampleItem extends ComponentBase<LogSearch2ResultItemViewModel> {
     constructor() {
         super();
 
-        this.watchExpr(vm => vm, vm => {
-            if (vm) {
-                this.elMain.innerHTML = ``;
-                (this.elMain as any).__vm = vm;
-            }
-            else {
-                this.elMain.innerHTML = "";
-            }
-        });
+        // this.watchExpr(vm => vm, vm => {
+        //     if (vm) {
+        //         //this.elMain.innerHTML = ``;
+        //         (this.elMain as any).__vm = vm;
+        //     }
+        //     else {
+        //         this.elMain.innerHTML = "";
+        //     }
+        // });
 
         const elTimestamp = this.$("elTimestamp") as HTMLDivElement;
         const elTypeIcon = this.$("elTypeIcon") as HTMLDivElement;
@@ -30,6 +30,7 @@ export class SampleItem extends ComponentBase<LogSearch2ResultItemViewModel> {
         const elMessageType = this.$("elMessageType") as HTMLDivElement;
 
         this.whenConnectedWithViewModel(vm => {
+            (this.elMain as any).__vm = vm;
             let parseResult: BBCodeParseResult | null = null;
             let refCount: number = 0;
             const rcmResult = ChatMessageUtils.renderChatMessageInto({
@@ -69,6 +70,7 @@ export class SampleItem extends ComponentBase<LogSearch2ResultItemViewModel> {
             return asDisposable(() => {
                 el.remove();
                 resultDisposable.dispose();
+                delete (this.elMain as any).__vm;
             })
         });
     }
