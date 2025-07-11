@@ -762,7 +762,7 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     configBlockKey: "chat.textbox.statusBarShown"
                 },
                 {
-                    scope: getScopeArray(["global"]),
+                    scope: getScopeArray(["global", "char", "chan"]),
                     sectionTitle: "Unseen Messages",
                     description: "",
                     items: [
