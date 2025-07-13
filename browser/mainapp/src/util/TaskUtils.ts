@@ -11,6 +11,21 @@ export class TaskUtils {
         await ps.promise;
     }
 
+    static waitWithCancel<T>(promise: Promise<T>, cancellationToken: CancellationToken): Promise<T> {
+        const ps = new PromiseSource<T>();
+        (async () => {
+            try {
+                using cancelReg = cancellationToken.register(() => ps.trySetCancelled(cancellationToken));
+                const res = await promise;
+                ps.tryResolve(res);
+            }
+            catch (e) {
+                ps.tryReject(e);
+            }
+        })();
+        return ps.promise;
+    }
+
     static delay(ms: number, cancellationToken?: CancellationToken) {
         if (ms == -1) { 
             return TaskUtils.waitForCancel(cancellationToken ?? CancellationToken.NONE); 

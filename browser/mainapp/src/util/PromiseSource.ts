@@ -49,7 +49,7 @@ export class PromiseSource<T> {
         }
     }
 
-    tryReject(reason?: any) {
+    tryReject(reason?: any): boolean {
         if (!this._complete) {
             this._complete = true;
             this._reject(reason);
@@ -60,8 +60,8 @@ export class PromiseSource<T> {
         }
     }
 
-    trySetCancelled(cancellationToken?: CancellationToken) {
-        this.tryReject(new OperationCancelledError(undefined, cancellationToken));
+    trySetCancelled(cancellationToken?: CancellationToken): boolean {
+        return this.tryReject(new OperationCancelledError(undefined, cancellationToken));
     }
 }
 
