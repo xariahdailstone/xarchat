@@ -63,6 +63,7 @@ export const BBCodeTagEIcon = new BBCodeTag("eicon", true, false,
             class: "bbcode-eicon",
             title: arg ? `${contentText}\n@${arg}` : contentText,
             src: emptyImageUrl,
+            "data-eicon": contentText,
             "data-copycontent": `${content.rawOpenTag}${contentText}${content.rawCloseTag}`
         });
         el.classList.add("bbcode-eicon-loading");
