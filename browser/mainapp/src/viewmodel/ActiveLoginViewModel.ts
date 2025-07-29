@@ -45,6 +45,7 @@ import { InAppToastManagerViewModel } from "./InAppToastManagerViewModel.js";
 import { PartnerSearchViewModel } from "./PartnerSearchViewModel.js";
 import { AutoAdManager } from "../util/AutoAdManager.js";
 import { NicknameSet } from "../shared/NicknameSet.js";
+import { EIconFavoriteBlockViewModel } from "./EIconFavoriteBlockViewModel.js";
 
 declare const XCHost: any;
 
@@ -164,6 +165,7 @@ export class ActiveLoginViewModel extends ObservableBase implements IDisposable 
         });
 
         this.bbcodeSink = new ActiveLoginViewModelBBCodeSink(this, this._logger);
+        this.eIconFavoriteBlockViewModel = new EIconFavoriteBlockViewModel(this);
 
         this.getMyFriendsListInfo(CancellationToken.NONE);
     }
@@ -190,6 +192,8 @@ export class ActiveLoginViewModel extends ObservableBase implements IDisposable 
     private readonly _logger: Logger;
 
     private readonly _logSearchViewModel: LogSearchViewModel;
+
+    eIconFavoriteBlockViewModel: EIconFavoriteBlockViewModel;
 
     get appViewModel() { return this.parent; }
 
