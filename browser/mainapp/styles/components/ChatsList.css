@@ -229,6 +229,12 @@
     }
 }
 
+.sectionitems-item {
+    contain: paint layout size;
+    width: 100%;
+    height: 40px;
+}
+
 .sectionitems-item-unseen-container {
     grid-area: unseen;
     display: none;

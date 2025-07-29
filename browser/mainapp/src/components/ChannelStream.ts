@@ -1,6 +1,7 @@
 import { CharacterGenderConvert } from "../shared/CharacterGender.js";
 import { CharacterName } from "../shared/CharacterName.js";
 import { OnlineStatusConvert } from "../shared/OnlineStatus.js";
+import { AutohideElementsManager } from "../util/AutohideElementsManager.js";
 import { BBCodeParser, ChatBBCodeParser } from "../util/bbcode/BBCode.js";
 import { CharacterLinkUtils } from "../util/CharacterLinkUtils.js";
 import { getEffectiveCharacterName, getEffectiveCharacterNameDocFragment } from "../util/CharacterNameIcons.js";
@@ -205,6 +206,21 @@ export class ChannelStream extends ComponentBase<ChannelViewModel> {
                 resizeObserver?.disconnect();
         
                 this.suppressScrollRecording(ScrollSuppressionReason.NotConnectedToDocument);
+            });
+        });
+
+        this.whenConnectedWithViewModel(vm => {
+            const isMessage = (el: HTMLElement) => el.classList.contains("collapse-host");
+            const hem = new AutohideElementsManager({
+                name: "ChannelStream",
+                rootEl: this.$("elMessageContainer") as HTMLElement,
+                includePredicate: isMessage,
+                watchAttributes: ["data-messageid"],
+                intersectionMargin: "100% 0px 100% 0px",
+                handleActiveSelection: true
+            });
+            return asDisposable(() => {
+                hem.dispose();
             });
         });
     }

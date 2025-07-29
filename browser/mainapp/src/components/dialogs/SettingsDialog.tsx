@@ -3,7 +3,7 @@ import { SettingsDialogSectionViewModel, SettingsDialogItemViewModel, SettingsDi
 import { componentArea, componentElement } from "../ComponentBase";
 import { makeRenderingComponent, RenderingComponentBase } from "../RenderingComponentBase";
 import { DialogBorderType, DialogComponentBase, dialogViewFor } from "./DialogFrame";
-import { Fragment, init, jsx, VNode, styleModule, toVNode, propsModule, eventListenersModule, h, Hooks, Attrs, On } from "../../snabbdom/index.js";
+import { Fragment, init, jsx, VNode, styleModule, toVNode, propsModule, eventListenersModule, h, Hooks, Attrs, On, VNodeStyle } from "../../snabbdom/index.js";
 import { IterableUtils } from "../../util/IterableUtils";
 import { HTMLUtils } from "../../util/HTMLUtils";
 import { ConfigSchemaItemDefinitionItem, EnableIfOptions, PingLineItemDefinition, PingLineItemMatchStyle, PingLineItemMatchStyleConvert } from "../../configuration/ConfigSchemaItem";
@@ -15,6 +15,7 @@ import { ColorRGBSelectPopupViewModel } from "../../viewmodel/popups/ColorRGBSel
 import { ThemeToggle } from "../ThemeToggle";
 import { Collection } from "../../util/ObservableCollection";
 import { ChannelName } from "../../shared/ChannelName";
+import { StringUtils } from "../../util/StringUtils";
 
 @componentArea("dialogs")
 @componentElement("x-settingsdialog")
@@ -113,6 +114,9 @@ export class SettingsDialog extends DialogComponentBase<SettingsDialogViewModel>
                     break;
                 case "integer":
                     inner = this.renderSettingInteger(setting);
+                    break;
+                case "number":
+                    inner = this.renderSettingNumber(setting);
                     break;
                 case "color":
                     inner = this.renderSettingColor(setting);
@@ -264,6 +268,38 @@ export class SettingsDialog extends DialogComponentBase<SettingsDialogViewModel>
             on={{ "change": onChange }}></x-themetoggle>
     }
 
+    private setupValidatingInput(
+        elNode: VNode,
+        validateFunc: (value: string) => { valid: boolean, validationMessage?: string, result?: any },
+        assignFunc: (value: any) => void) {
+
+        const processValue = (e: Event, report: boolean) => {
+            const el = (e.target as HTMLInputElement);
+            const enteredValue = el.value;
+            const valResult = validateFunc(enteredValue);
+            if (valResult.valid) {
+                if (report) {
+                    assignFunc(valResult.result);
+                }
+                el.title = "";
+                el.classList.remove("invalid-value");
+            }
+            else {
+                if (report) {
+                    el.title = valResult.validationMessage ?? "Invalid value.";
+                    el.classList.add("invalid-value");
+                }
+            }
+        };
+        const evts: On = {
+            "input": (e: Event) => processValue(e, false),
+            "blur": (e: Event) => processValue(e, true)
+        }
+
+        elNode.data = elNode.data ?? {};
+        elNode.data.on = { ...(elNode.data?.on ?? {}), ...evts };
+    }
+
     private renderSettingInteger(setting: SettingsDialogItemViewModel): VNode {
         let min: number | undefined = setting.schema.min;
         let max: number | undefined = setting.schema.max;
@@ -272,27 +308,75 @@ export class SettingsDialog extends DialogComponentBase<SettingsDialogViewModel>
             "step": "1"
         };
         if (min != null) { attrs.min = min.toString(); }
-        if (min != null) { attrs.max = min.toString(); }
+        if (max != null) { attrs.max = max.toString(); }
 
-        const vChange = (e: Event) => {
-            const x = (e.target as HTMLInputElement).value.trim();
+        const validateTextboxValue = (x: string) => {
             if (x == "") {
-                if (!(setting.schema.allowEmpty ?? false)) { return; }
+                if (!(setting.schema.allowEmpty ?? false)) { return "A value is required."; }
                 setting.value = null;
             }
 
-            const xnum = parseInt(x);
-            if (xnum == null) { return; }
-            if (min != null && xnum < min) { return; }
-            if (max != null && xnum > max) { return; }
+            const xnum = !StringUtils.isNullOrWhiteSpace(x) ? +x : null;
+            if (xnum == null) { return "Invalid value."; }
+            if (min != null && xnum < min) { return `Value must be between ${min} and ${max}.`; }
+            if (max != null && xnum > max) { return `Value must be between ${min} and ${max}.`; }
             setting.value = xnum;
+            return null;
         };
+        const vChange = (e: Event) => {
+            const tgt = (e.target as HTMLInputElement);
+            const x = tgt.value.trim();
+            const err = validateTextboxValue(x);
+            if (err) {
+                tgt.setCustomValidity(err);
+            }
+            else {
+                tgt.setCustomValidity("");
+            }
+            tgt.reportValidity();
+        };
+
         const evts: On = {
             "change": vChange,
             "input": vChange
         };
 
-        return <input classList={["setting-entry", "setting-entry-integer"]} attrs={attrs} on={evts} props={{ "value": setting.value?.toString() ?? "" }}></input>
+        return <input classList={["setting-entry", "setting-entry-integer", "themed"]} attrs={attrs} on={evts} props={{ "value": setting.value?.toString() ?? "" }}></input>
+    }
+
+    private renderSettingNumber(setting: SettingsDialogItemViewModel): VNode {
+        let min: number | undefined = setting.schema.min;
+        let max: number | undefined = setting.schema.max;
+        const attrs: Attrs = {
+            "type": "text"
+        };
+        const styles: VNodeStyle = {
+        };
+        if (setting.schema.fieldWidth) {
+            styles["width"] = setting.schema.fieldWidth;
+        }
+
+        const resNode = <input classList={["setting-entry", "setting-entry-integer", "themed"]} 
+                attrs={attrs} 
+                props={{ "value": setting.value?.toString() ?? "" }} style={styles}></input>
+        this.setupValidatingInput(resNode,
+            (x: string) => {
+                if (x == "") {
+                    if (!(setting.schema.allowEmpty ?? false)) { return { valid: false, validationMessage: "A value is required." }; }
+                }
+
+                const xnum = !StringUtils.isNullOrWhiteSpace(x) ? +x : null;
+                if (xnum == null || isNaN(xnum) || !isFinite(xnum)) { return { valid: false, validationMessage: "Invalid value." }; }
+                if (min != null && xnum < min) { return { valid: false, validationMessage: `Value too small. Must be between ${min} and ${max}.`}; }
+                if (max != null && xnum > max) { return { valid: false, validationMessage: `Value too large. Must be between ${min} and ${max}.`}; }
+                return { valid: true, result: xnum };
+            },
+            (v) => {
+                setting.value = v;
+            }
+        );
+
+        return resNode;
     }
 
     private renderSettingColor(setting: SettingsDialogItemViewModel): VNode {

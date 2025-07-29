@@ -148,7 +148,7 @@ export class Observable {
 
     static createDependencySetOver<T>(
         onExpire: () => any,
-        func: () => T): { dependencySet: DependencySet, result: T | undefined, error: any | undefined } {
+        func: () => T): CreateDependencySetOverResult<T> {
 
         const depSet = new DependencySetImpl();
         depSet.addChangeListener(onExpire);
@@ -166,6 +166,8 @@ export class Observable {
         return { dependencySet: depSet, result: result, error: error };
     }
 }
+
+export type CreateDependencySetOverResult<T> = { dependencySet: DependencySet, result: T | undefined, error: any | undefined };
 
 export type NamedObservableName = string; // | CompoundObservableName;
 

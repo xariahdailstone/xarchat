@@ -76,6 +76,7 @@ export class CharacterStatusEditDialog extends DialogComponentBase<CharacterStat
         elTextarea.addEventListener("change", () => { textareaUpdate(); });
         BBCodeUtils.addEditingShortcuts(elTextarea, {
             appViewModelGetter: () => this.viewModel?.activeLoginViewModel.appViewModel ?? null,
+            activeLoginViewModelGetter: () => this.viewModel?.activeLoginViewModel ?? null,
             onTextChanged: (v) => { textareaUpdate(); },
             onKeyDownHandler: (ev, handleShortcuts) => {
                 if (ev.keyCode == 13 && ev.shiftKey) {

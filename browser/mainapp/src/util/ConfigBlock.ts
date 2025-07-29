@@ -45,7 +45,10 @@ export class HostInteropConfigBlock implements ConfigBlock {
     private _values: SnapshottableMap<string, unknown | null> = new SnapshottableMap();
 
     get(key: string): unknown | null {
-        const v = this._values.get(key) ?? null;
+        let v = this._values.get(key) ?? null;
+        if (v instanceof Array) {
+            v = [ ...v ];
+        }
         Observable.publishNamedRead(`hicb:${key}`, v);
         return v;
     }

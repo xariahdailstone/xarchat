@@ -231,6 +231,11 @@ namespace XarChatWin32WebView2.UI
 								}
 							}
 							break;
+						case "opentaskmanager":
+							{
+								this.OpenTaskManager();
+								return new JsonObject();
+							}
 					}
 				}
 				return new JsonObject();
@@ -285,7 +290,13 @@ namespace XarChatWin32WebView2.UI
 			_webView?.Navigate(url);
 		}
 
-		public event EventHandler? CoreWebView2Created;
+		private void OpenTaskManager()
+		{
+			_webView?.OpenTaskManagerWindow();
+		}
+
+
+        public event EventHandler? CoreWebView2Created;
 
 		public CoreWebView2? CoreWebView2 => _webView;
 
@@ -293,7 +304,7 @@ namespace XarChatWin32WebView2.UI
 (function () {
 	const SVCURL = '@@SVCURL@@';
 	const WINDOWID = @@WINDOWID@@;
-	const CMDURL = `${SVCURL}/windowcommand/${WINDOWID}`;
+	const CMDURL = `${SVCURL}/api/windowcommand/${WINDOWID}`;
 
 	class XCHost {
 		rawNavigate(url) {
@@ -301,6 +312,16 @@ namespace XarChatWin32WebView2.UI
 				method: 'POST',
 				body: JSON.stringify({
 					cmd: 'rawNavigate',
+					url: url
+				})
+			});
+		}
+
+		openTaskManager(url) {
+			fetch(CMDURL, {
+				method: 'POST',
+				body: JSON.stringify({
+					cmd: 'openTaskManager',
 					url: url
 				})
 			});

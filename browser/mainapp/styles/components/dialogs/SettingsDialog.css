@@ -151,7 +151,7 @@
 .setting-item {
     display: grid;
     grid-template-columns: 1fr auto;
-    grid-template-rows: 50% auto auto;
+    grid-template-rows: auto auto auto;
     grid-template-areas:
         "title input"
         "description input"
@@ -165,6 +165,7 @@
     align-self: center;
     justify-self: center;
     margin-right: 10px;
+    margin-left: 10px;
 }
 
 .setting-using-inherited { opacity: 0.7;}
@@ -333,4 +334,11 @@
     .setting-entry-text {
         margin-top: 7px;
     }
+}
+
+.setting-entry-integer,
+.setting-entry-number {
+    background: var(--bg-main-textbox-btn);
+    color: var(--fg-main-textbox-btn);
+    font: inherit;
 }

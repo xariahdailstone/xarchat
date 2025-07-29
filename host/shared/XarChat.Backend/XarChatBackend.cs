@@ -72,6 +72,7 @@ using XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.EIconSearch;
 using XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.ZoomLevel;
 using XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.GetMemo;
 using XarChat.Backend.Features.StyleUpdateWatcher;
+using XarChat.Backend.Features.EIconFavoriteManager;
 
 namespace XarChat.Backend
 {
@@ -319,6 +320,9 @@ namespace XarChat.Backend
             }
 
             services.AddHostedService<StyleUpdateWatcher>();
+
+            services.AddSingleton<IEIconFavoriteBlockManager, 
+                XarChat.Backend.Features.EIconFavoriteBlockManager.Impl.EIconFavoriteBlockManager>();
         }
 
         private void SetupXCHostCommandHandlers(IServiceCollection services)

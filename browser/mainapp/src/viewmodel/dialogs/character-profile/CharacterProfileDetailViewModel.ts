@@ -138,8 +138,10 @@ export class CharacterProfileDetailViewModel extends ObservableBase {
         this.parent.close(0);
     }
 
-    @observableProperty
-    openPrivateMessageTab: (() => void) | null = null;
+    openPrivateMessageTab() {
+        const pmConvo = this.activeLoginViewModel.activatePMConvo(this.character);
+        this.parent.close(0);
+    }
 
     // @observableProperty
     // addEditMemo: (() => void) | null = null;

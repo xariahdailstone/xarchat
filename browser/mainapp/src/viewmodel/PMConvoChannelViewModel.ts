@@ -149,7 +149,7 @@ export class PMConvoChannelViewModel extends ChannelViewModel {
         // }
     }
 
-    @observableProperty
+    //@observableProperty
     readonly character: CharacterName;
 
     get collectiveName(): string { return `pm:${this.character.value}`; }
@@ -277,6 +277,7 @@ export class PMConvoChannelViewModel extends ChannelViewModel {
                     await this.parent.chatConnection.privateMessageSendAsync(this.character, msgContent);
                 },
                 onSuccessAsync: async () => {
+                    this.parent.trackUsedEIconsInMessage(msgContent);
                     this.addChatMessage({
                         isAd: false,
                         message: msgContent,

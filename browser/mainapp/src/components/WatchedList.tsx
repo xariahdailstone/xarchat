@@ -3,6 +3,7 @@ import { CharacterName } from "../shared/CharacterName";
 import { CharacterStatus } from "../shared/CharacterSet";
 import { OnlineStatusConvert } from "../shared/OnlineStatus";
 import { jsx, Fragment, VNode } from "../snabbdom/index";
+import { AutohideElementsManager } from "../util/AutohideElementsManager";
 import { IDisposable, asDisposable } from "../util/Disposable";
 import { EL } from "../util/EL";
 import { MouseButton } from "../util/EventListenerUtil";
@@ -25,6 +26,23 @@ import { StatusDot, StatusDotLightweight } from "./StatusDot";
 
 @componentElement("x-watchedlist")
 export class WatchedList extends RenderingComponentBase<ActiveLoginViewModel> {
+    constructor() {
+        super();
+
+        this.whenConnectedWithViewModel(vm => {
+            const hem = new AutohideElementsManager({
+                name: "WatchedList",
+                rootEl: this.elMain,
+                includePredicate: (el) => el.classList.contains("watchedchar"),
+                watchAttributes: ["class"],
+                intersectionMargin: "100% 0px 100% 0px"
+            });
+            return asDisposable(() => {
+                hem.dispose();
+            });
+        });
+    }
+    
     render(): (VNode | [VNode, IDisposable]) {
         const vm = this.viewModel;
         if (vm) {
