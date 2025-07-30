@@ -85,6 +85,17 @@ jobs:
       run: |
         dotnet msbuild "${{ github.workspace }}\XarChat-macphotino.sln" /nologo /nr:false /T:"Restore;host\XarChatMacPhotino:Publish" /p:IsPublishing=true /p:AzureBuildNumber="${{ steps.generate_buildid.outputs.buildid }}" /p:Platform="Any CPU" /p:Configuration="Release" /p:VisualStudioVersion="17.0" 
           
+    - id: create_appdir
+      name: "Create app dir"
+      shell: bash
+      working-directory: ${{ github.workspace }}
+      run: |
+        mkdir broot
+        mkdir broot/XarChatMacPhotino.app
+        cp -r host/mac/AppRoot/. broot/XarChatMacPhotino.app/.
+        cp host/linux-photino/XarChatLinuxPhotino/bin/Release/net9.0/osx-arm64/publish/XarChatMacPhotino broot/XarChatMacPhotino.app/Contents/MacOS/XarChatMacPhotino
+        chmod +x broot/XarChatMacPhotino.app/Contents/MacOS/XarChatMacPhotino
+          
     - id: publish_artifact
       name: "Publish Artifact"
       # if: steps.extract_branch.outputs.publishartifact == 'true'
