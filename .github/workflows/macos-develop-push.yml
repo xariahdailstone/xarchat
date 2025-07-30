@@ -71,12 +71,12 @@ jobs:
         echo "node_modules/typescript/bin/tsc --project tsconfig.json"
         node_modules/typescript/bin/tsc --project tsconfig.json
 
-    - id: restore_deps
-      name: "Restore NuGet Packages"
-      shell: cmd
-      working-directory: ${{ github.workspace }}
-      run: |
-        dotnet restore "${{ github.workspace }}\XarChat-macphotino.sln"
+    # - id: restore_deps
+    #   name: "Restore NuGet Packages"
+    #   shell: cmd
+    #   working-directory: ${{ github.workspace }}
+    #   run: |
+    #     dotnet restore "${{ github.workspace }}\XarChat-macphotino.sln"
         
     - id: csharp_build
       name: "C# Build"
