@@ -83,7 +83,7 @@ jobs:
       shell: bash
       working-directory: ${{ github.workspace }}
       run: |
-        msbuild "${{ github.workspace }}\XarChat-macphotino.sln" /nologo /nr:false /T:"Restore;XarChatLinuxPhotino:Publish" /p:IsPublishing=true /p:AzureBuildNumber="${{ steps.generate_buildid.outputs.buildid }}" /p:Platform="Any CPU" /p:Configuration="Release" /p:VisualStudioVersion="17.0" 
+        msbuild "${{ github.workspace }}\XarChat-macphotino.sln" /nologo /nr:false /T:"Restore;host\XarChatMacPhotino:Publish" /p:IsPublishing=true /p:AzureBuildNumber="${{ steps.generate_buildid.outputs.buildid }}" /p:Platform="Any CPU" /p:Configuration="Release" /p:VisualStudioVersion="17.0" 
           
     - id: publish_artifact
       name: "Publish Artifact"
