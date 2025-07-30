@@ -521,12 +521,20 @@ class XarHost2Interop implements IXarHost2HostInterop {
 
                 switch (this.clientPlatform) {
                     case "linux-x64":
-                    case "macos-arm64":
                         {
                             elMain.style.top = "0px";
                             elMain.style.width = `${this.neededWidth}px`;
                             elMain.style.height = `${this.neededHeight}px`;
                             elMain.style.setProperty("--main-interface-width", `${this.neededWidth}px`);
+                        }
+                        break;
+                    case "macos-arm64":
+                        {
+                            const pxScaleFactor = window.devicePixelRatio;
+                            elMain.style.top = "0px";
+                            elMain.style.width = `${this.neededWidth / pxScaleFactor}px`;
+                            elMain.style.height = `${this.neededHeight / pxScaleFactor}px`;
+                            elMain.style.setProperty("--main-interface-width", `${this.neededWidth / pxScaleFactor}px`);
                         }
                         break;
                     default:

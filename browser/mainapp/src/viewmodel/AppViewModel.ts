@@ -155,7 +155,7 @@ export class AppViewModel extends ObservableBase {
     @observableProperty
     get showTitlebar(): boolean {
         const sp = new URLSearchParams(document.location.search);
-        if (sp.get("ClientPlatform") == "linux-x64") {
+        if (sp.get("ClientPlatform") == "linux-x64" || sp.get("ClientPlatform") == "macos-arm64") {
             return false;
         }
         return true;
