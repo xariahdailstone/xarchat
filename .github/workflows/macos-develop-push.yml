@@ -1,0 +1,93 @@
+name: "develop push"
+
+on:
+  push:
+    branches: [ "develop", "master" ]
+  workflow_dispatch: {}
+  pull_request:
+    branches: [ "develop" ]
+
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+
+    steps:
+    - id: checkout
+      name: "Checkout Current Repository"
+      uses: actions/checkout@v4
+
+    - id: extract_branch
+      name: "Get Build Branch"
+      shell: bash
+      run: |
+        BRANCHNAME=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}
+        echo "BRANCHNAME=$BRANCHNAME"
+        FILTEREDBRANCHNAME=${BRANCHNAME//\//-}
+        echo "FILTEREDBRANCHNAME=$FILTEREDBRANCHNAME"
+        echo "outputting rawbranch=$BRANCHNAME"
+        echo "outputting branch=$FILTEREDBRANCHNAME"
+        echo "rawbranch=$BRANCHNAME" >> $GITHUB_OUTPUT
+        echo "branch=$FILTEREDBRANCHNAME" >> $GITHUB_OUTPUT
+        if [[ ( $BRANCHNAME == 'master' ) || ( $BRANCHNAME == 'develop' ) ]]; then
+          echo "outputting publishartifact=true"
+          echo "publishartifact=true" >> $GITHUB_OUTPUT
+        else
+          echo "outputting publishartifact=false"
+          echo "publishartifact=false" >> $GITHUB_OUTPUT
+        fi;
+
+    - id: extract_timestamp
+      name: "Generate Build Timestamp"
+      shell: bash
+      run: echo "timestamp=$(date +'%Y.%m%d.%H%M.%S')" >> $GITHUB_OUTPUT
+
+    - id: generate_buildid
+      name: "Generate Build Identifier"
+      shell: bash
+      run: echo "buildid=${{ steps.extract_timestamp.outputs.timestamp }}-${{ steps.extract_branch.outputs.branch }}" >> $GITHUB_OUTPUT
+
+    - id: setup_dotnet
+      name: "Setup .NET 9 SDK"
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 9.0.x
+
+    - id: setup_msbuild
+      name: "Setup MSBuild"
+      uses: microsoft/setup-msbuild@v2
+
+    - id: restore_npm_deps
+      name: "Restore NPM Packages"
+      shell: bash
+      working-directory: browser/mainapp
+      run: |
+        echo "npm install"
+        npm install
+        echo "Check Typescript Version"
+        node_modules/typescript/bin/tsc --version
+
+    - id: typescript_build
+      name: "Typescript Build"
+      shell: bash
+      working-directory: browser/mainapp
+      run: |
+        echo "node_modules/typescript/bin/tsc --project tsconfig.json"
+        node_modules/typescript/bin/tsc --project tsconfig.json
+        
+    - id: restore_deps
+      name: "C# Build"
+      shell: cmd
+      working-directory: ${{ github.workspace }}
+      run: |
+        msbuild.exe "${{ github.workspace }}\XarChat-macphotino.sln" /nologo /nr:false /T:"Restore;linux-photino\XarChatLinuxPhotino\XarChatMacPhotino:Publish" /p:IsPublishing=true /p:AzureBuildNumber="${{ steps.generate_buildid.outputs.buildid }}" /p:Platform="Any CPU" /p:Configuration="Release" /p:VisualStudioVersion="17.0" 
+          
+    - id: publish_artifact
+      name: "Publish Artifact"
+      if: steps.extract_branch.outputs.publishartifact == 'true'
+      uses: actions/upload-artifact@v4
+      with:
+        name: macos-exe
+        path: ${{ github.workspace }}\host\linux-photino\XarChatLinuxPhotino\bin\Release\
+        retention-days: 5
+
