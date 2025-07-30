@@ -21,7 +21,7 @@ windows: clean-x64 build-photino-windows
 
 mac-universal: clean-x64 build-photino-mac-universal
 mac-x64: clean-x64 build-photino-mac-x64
-mac-arm64: clean-x64 build-photino-mac-arm64
+mac-arm64: clean-arm64 build-photino-mac-arm64
 
 linux-x64: clean-x64 install-linux-dependencies build-photino-linux-x64
 linux-arm64: clean-arm64 install-linux-dependencies build-photino-linux-arm64
