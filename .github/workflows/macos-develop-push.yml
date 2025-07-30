@@ -91,6 +91,6 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: macos-exe
-        path: ${{ github.workspace }}\host\linux-photino\XarChatLinuxPhotino\bin\Release\
+        path: ${{ github.workspace }}/host/linux-photino/XarChatLinuxPhotino/bin/Release/net9.0/osx-arm64/publish/
         retention-days: 5
 
