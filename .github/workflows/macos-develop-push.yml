@@ -78,6 +78,14 @@ jobs:
     #   run: |
     #     dotnet restore "${{ github.workspace }}\XarChat-macphotino.sln"
         
+    - id: objc_build
+      name: "ObjC Build"
+      shell: bash
+      working-directory: ${{ github.workspace }}
+      run: |
+        cd host/shared/photino.Native
+        make mac-arm64
+          
     - id: csharp_build
       name: "C# Build"
       shell: bash
@@ -94,6 +102,7 @@ jobs:
         mkdir broot/XarChatMacPhotino.app
         cp -r host/mac/AppRoot/. broot/XarChatMacPhotino.app/.
         cp host/linux-photino/XarChatLinuxPhotino/bin/Release/net9.0/osx-arm64/publish/XarChatMacPhotino broot/XarChatMacPhotino.app/Contents/MacOS/XarChatMacPhotino
+        cp host/shared/photino.Native/lib/arm64/Photino.Native.dylib broot/XarChatMacPhotino.app/Contents/MacOS/Photino.native.dylib
         chmod +x broot/XarChatMacPhotino.app/Contents/MacOS/XarChatMacPhotino
           
     - id: publish_artifact
