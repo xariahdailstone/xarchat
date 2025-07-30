@@ -2,7 +2,7 @@ name: "develop push"
 
 on:
   push:
-    branches: [ "develop", "master" ]
+    branches: [ "develop", "master", "feature/macos-build" ]
   workflow_dispatch: {}
   pull_request:
     branches: [ "develop" ]
