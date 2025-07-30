@@ -48,7 +48,7 @@
   </ItemGroup>
 
   <Target Name="PreBuild" BeforeTargets="PreBuildEvent">
-    <Exec Command="./UpdateAssemblyVersionInfo.sh -AzureBuildNumber $(AzureBuildNumber)&#xD;&#xA;./CreateContentZip.sh -AzureBuildNumber $(AzureBuildNumber)" />
+    <Exec Command="chmod +x ./UpdateAssemblyVersionInfo.sh&#xD;&#xA;./UpdateAssemblyVersionInfo.sh -AzureBuildNumber $(AzureBuildNumber)&#xD;&#xA;chmod +x ./CreateContentZip.sh&#xD;&#xA;./CreateContentZip.sh -AzureBuildNumber $(AzureBuildNumber)" />
   </Target>
 
 </Project>
