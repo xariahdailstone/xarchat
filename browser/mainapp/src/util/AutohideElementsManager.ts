@@ -13,6 +13,22 @@ export interface AutohideElementsManagerOptions {
 
 export class AutohideElementsManager implements IDisposable {
     constructor(
+        options: AutohideElementsManagerOptions) { }
+        
+    isDisposed: boolean = false;
+
+    dispose(): void {
+        if (!this.isDisposed) {
+            this.isDisposed = true;
+        }
+    }
+    [Symbol.dispose](): void {
+        this.dispose();
+    }
+}
+
+export class xAutohideElementsManager implements IDisposable {
+    constructor(
         options: AutohideElementsManagerOptions) {
 
         const name = this.name = options.name;
