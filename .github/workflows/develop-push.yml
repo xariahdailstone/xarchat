@@ -84,7 +84,7 @@ jobs:
           
     - id: publish_artifact
       name: "Publish Artifact"
-      if: steps.extract_branch.outputs.publishartifact == 'true'
+      #if: steps.extract_branch.outputs.publishartifact == 'true'
       uses: actions/upload-artifact@v4
       with:
         name: win32-exe
