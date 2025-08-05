@@ -14,12 +14,9 @@ import { rawAttributesModule } from "../util/snabbdom/rawAttributes";
 import { valueSyncModule } from "../util/snabbdom/valueSyncHook";
 import { URLUtils } from "../util/URLUtils";
 import { ChannelMessageDisplayStyle, ChannelMessageType, ChannelMessageViewModel } from "../viewmodel/ChannelViewModel";
+import { LocaleViewModel } from "../viewmodel/LocaleViewModel";
 import { RenderingComponentBase } from "./RenderingComponentBase";
 import { StatusDotVNodeBuilder } from "./StatusDot";
-
-const dtf = new Intl.DateTimeFormat(undefined, { timeStyle: "short" });
-const dtfDate = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'numeric', year: 'numeric' });
-const dtfWithDate = new Intl.DateTimeFormat(undefined, { dateStyle: "short", timeStyle: "short" });
 
 function areSameDate(a: Date, b: Date) {
     const aDate = a.getFullYear().toString() + '-' + a.getMonth().toString() + '-' + a.getDate().toString();
@@ -264,6 +261,8 @@ class ChannelStreamMessageViewRendererFChat implements MessageRenderer {
         const resultDisposables: IDisposable[] = [];
         //let resultDisposable: IDisposable = EmptyDisposable;
 
+        const locale = vm.appViewModel.locale;
+
         const mainClasses: string[] = [];
 
         const displayStyle = vm.channelViewModel?.messageDisplayStyle ?? ChannelMessageDisplayStyle.FCHAT;
@@ -291,12 +290,16 @@ class ChannelStreamMessageViewRendererFChat implements MessageRenderer {
         }
 
         let tsText: string;
-        let copyText: string = "[" + ( areSameDate(new Date(), vm.timestamp) ? dtf.format(vm.timestamp) : dtfWithDate.format(vm.timestamp) ) + "]";
+        let copyText: string = "[" + ( areSameDate(new Date(), vm.timestamp)
+            ? locale.getShortTimeString(vm.timestamp) /* dtf.format(vm.timestamp) */
+            : locale.getNumericDateWithShortTimeString(vm.timestamp) /* dtfWithDate.format(vm.timestamp) */ ) + "]";
         if (displayStyle == ChannelMessageDisplayStyle.DISCORD) {
             tsText = 
-                areSameDate(new Date(), vm.timestamp) ? ("Today at " + dtf.format(vm.timestamp))
-                : areSameDate(DateUtils.addMilliseconds(new Date(), TimeSpanUtils.fromDays(-1)), vm.timestamp) ? ("Yesterday at " + dtf.format(vm.timestamp)) 
-                : (dtfDate.format(vm.timestamp) + " at " + dtf.format(vm.timestamp));
+                areSameDate(new Date(), vm.timestamp) ? ("Today at " + locale.getShortTimeString(vm.timestamp) /* dtf.format(vm.timestamp) */)
+                : areSameDate(DateUtils.addMilliseconds(new Date(), TimeSpanUtils.fromDays(-1)), vm.timestamp) ? ("Yesterday at " +
+                    locale.getShortTimeString(vm.timestamp) /* dtf.format(vm.timestamp) */ ) 
+                : (locale.getNumericDateString(vm.timestamp) /* dtfDate.format(vm.timestamp) */ + 
+                    " at " + locale.getShortTimeString(vm.timestamp) /* dtf.format(vm.timestamp) */);
         }
         else {
             tsText = copyText;
@@ -575,11 +578,13 @@ class ChannelStreamMessageViewRendererDiscord implements MessageRenderer {
         return res;
     }
 
-    private getTimestampDisplay(dt: Date) {
+    private getTimestampDisplay(locale: LocaleViewModel, dt: Date) {
         const tsText = 
-            areSameDate(new Date(), dt) ? ("Today at " + dtf.format(dt))
-            : areSameDate(DateUtils.addMilliseconds(new Date(), TimeSpanUtils.fromDays(-1)), dt) ? ("Yesterday at " + dtf.format(dt)) 
-            : (dtfDate.format(dt) + " at " + dtf.format(dt));
+            areSameDate(new Date(), dt) ? ("Today at " + locale.getShortTimeString(dt) /* dtf.format(dt) */)
+            : areSameDate(DateUtils.addMilliseconds(new Date(), TimeSpanUtils.fromDays(-1)), dt) ? ("Yesterday at " +
+                locale.getShortTimeString(dt) /* dtf.format(dt) */) 
+            : (locale.getNumericDateString(dt) /* dtfDate.format(dt) */ + " at " + 
+                locale.getShortTimeString(dt) /* dtf.format(dt) */);
         return tsText;
     }
 
@@ -587,6 +592,8 @@ class ChannelStreamMessageViewRendererDiscord implements MessageRenderer {
         const resultDisposables: IDisposable[] = [];
 
         const uniqueMessageId = vm.uniqueMessageId.toString();
+
+        const locale = vm.appViewModel.locale;
 
         let isImportant = vm.type == ChannelMessageType.SYSTEM_IMPORTANT;
         if (vm.type == ChannelMessageType.CHAT && vm.text.startsWith("/warn ")) {
@@ -617,8 +624,10 @@ class ChannelStreamMessageViewRendererDiscord implements MessageRenderer {
                     "data-copycontent": ""
                 }} />;
 
-            let copyText: string = "[" + ( areSameDate(new Date(), vm.timestamp) ? dtf.format(vm.timestamp) : dtfWithDate.format(vm.timestamp) ) + "]";
-            const tsText = this.getTimestampDisplay(vm.timestamp);
+            let copyText: string = "[" + ( areSameDate(new Date(), vm.timestamp) 
+                ? locale.getShortTimeString(vm.timestamp) /* dtf.format(vm.timestamp) */
+                : locale.getNumericDateWithShortTimeString(vm.timestamp) /* dtfWithDate.format(vm.timestamp) */ ) + "]";
+            const tsText = this.getTimestampDisplay(locale, vm.timestamp);
             const elTimestamp = <span key={`msg-${uniqueMessageId}-timestamp`} classList={["timestamp"]} attrs={{
                     "data-copycontent": ""
                 }}>{tsText}</span>
@@ -762,6 +771,8 @@ class ChannelStreamMessageViewRendererDiscord implements MessageRenderer {
     private renderStandardUserElementBody(vm: ChannelMessageViewModel, resultDisposables: IDisposable[], previousRMC: PreviousRenderedMessageContainer | null): VNode {
         const mainClasses: string[] = [];
 
+        const locale = vm.appViewModel.locale;
+
         let isSystemMessage = vm.type == ChannelMessageType.SYSTEM || vm.type == ChannelMessageType.SYSTEM_IMPORTANT;
 
         let emoteStyle: ("none" | "normal" | "possessive") = "none";
@@ -890,7 +901,9 @@ class ChannelStreamMessageViewRendererDiscord implements MessageRenderer {
 
         const copyPrefix: string[] = [];
 
-        const timestampCopyText: string = "[" + ( areSameDate(new Date(), vm.timestamp) ? dtf.format(vm.timestamp) : dtfWithDate.format(vm.timestamp) ) + "]";
+        const timestampCopyText: string = "[" + ( areSameDate(new Date(), vm.timestamp) 
+            ? locale.getShortTimeString(vm.timestamp) /* dtf.format(vm.timestamp) */
+            : locale.getNumericDateWithShortTimeString(vm.timestamp) /* dtfWithDate.format(vm.timestamp) */ ) + "]";
         copyPrefix.push("[sub]");
         copyPrefix.push(timestampCopyText);
         copyPrefix.push("[/sub] ");

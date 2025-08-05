@@ -809,6 +809,44 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                 },
                 {
                     scope: getScopeArray(["global"]),
+                    sectionTitle: "Locale",
+                    description: "Configure localization settings for XarChat.",
+                    items: [
+                        {
+                            id: "locale.dateFormat",
+                            scope: getScopeArray(["global"]),
+                            title: "Date Formatting",
+                            description: "Select the format used for displaying dates.",
+                            type: "select",
+                            selectOptions: [
+                                { value: "default", displayValue: "Use Auto-Detected Setting" },
+                                { value: "mdyyyy", displayValue: "M/D/YYYY" },
+                                { value: "mmddyyyy", displayValue: "MM/DD/YYYY" },
+                                { value: "dmyyyy", displayValue: "D/M/YYYY" },
+                                { value: "ddmmyyyy", displayValue: "DD/MM/YYYY" },
+                                { value: "yyyymmdd", displayValue: "YYYY/MM/DD" }
+                            ],
+                            defaultValue: "default",
+                            configBlockKey: "locale.dateFormat"
+                        },
+                        {
+                            id: "locale.timeFormat",
+                            scope: getScopeArray(["global"]),
+                            title: "Time Formatting",
+                            description: "Select the format used for displaying times.",
+                            type: "select",
+                            selectOptions: [
+                                { value: "default", displayValue: "Use Auto-Detected Setting" },
+                                { value: "12h", displayValue: "12 Hour (AM/PM)" },
+                                { value: "24h", displayValue: "24 Hour" }
+                            ],
+                            defaultValue: "default",
+                            configBlockKey: "locale.timeFormat"
+                        },
+                    ]
+                },
+                {
+                    scope: getScopeArray(["global"]),
                     sectionTitle: "Colors",
                     description: "Choose colors for various parts of the XarChat interface.",
                     items: [
