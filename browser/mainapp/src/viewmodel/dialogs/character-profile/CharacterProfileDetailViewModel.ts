@@ -67,7 +67,7 @@ export class CharacterProfileDetailViewModel extends ObservableBase {
 
         super();
 
-        this.summaryInfo = new CharacterProfileDetailSummaryInfoViewModel(profileInfo, profileFieldsInfo, mappingList);
+        this.summaryInfo = new CharacterProfileDetailSummaryInfoViewModel(activeLoginViewModel.appViewModel, profileInfo, profileFieldsInfo, mappingList);
         this.description = profileInfo.description;
 
         // Grab correctly-cased character name from profile data

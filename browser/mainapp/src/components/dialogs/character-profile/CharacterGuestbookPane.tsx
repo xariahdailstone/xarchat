@@ -45,6 +45,8 @@ export class CharacterGuestbookPane extends RenderingComponentBase<CharacterGues
     renderGuestbookPosts(vm: CharacterGuestbookViewModel): VNode[] {
         const result: VNode[] = [];
 
+        const locale = vm.session.appViewModel.locale;
+
         this._parseOptionsWCM.assign({ sink: vm.session.bbcodeSink, appViewModel: vm.session.appViewModel, session: vm.session },
             (v) => {
                 this._bbcodeParseOptions = {
@@ -69,7 +71,7 @@ export class CharacterGuestbookPane extends RenderingComponentBase<CharacterGues
                 <div classList="guestbook-post-info">
                     <img classList="guestbook-poster-image" attr-src={URLUtils.getAvatarImageUrl(post.character)}></img>
                     <div classList={["guestbook-poster-name"]}><b>{posterChar}</b></div>
-                    <div classList="guestbook-datetime">Posted <span>{StringUtils.dateToString(post.postedAt, { dateStyle: "long", timeStyle: "short" })}</span></div>
+                    <div classList="guestbook-datetime">Posted <span>{StringUtils.dateToString(locale, post.postedAt, { dateStyle: "long", timeStyle: "short" })}</span></div>
                 </div>
                 <div classList="guestbook-message"><x-bbcodedisplay props={{ "viewModel": post.message, parseOptions: po, parser: "profilenoimg" }} ></x-bbcodedisplay></div>
                 { hasReply 
