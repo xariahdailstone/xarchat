@@ -31,6 +31,15 @@ namespace XarChatLinuxPhotino.WindowControl
             _photinoWindow.Close();
         }
 
+        public Task InvokeOnUIThread(Action action)
+        {
+            var t = Task.Run(() =>
+            {
+                _photinoWindow.Invoke(action);
+            });
+            return t;
+        }
+
         public void Maximize()
         {
             _photinoWindow.Minimized = false;
@@ -43,10 +52,20 @@ namespace XarChatLinuxPhotino.WindowControl
             _photinoWindow.Minimized = true;
         }
 
+        public Task RestartGPUProcess()
+        {
+            return Task.CompletedTask;
+        }
+
         public void Restore()
         {
             _photinoWindow.Maximized = false;
             _photinoWindow.Minimized = false;
+        }
+
+        public Task SetBrowserZoomLevelAsync(float zoomLevel)
+        {
+            return Task.CompletedTask; // TODO:
         }
 
         public void ShowDevTools()
