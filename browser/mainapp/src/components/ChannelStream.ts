@@ -245,13 +245,14 @@ export class ChannelStream extends ComponentBase<ChannelViewModel> {
                     this._roAnimHandle = null;
                     const entries = this._roAnimEntries;
                     this._roAnimEntries = [];
+                    let overflowHeight: number | null = null;
                     for (let entry of entries) {
                         const target = entry.target;
                         if (target.classList.contains("messageitem")) {
                             const mheight = entry.contentRect.height;
                             if (mheight > 0) {
                                 const mvm = (target as any)["__vm"] as ChannelMessageViewModel;
-                                const overflowHeight = +(window.getComputedStyle(target).getPropertyValue("--ad-collapse-max-height-numeric") ?? "40");
+                                overflowHeight = overflowHeight ?? +(window.getComputedStyle(target).getPropertyValue("--ad-collapse-max-height-numeric") ?? "40");
                                 const isOversized = (mheight > overflowHeight);
                                 if (isOversized != mvm.isOversized) {
                                     mvm.isOversized = (mheight > overflowHeight);
