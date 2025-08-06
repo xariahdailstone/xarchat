@@ -63,10 +63,8 @@ export class LocaleViewModel {
     private readonly _options: LocaleViewModelOptions;
 
     getTimeString(d: Date, format: TimeFormatSpecifier) {
-        console.log("getTimeString start", d);
         try {
             const result = this._options.convertTime(d, format);
-            console.log("time", d, result);
             return result;
         }
         catch (e) {
@@ -76,10 +74,8 @@ export class LocaleViewModel {
     }
 
     getDateString(d: Date, format: DateFormatSpecifier) {
-        console.log("getDateString start", d);
         try {
             const result = this._options.convertDate(d, format);
-            console.log("date", d, result);
             return result;
         }
         catch (e) {
