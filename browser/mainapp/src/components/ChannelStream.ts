@@ -84,7 +84,7 @@ export class ChannelStream extends ComponentBase<ChannelViewModel> {
             const vm = currentScrollToVm;
             if (vm) {
                 if ((v ?? null) != vm.scrolledTo) {
-                    this.logger.logInfo("DefaultStreamScrollManager.scrolledTo change", v, vm.title);
+                    this.logger.logDebug("DefaultStreamScrollManager.scrolledTo change", v, vm.title);
                     if (v) {
                         vm.scrolledTo = v;
                     }
@@ -228,44 +228,63 @@ export class ChannelStream extends ComponentBase<ChannelViewModel> {
     private _previousCollapseHostRO: ResizeObserver | null = null;
     private _roAnimHandle: number | null = null;
     private _roAnimEntries: ResizeObserverEntry[] = [];
+    private readonly _previousCollapseHostROObserved: Set<Element> = new Set();
     updateCollapseHostMonitoring() {
+        this.logDebug("updateCollapseHostMonitoring");
         const vm = this.viewModel;
         const elMessageContainer = this.$("elMessageContainer") as HTMLDivElement;
 
-        if (this._previousCollapseHostRO) {
-            this._previousCollapseHostRO.disconnect();
-            this._previousCollapseHostRO = null;
+        if (!vm) {
+            if (this._previousCollapseHostRO) {
+                this._previousCollapseHostRO.disconnect();
+                this._previousCollapseHostRO = null;
+            }
+            this._previousCollapseHostROObserved.clear();
+            return;
         }
-        if (!vm) { return; }
 
-        const ro = new ResizeObserver(entries => {
-            this._roAnimEntries.push(...entries);
-            if (this._roAnimHandle == null) {
-                this._roAnimHandle = window.requestAnimationFrame(() => {
-                    this._roAnimHandle = null;
-                    const entries = this._roAnimEntries;
-                    this._roAnimEntries = [];
-                    let overflowHeight: number | null = null;
-                    for (let entry of entries) {
-                        const target = entry.target;
-                        if (target.classList.contains("messageitem")) {
-                            const mheight = entry.contentRect.height;
-                            if (mheight > 0) {
-                                const mvm = (target as any)["__vm"] as ChannelMessageViewModel;
-                                overflowHeight = overflowHeight ?? +(window.getComputedStyle(target).getPropertyValue("--ad-collapse-max-height-numeric") ?? "40");
-                                const isOversized = (mheight > overflowHeight);
-                                if (isOversized != mvm.isOversized) {
-                                    mvm.isOversized = (mheight > overflowHeight);
-                                    this.logger.logDebug("ad oversize changed", target, isOversized);
+        if (!this._previousCollapseHostRO) {
+            const ro = new ResizeObserver(entries => {
+                this._roAnimEntries.push(...entries);
+                if (this._roAnimHandle == null) {
+                    this._roAnimHandle = window.requestAnimationFrame(() => {
+                        this._roAnimHandle = null;
+                        const entries = this._roAnimEntries;
+                        this._roAnimEntries = [];
+                        let overflowHeight: number | null = null;
+                        for (let entry of entries) {
+                            const target = entry.target;
+                            if (target.classList.contains("messageitem")) {
+                                const mheight = entry.contentRect.height;
+                                if (mheight > 0) {
+                                    const mvm = (target as any)["__vm"] as ChannelMessageViewModel;
+                                    overflowHeight = overflowHeight ?? +(window.getComputedStyle(target).getPropertyValue("--ad-collapse-max-height-numeric") ?? "40");
+                                    const isOversized = (mheight > overflowHeight);
+                                    if (isOversized != mvm.isOversized) {
+                                        mvm.isOversized = (mheight > overflowHeight);
+                                        this.logger.logDebug("ad oversize changed", target, isOversized);
+                                    }
                                 }
                             }
                         }
-                    }
-                });
+                    });
+                }
+            });
+            this._previousCollapseHostRO = ro;
+        }
+
+        const tro = this._previousCollapseHostRO;
+        const thisObserve = new Set<Element>();
+        elMessageContainer.querySelectorAll(".collapse-host.collapsible .messageitem").forEach(el => { 
+            if (!this._previousCollapseHostROObserved.has(el)) {
+                tro.observe(el); 
             }
+            thisObserve.add(el);
         });
-        this._previousCollapseHostRO = ro;
-        elMessageContainer.querySelectorAll(".collapse-host.collapsible .messageitem").forEach(el => { ro.observe(el); });
+        for (let removeEl of [...this._previousCollapseHostROObserved.difference(thisObserve).values()]) {
+            tro.unobserve(removeEl);
+            this._previousCollapseHostROObserved.delete(removeEl);
+        }
     }
 
     protected get myRequiredStylesheets() {

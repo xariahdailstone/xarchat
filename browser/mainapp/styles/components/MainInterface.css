@@ -62,6 +62,7 @@
         "leftbar splitterhandle stage";
 
     contain: strict;
+    /* will-change: transform; */
 }
 .chatui.not-loaded { display: none; }
 .dialogstack {

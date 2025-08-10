@@ -9,6 +9,9 @@ import { setStylesheetAdoption, SharedStyleSheet } from "./util/StyleSheetPolyfi
 import { XarChatUtils } from "./util/XarChatUtils.js";
 import { AppViewModel } from "./viewmodel/AppViewModel.js";
 import { AppInitializeViewModel } from "./viewmodel/dialogs/AppInitializeViewModel.js";
+import { registerDebuggingFunctions } from "./util/debugging/DebugUtils.js";
+
+registerDebuggingFunctions();
 
 hookRequestAnimationFrame();
 

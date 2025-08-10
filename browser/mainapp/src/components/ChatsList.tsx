@@ -112,7 +112,7 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
             this.elMain.classList.toggle("has-alerts-below", elementsNotVisibleBelow.size > 0);
         };
         const recalculateAlertDisplay = () => {
-            this.logger.logInfo("recalculatingAlertDisplay");
+            this.logger.logDebug("recalculatingAlertDisplay");
             if (io) {
                 elementsNotVisibleAbove.clear();
                 elementsNotVisibleBelow.clear();
@@ -155,7 +155,7 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
                 hasAlertEls.forEach(el => {
                     io!.observe(el as HTMLElement);
                 });
-                this.logger.logInfo("recalculatingAlertDisplay watching element count", hasAlertEls.length);
+                this.logger.logDebug("recalculatingAlertDisplay watching element count", hasAlertEls.length);
             }
         };
         const scrollToNext = (map: Map<HTMLElement, number>, shouldTake: (curBound: number, maxBound: number) => boolean) => {
