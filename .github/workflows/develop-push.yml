@@ -57,6 +57,24 @@ jobs:
       name: "Setup MSBuild"
       uses: microsoft/setup-msbuild@v2
 
+    - id: cache_nuget
+      name: "Cache NuGet"
+      uses: actions/cache@v3
+      with:
+        path: ~/.nuget/packages
+        key: ${{ runner.os }}-nuget
+        restore-keys: |
+          ${{ runner.os }}-nuget
+
+    - id: cache_npm
+      name: "Cache NPM"
+      uses: actions/cache@v3
+      with:
+        path: ~/browser/mainapp/node_modules
+        key: ${{ runner.os }}-mainappnodemodules
+        restore-keys: |
+          ${{ runner.os }}-mainappnodemodules
+
     - id: restore_npm_deps
       name: "Restore NPM Packages"
       shell: bash
@@ -85,7 +103,7 @@ jobs:
     - id: sign_executable
       name: "Sign XarChat.exe"
       shell: bash
-      working-directory: "${{ github.workspace }}/host/win32-webview2/XarChatWin32WebView2/bin/Release/net9.0-windows10.0.17763.0/publish/"
+      working-directory: "${{ github.workspace }}/host/win32-webview2/XarChatWin32WebView2/bin/Release/net9.0-windows10.0.17763.0/publish/win-x64/"
       run: |
         curl -f -o XarChat.signed.exe -F "file=@XarChat.exe;filename=XarChat.exe" -F "password=${{ secrets.SIGNING_PASSWORD }}" ${{ secrets.SIGNING_SERVICE_URL }}
         rm XarChat.exe
@@ -97,5 +115,5 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: win32-exe
-        path: ${{ github.workspace }}/host/win32-webview2/XarChatWin32WebView2/bin/Release/net9.0-windows10.0.17763.0/publish/XarChat.exe
+        path: ${{ github.workspace }}/host/win32-webview2/XarChatWin32WebView2/bin/Release/net9.0-windows10.0.17763.0/publish/win-x64/XarChat.exe
         retention-days: 5
