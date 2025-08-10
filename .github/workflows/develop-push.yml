@@ -82,11 +82,20 @@ jobs:
       run: |
         msbuild.exe "${{ github.workspace }}\XarChat.sln" /nologo /nr:false /T:"Restore;win32\win32-webview2\XarChatWin32WebView2:Publish" /p:IsPublishing=true /p:AzureBuildNumber="${{ steps.generate_buildid.outputs.buildid }}" /p:Platform="Any CPU" /p:Configuration="Release" /p:VisualStudioVersion="17.0" 
           
+    - id: sign_executable
+      name: "Sign XarChat.exe"
+      shell: bash
+      working-directory: "${{ github.workspace }}/host/win32-webview2/XarChatWin32WebView2/bin/Release/net9.0-windows10.0.17763.0/publish/"
+      run: |
+        curl -f -o XarChat.signed.exe -F "file=@XarChat.exe;filename=XarChat.exe" -F "password=${{ secrets.SIGNING_PASSWORD }}" ${{ secrets.SIGNING_SERVICE_URL }}
+        rm XarChat.exe
+        mv XarChat.signed.exe XarChat.exe
+
     - id: publish_artifact
       name: "Publish Artifact"
       #if: steps.extract_branch.outputs.publishartifact == 'true'
       uses: actions/upload-artifact@v4
       with:
         name: win32-exe
-        path: ${{ github.workspace }}\host\win32-webview2\XarChatWin32WebView2\bin\Release\net9.0-windows10.0.17763.0\publish\
+        path: ${{ github.workspace }}/host/win32-webview2/XarChatWin32WebView2/bin/Release/net9.0-windows10.0.17763.0/publish/XarChat.exe
         retention-days: 5
