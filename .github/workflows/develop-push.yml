@@ -70,7 +70,7 @@ jobs:
       name: "Cache NPM"
       uses: actions/cache@v3
       with:
-        path: ~/browser/mainapp/node_modules
+        path: browser/mainapp/node_modules
         key: ${{ runner.os }}-mainappnodemodules
         restore-keys: |
           ${{ runner.os }}-mainappnodemodules
