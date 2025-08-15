@@ -859,7 +859,7 @@ class XarHost2Interop implements IXarHost2HostInterop {
             hasPings: hasPings,
             hasUnseen: hasUnseen
         };
-        this.logger.logInfo("updateAppBadge", this._lastAppBadgeAssign);
+        this.logger.logDebug("updateAppBadge", this._lastAppBadgeAssign);
         this.writeToXCHostSocket("updateAppBadge " + JSON.stringify(this._lastAppBadgeAssign));
     }
 

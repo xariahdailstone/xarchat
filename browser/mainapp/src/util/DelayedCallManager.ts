@@ -50,6 +50,13 @@ export class DelayedCallManager {
                     this._isScheduled = true;
                 }
                 break;
+            case DelayedCallScheduler.SET_TIMEOUT_1MS:
+                {
+                    const n = window.setTimeout(() => this.runDelayedCall(), 1);
+                    this._unscheduleFunc = () => window.clearTimeout(n);
+                    this._isScheduled = true;
+                }
+                break;
         }
     }
 
@@ -77,5 +84,6 @@ export enum DelayedCallStyle {
 }
 
 export enum DelayedCallScheduler {
-    REQUEST_ANIMATION_FRAME
+    REQUEST_ANIMATION_FRAME,
+    SET_TIMEOUT_1MS
 }

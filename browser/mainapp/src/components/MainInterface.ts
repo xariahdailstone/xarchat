@@ -19,6 +19,7 @@ import { CharacterDetailPopup } from "./popups/CharacterDetailPopup.js";
 import { PopupFrame } from "./popups/PopupFrame.js";
 import { getValueReference, ValueReference } from "../util/ValueReference.js";
 import { PopupViewModel } from "../viewmodel/popups/PopupViewModel.js";
+import { DelayedCallManager, DelayedCallScheduler, DelayedCallStyle } from "../util/DelayedCallManager.js";
 
 @componentElement("x-maininterface")
 export class MainInterface extends ComponentBase<AppViewModel> {
@@ -237,12 +238,33 @@ export class MainInterface extends ComponentBase<AppViewModel> {
         const hasUnclosedDialogs = (unclosedDialogsCount > 0);
         this.elMain.classList.toggle("has-unclosed-dialogs", hasUnclosedDialogs);
         this.elMain.classList.toggle("nogpu", this.viewModel?.noGpuMode ?? false);
-        elChatUi.inert = hasUnclosedDialogs;
+        this.setChatUiInert(hasUnclosedDialogs);
         if (lastDialog) {
             const el = elDialogCollectionView.getElementForViewModel(lastDialog);
             if (el && typeof (el as DialogFrame).setActiveDialog == "function") {
                 (el as DialogFrame).setActiveDialog();
             }
+        }
+    }
+
+    private _chatUiInertDCM = new DelayedCallManager(DelayedCallStyle.RUN_LAST, DelayedCallScheduler.SET_TIMEOUT_1MS);
+
+    private setChatUiInert(inert: boolean) {
+        const elChatUi = this.$("elChatUi") as HTMLDivElement;
+        if (inert) {
+            // This performs better when devtools is open for some reason?
+            elChatUi.style.pointerEvents = "none";
+            elChatUi.style.userSelect = "none";
+            this._chatUiInertDCM.scheduleDelayedCall(() => {
+                elChatUi.inert = true;
+            });
+        }
+        else {
+            elChatUi.style.removeProperty("pointer-events");
+            elChatUi.style.removeProperty("user-select");
+            //this._chatUiInertDCM.scheduleDelayedCall(() => {
+                elChatUi.inert = false;
+            //});
         }
     }
 

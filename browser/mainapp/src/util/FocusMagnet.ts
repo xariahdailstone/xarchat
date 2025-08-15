@@ -14,17 +14,11 @@ export class FocusMagnet {
     constructor() {
         this.logger = Logging.createLogger(`FocusMagnet#${ObjectUniqueId.get(this)}`);
 
-        document.addEventListener("focus", (e) => { 
-            //this.logger.logDebug("focusmanager document.focus", e.target);
-            this.ultimateFocus = this.drillDown(e.target as Element);
-        }, { capture: true });
-        document.addEventListener("blur", (e) => {
-            //this.logger.logDebug("focusmanager document.blur", e.target);
-            this.ultimateFocus = null;
-        }, { capture: true });
-
-        // document.addEventListener("selectionchange", (e) => {
-        //     this.logger.logDebug("focusmanager document.selectionchange", e.target);
+        // document.addEventListener("focus", (e) => { 
+        //     this.ultimateFocus = this.drillDown(e.target as Element);
+        // }, { capture: true });
+        // document.addEventListener("blur", (e) => {
+        //     this.ultimateFocus = null;
         // }, { capture: true });
     }
 
