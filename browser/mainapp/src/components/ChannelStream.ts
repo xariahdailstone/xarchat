@@ -144,7 +144,7 @@ export class ChannelStream extends ComponentBase<ChannelViewModel> {
 
         elMessageContainer.addEventListener("copy", (e: ClipboardEvent) => {
             BBCodeParser.performCopy(e);
-        });
+        }, true);
         elScrolledUp.addEventListener("click", (e) => {
             if (this.viewModel) {
                 this._scrollManager.setNextUpdateIsSmooth();
