@@ -192,6 +192,20 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     configBlockKey: "eiconSearch.enabled"
                 },
                 {
+                    id: "openPmTabForIncomingTyping",
+                    scope: getScopeArray(["global"]),
+                    title: "Open a PM Tab on Typing",
+                    description: "Should XarChat open a PM tab (if you don't have one already open) when someone starts typing a private message to you?",
+                    type: "select",
+                    selectOptions: [
+                        { value: 0, displayValue: "No" },
+                        { value: 1, displayValue: "Yes" },
+                        { value: 2, displayValue: "Yes and Ping" },
+                    ],
+                    defaultValue: 0,
+                    configBlockKey: "openPmTabForIncomingTyping.enabled"
+                },                
+                {
                     scope: getScopeArray(["global"]),
                     sectionTitle: "Auto Idle/Away",
                     items: [
