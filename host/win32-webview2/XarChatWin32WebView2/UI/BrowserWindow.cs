@@ -738,8 +738,8 @@ namespace MinimalWin32Test.UI
 
                 if (shouldRemove)
                 {
-                    //e.MenuItems.RemoveAt(i);
-                    //i--;
+                    e.MenuItems.RemoveAt(i);
+                    i--;
                 }
                 else
                 {
