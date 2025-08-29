@@ -110,6 +110,13 @@ export interface IHostInterop {
     setZoomLevel(value: number): Promise<void>;
 
     getMemoAsync(account: string, getForChar: CharacterName, cancellationToken?: CancellationToken): Promise<string | null>;
+
+    getAvailableLocales(cancellationToken?: CancellationToken): Promise<HostLocaleInfo[]>;
+}
+
+export interface HostLocaleInfo {
+    code: string;
+    name: string;
 }
 
 export interface IXarHost2HostInterop extends IHostInterop {
@@ -1217,6 +1224,41 @@ class XarHost2Interop implements IXarHost2HostInterop {
 
         const result = await ps.promise;
         return result;
+    }
+
+    async getAvailableLocales(cancellationToken?: CancellationToken): Promise<HostLocaleInfo[]> {
+        cancellationToken ??= CancellationToken.NONE;
+        const ps = new PromiseSource<HostLocaleInfo[]>();
+
+        await this.writeToXCHostSocketAndRead("getLocales", 
+            (cmd, arg) => {
+                if (cmd.toLowerCase() == "gotlocales") {
+                    var argObj = JSON.parse(arg);
+                    if (argObj.locales) {
+                        ps.tryResolve(argObj.locales);
+                        return true;
+                    }
+                    else {
+                        return false;
+                    }
+                }
+                else if (cmd.toLowerCase() == "gotlocaleserror") {
+                    var argObj = JSON.parse(arg);
+                    if (argObj.error) {
+                        ps.tryReject(argObj.error);
+                        return true;
+                    }
+                    else {
+                        return false;
+                    }
+                }
+                else {
+                    return false;
+                }
+            });
+
+        const result = await ps.promise;
+        return result;        
     }
 }
 
