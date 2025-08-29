@@ -261,3 +261,6 @@ select.themed.invalid-value {
 .hidden { display: none !important; }
 
 
+x-eicondisplay { display: inline-block; user-select: all;; line-height: 0px; font-size: 0px; }
+x-eicondisplay img { width: inherit; height: inherit; }
+x-eicondisplay img.blocked { filter: blur(10px); }

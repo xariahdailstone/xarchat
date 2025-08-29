@@ -40,6 +40,8 @@
     height: var(--eicon-size);
     max-width: var(--eicon-size);
     max-height: var(--eicon-size);
+    --eicon-width: var(--eicon-size);
+    --eicon-height: var(--eicon-size);
     vertical-align: top;
     /* background: inherit; */
     /* will-change: transform; */

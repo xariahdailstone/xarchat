@@ -168,7 +168,7 @@
     margin-left: 10px;
 }
 
-.setting-using-inherited { opacity: 0.7;}
+.setting-using-inherited { color: rgba(255, 255, 255, 0.5); }
 .setting-revert-to-inherited { color: yellow; }
 .revert-link {
     cursor: pointer;

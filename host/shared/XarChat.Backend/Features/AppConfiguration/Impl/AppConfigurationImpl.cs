@@ -324,6 +324,11 @@ namespace XarChat.Backend.Features.AppConfiguration.Impl
             (_commandLineOptions.DisableGpuAcceleration == true) ? true :
             !(Convert.ToBoolean(GetArbitraryValueString("global.useGpuAcceleration") ?? "true"));
 
+        public string? BrowserLanguage =>
+            _commandLineOptions.BrowserLanguage ??
+            GetArbitraryValueString("global.spellCheckLanguage") ??
+            null;
+
         public IEnumerable<KeyValuePair<string, JsonNode>> GetAllArbitraryValues()
         {
             var acd = _appConfigData;
