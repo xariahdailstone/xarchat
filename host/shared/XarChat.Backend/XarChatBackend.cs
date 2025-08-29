@@ -73,6 +73,7 @@ using XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.ZoomLevel;
 using XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.GetMemo;
 using XarChat.Backend.Features.StyleUpdateWatcher;
 using XarChat.Backend.Features.EIconFavoriteManager;
+using XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.GetLocaleList;
 
 namespace XarChat.Backend
 {
@@ -353,6 +354,7 @@ namespace XarChat.Backend
             services.AddXCHostCommandHandler<SubmitEIconMetadataCommandHandler>("submiteiconmetadata");
             services.AddXCHostCommandHandler<SetZoomLevelCommandHandler>("setZoomLevel");
             services.AddXCHostCommandHandler<GetMemoCommandHandler>("getMemo");
+            services.AddXCHostCommandHandler<GetLocaleListCommandHandler>("getLocales");
         }
 
         private object _concurrentCountLock = new object();

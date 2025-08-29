@@ -23,6 +23,8 @@ namespace XarChat.Backend.Features.AppConfiguration
 
         bool DisableGpuAcceleration { get; }
 
+        string? BrowserLanguage { get; }
+
 
         IEnumerable<KeyValuePair<string, JsonNode>> GetAllArbitraryValues();
 

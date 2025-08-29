@@ -1,5 +1,7 @@
 import { ChannelName } from "../shared/ChannelName";
 import { CharacterName } from "../shared/CharacterName";
+import { CancellationToken } from "../util/CancellationTokenSource";
+import { HostInterop } from "../util/HostInterop";
 import { IterableUtils } from "../util/IterableUtils";
 
 export interface ConfigSchemaDefinition {
@@ -129,6 +131,19 @@ function generateNumericOptions(min: number, max: number): ConfigSchemaSelectOpt
     return results;
 }
 
+const spellCheckLanguageItem: ConfigSchemaItemDefinitionItem = {
+    id: "spellCheckLanguage",
+    scope: getScopeArray(["global"]),
+    title: "Spell Check Language",
+    description: "Which language should be used to check spelling? (Changes to this setting require a restart of XarChat)",
+    type: "select",
+    selectOptions: [
+        { value: "default", displayValue: "System Default" }
+    ],
+    defaultValue: 0,
+    configBlockKey: "spellCheckLanguage"
+};
+
 export const ConfigSchema: ConfigSchemaDefinition = {
     settings: [
         {
@@ -155,6 +170,7 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     defaultValue: true,
                     configBlockKey: "useGpuAcceleration"
                 },
+                spellCheckLanguageItem,
                 {
                     id: "autoReconnect",
                     scope: getScopeArray(["global", "char"]),
@@ -1347,3 +1363,10 @@ export function getConfigSchemaItemById(id: string): ConfigSchemaItemDefinitionI
         return result;
     }
 }
+
+(async () => {
+    const locales = await HostInterop.getAvailableLocales(CancellationToken.NONE);
+    for (let l of locales) {
+        spellCheckLanguageItem.selectOptions?.push({ value: l.code, displayValue: l.name });
+    }
+})();
