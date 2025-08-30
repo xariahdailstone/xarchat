@@ -6,3 +6,5 @@
 * Added the ability to change the UI language in use (impacts spell check and other localization)
   - Can set via a new setting under Global options
   - Can also set via command line (e.g., `XarChat.exe --lang en-US`)
+* Fixed an issue where clicking on Favorites and Most Used eicons in the eicon search didn't work.
+* Fixed an issue where Created/Last Modified dates in profiles were displaying incorrectly.

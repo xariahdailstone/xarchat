@@ -47,3 +47,4 @@ CloseHandle
 // WinNLS
 //EnumSystemLocalesEx
 EnumUILanguages
+GetLocaleInfoEx

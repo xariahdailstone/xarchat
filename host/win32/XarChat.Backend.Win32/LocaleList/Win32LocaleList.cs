@@ -16,9 +16,8 @@ namespace XarChat.Backend.Win32.LocaleList
             var result = new List<LocaleInfo>();
             foreach (var locale in WinNLS.EnumSystemLocalesEx())
             {
-                var ci = new CultureInfo(locale);
-
-                result.Add(new LocaleInfo() { Code = locale, NativeName = ci.NativeName });
+                var nativeName = WinNLS.GetLocaleInfoEx(locale, WinNLS.LocaleInfoType.NativeDisplayName);
+                result.Add(new LocaleInfo() { Code = locale, NativeName = nativeName });
             }
             return Task.FromResult(result);
         }
