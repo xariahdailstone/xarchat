@@ -266,7 +266,7 @@ export class EIconSearchDialog extends DialogComponentBase<EIconSearchDialogView
         // elKeyboardNavTextbox.addEventListener("input", (e) => { elKeyboardNavTextbox.value = ""; });
         // elKeyboardNavTextbox.addEventListener("change", (e) => { elKeyboardNavTextbox.value = ""; });
 
-        for (let setView of [elSetView, elRecentlyUsedSetView]) {
+        for (let setView of [elSetView, elFavoriteSetView, elRecentlyUsedSetView, elMostUsedSetView]) {
             if (!setView) { continue; }
             setView.addEventListener("eiconselected", (e) => {
                 const eiconName = (e as any).eiconName;

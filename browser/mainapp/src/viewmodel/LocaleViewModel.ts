@@ -47,7 +47,7 @@ export class LocaleViewModel {
             case "medium":
             case "long":
             case "full":
-                return new Intl.DateTimeFormat(undefined, { timeStyle: format }).format(d);
+                return new Intl.DateTimeFormat(undefined, { dateStyle: format }).format(d);
         }
     };
 

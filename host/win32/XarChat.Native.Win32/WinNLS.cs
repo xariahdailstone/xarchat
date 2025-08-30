@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Windows.Wdk;
+using Windows.Win32.Foundation;
 using Windows.Win32.Globalization;
 
 namespace XarChat.Native.Win32
@@ -35,6 +36,38 @@ namespace XarChat.Native.Win32
             //    lParam: 0);
 
             return result;
+        }
+
+        public static string GetLocaleInfoEx(string localeName, LocaleInfoType infoType)
+        {
+            var dataLength = Windows.Win32.PInvoke.GetLocaleInfoEx(
+                lpLocaleName: localeName,
+                LCType: (uint)infoType,
+                lpLCData: null,
+                cchData: 0);
+
+            unsafe
+            {
+                fixed (char* resultChars = new char[dataLength])
+                {
+                    if (Windows.Win32.PInvoke.GetLocaleInfoEx(
+                        lpLocaleName: localeName,
+                        LCType: (uint)infoType,
+                        lpLCData: resultChars,
+                        cchData: dataLength) == 0)
+                    {
+                        return "Unknown";
+                    }
+
+                    var result = new String(resultChars);
+                    return result;
+                }
+            }
+        }
+
+        public enum LocaleInfoType : uint
+        {
+            NativeDisplayName = 0x00000073
         }
 
         public static class MUI_LANGUAGE_KIND
