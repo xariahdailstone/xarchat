@@ -231,10 +231,16 @@ class ChannelStreamMessageViewRendererFChat implements MessageRenderer {
 
         const messageNodes: VNode[] = [];
         for (let kvp of vm.iterateValues()) {
-            const mvm = kvp.value;
-            const rmResult = this.renderMessage(vm, mvm);
-            messageNodes.push(rmResult[0]);
-            resultDisposables.push(rmResult[1]);
+            try {
+                const mvm = kvp.value;
+                const rmResult = this.renderMessage(vm, mvm);
+                messageNodes.push(rmResult[0]);
+                resultDisposables.push(rmResult[1]);
+            }
+            catch (e) {
+                // TODO: write to error log
+                messageNodes.push(<div>(A message could not be displayed)</div>);
+            }
         }
 
         const resVNode = <>{messageNodes}</>;
@@ -268,16 +274,18 @@ class ChannelStreamMessageViewRendererFChat implements MessageRenderer {
         const displayStyle = vm.channelViewModel?.messageDisplayStyle ?? ChannelMessageDisplayStyle.FCHAT;
         let isSystemMessage = vm.type == ChannelMessageType.SYSTEM || vm.type == ChannelMessageType.SYSTEM_IMPORTANT;
 
+        const vmtext = vm.text ?? "<<XarChat warning: invalid message, no text available>>";
+
         let emoteStyle: ("none" | "normal" | "possessive") = "none";
-        if (vm.type == ChannelMessageType.CHAT && vm.text.startsWith("/me ")) {
+        if (vm.type == ChannelMessageType.CHAT && vmtext.startsWith("/me ")) {
             emoteStyle = "normal";
         }
-        else if (vm.type == ChannelMessageType.CHAT && vm.text.startsWith("/me's ")) {
+        else if (vm.type == ChannelMessageType.CHAT && vmtext.startsWith("/me's ")) {
             emoteStyle = "possessive";
         }
 
         let isImportant = vm.type == ChannelMessageType.SYSTEM_IMPORTANT;
-        if (vm.type == ChannelMessageType.CHAT && vm.text.startsWith("/warn ")) {
+        if (vm.type == ChannelMessageType.CHAT && vmtext.startsWith("/warn ")) {
             const isChanOp = vm.channelViewModel?.isEffectiveOp(vm.characterStatus.characterName) ?? false;
             if (isChanOp) {
                 isImportant = true;
@@ -289,21 +297,30 @@ class ChannelStreamMessageViewRendererFChat implements MessageRenderer {
             elIcon = <img classList={["icon"]} attr-src={URLUtils.getAvatarImageUrl(vm.characterStatus.characterName)} />;
         }
 
+        const vmtimestamp = vm.timestamp;
         let tsText: string;
-        let copyText: string = "[" + ( areSameDate(new Date(), vm.timestamp)
-            ? locale.getShortTimeString(vm.timestamp) /* dtf.format(vm.timestamp) */
-            : locale.getNumericDateWithShortTimeString(vm.timestamp) /* dtfWithDate.format(vm.timestamp) */ ) + "]";
-        if (displayStyle == ChannelMessageDisplayStyle.DISCORD) {
-            tsText = 
-                areSameDate(new Date(), vm.timestamp) ? ("Today at " + locale.getShortTimeString(vm.timestamp) /* dtf.format(vm.timestamp) */)
-                : areSameDate(DateUtils.addMilliseconds(new Date(), TimeSpanUtils.fromDays(-1)), vm.timestamp) ? ("Yesterday at " +
-                    locale.getShortTimeString(vm.timestamp) /* dtf.format(vm.timestamp) */ ) 
-                : (locale.getNumericDateString(vm.timestamp) /* dtfDate.format(vm.timestamp) */ + 
-                    " at " + locale.getShortTimeString(vm.timestamp) /* dtf.format(vm.timestamp) */);
+        let copyText: string;
+        try {
+            copyText = "[" + ( areSameDate(new Date(), vmtimestamp)
+                ? locale.getShortTimeString(vmtimestamp) /* dtf.format(vm.timestamp) */
+                : locale.getNumericDateWithShortTimeString(vmtimestamp) /* dtfWithDate.format(vm.timestamp) */ ) + "]";
+            if (displayStyle == ChannelMessageDisplayStyle.DISCORD) {
+                tsText = 
+                    areSameDate(new Date(), vmtimestamp) ? ("Today at " + locale.getShortTimeString(vmtimestamp) /* dtf.format(vm.timestamp) */)
+                    : areSameDate(DateUtils.addMilliseconds(new Date(), TimeSpanUtils.fromDays(-1)), vmtimestamp) ? ("Yesterday at " +
+                        locale.getShortTimeString(vmtimestamp) /* dtf.format(vm.timestamp) */ ) 
+                    : (locale.getNumericDateString(vmtimestamp) /* dtfDate.format(vm.timestamp) */ + 
+                        " at " + locale.getShortTimeString(vmtimestamp) /* dtf.format(vm.timestamp) */);
+            }
+            else {
+                tsText = copyText;
+            }
         }
-        else {
-            tsText = copyText;
+        catch (e) {
+            tsText = "(invalid timestamp)";
+            copyText = "(invalid timestamp)";
         }
+        
         const elTimestamp = <span classList={["timestamp"]} attrs={{
                 "data-copycontent": `[sub]${copyText}[/sub]`
             }}>{tsText}</span>
@@ -537,13 +554,20 @@ class ChannelStreamMessageViewRendererDiscord implements MessageRenderer {
         let previousRMC: PreviousRenderedMessageContainer | null = null;
         const messageNodes: VNode[] = [];
         for (let kvp of vm.iterateValues()) {
-            const mvm = kvp.value;
-            const rmResult = this.renderMessage(vm, mvm, previousRMC);
-            if (rmResult[0]) {
-                messageNodes.push(rmResult[0]);
+            try {
+                const mvm = kvp.value;
+                const rmResult = this.renderMessage(vm, mvm, previousRMC);
+                if (rmResult[0]) {
+                    messageNodes.push(rmResult[0]);
+                }
+                resultDisposables.push(rmResult[1]);
+                previousRMC = rmResult[2];
             }
-            resultDisposables.push(rmResult[1]);
-            previousRMC = rmResult[2];
+            catch (e) {
+                previousRMC = null;
+                // TODO: write to error log
+                messageNodes.push(<div>(A message could not be displayed)</div>);
+            }
         }
 
         const resVNode = <>{messageNodes}</>;
@@ -624,10 +648,19 @@ class ChannelStreamMessageViewRendererDiscord implements MessageRenderer {
                     "data-copycontent": ""
                 }} />;
 
-            let copyText: string = "[" + ( areSameDate(new Date(), vm.timestamp) 
-                ? locale.getShortTimeString(vm.timestamp) /* dtf.format(vm.timestamp) */
-                : locale.getNumericDateWithShortTimeString(vm.timestamp) /* dtfWithDate.format(vm.timestamp) */ ) + "]";
-            const tsText = this.getTimestampDisplay(locale, vm.timestamp);
+            const vmtimestamp = vm.timestamp;
+            let copyText: string;
+            let tsText: string;
+            try {
+                copyText = "[" + ( areSameDate(new Date(), vm.timestamp) 
+                    ? locale.getShortTimeString(vm.timestamp) /* dtf.format(vm.timestamp) */
+                    : locale.getNumericDateWithShortTimeString(vm.timestamp) /* dtfWithDate.format(vm.timestamp) */ ) + "]";
+                tsText = this.getTimestampDisplay(locale, vm.timestamp);
+            }
+            catch (e) {
+                copyText = "(invalid timestamp)";
+                tsText = "(invalid timestamp)";
+            }
             const elTimestamp = <span key={`msg-${uniqueMessageId}-timestamp`} classList={["timestamp"]} attrs={{
                     "data-copycontent": ""
                 }}>{tsText}</span>
@@ -775,16 +808,18 @@ class ChannelStreamMessageViewRendererDiscord implements MessageRenderer {
 
         let isSystemMessage = vm.type == ChannelMessageType.SYSTEM || vm.type == ChannelMessageType.SYSTEM_IMPORTANT;
 
+        const vmtext = vm.text ?? "<<XarChat warning: invalid message text>>";
+
         let emoteStyle: ("none" | "normal" | "possessive") = "none";
-        if (vm.type == ChannelMessageType.CHAT && vm.text.startsWith("/me ")) {
+        if (vm.type == ChannelMessageType.CHAT && vmtext.startsWith("/me ")) {
             emoteStyle = "normal";
         }
-        else if (vm.type == ChannelMessageType.CHAT && vm.text.startsWith("/me's ")) {
+        else if (vm.type == ChannelMessageType.CHAT && vmtext.startsWith("/me's ")) {
             emoteStyle = "possessive";
         }
 
         let isImportant = vm.type == ChannelMessageType.SYSTEM_IMPORTANT;
-        if (vm.type == ChannelMessageType.CHAT && vm.text.startsWith("/warn ")) {
+        if (vm.type == ChannelMessageType.CHAT && vmtext.startsWith("/warn ")) {
             const isChanOp = vm.channelViewModel?.isEffectiveOp(vm.characterStatus.characterName) ?? false;
             if (isChanOp) {
                 isImportant = true;
@@ -901,9 +936,15 @@ class ChannelStreamMessageViewRendererDiscord implements MessageRenderer {
 
         const copyPrefix: string[] = [];
 
-        const timestampCopyText: string = "[" + ( areSameDate(new Date(), vm.timestamp) 
-            ? locale.getShortTimeString(vm.timestamp) /* dtf.format(vm.timestamp) */
-            : locale.getNumericDateWithShortTimeString(vm.timestamp) /* dtfWithDate.format(vm.timestamp) */ ) + "]";
+        let timestampCopyText: string;
+        try {
+            timestampCopyText = "[" + ( areSameDate(new Date(), vm.timestamp) 
+                ? locale.getShortTimeString(vm.timestamp) /* dtf.format(vm.timestamp) */
+                : locale.getNumericDateWithShortTimeString(vm.timestamp) /* dtfWithDate.format(vm.timestamp) */ ) + "]";
+        }
+        catch (e) {
+            timestampCopyText = "[(invalid timestamp)]";
+        }
         copyPrefix.push("[sub]");
         copyPrefix.push(timestampCopyText);
         copyPrefix.push("[/sub] ");
