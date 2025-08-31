@@ -9,3 +9,4 @@
 * Fixed an issue where clicking on Favorites and Most Used eicons in the eicon search didn't work.
 * Fixed an issue where Created/Last Modified dates in profiles were displaying incorrectly.
 * Added better error handling for message display (if, by some chance, an invalid message gets into the log)
+* Added some extra resiliency to updating config files to avoid data loss in the event of an OS crash
