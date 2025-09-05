@@ -32,6 +32,8 @@ import { StringUtils } from "../util/StringUtils.js";
 import { CancellationToken } from "../util/CancellationTokenSource.js";
 import { SuggestionHeader, SuggestionItem } from "./SuggestTextBoxViewModel.js";
 import { HTMLUtils } from "../util/HTMLUtils.js";
+import { SidebarTabContainerViewModel } from "./sidebartabs/SidebarTabContainerViewModel.js";
+import { ChannelUserListTabViewModel } from "./sidebartabs/ChannelUserListTabViewModel.js";
 
 export class ChatChannelUserViewModel extends ObservableBase implements IDisposable {
     constructor(
@@ -89,6 +91,10 @@ export class ChatChannelViewModel extends ChannelViewModel {
         this.showConfigButton = true;
         this.canClose = true;
         this.canPin = true;
+
+        this.sidebarTabContainer = new SidebarTabContainerViewModel();
+        this.sidebarTabContainer.tabs.push(new ChannelUserListTabViewModel(this));
+        this.sidebarTabContainer.selectedTab = this.sidebarTabContainer.tabs[0] ?? null;
 
         this.filterMode = ChatChannelMessageMode.BOTH;
 

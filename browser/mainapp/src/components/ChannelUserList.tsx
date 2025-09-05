@@ -106,7 +106,7 @@ export class ChannelUserList extends RenderingComponentBase<ChatChannelViewModel
         const charLinkMgr = new MassCharacterLinkManager(vm.activeLoginViewModel, vm);
         addDisposable(charLinkMgr);
 
-        const totalUserCount = (vm.usersModerators.length + vm.usersWatched.length + vm.usersLooking.length + vm.usersOther.length);
+        //const totalUserCount = (vm.usersModerators.length + vm.usersWatched.length + vm.usersLooking.length + vm.usersOther.length);
         const joinFriendsAndBookmarks = vm.getConfigSettingById("joinFriendsAndBookmarks");
 
         const sectionNodes: (VNode | null)[] = [];
@@ -126,9 +126,9 @@ export class ChannelUserList extends RenderingComponentBase<ChatChannelViewModel
         sectionNodes.push(this.renderSection(vm, charLinkMgr, "sec-others", "elOthers", othersTitle, this._characterSubSetOther.value));
 
         return [<>
-            <div key="sec-usercount" id="elUserCountContainer" classList={["usercount"]}>
+            {/* <div key="sec-usercount" id="elUserCountContainer" classList={["usercount"]}>
                 {totalUserCount.toLocaleString()} in channel
-            </div>
+            </div> */}
             {sectionNodes}
         </>, asDisposable(...disposables)];
     }

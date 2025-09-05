@@ -30,6 +30,7 @@ import { ActiveLoginViewModel } from "./ActiveLoginViewModel.js";
 import { AppNotifyEventType, AppViewModel } from "./AppViewModel.js";
 import { ChannelFiltersViewModel } from "./ChannelFiltersViewModel.js";
 import { MultiSelectPopupViewModel } from "./popups/MultiSelectPopupViewModel.js";
+import { SidebarTabContainerViewModel } from "./sidebartabs/SidebarTabContainerViewModel.js";
 import { SlashCommandViewModel } from "./SlashCommandViewModel.js";
 
 export interface ChannelViewModelState {
@@ -93,6 +94,9 @@ export abstract class ChannelViewModel extends ObservableBase implements IDispos
     set title(value) { this.channelState = { ...this.channelState, title: value }; }
 
     abstract get collectiveName(): string;
+
+    @observableProperty
+    sidebarTabContainer: SidebarTabContainerViewModel | null = null;
 
     get messageDisplayStyle(): ChannelMessageDisplayStyle {
         const result = this.getConfigSettingById("messageDisplayStyle") as ChannelMessageDisplayStyle;

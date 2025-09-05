@@ -8,6 +8,7 @@ import { PMConvoChannelViewModel } from "../viewmodel/PMConvoChannelViewModel.js
 import { ChannelStream } from "./ChannelStream.js";
 import { ChannelTextBox } from "./ChannelTextBox.js";
 import { ComponentBase, componentElement } from "./ComponentBase.js";
+import { SidebarTabContainerView } from "./sidebartabs/SidebarTabContainerView.js";
 import { SplitterHandle } from "./SplitterHandle.js";
 import { StageViewComponent, stageViewFor } from "./Stage.js";
 
@@ -24,7 +25,7 @@ export class ChannelView extends StageViewComponent<ChannelViewModel> {
             <div class="contentarea" slot="a" id="elContentArea">
                 <x-channelstream class="stream" id="elChannelStream"></x-channelstream>
                 <x-splitterhandle id="elUserListSplitter" class="casplitterhandle" target="elUserList" orientation="horizontal" min="200" max="500" invert="true"></x-splitterhandle>
-                <x-channeluserlist class="userlist" id="elUserList"></x-channeluserlist>
+                <!-- <x-sidebartabcontainer class="userlist" id="elUserList"></x-sidebartabcontainer> -->
             </div>
             <x-splitterhandle id="elTextBoxSplitter" class="tbsplitterhandle" target="elTextBox"
                 othertarget="elContentArea" othermin="100"
@@ -72,14 +73,19 @@ export class ChannelView extends StageViewComponent<ChannelViewModel> {
     }
 
     protected override viewModelChanged(): void {
-        const shouldHaveUserList = (this.viewModel instanceof ChatChannelViewModel);
-        const existingUserList = this.elMain.querySelector("x-channeluserlist");
+        const elContentArea = this._sroot.getElementById("elContentArea") as HTMLDivElement;
+        const shouldHaveUserList = this.viewModel?.sidebarTabContainer != null;
+        const existingUserList = this._sroot.getElementById("elUserList") as (SidebarTabContainerView | null);
 
         if (shouldHaveUserList) {
             if (!existingUserList) {
-                const el = document.createElement("x-channeluserlist");
+                const el = new SidebarTabContainerView();
+                el.ignoreParent = true;
+                el.viewModel = this.viewModel?.sidebarTabContainer ?? null;
+
                 el.classList.add("userlist");
-                this.elMain.appendChild(el);
+                el.id = "elUserList";
+                elContentArea.appendChild(el);
             }
         }
         else {

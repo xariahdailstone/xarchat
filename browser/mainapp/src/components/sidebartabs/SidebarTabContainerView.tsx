@@ -1,0 +1,133 @@
+import { SidebarTabContainerViewModel, SidebarTabViewModel } from "../../viewmodel/sidebartabs/SidebarTabContainerViewModel";
+import { componentArea, componentElement, StyleLoader } from "../ComponentBase";
+import { RenderingComponentBase } from "../RenderingComponentBase";
+import { jsx, Fragment, VNode, On, Classes } from "../../snabbdom/index";
+import { asDisposable, ConvertibleToDisposable, IDisposable } from "../../util/Disposable";
+import { getStylesheetAdoption, setStylesheetAdoption, SharedStyleSheet } from "../../util/StyleSheetPolyfill";
+
+@componentArea("sidebartabs")
+@componentElement("x-sidebartabcontainer")
+export class SidebarTabContainerView extends RenderingComponentBase<SidebarTabContainerViewModel> {
+
+    private static _registeredRendererTypes: Map<ConstructorOf<SidebarTabViewModel>, ConstructorOf<SidebarTabViewRenderer<any>>> = new Map();
+    static registerTabViewRenderer(vm: ConstructorOf<SidebarTabViewModel>, renderer: ConstructorOf<SidebarTabViewRenderer<any>>) {
+        this._registeredRendererTypes.set(vm, renderer);
+    }
+
+    constructor() {
+        super();
+    }
+
+    override render(): VNode | [VNode, IDisposable] {
+        const vm = this.viewModel;
+        if (!vm) { return <></>; }
+
+        const disposables: ConvertibleToDisposable[] = [];
+        const addDisposable = (d: ConvertibleToDisposable) => { disposables.push(d); };
+
+        const node = <div classList={[ "tabcontainer", ...vm.containerClasses]}>
+            <div classList={[ "tabstrip" ]}>{this.renderTabTitles(vm, addDisposable)}</div>
+            {this.renderTabBody(vm, addDisposable)}
+        </div>;
+
+        return [node, asDisposable(...disposables) ];
+    }
+
+    private _createdRenderers: Map<object, SidebarTabViewRenderer<any>> = new Map();
+
+    private getRendererForTab(vm: SidebarTabViewModel): SidebarTabViewRenderer<any> {
+        let renderer = this._createdRenderers.get(vm.constructor);
+        if (!renderer) {
+            for (let k of SidebarTabContainerView._registeredRendererTypes.keys()) {
+                if (vm instanceof k) {
+                    renderer = new (SidebarTabContainerView._registeredRendererTypes.get(k)!)();
+                    break;
+                }
+            }
+            if (!renderer) {
+                renderer = new MissingSidebarTabViewRenderer();
+            }
+            this._createdRenderers.set(vm.constructor, renderer);
+            this.initializeCssFilesAsync(renderer);
+        }
+        return renderer;
+    }
+
+    private async initializeCssFilesAsync(renderer: SidebarTabViewRenderer<any>) {
+        const cssFilesNeeded = renderer.cssFiles;
+        const newAdopted: Set<SharedStyleSheet> = new Set(getStylesheetAdoption(this._sroot));
+        for (let cssFile of cssFilesNeeded) {
+            const ss = await StyleLoader.loadAsync(cssFile)
+            newAdopted.add(ss);
+        }
+        setStylesheetAdoption(this._sroot, [...newAdopted]);
+    }
+
+    renderTabTitles(vm: SidebarTabContainerViewModel, addDisposable: (d: ConvertibleToDisposable) => void) {
+        const results: VNode[] = [];
+
+        for (let tab of vm.tabs) {
+            const isSelectedTab = vm.selectedTab == tab;
+
+            const vr = this.getRendererForTab(tab);
+            const result = vr.renderTitle(tab, isSelectedTab, addDisposable);
+            
+            const tabClasses: Classes = {
+                "tab-title": true,
+                "tab-title-selected": isSelectedTab
+            };
+            const tabOn: On = {};
+            if (!isSelectedTab) {
+                tabOn["click"] = (e) => {
+                    vm.selectedTab = tab;
+                };
+            }
+
+            results.push(<div class={tabClasses} on={tabOn}>{result}</div>);
+        }
+
+        return results;
+    }
+
+    renderTabBody(vm: SidebarTabContainerViewModel, addDisposable: (d: ConvertibleToDisposable) => void) {
+        if (!vm.selectedTab) { return <></>; }
+
+        const vr = this.getRendererForTab(vm.selectedTab);
+        const result = vr.renderBody(vm.selectedTab, addDisposable);
+
+        const bodyClasses: Classes = {
+            "tabbody": true
+        };
+
+        return <div class={bodyClasses}>{result}</div>;
+    }
+}
+
+export abstract class SidebarTabViewRenderer<TViewModel extends SidebarTabViewModel> {
+    abstract get cssFiles(): string[];
+
+    abstract renderTitle(vm: TViewModel, isSelectedTab: boolean, addDisposable: (d: ConvertibleToDisposable) => void): (VNode | VNode[] | null);
+
+    abstract renderBody(vm: TViewModel, addDisposable: (d: ConvertibleToDisposable) => void): (VNode | VNode[] | null);
+}
+
+class MissingSidebarTabViewRenderer extends SidebarTabViewRenderer<any> {
+    get cssFiles(): string[] { return []; }
+
+    renderTitle(vm: any, isSelectedTab: boolean, addDisposable: (d: ConvertibleToDisposable) => void): (VNode | VNode[] | null) {
+        return <>Renderer Missing</>;
+    }
+    renderBody(vm: any, addDisposable: (d: ConvertibleToDisposable) => void): (VNode | VNode[] | null) {
+        return <>Renderer Missing</>;
+    }
+}
+
+export interface ConstructorOf<T> {
+    new (...params: any[]): T;
+}
+
+export function sidebarTabViewRendererFor<TViewModel extends SidebarTabViewModel>(vm: ConstructorOf<SidebarTabViewModel>) {
+    return function(target: ConstructorOf<SidebarTabViewRenderer<TViewModel>>) {
+        SidebarTabContainerView.registerTabViewRenderer(vm, target);
+    }
+}
