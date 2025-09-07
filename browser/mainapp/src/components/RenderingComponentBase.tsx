@@ -141,6 +141,9 @@ export function makeRenderingComponent<TViewModel>(
                 }
             }
         }
+        catch (e) {
+            logger.logError("rendering component failure", e);
+        }
         finally
         {
             rmDisposable.dispose();

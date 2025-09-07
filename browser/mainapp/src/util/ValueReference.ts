@@ -7,21 +7,33 @@ export interface ValueReference<T> {
     write(value: T): void;
 }
 
+const SYM_VALUEREFS = Symbol("value references");
 export function getValueReference<T, TProperty extends keyof T>(obj: T, propertyName: TProperty): ValueReference<T[TProperty]> {
-    const result: ValueReference<T[TProperty]> = {
-        canRead: true,
-        canWrite: true,
+    let vrefs: { [propName: string]: ValueReference<T[TProperty]> } | null | undefined = null;
+    vrefs = (obj as any)[SYM_VALUEREFS];
+    if (!vrefs) {
+        vrefs = {};
+        (obj as any)[SYM_VALUEREFS] = vrefs;
+    }
 
-        read: () => {
-            return obj[propertyName];
-        },
+    let tref = vrefs[propertyName as string];
+    if (!tref) {
+        tref = {
+            canRead: true,
+            canWrite: true,
 
-        write: (value: T[TProperty]) => {
-            obj[propertyName] = value;
-        }
-    };
+            read: () => {
+                return obj[propertyName];
+            },
 
-    return result;
+            write: (value: T[TProperty]) => {
+                obj[propertyName] = value;
+            }
+        };
+        vrefs[propertyName as string] = tref;
+    }
+
+    return tref;
 }
 
 export function getMappedValueReference<T, TProperty extends keyof T, TMappedType>(obj: T, propertyName: TProperty,

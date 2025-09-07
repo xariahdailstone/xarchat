@@ -34,6 +34,7 @@ import { SuggestionHeader, SuggestionItem } from "./SuggestTextBoxViewModel.js";
 import { HTMLUtils } from "../util/HTMLUtils.js";
 import { SidebarTabContainerViewModel } from "./sidebartabs/SidebarTabContainerViewModel.js";
 import { ChannelUserListTabViewModel } from "./sidebartabs/ChannelUserListTabViewModel.js";
+import { FriendsListTabViewModel } from "./sidebartabs/FriendsListTabViewModel.js";
 
 export class ChatChannelUserViewModel extends ObservableBase implements IDisposable {
     constructor(
@@ -94,6 +95,7 @@ export class ChatChannelViewModel extends ChannelViewModel {
 
         this.sidebarTabContainer = new SidebarTabContainerViewModel();
         this.sidebarTabContainer.tabs.push(new ChannelUserListTabViewModel(this));
+        this.sidebarTabContainer.tabs.push(new FriendsListTabViewModel(this.activeLoginViewModel));
         this.sidebarTabContainer.selectedTab = this.sidebarTabContainer.tabs[0] ?? null;
 
         this.filterMode = ChatChannelMessageMode.BOTH;

@@ -4,6 +4,7 @@ import { RenderingComponentBase } from "../RenderingComponentBase";
 import { jsx, Fragment, VNode, On, Classes } from "../../snabbdom/index";
 import { asDisposable, ConvertibleToDisposable, IDisposable } from "../../util/Disposable";
 import { getStylesheetAdoption, setStylesheetAdoption, SharedStyleSheet } from "../../util/StyleSheetPolyfill";
+import { StringUtils } from "../../util/StringUtils";
 
 @componentArea("sidebartabs")
 @componentElement("x-sidebartabcontainer")
@@ -70,12 +71,24 @@ export class SidebarTabContainerView extends RenderingComponentBase<SidebarTabCo
             const isSelectedTab = vm.selectedTab == tab;
 
             const vr = this.getRendererForTab(tab);
-            const result = vr.renderTitle(tab, isSelectedTab, addDisposable);
+            const result = vr.renderTitle({
+                viewModel: tab, 
+                isSelectedTab, 
+                addDisposable
+            });
             
             const tabClasses: Classes = {
                 "tab-title": true,
                 "tab-title-selected": isSelectedTab
             };
+            for (let tc of ((typeof result.tabClasses == "string") ? [result.tabClasses] : (result.tabClasses ?? []))) {
+                for (let tcp of tc.split(' ')) {
+                    if (!StringUtils.isNullOrWhiteSpace(tcp)) {
+                        tabClasses[tcp] = true;
+                    }
+                }
+            }
+
             const tabOn: On = {};
             if (!isSelectedTab) {
                 tabOn["click"] = (e) => {
@@ -83,7 +96,7 @@ export class SidebarTabContainerView extends RenderingComponentBase<SidebarTabCo
                 };
             }
 
-            results.push(<div class={tabClasses} on={tabOn}>{result}</div>);
+            results.push(<div class={tabClasses} on={tabOn}>{result.vnodes}</div>);
         }
 
         return results;
@@ -103,10 +116,21 @@ export class SidebarTabContainerView extends RenderingComponentBase<SidebarTabCo
     }
 }
 
+export interface SidebarTabRenderTitleArgs<TViewModel extends SidebarTabViewModel> {
+    readonly viewModel: TViewModel;
+    readonly isSelectedTab: boolean;
+    readonly addDisposable: (d: ConvertibleToDisposable) => void;
+}
+
+export interface SidebarTabRenderTitleResult {
+    vnodes: (VNode | VNode[]);
+    tabClasses?: (string | string[] | null);
+}
+
 export abstract class SidebarTabViewRenderer<TViewModel extends SidebarTabViewModel> {
     abstract get cssFiles(): string[];
 
-    abstract renderTitle(vm: TViewModel, isSelectedTab: boolean, addDisposable: (d: ConvertibleToDisposable) => void): (VNode | VNode[] | null);
+    abstract renderTitle(renderArgs: SidebarTabRenderTitleArgs<TViewModel>): SidebarTabRenderTitleResult;
 
     abstract renderBody(vm: TViewModel, addDisposable: (d: ConvertibleToDisposable) => void): (VNode | VNode[] | null);
 }
@@ -114,8 +138,8 @@ export abstract class SidebarTabViewRenderer<TViewModel extends SidebarTabViewMo
 class MissingSidebarTabViewRenderer extends SidebarTabViewRenderer<any> {
     get cssFiles(): string[] { return []; }
 
-    renderTitle(vm: any, isSelectedTab: boolean, addDisposable: (d: ConvertibleToDisposable) => void): (VNode | VNode[] | null) {
-        return <>Renderer Missing</>;
+    renderTitle(renderArgs: SidebarTabRenderTitleArgs<any>): SidebarTabRenderTitleResult {
+        return { vnodes: <>Renderer Missing</> };
     }
     renderBody(vm: any, addDisposable: (d: ConvertibleToDisposable) => void): (VNode | VNode[] | null) {
         return <>Renderer Missing</>;

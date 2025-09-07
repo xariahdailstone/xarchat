@@ -29,28 +29,53 @@
 }
 
 .tabstrip {
+    display: flex;
+    flex-direction: row;
+
     background-color: var(--bg-level-2);
     color: var(--fg-level-2);
 }
 
 .tab-title { 
-    display: grid;
-    grid-template-columns: 1fr auto auto 1fr;
-    grid-template-rows: auto;
-    grid-template-areas: ". icon title .";
-
-    padding: 5px 5px;
+    flex-grow: 1;
     max-width: 50%;
+     
+    &.standardtabtitle {
+        display: grid;
+        grid-template-columns: 1fr auto auto auto 1fr;
+        grid-template-rows: auto;
+        grid-template-areas: ". preicon icon title .";
 
-    align-items: center;
+        padding: 5px 5px;
+        max-width: 50%;
 
-    .channeluserlist-title-icon { grid-area: icon; width: 15px; height: 15px; max-width: 15px; max-height: 15px; }
-    .channeluserlist-title-usercount { grid-area: title; margin-left: 4px; font-size: 65%; }
+        align-items: center;
+
+        .title-preicon {
+            grid-area: preicon;
+            margin-right: 4px;
+            font-size: 65%;
+        }
+        .title-icon {
+            grid-area: icon;
+            width: 15px;
+            height: 15px;
+            max-width: 15px;
+            max-height: 15px;
+        }
+        .title-additionaltext {
+            grid-area: title;
+            margin-left: 4px;
+            font-size: 65%;
+        }
+    }    
+
+    &.tab-title-selected {
+        background-color: var(--bg-level-3);
+        color: var(--fg-level-3);
+    }
 }
-.tab-title-selected {
-    background-color: var(--bg-level-3);
-    color: var(--fg-level-3);
-}
+
 
 .tabbody {
     overflow-y: auto;

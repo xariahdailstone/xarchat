@@ -20,7 +20,6 @@ import { ScrollAnchorTo } from "../util/ScrollAnchorTo.js";
 import { URLUtils } from "../util/URLUtils.js";
 import { ChannelMessageDisplayStyle, ChannelMessageType, ChannelMessageViewModel, ChannelViewModel, ChannelViewScrollPositionModel } from "../viewmodel/ChannelViewModel.js";
 import { ChannelStreamMessageViewRenderer } from "./ChannelStreamMessageViewRenderer.js";
-import { ChannelView } from "./ChannelView.js";
 import { CollectionView2 } from "./CollectionView2.js";
 import { CollectionViewLightweight } from "./CollectionViewLightweight.js";
 import { ComponentBase, componentElement } from "./ComponentBase.js";
@@ -294,7 +293,7 @@ export class ChannelStream extends ComponentBase<ChannelViewModel> {
         ];
     }
 
-    get viewModel(): (ChannelViewModel | null) { return super.viewModel; }
+    //get viewModel(): (ChannelViewModel | null) { return super.viewModel; }
 
     private _scrollManager: DefaultStreamScrollManager;
 

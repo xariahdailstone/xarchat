@@ -2,7 +2,7 @@ import { jsx, VNode, Fragment } from "../../snabbdom/index";
 import { ConvertibleToDisposable } from "../../util/Disposable";
 import { StringUtils } from "../../util/StringUtils";
 import { ChannelUserListTabViewModel } from "../../viewmodel/sidebartabs/ChannelUserListTabViewModel";
-import { SidebarTabViewRenderer, sidebarTabViewRendererFor } from "./SidebarTabContainerView";
+import { SidebarTabRenderTitleArgs, SidebarTabRenderTitleResult, SidebarTabViewRenderer, sidebarTabViewRendererFor } from "./SidebarTabContainerView";
 
 
 @sidebarTabViewRendererFor(ChannelUserListTabViewModel)
@@ -10,14 +10,21 @@ export class ChannelUserListTabViewRenderer extends SidebarTabViewRenderer<Chann
 
     get cssFiles(): string[] { return []; }
 
-    renderTitle(vm: ChannelUserListTabViewModel, isSelectedTab: boolean, addDisposable: (d: ConvertibleToDisposable) => void): (VNode | VNode[] | null) {
+    renderTitle(renderArgs: SidebarTabRenderTitleArgs<ChannelUserListTabViewModel>): SidebarTabRenderTitleResult {
+        const vm = renderArgs.viewModel;
+
         const channel = vm.channel;
-        return <>
-            <x-iconimage attr-src="assets/ui/chatchannel-icon.svg" classList={["channeluserlist-title-icon"]}></x-iconimage>
-            <div classList={["channeluserlist-title-usercount"]}>
+        const vnodes = <>
+            <x-iconimage attr-src="assets/ui/chatchannel-icon.svg" classList={["title-icon"]}></x-iconimage>
+            <div classList={["title-additionaltext"]}>
                 {(channel.usersModerators.size + channel.usersWatched.size + channel.usersLooking.size + channel.usersOther.size).toLocaleString()}
             </div>
         </>;
+
+        return { 
+            vnodes,
+            tabClasses: "standardtabtitle"
+        };
     }
 
     renderBody(vm: ChannelUserListTabViewModel, addDisposable: (d: ConvertibleToDisposable) => void): (VNode | VNode[] | null) {

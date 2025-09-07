@@ -1,4 +1,3 @@
-import { ChannelView } from "../components/ChannelView.js";
 import { PingLineItemDefinition, PingLineItemMatchStyle } from "../configuration/ConfigSchemaItem.js";
 import { BottleSpinData, ChannelMessageData, RollData } from "../fchat/ChatConnectionSink.js";
 import { CharacterGender } from "../shared/CharacterGender.js";
