@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
     <RuntimeIdentifier>osx-arm64</RuntimeIdentifier>
     <Platforms>AnyCPU</Platforms>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -48,7 +48,7 @@
   </ItemGroup>
 
   <Target Name="PreBuild" BeforeTargets="PreBuildEvent">
-    <Exec Command="./UpdateAssemblyVersionInfo.sh -AzureBuildNumber $(AzureBuildNumber)&#xD;&#xA;./CreateContentZip.sh -AzureBuildNumber $(AzureBuildNumber)" />
+    <Exec Command="chmod +x ./UpdateAssemblyVersionInfo.sh&#xD;&#xA;./UpdateAssemblyVersionInfo.sh -AzureBuildNumber $(AzureBuildNumber)&#xD;&#xA;chmod +x ./CreateContentZip.sh&#xD;&#xA;./CreateContentZip.sh -AzureBuildNumber $(AzureBuildNumber)" />
   </Target>
 
 </Project>
