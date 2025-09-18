@@ -32,6 +32,10 @@ import { StringUtils } from "../util/StringUtils.js";
 import { CancellationToken } from "../util/CancellationTokenSource.js";
 import { SuggestionHeader, SuggestionItem } from "./SuggestTextBoxViewModel.js";
 import { HTMLUtils } from "../util/HTMLUtils.js";
+import { SidebarTabContainerViewModel, SidebarTabViewModel } from "./sidebartabs/SidebarTabContainerViewModel.js";
+import { ChannelUserListTabViewModel } from "./sidebartabs/ChannelUserListTabViewModel.js";
+import { FriendsListTabViewModel } from "./sidebartabs/FriendsListTabViewModel.js";
+import { IHasRightBarTabs } from "./sidebartabs/RightSidebarTabContainerViewModel.js";
 
 export class ChatChannelUserViewModel extends ObservableBase implements IDisposable {
     constructor(
@@ -80,7 +84,7 @@ export class ChatChannelViewModelSortKey {
     }
 }
 
-export class ChatChannelViewModel extends ChannelViewModel {
+export class ChatChannelViewModel extends ChannelViewModel implements IHasRightBarTabs {
     constructor(parent: ActiveLoginViewModel, name: ChannelName, title: string) {
         super(parent, title);
 
@@ -89,6 +93,9 @@ export class ChatChannelViewModel extends ChannelViewModel {
         this.showConfigButton = true;
         this.canClose = true;
         this.canPin = true;
+
+        this.rightBarTabs = new Collection<SidebarTabViewModel>();
+        this.rightBarTabs.push(new ChannelUserListTabViewModel(this));
 
         this.filterMode = ChatChannelMessageMode.BOTH;
 
@@ -155,6 +162,8 @@ export class ChatChannelViewModel extends ChannelViewModel {
         this.updateFilterOptions();
 
     }
+
+    readonly rightBarTabs: Collection<SidebarTabViewModel>;
 
     private _scc?: SavedChatStateJoinedChannel;
 

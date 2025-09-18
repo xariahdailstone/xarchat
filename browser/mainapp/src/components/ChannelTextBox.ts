@@ -418,7 +418,7 @@ export class ChannelTextBox extends ComponentBase<ChannelViewModel> {
         }
     }
 
-    get viewModel(): (ChannelViewModel | null) { return super.viewModel; }
+    //get viewModel(): (ChannelViewModel | null) { return super.viewModel; }
 
     private async sendChat() {
         const vm = this.viewModel;
