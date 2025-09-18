@@ -1,48 +1,18 @@
-import { VNode } from "../../snabbdom/index";
-import { IDisposable } from "../../util/Disposable";
-import { ObservableBase, observableProperty } from "../../util/ObservableBase";
-import { Collection } from "../../util/ObservableCollection";
+import { IDisposable, isDisposable } from "../../util/Disposable";
+import { ReadOnlyObservableCollection } from "../../util/ObservableCollection";
 
-export class SidebarTabContainerViewModel extends ObservableBase implements IDisposable {
-    constructor() {
-        super();
-    }
+export interface SidebarTabContainerViewModel extends IDisposable {
+    readonly containerClasses: ReadonlyArray<string>;
 
-    private _isDisposed = false;
-    get isDisposed() { return this._isDisposed; }
+    readonly tabs: ReadOnlyObservableCollection<SidebarTabViewModel>;
 
-    dispose(): void {
-        if (!this._isDisposed) {
-            this._isDisposed = true;
-            for (let tab of this.tabs) {
-                tab.dispose();
-            }
-        }
-    }
-    [Symbol.dispose](): void {
-        this.dispose();
-    }
-
-    @observableProperty
-    containerClasses: ReadonlyArray<string> = [];
-
-    @observableProperty
-    tabs: Collection<SidebarTabViewModel> = new Collection();
-
-    @observableProperty
-    selectedTab: SidebarTabViewModel | null = null;
+    selectedTab: SidebarTabViewModel | null;
 }
 
-export abstract class SidebarTabViewModel extends ObservableBase implements IDisposable {
-    private _isDisposed = false;
-    get isDisposed() { return this._isDisposed; }
+export interface SidebarTabViewModel extends IDisposable {
+    readonly tabId: string;
 
-    dispose(): void {
-        if (!this._isDisposed) {
-            this._isDisposed = false;
-        }
-    }
-    [Symbol.dispose](): void {
-        this.dispose();
-    }
+    readonly canHideTabStripWhenAlone: boolean;
 }
+
+

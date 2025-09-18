@@ -8,7 +8,7 @@ import { SidebarTabRenderTitleArgs, SidebarTabRenderTitleResult, SidebarTabViewR
 @sidebarTabViewRendererFor(ChatsListTabViewModel)
 export class ChatsListTabViewRenderer extends SidebarTabViewRenderer<ChatsListTabViewModel> {
 
-    get cssFiles(): string[] { return []; }
+    get cssFiles(): string[] { return [ 'styles/components/sidebartabs/ChatsListTab.css' ]; }
     
     renderTitle(renderArgs: SidebarTabRenderTitleArgs<ChatsListTabViewModel>): SidebarTabRenderTitleResult {
         const vm = renderArgs.viewModel;
@@ -25,27 +25,26 @@ export class ChatsListTabViewRenderer extends SidebarTabViewRenderer<ChatsListTa
                 <>{"\u{2B24}"}</>
             : null;
 
-        if (headerDotNode) {
-            headerDotNode = <div classList={["title-preicon"]}>{headerDotNode}</div>;
-        }
+        // if (headerDotNode) {
+        //     headerDotNode = <div classList={["title-posticon"]}>{headerDotNode}</div>;
+        // }
 
         const hasPingsClasses: Classes = {
-            "tab-additionaltext": true,
+            "title-additionaltext": true,
             "has-ping-icon": !isSelectedTab && hasPings,
             "has-unseen-dot": !isSelectedTab && !hasPings && hasUnseenMessage
         };
 
         const vnodes = <>
-            {headerDotNode}
             <x-iconimage classList={["title-icon"]} attr-src="assets/ui/chats-icon.svg"></x-iconimage>
-            <div class={hasPingsClasses} id="elHasPings"></div>
+            <div class={hasPingsClasses} id="elHasPings">{headerDotNode}</div>
         </>;
 
         return { vnodes, tabClasses: "standardtabtitle" };
     }
 
     renderBody(vm: ChatsListTabViewModel, addDisposable: (d: ConvertibleToDisposable) => void): (VNode | VNode[] | null) {
-        return <>Test 1 2 3</>;
+        return <x-chatslist attrs={{ "ignoreparent": "true" }} props={{ "viewModel": vm.session }}></x-chatslist>;
     }
     
 }

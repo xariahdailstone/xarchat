@@ -715,8 +715,7 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     type: "select",
                     selectOptions: [
                         { value: "left", displayValue: "Left (Default)" },
-                        { value: "right", displayValue: "Right" },
-                        { value: "left,right", displayValue: "Both Sides" },
+                        { value: "right", displayValue: "Right" }
                     ],
                     defaultValue: "left",
                     configBlockKey: "friendsTabLocation"

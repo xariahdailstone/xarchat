@@ -27,8 +27,10 @@ export class ChannelUserListTabViewRenderer extends SidebarTabViewRenderer<Chann
         };
     }
 
-    renderBody(vm: ChannelUserListTabViewModel, addDisposable: (d: ConvertibleToDisposable) => void): (VNode | VNode[] | null) {
-        return <x-channeluserlist props={{ "viewModel": vm.channel }} attr-ignoreparent="true"></x-channeluserlist>;
+    renderBody(vm: ChannelUserListTabViewModel, addDisposable: (d: ConvertibleToDisposable) => void, hasVisibleTabStrip: boolean): (VNode | VNode[] | null) {
+        return <x-channeluserlist
+            props={{ "viewModel": vm.channel, "showTotalCount": !hasVisibleTabStrip }} 
+            attrs={{ "ignoreparent": "true" }}></x-channeluserlist>;
     }
 
 }

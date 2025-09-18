@@ -24,8 +24,8 @@
     .tabstrip { grid-area: tabstrip; }
     .tabbody { grid-area: tabbody; }
 
-    background-color: var(--bg-level-4);
-    color: var(--fg-level-4);
+    background-color: var(--bg-level-2);
+    color: var(--fg-level-2);
 }
 
 .tabstrip {
@@ -37,14 +37,16 @@
 }
 
 .tab-title { 
+    flex-shrink: 1;
     flex-grow: 1;
+    flex-basis: 0;
     max-width: 50%;
      
     &.standardtabtitle {
         display: grid;
-        grid-template-columns: 1fr auto auto auto 1fr;
+        grid-template-columns: 1fr auto auto auto auto 1fr;
         grid-template-rows: auto;
-        grid-template-areas: ". preicon icon title .";
+        grid-template-areas: ". preicon icon posticon title .";
 
         padding: 5px 5px;
         max-width: 50%;
@@ -63,6 +65,11 @@
             max-width: 15px;
             max-height: 15px;
         }
+        .title-posticon {
+            grid-area: posticon;
+            margin-left: 4px;
+            font-size: 65%;
+        }
         .title-additionaltext {
             grid-area: title;
             margin-left: 4px;
@@ -79,4 +86,7 @@
 
 .tabbody {
     overflow-y: auto;
+
+    background-color: var(--bg-level-3);
+    color: var(--fg-level-3);
 }

@@ -133,6 +133,8 @@
 
 
                 //alert("in html onready");
+                const failureMessages = [];
+                let hasFailure = false;
                 for (let x of Object.getOwnPropertyNames(System.registerRegistry)) {
                     if (x.startsWith("components/")) {
                         try {
@@ -141,9 +143,13 @@
                         }
                         catch (e)
                         {
-                            alert(`failed to load component ${x}: ${e}\n${e?.stack}`);
+                            failureMessages.push(`failed to load component ${x}: ${e}\n${e?.stack}`);
+                            hasFailure = true;
                         }
                     }
+                }
+                if (hasFailure) {
+                    alert(failureMessages.join("\n\n"));
                 }
                 
                 //alert("importing main");

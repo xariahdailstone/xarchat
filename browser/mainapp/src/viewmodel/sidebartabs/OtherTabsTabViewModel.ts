@@ -1,9 +1,11 @@
 import { ActiveLoginViewModel } from "../ActiveLoginViewModel";
-import { SidebarTabViewModel } from "./SidebarTabContainerViewModel";
+import { StandardSidebarTabViewModel } from "./StandardSidebarTabViewModel";
 
 
-export class OtherTabsTabViewModel extends SidebarTabViewModel {
+export class OtherTabsTabViewModel extends StandardSidebarTabViewModel {
     constructor(public readonly session: ActiveLoginViewModel) {
         super();
     }
+
+    readonly tabId = "othertabs";
 }

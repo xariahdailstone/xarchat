@@ -50,12 +50,17 @@ export class ChannelView extends StageViewComponent<ChannelViewModel> {
             const vm = this.viewModel;
             if (!vm) { return <></>; }
 
-            const shouldHaveUserList = vm.sidebarTabContainer != null;
-            const userListNode = shouldHaveUserList
-                ? <x-sidebartabcontainer classList={["userlist"]} id="elUserList" attr-ignoreparent="true"
-                    props={{
-                        "viewModel": vm?.sidebarTabContainer ?? null
-                    }}></x-sidebartabcontainer>
+            const shouldHaveUserList = vm.activeLoginViewModel.rightTabs != null && vm.activeLoginViewModel.rightTabs.tabs.length > 0;
+            const userListNodes = shouldHaveUserList
+                ? <>
+                    <x-splitterhandle id="elUserListSplitter" classList={["casplitterhandle"]}
+                        attr-target="elUserList" attr-orientation="horizontal" attr-min="200" attr-max="500" attr-invert="true"
+                        props={{ "viewModel": getValueReference(vm, "userListWidth") }} attr-ignoreparent="true"></x-splitterhandle>
+                    <x-sidebartabcontainer classList={["userlist"]} id="elUserList" attr-ignoreparent="true"
+                        props={{
+                            "viewModel": vm.activeLoginViewModel.rightTabs ?? null
+                        }}></x-sidebartabcontainer>
+                </>
                 : null;
 
             this.elMain.classList.toggle("is-channel", (vm instanceof ChatChannelViewModel));
@@ -75,10 +80,7 @@ export class ChannelView extends StageViewComponent<ChannelViewModel> {
                 <div classList={["contentarea"]} attr-slot="a" id="elContentArea">
                     <x-channelstream classList={["stream"]} id="elChannelStream"
                         props={{ "viewModel": vm }} attr-ignoreparent="true"></x-channelstream>
-                    <x-splitterhandle id="elUserListSplitter" classList={["casplitterhandle"]}
-                        attr-target="elUserList" attr-orientation="horizontal" attr-min="200" attr-max="500" attr-invert="true"
-                        props={{ "viewModel": getValueReference(vm, "userListWidth") }} attr-ignoreparent="true"></x-splitterhandle>
-                    {userListNode}
+                    {userListNodes}
                 </div>
                 <x-splitterhandle id="elTextBoxSplitter" classList={["tbsplitterhandle"]} attr-target="elTextBox"
                     attr-othertarget="elContentArea" attr-othermin="100"
@@ -177,14 +179,14 @@ export class OLDChannelView extends StageViewComponent<ChannelViewModel> {
 
     protected override viewModelChanged(): void {
         const elContentArea = this._sroot.getElementById("elContentArea") as HTMLDivElement;
-        const shouldHaveUserList = this.viewModel?.sidebarTabContainer != null;
+        const shouldHaveUserList = this.viewModel?.activeLoginViewModel.rightTabs != null;
         const existingUserList = this._sroot.getElementById("elUserList") as (SidebarTabContainerView | null);
 
         if (shouldHaveUserList) {
             if (!existingUserList) {
                 const el = new SidebarTabContainerView();
                 el.ignoreParent = true;
-                el.viewModel = this.viewModel?.sidebarTabContainer ?? null;
+                el.viewModel = this.viewModel?.activeLoginViewModel.rightTabs ?? null;
 
                 el.classList.add("userlist");
                 el.id = "elUserList";

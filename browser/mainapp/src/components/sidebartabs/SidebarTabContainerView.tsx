@@ -26,9 +26,19 @@ export class SidebarTabContainerView extends RenderingComponentBase<SidebarTabCo
         const disposables: ConvertibleToDisposable[] = [];
         const addDisposable = (d: ConvertibleToDisposable) => { disposables.push(d); };
 
+        const needsTabStrip =
+            vm.tabs.length > 1
+            || (vm.tabs.length == 1 && vm.selectedTab != vm.tabs[0])
+            || (vm.tabs.length > 0 && !vm.tabs[0]!.canHideTabStripWhenAlone);
+
+        const tabStripNode = needsTabStrip
+            ? <div classList={[ "tabstrip" ]}>{this.renderTabTitles(vm, addDisposable)}</div>
+            : <></>;
+        const tabBodyNode = this.renderTabBody(vm, addDisposable, needsTabStrip);
+
         const node = <div classList={[ "tabcontainer", ...vm.containerClasses]}>
-            <div classList={[ "tabstrip" ]}>{this.renderTabTitles(vm, addDisposable)}</div>
-            {this.renderTabBody(vm, addDisposable)}
+            {tabStripNode}
+            {tabBodyNode}
         </div>;
 
         return [node, asDisposable(...disposables) ];
@@ -61,6 +71,7 @@ export class SidebarTabContainerView extends RenderingComponentBase<SidebarTabCo
             const ss = await StyleLoader.loadAsync(cssFile)
             newAdopted.add(ss);
         }
+        this.logger.logInfo("setStylesheetAdoption", newAdopted);
         setStylesheetAdoption(this._sroot, [...newAdopted]);
     }
 
@@ -102,11 +113,15 @@ export class SidebarTabContainerView extends RenderingComponentBase<SidebarTabCo
         return results;
     }
 
-    renderTabBody(vm: SidebarTabContainerViewModel, addDisposable: (d: ConvertibleToDisposable) => void) {
+    renderTabBody(
+        vm: SidebarTabContainerViewModel,
+        addDisposable: (d: ConvertibleToDisposable) => void,
+        hasVisibleTabStrip: boolean) {
+
         if (!vm.selectedTab) { return <></>; }
 
         const vr = this.getRendererForTab(vm.selectedTab);
-        const result = vr.renderBody(vm.selectedTab, addDisposable);
+        const result = vr.renderBody(vm.selectedTab, addDisposable, hasVisibleTabStrip);
 
         const bodyClasses: Classes = {
             "tabbody": true
@@ -132,7 +147,7 @@ export abstract class SidebarTabViewRenderer<TViewModel extends SidebarTabViewMo
 
     abstract renderTitle(renderArgs: SidebarTabRenderTitleArgs<TViewModel>): SidebarTabRenderTitleResult;
 
-    abstract renderBody(vm: TViewModel, addDisposable: (d: ConvertibleToDisposable) => void): (VNode | VNode[] | null);
+    abstract renderBody(vm: TViewModel, addDisposable: (d: ConvertibleToDisposable) => void, hasVisibleTabStrip: boolean): (VNode | VNode[] | null);
 }
 
 class MissingSidebarTabViewRenderer extends SidebarTabViewRenderer<any> {

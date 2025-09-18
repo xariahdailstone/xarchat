@@ -41,7 +41,7 @@
 .contentarea {
     position: relative;
     display: grid;
-    grid-template-columns: 1fr 6px auto;
+    grid-template-columns: 1fr minmax(0px, 6px) auto;
     grid-template-rows: 1fr;
     grid-template-areas:
         "stream splitter userlist";
@@ -55,8 +55,8 @@
     /* background: inherit; */
 }
 
-#elMain.is-channel .contentarea {
-    grid-template-columns: 1fr 6px auto;
+/* #elMain.is-channel .contentarea {
+    grid-template-columns: 1fr minmax(0px, 6px) auto;
     grid-template-rows: 1fr;
     grid-template-areas:
         "stream splitter userlist";
@@ -67,10 +67,10 @@
     grid-template-rows: 1fr;
     grid-template-areas:
         "stream .";
-}
+} */
 
 .stream { grid-area: stream; }
-.casplitterhandle { grid-area: splitter; }
+.casplitterhandle { grid-area: splitter; width: 6px; }
 .userlist { grid-area: userlist; }
 
 .userlist {

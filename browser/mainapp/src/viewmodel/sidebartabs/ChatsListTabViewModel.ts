@@ -1,12 +1,10 @@
 import { ActiveLoginViewModel } from "../ActiveLoginViewModel";
-import { SidebarTabViewModel } from "./SidebarTabContainerViewModel";
+import { StandardSidebarTabViewModel } from "./StandardSidebarTabViewModel";
 
-export class ChatsListTabViewModel extends SidebarTabViewModel {
+export class ChatsListTabViewModel extends StandardSidebarTabViewModel {
     constructor(public readonly session: ActiveLoginViewModel) {
         super();
     }
 
-    override dispose() {
-        super.dispose();
-    }
+    readonly tabId = "chatslist";
 }

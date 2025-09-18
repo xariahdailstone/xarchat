@@ -15,7 +15,7 @@ export class OtherTabsTabViewRenderer extends SidebarTabViewRenderer<OtherTabsTa
     }
 
     renderBody(vm: OtherTabsTabViewModel, addDisposable: (d: ConvertibleToDisposable) => void): (VNode | VNode[] | null) {
-        return <>Test 1 2 3</>;
+        return <x-misctabslist props={{ "ignoreParent": true, "viewModel": vm.session }}></x-misctabslist>;
     }
 
 }

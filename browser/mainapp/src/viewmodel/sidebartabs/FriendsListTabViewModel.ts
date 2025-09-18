@@ -1,9 +1,23 @@
+import { observableProperty } from "../../util/ObservableBase";
 import { ActiveLoginViewModel } from "../ActiveLoginViewModel";
-import { SidebarTabViewModel } from "./SidebarTabContainerViewModel";
+import { StandardSidebarTabViewModel } from "./StandardSidebarTabViewModel";
 
-export class FriendsListTabViewModel extends SidebarTabViewModel {
+export class FriendsListTabViewModel extends StandardSidebarTabViewModel {
     constructor(public readonly session: ActiveLoginViewModel) {
         super();
     }
+
+    get tabId() { 
+        switch (this.show) {
+            case "friends":
+            case "both":
+                return "friendslist";
+            case "bookmarks":
+                return "bookmarkslist";
+        }
+    }
+
+    @observableProperty
+    show: ("both" | "friends" | "bookmarks") = "both";
 }
 
