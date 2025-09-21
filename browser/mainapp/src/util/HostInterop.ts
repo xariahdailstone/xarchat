@@ -24,6 +24,7 @@ import { StringUtils } from "./StringUtils";
 import { TaskUtils } from "./TaskUtils";
 import { UpdateCheckerState } from "./UpdateCheckerClient";
 import { URLUtils } from "./URLUtils";
+import { Scheduler } from "./Scheduler";
 // import { SqliteConnection } from "./sqlite/SqliteConnection";
 // import { XarHost2SqliteConnection } from "./sqlite/xarhost2/XarHost2SqliteConnection";
 
@@ -522,7 +523,7 @@ class XarHost2Interop implements IXarHost2HostInterop {
         this.neededWidth = width;
         if (!this.hasResizeQueued) {
             this.hasResizeQueued = true;
-            window.requestAnimationFrame(() => {
+            Scheduler.scheduleNamedCallback("XarHost2Interop.doClientResize", ["frame", "idle", 250], () => {
                 this.hasResizeQueued = false;
                 const elMain = document.getElementById("elMain")!;
 
@@ -685,7 +686,7 @@ class XarHost2Interop implements IXarHost2HostInterop {
 
     appReady(): void {
         this.writeToXCHostSocket("appReady");
-        window.requestAnimationFrame(() => {
+        Scheduler.scheduleNamedCallback("XarHost2Interop.appReady", ["frame", "idle", 250], () => {
             document.body.classList.add("loaded");
         });
     }

@@ -6,6 +6,7 @@ import { EventListenerUtil } from "../util/EventListenerUtil";
 import { HostInterop } from "../util/HostInterop";
 import { IdleDetectionScreenState, IdleDetectionUserState } from "../util/IdleDetection";
 import { PromiseSource } from "../util/PromiseSource";
+import { Scheduler } from "../util/Scheduler";
 import { SnapshottableSet } from "../util/collections/SnapshottableSet";
 import { ChannelBanListInfo, ChannelMetadata, ChannelOpListInfo, ChatConnection, PartnerSearchArgs, PartnerSearchResult } from "./ChatConnection";
 import { ChatConnectionImpl } from "./ChatConnectionImpl";
@@ -96,9 +97,9 @@ export class ChatConnectionFactoryImpl {
                 };
                 ws.onmessage = (e) => {
                     if (completed) {
-                        window.requestIdleCallback(() => {
+                        Scheduler.scheduleNamedCallback("ChatConnectionFactory.createWithWebSocket.onmessage", ["idle", 100], () => {
                             cci.processIncomingData(e.data);
-                        }, { timeout: 100 });
+                        });
                     }
                 };
                 ws.onclose = (e) => {

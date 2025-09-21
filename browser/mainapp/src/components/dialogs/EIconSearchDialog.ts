@@ -12,6 +12,7 @@ import { EIconUtils } from "../../util/EIconUtils";
 import { EventListenerUtil } from "../../util/EventListenerUtil";
 import { asDisposable, IDisposable } from "../../util/Disposable";
 import { Logger } from "../../util/Logger";
+import { Scheduler } from "../../util/Scheduler";
 
 type MoveNavResultUpDown = { accepted: false } | { accepted: true, exitedAtColumn?: number };
 type MoveNavResultLeftRight = { accepted: false } | { accepted: true, exited: boolean };
@@ -361,7 +362,7 @@ export class EIconSetView extends ComponentBase<EIconResultSet> implements Keybo
                     this.recalculateDisplayInner();
                 }
                 else {
-                    window.requestAnimationFrame(() => {
+                    Scheduler.scheduleNamedCallback("EIconSetView.recalculateDisplay", ["frame", "idle", 250], () => {
                         this._recalcRequested = false;
                         this.recalculateDisplayInner();
                     });
