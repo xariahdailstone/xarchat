@@ -25,6 +25,7 @@ import { TaskUtils } from "./TaskUtils";
 import { UpdateCheckerState } from "./UpdateCheckerClient";
 import { URLUtils } from "./URLUtils";
 import { Scheduler } from "./Scheduler";
+import { Mutex } from "./Mutex";
 // import { SqliteConnection } from "./sqlite/SqliteConnection";
 // import { XarHost2SqliteConnection } from "./sqlite/xarhost2/XarHost2SqliteConnection";
 
@@ -813,50 +814,60 @@ class XarHost2Interop implements IXarHost2HostInterop {
         this.writeToXCHostSocket("endCharacterSession " + characterName.value);
     }
 
+    private _getAppSettingsMutex: Mutex = new Mutex();
     async getAppSettings(): Promise<unknown> {
-        const resp = await fetch("/api/appSettings");
-        const json = await resp.json();
-        return json;
+        await this._getAppSettingsMutex.acquireAsync();
+        try {
+            const ps = new PromiseSource<unknown>();
+
+            await this.writeToXCHostSocketAndRead("getAppSettings", 
+                (cmd, arg) => {
+                    if (cmd.toLowerCase() == "gotappsettings") {
+                        var argObj = JSON.parse(arg);
+                        ps.tryResolve(argObj);
+                        return true;
+                    }
+                    else if (cmd.toLowerCase() == "gotappsettingserror") {
+                        var errStr = JSON.parse(arg);
+                        ps.tryReject(errStr);
+                        return true;
+                    }
+                    else {
+                        return false;
+                    }
+                });
+
+            const result = await ps.promise;
+            return result;
+        }
+        finally {
+            this._getAppSettingsMutex.release();
+        }
     }
 
-    private _isUpdatingAppSettings: boolean = false;
-
-    private _nextAppSettingsUpdate: any = undefined;
-    private _nextAppSettingsUpdatePCS: PromiseSource<void> | null = null;
-
+    private _updateAppSettingsMutex: Mutex = new Mutex();
     async updateAppSettings(settings: any): Promise<void> {
-        if (!this._isUpdatingAppSettings) {
-            this._isUpdatingAppSettings = true;
-            const resp = await fetch("/api/appSettings", {
-                method: "PUT",
-                body: JSON.stringify(settings)
-            });
+        await this._updateAppSettingsMutex.executeLatestWhileHeldAsync(async () => {
+            const ps = new PromiseSource<void>();
 
-            try {
-                const body = await resp.text();
-            }
-            catch { }
+            await this.writeToXCHostSocketAndRead(`setAppSettings ${JSON.stringify(settings)}`, 
+                (cmd, arg) => {
+                    if (cmd.toLowerCase() == "updatedappsettings") {
+                        ps.tryResolve();
+                        return true;
+                    }
+                    else if (cmd.toLowerCase() == "setappsettingserror") {
+                        var errStr = JSON.parse(arg);
+                        ps.tryReject(errStr);
+                        return true;
+                    }
+                    else {
+                        return false;
+                    }
+                });
 
-            this._isUpdatingAppSettings = false;
-
-            if (this._nextAppSettingsUpdate !== undefined) {
-                const pcs = this._nextAppSettingsUpdatePCS;
-                const nu = this._nextAppSettingsUpdate;
-
-                this._nextAppSettingsUpdate = undefined;
-                this._nextAppSettingsUpdatePCS = null;
-
-                this.updateAppSettings(nu);
-                pcs?.resolve();
-            }
-        }
-        else {
-            this._nextAppSettingsUpdate = settings;
-            if (this._nextAppSettingsUpdatePCS == null) {
-                this._nextAppSettingsUpdatePCS = new PromiseSource<void>();
-            }
-            await this._nextAppSettingsUpdatePCS.promise;
-        }
+            await ps.promise;
+        });
     }
 
     private _lastAppBadgeAssign: { hasPings: boolean, hasUnseen: boolean } = { hasPings: false, hasUnseen: false };
