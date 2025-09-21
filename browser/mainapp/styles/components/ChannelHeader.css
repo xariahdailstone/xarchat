@@ -65,30 +65,15 @@
 }
 
 .descriptionarea { grid-area: descriptionarea; }
-
-.descriptionarea {
-    display: grid;
-    grid-template-rows: auto;
-    grid-template-columns: auto auto 1fr;
-    grid-template-areas:
-        "description descshowmore .";
-
-    margin-left: 20px;
-}
 .descriptioncontainer { grid-area: description; }
-.descriptionshowmore { grid-area: descshowmore; display: none; }
+.descriptionshowmore { grid-area: descshowmore; }
+
+.descriptionshowmore {
+
+}
 
 .descriptionshowmore.shown {
     display: block;
-
-    background: var(--bg-main-textbox-btn);
-    color: var(--fg-main-textbox-btn);
-    padding: 2px 8px;
-    font-size: 75%;
-    margin-left: 5px;
-    border: none;
-    outline: none;
-    border-radius: 5px;
 }
 
 #elFilter {
@@ -101,14 +86,6 @@
 
     margin-left: 20px;
 }
-
-/*
-#elFilter[data-messagemode='ads'],
-#elFilter[data-messagemode='chat'],
-#elFilter[data-messagemode='none'] { display: none; }
-
-#elFilter[data-messagemode='both'] { display: flex; }
-*/
 
 #elFilterIcon {
     width: 20px;
@@ -143,51 +120,99 @@ select {
     --iconimage-max-height: 20px;
 }
 
-#elDescriptionContainer {
+/* #elDescriptionContainer {
     display: flex;
     flex-direction: row;
     align-items: center;
-
-    /*background: var(--bg-level-3);
-    color: var(--fg-level-3);
-    padding: 4px 4px;
-    border-radius: 8px;
-
-    margin-left: 13px;
-    margin-right: 13px;*/
 }
 
-#elDescriptionContainer { overflow: hidden; }
+#elDescriptionContainer { overflow: hidden; } */
+
+
+.descriptionarea {
+    grid-area: descriptionarea;
+    
+    --desc-vpadding: 4px;
+    max-height: 1lh;
+
+    display: grid;
+    grid-template-rows: auto;
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+        "description descshowmore";
+
+    margin-left: 20px;
+    overflow: hidden;
+}
+.descriptionareainner {
+    position: relative;
+}
 
 .descriptioncontainer {
     position: relative;
+    overflow: hidden;
+    /* container: description-text-full / size; */
 }
+
+.descriptioncontainerinner {
+    position: relative;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
 .descriptiontext { 
+    grid-area: desc;
     text-overflow: ellipsis;
     white-space: nowrap;
     overflow: hidden; 
 }
 .descriptiontextsizer {
     visibility: hidden;
+    position: relative;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: min-content;
+    display: block;
+}
+
+.descriptionvisiblecontainer {
     position: absolute;
     top: 0;
     left: 0;
-    max-width: 100%;
+    width: 100%;
+    height: 100%;
+    container: description-text-full / size;
+
+    display: grid;
+    grid-template-rows: auto;
+    grid-template-columns: minmax(0, min-content) auto 1fr;
+    grid-template-areas: "text button";
+
+    .descriptiontext { 
+        grid-area: text; 
+    }
+    .descriptionshowmore { 
+        grid-area: button; 
+        display: none;
+        background: var(--bg-main-textbox-btn);
+        color: var(--fg-main-textbox-btn);
+        font-size: 75%;
+        margin-left: 5px;
+        border: none;
+        outline: none;
+        border-radius: 5px;
+        height: calc(1lh + var(--desc-vpadding));
+    }
 }
 
-/* #elMain.chatchannel #elDescriptionContainer {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
+@container description-text-full (height > 1.5lh) {
+    .descriptionshowmore {
+        display: block !important;
+    }
 }
-
-#elDescriptionUpdated {
-    background: var(--bg-level-3-highlight);
-    color: var(--fg-level-3-highlight);
-    padding: 2px 9px;
-    border-radius: 8px;
-    margin-right: 4px;
-} */
 
 #elDescriptionText {
     opacity: 0.5;
