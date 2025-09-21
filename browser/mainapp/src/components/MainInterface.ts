@@ -20,6 +20,7 @@ import { PopupFrame } from "./popups/PopupFrame.js";
 import { getValueReference, ValueReference } from "../util/ValueReference.js";
 import { PopupViewModel } from "../viewmodel/popups/PopupViewModel.js";
 import { DelayedCallManager, DelayedCallScheduler, DelayedCallStyle } from "../util/DelayedCallManager.js";
+import { Scheduler } from "../util/Scheduler.js";
 
 @componentElement("x-maininterface")
 export class MainInterface extends ComponentBase<AppViewModel> {
@@ -291,7 +292,7 @@ class DialogStackCollectionView extends CollectionViewLightweight<DialogViewMode
         if (this.mainInterface) {
             this.mainInterface.updateDialogsState();
         }
-        window.requestAnimationFrame(() => {
+        Scheduler.scheduleNamedCallback("DialogStackCollectionView.createUserElement", ["frame", "idle", 250], () => {
             el.onShown();
         });
         return el;

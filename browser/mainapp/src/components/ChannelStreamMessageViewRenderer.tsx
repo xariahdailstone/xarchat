@@ -9,6 +9,7 @@ import { asDisposable, asNamedDisposable, DisposableOwnerField, IDisposable } fr
 import { HTMLUtils } from "../util/HTMLUtils";
 import { IterableUtils } from "../util/IterableUtils";
 import { Observable } from "../util/Observable";
+import { Scheduler } from "../util/Scheduler";
 import { classListNewModule } from "../util/snabbdom/classList-new";
 import { rawAttributesModule } from "../util/snabbdom/rawAttributes";
 import { valueSyncModule } from "../util/snabbdom/valueSyncHook";
@@ -127,10 +128,10 @@ export class ChannelStreamMessageViewRenderer implements IDisposable {
     private readonly _previousRenderDisposable = new DisposableOwnerField();
 
     private _lastRenderedElement: HTMLElement | null = null;
-    private _performRenderHandle: number | null = null;
+    private _performRenderHandle: IDisposable | null = null;
     private performRender() {
         if (this._performRenderHandle == null) {
-            this._performRenderHandle = window.requestAnimationFrame(() => {
+            this._performRenderHandle = Scheduler.scheduleNamedCallback("ChannelStreamMessageViewRenderer.performRender", ["frame", "idle", 250], () => {
                 this._performRenderHandle = null;
                 const element = this.element;
                 const collection = this.collection;

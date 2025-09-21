@@ -4,6 +4,7 @@ import { BBCodeParseOptions, ChatBBCodeParser } from "../util/bbcode/BBCode.js";
 import { asDisposable, IDisposable } from "../util/Disposable.js";
 import { HTMLUtils } from "../util/HTMLUtils.js";
 import { ResizeObserverNice } from "../util/ResizeObserverNice.js";
+import { Scheduler } from "../util/Scheduler.js";
 import { StringUtils } from "../util/StringUtils.js";
 import { URLUtils } from "../util/URLUtils.js";
 import { WhenChangeManager } from "../util/WhenChange.js";
@@ -361,12 +362,12 @@ export class ChannelHeader extends ComponentBase<ChannelViewModel> {
         });
     }
 
-    private _checkDescSizeHandle: number | null = null;
+    private _checkDescSizeHandle: IDisposable | null = null;
 
     private checkDescriptionSize() {
         if (this._checkDescSizeHandle != null) { return; }
 
-        this._checkDescSizeHandle = window.requestAnimationFrame(() => {
+        this._checkDescSizeHandle = Scheduler.scheduleNamedCallback("ChannelHeader.checkDescriptionSize", ["frame", "idle", 250], () => {
             this._checkDescSizeHandle = null;
             this.checkDescriptionSizeNow();
         });

@@ -1,5 +1,6 @@
 import { IDisposable, asDisposable } from "../../util/Disposable";
 import { EventListenerUtil } from "../../util/EventListenerUtil";
+import { Scheduler } from "../../util/Scheduler";
 import { WhenChangeManager } from "../../util/WhenChange";
 import { DialogButtonViewModel, DialogViewModel } from "../../viewmodel/dialogs/DialogViewModel";
 import { PopupViewModel } from "../../viewmodel/popups/PopupViewModel";
@@ -42,7 +43,7 @@ export class PopupFrame extends ComponentBase<PopupViewModel> {
         this.whenConnected(() => {
             let justConnected = true;
             let clickInPopup = false;
-            window.requestAnimationFrame(() => justConnected = false);
+            Scheduler.scheduleNamedCallback("PopupFrame.whenConnected", ["frame", "idle", 250], () => justConnected = false);
 
             const clickHandler = (ev: MouseEvent) => {
                 if (this.viewModel && !justConnected && !clickInPopup) {

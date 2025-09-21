@@ -1,3 +1,4 @@
+import { Scheduler } from "./Scheduler";
 
 
 export class DelayedCallManager {
@@ -45,8 +46,8 @@ export class DelayedCallManager {
             default:
             case DelayedCallScheduler.REQUEST_ANIMATION_FRAME:
                 {
-                    const n = window.requestAnimationFrame(() => this.runDelayedCall());
-                    this._unscheduleFunc = () => window.cancelAnimationFrame(n);
+                    const n = Scheduler.scheduleNamedCallback("DelayedCallManager.schedule", ["nextframe", 250], () => this.runDelayedCall());
+                    this._unscheduleFunc = () => n.dispose();
                     this._isScheduled = true;
                 }
                 break;

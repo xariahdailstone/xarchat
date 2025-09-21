@@ -16,6 +16,7 @@ import { IterableUtils } from "../util/IterableUtils.js";
 import { ObservableValue } from "../util/Observable.js";
 import { FirstInAnimationFrameManager } from "../util/RequestAnimationFrameHook.js";
 import { ResizeObserverNice } from "../util/ResizeObserverNice.js";
+import { Scheduler } from "../util/Scheduler.js";
 import { ScrollAnchorTo } from "../util/ScrollAnchorTo.js";
 import { URLUtils } from "../util/URLUtils.js";
 import { ChannelMessageDisplayStyle, ChannelMessageType, ChannelMessageViewModel, ChannelViewModel, ChannelViewScrollPositionModel } from "../viewmodel/ChannelViewModel.js";
@@ -225,7 +226,7 @@ export class ChannelStream extends ComponentBase<ChannelViewModel> {
     }
 
     private _previousCollapseHostRO: ResizeObserver | null = null;
-    private _roAnimHandle: number | null = null;
+    private _roAnimHandle: IDisposable | null = null;
     private _roAnimEntries: ResizeObserverEntry[] = [];
     private readonly _previousCollapseHostROObserved: Set<Element> = new Set();
     updateCollapseHostMonitoring() {
@@ -246,7 +247,7 @@ export class ChannelStream extends ComponentBase<ChannelViewModel> {
             const ro = new ResizeObserver(entries => {
                 this._roAnimEntries.push(...entries);
                 if (this._roAnimHandle == null) {
-                    this._roAnimHandle = window.requestAnimationFrame(() => {
+                    this._roAnimHandle = Scheduler.scheduleNamedCallback("ChannelStream.collapseHostSize", ["frame", "idle", 250], () => {
                         this._roAnimHandle = null;
                         const entries = this._roAnimEntries;
                         this._roAnimEntries = [];
@@ -512,13 +513,13 @@ export class DefaultStreamScrollManager implements StreamScrollManager {
             lastTimestamp = msElapsed;
 
             if (this.containerElement.scrollTop != targetTop && msRemaining > 0) {
-                window.requestAnimationFrame(tick);
+                Scheduler.scheduleNamedCallback("DefaultStreamScrollManager.resumeScrollRecordingWhenTop(tick)", ["nextframe", 250], tick);
             }
             else {
                 this.resumeScrollRecording(ScrollSuppressionReason.ScrollingStreamToSmooth);
             }
         };
-        window.requestAnimationFrame(tick);
+        Scheduler.scheduleNamedCallback("DefaultStreamScrollManager.resumeScrollRecordingWhenTop(tick)", ["nextframe", 250], tick);
     }
 
     get isRecordingSuppressed() { return this._suppressionCount > 0; }
