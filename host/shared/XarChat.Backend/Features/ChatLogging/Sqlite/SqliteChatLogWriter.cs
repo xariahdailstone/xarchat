@@ -51,7 +51,6 @@ namespace XarChat.Backend.Features.ChatLogging.Sqlite
                             new Migration03AddGenderStatusToMessageLog(),
                             new Migration04AddGenderStatusToPMLog(),
                             new Migration05MovePMConvosToChannels(),
-                            new Migration06AddTextStringIdIndexes()
                         ],
                         _disposeCTS.Token);
 
