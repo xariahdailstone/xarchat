@@ -31,13 +31,15 @@ export class ChannelHeader extends ComponentBase<ChannelViewModel> {
             <div id="elOnlineStatusContainer" class="online-status-container"></div>
 
             <div id="elDescriptionArea" class="descriptionarea">
-                <div id="elDescriptionContainer" class="descriptioncontainer">
-                    <div id="elDescriptionText" class="descriptiontext"></div>
+                <div class="descriptionareainner">
                     <div id="elDescriptionTextSizer" class="descriptiontextsizer"></div>
+                    <div id="elDescriptionContainer" class="descriptionvisiblecontainer">
+                        <div id="elDescriptionText" class="descriptiontext"></div>
+                        <button id="elDescriptionShowMore" class="descriptionshowmore" tabindex="-1">
+                            Show Full Description...
+                        </button>
+                    </div>
                 </div>
-                <button id="elDescriptionShowMore" class="descriptionshowmore" tabindex="-1">
-                    Show Full Description...
-                </button>
             </div>
 
             <div id="elConfigIconContainer">
@@ -227,6 +229,11 @@ export class ChannelHeader extends ComponentBase<ChannelViewModel> {
 
             const fullDescx = ChatBBCodeParser.parse(rawDescStr, parseOptions);
             while (elDescriptionTextSizer.firstElementChild) { elDescriptionTextSizer.firstElementChild.remove(); }
+
+            const fdContainer = document.createElement("div");
+            fdContainer.classList.add("descriptiontextsizerinner");
+
+            elDescriptionTextSizer.appendChild(fdContainer);
             elDescriptionTextSizer.appendChild(fullDescx.element);
 
             elDescriptionShowMore.setAttribute("data-expandto", rawDescStr);
@@ -332,16 +339,16 @@ export class ChannelHeader extends ComponentBase<ChannelViewModel> {
         //     }
         // });
 
-        this.whenConnected(() => {
-            const rm = new ResizeObserverNice(() => {
-                this.checkDescriptionSizeNow();
-            });
-            rm.observe(elDescriptionText);
-            rm.observe(elDescriptionTextSizer);
-            return asDisposable(() => {
-                rm.disconnect();
-            });
-        });
+        // this.whenConnected(() => {
+        //     const rm = new ResizeObserverNice(() => {
+        //         this.checkDescriptionSizeNow();
+        //     });
+        //     rm.observe(elDescriptionText);
+        //     rm.observe(elDescriptionTextSizer);
+        //     return asDisposable(() => {
+        //         rm.disconnect();
+        //     });
+        // });
 
         this.$("elDescriptionShowMore")!.addEventListener("click", () => {
             const vm = this.viewModel;
@@ -362,24 +369,24 @@ export class ChannelHeader extends ComponentBase<ChannelViewModel> {
         });
     }
 
-    private _checkDescSizeHandle: IDisposable | null = null;
+    // private _checkDescSizeHandle: IDisposable | null = null;
 
-    private checkDescriptionSize() {
-        if (this._checkDescSizeHandle != null) { return; }
+    // private checkDescriptionSize() {
+    //     if (this._checkDescSizeHandle != null) { return; }
 
-        this._checkDescSizeHandle = Scheduler.scheduleNamedCallback("ChannelHeader.checkDescriptionSize", ["frame", "idle", 250], () => {
-            this._checkDescSizeHandle = null;
-            this.checkDescriptionSizeNow();
-        });
-    }
+    //     this._checkDescSizeHandle = Scheduler.scheduleNamedCallback("ChannelHeader.checkDescriptionSize", ["frame", "idle", 250], () => {
+    //         this._checkDescSizeHandle = null;
+    //         this.checkDescriptionSizeNow();
+    //     });
+    // }
 
-    private checkDescriptionSizeNow() {
-        const elDescriptionText = this.$("elDescriptionText") as HTMLDivElement;
-        const elDescriptionTextSizer = this.$("elDescriptionTextSizer") as HTMLDivElement;
+    // private checkDescriptionSizeNow() {
+    //     const elDescriptionText = this.$("elDescriptionText") as HTMLDivElement;
+    //     const elDescriptionTextSizer = this.$("elDescriptionTextSizer") as HTMLDivElement;
         
-        const needOverflow = (elDescriptionText.offsetWidth != elDescriptionTextSizer.offsetWidth ||
-            elDescriptionText.offsetHeight != elDescriptionTextSizer.offsetHeight);
+    //     const needOverflow = (elDescriptionText.offsetWidth != elDescriptionTextSizer.offsetWidth ||
+    //         elDescriptionText.offsetHeight != elDescriptionTextSizer.offsetHeight);
 
-        this.$("elDescriptionShowMore")!.classList.toggle("shown", needOverflow);
-    }
+    //     this.$("elDescriptionShowMore")!.classList.toggle("shown", needOverflow);
+    // }
 }

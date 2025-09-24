@@ -33,7 +33,7 @@
     contain: layout paint;
 }
 
-.header { grid-area: header; contain: strict; margin-left: calc(0px - var(--chatui-splitterhandle-width));  }
+.header { grid-area: header; contain: strict; margin-left: calc(0px - var(--chatui-splitterhandle-width)); width: 100%; overflow: hidden; }
 .contentarea { grid-area: main; contain: strict;  }
 .tbsplitterhandle { grid-area: splitter; contain: strict;  }
 .textbox { grid-area: textbox; contain: strict;  }
