@@ -44,3 +44,7 @@ EmptyWorkingSet
 NtQueryInformationProcess
 OpenProcess
 CloseHandle
+// WinNLS
+//EnumSystemLocalesEx
+EnumUILanguages
+GetLocaleInfoEx

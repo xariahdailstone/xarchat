@@ -1,5 +1,7 @@
 import { ChannelName } from "../shared/ChannelName";
 import { CharacterName } from "../shared/CharacterName";
+import { CancellationToken } from "../util/CancellationTokenSource";
+import { HostInterop } from "../util/HostInterop";
 import { IterableUtils } from "../util/IterableUtils";
 
 export interface ConfigSchemaDefinition {
@@ -129,6 +131,19 @@ function generateNumericOptions(min: number, max: number): ConfigSchemaSelectOpt
     return results;
 }
 
+const spellCheckLanguageItem: ConfigSchemaItemDefinitionItem = {
+    id: "spellCheckLanguage",
+    scope: getScopeArray(["global"]),
+    title: "Spell Check Language",
+    description: "Which language should be used to check spelling? (Changes to this setting require a restart of XarChat)",
+    type: "select",
+    selectOptions: [
+        { value: "default", displayValue: "System Default" }
+    ],
+    defaultValue: 0,
+    configBlockKey: "spellCheckLanguage"
+};
+
 export const ConfigSchema: ConfigSchemaDefinition = {
     settings: [
         {
@@ -155,6 +170,7 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     defaultValue: true,
                     configBlockKey: "useGpuAcceleration"
                 },
+                spellCheckLanguageItem,
                 {
                     id: "autoReconnect",
                     scope: getScopeArray(["global", "char"]),
@@ -191,6 +207,20 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     defaultValue: true,
                     configBlockKey: "eiconSearch.enabled"
                 },
+                {
+                    id: "openPmTabForIncomingTyping",
+                    scope: getScopeArray(["global"]),
+                    title: "Open a PM Tab on Typing",
+                    description: "Should XarChat open a PM tab (if you don't have one already open) when someone starts typing a private message to you?",
+                    type: "select",
+                    selectOptions: [
+                        { value: 0, displayValue: "No" },
+                        { value: 1, displayValue: "Yes" },
+                        { value: 2, displayValue: "Yes and Ping" },
+                    ],
+                    defaultValue: 0,
+                    configBlockKey: "openPmTabForIncomingTyping.enabled"
+                },                
                 {
                     scope: getScopeArray(["global"]),
                     sectionTitle: "Auto Idle/Away",
@@ -672,11 +702,24 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     id: "joinFriendsAndBookmarks",
                     scope: getScopeArray(["global", "char"]),
                     title: "Show Friends and Bookmarks Together",
-                    description: "Show friends and bookmarks together in the left bar tab strip and in channel character lists.",
+                    description: "Show friends and bookmarks together in the friends tab and in channel character lists.",
                     type: "boolean",
                     defaultValue: true,
                     configBlockKey: "joinFriendsAndBookmarks"
                 },
+                {
+                    id: "friendsTabLocation",
+                    scope: getScopeArray(["global"]),
+                    title: "Friends/Bookmarks Tab Location",
+                    description: "Show the friends and bookmarks tab on which side of the interface?",
+                    type: "select",
+                    selectOptions: [
+                        { value: "left", displayValue: "Left (Default)" },
+                        { value: "right", displayValue: "Right" }
+                    ],
+                    defaultValue: "left",
+                    configBlockKey: "friendsTabLocation"
+                },                
                 {
                     id: "messageDisplayStyle",
                     scope: getScopeArray(["global", "char", "chan", "convo"]),
@@ -762,7 +805,7 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     configBlockKey: "chat.textbox.statusBarShown"
                 },
                 {
-                    scope: getScopeArray(["global"]),
+                    scope: getScopeArray(["global", "char", "chan"]),
                     sectionTitle: "Unseen Messages",
                     description: "",
                     items: [
@@ -804,6 +847,44 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                             type: "bgcolorcontrol",
                             defaultValue: "246;36;1",
                             configBlockKey: "unseenIndicatorHighlightColor"
+                        },
+                    ]
+                },
+                {
+                    scope: getScopeArray(["global"]),
+                    sectionTitle: "Locale",
+                    description: "Configure localization settings for XarChat.",
+                    items: [
+                        {
+                            id: "locale.dateFormat",
+                            scope: getScopeArray(["global"]),
+                            title: "Date Formatting",
+                            description: "Select the format used for displaying dates.",
+                            type: "select",
+                            selectOptions: [
+                                { value: "default", displayValue: "Use Auto-Detected Setting" },
+                                { value: "mdyyyy", displayValue: "M/D/YYYY" },
+                                { value: "mmddyyyy", displayValue: "MM/DD/YYYY" },
+                                { value: "dmyyyy", displayValue: "D/M/YYYY" },
+                                { value: "ddmmyyyy", displayValue: "DD/MM/YYYY" },
+                                { value: "yyyymmdd", displayValue: "YYYY/MM/DD" }
+                            ],
+                            defaultValue: "default",
+                            configBlockKey: "locale.dateFormat"
+                        },
+                        {
+                            id: "locale.timeFormat",
+                            scope: getScopeArray(["global"]),
+                            title: "Time Formatting",
+                            description: "Select the format used for displaying times.",
+                            type: "select",
+                            selectOptions: [
+                                { value: "default", displayValue: "Use Auto-Detected Setting" },
+                                { value: "12h", displayValue: "12 Hour (AM/PM)" },
+                                { value: "24h", displayValue: "24 Hour" }
+                            ],
+                            defaultValue: "default",
+                            configBlockKey: "locale.timeFormat"
                         },
                     ]
                 },
@@ -1295,3 +1376,10 @@ export function getConfigSchemaItemById(id: string): ConfigSchemaItemDefinitionI
         return result;
     }
 }
+
+(async () => {
+    const locales = await HostInterop.getAvailableLocales(CancellationToken.NONE);
+    for (let l of locales) {
+        spellCheckLanguageItem.selectOptions?.push({ value: l.code, displayValue: l.name });
+    }
+})();

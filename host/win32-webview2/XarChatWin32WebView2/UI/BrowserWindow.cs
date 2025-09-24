@@ -26,6 +26,8 @@ using XarChat.Backend.Features.CommandableWindows;
 using System.Text.Json.Nodes;
 using XarChat.Backend.Features.CrashLogWriter;
 using System.Text.Json;
+using System.Diagnostics.CodeAnalysis;
+using XarChat.Backend.Features.EIconFavoriteManager;
 
 namespace MinimalWin32Test.UI
 {
@@ -504,13 +506,19 @@ namespace MinimalWin32Test.UI
                     browserArguments.Add("--disable-software-rasterizer");
                 }
 
+                string? browserLanguage = null;
+                if (!String.IsNullOrWhiteSpace(appCfg.BrowserLanguage) && appCfg.BrowserLanguage != "default")
+                {
+                    browserLanguage = appCfg.BrowserLanguage;
+                }
+
                 WriteToStartupLog("BrowserWindow.OnHandleCreated - Creating CoreWebView2Environment");
                 var cenv = await Microsoft.Web.WebView2.Core.CoreWebView2Environment.CreateAsync(
                     browserExecutableFolder: null,
                     userDataFolder: Path.Combine(appDataFolder, "WebView2Data"),
                     new Microsoft.Web.WebView2.Core.CoreWebView2EnvironmentOptions(
                         additionalBrowserArguments: String.Join(" ", browserArguments),
-                        language: null,
+                        language: browserLanguage,
                         targetCompatibleBrowserVersion: null,
                         allowSingleSignOnUsingOSPrimaryAccount: false
                     ));
@@ -679,6 +687,30 @@ namespace MinimalWin32Test.UI
             "spellcheck"
         };
 
+        private class WrappedCoreWebView2ContextMenuItem
+        {
+            public WrappedCoreWebView2ContextMenuItem(CoreWebView2 coreWebView2, string label)
+            {
+                this.MenuItem = coreWebView2.Environment.CreateContextMenuItem(
+                            label, null, CoreWebView2ContextMenuItemKind.Command);
+                this.MenuItem.CustomItemSelected += (sender, ex) =>
+                {
+                    this.OnSelected();
+                };
+            }
+
+            public Action OnSelected { get; set; } = () => { };
+
+            public CoreWebView2ContextMenuItem? MenuItem { get; }
+        }
+
+        private CoreWebView2ContextMenuItem? _eiconStuffMenuSeparator = null;
+        private WrappedCoreWebView2ContextMenuItem? _copyEIconMenuItem = null;
+        private WrappedCoreWebView2ContextMenuItem? _favoriteEIconMenuItem = null;
+        private WrappedCoreWebView2ContextMenuItem? _unfavoriteEIconMenuItem = null;
+        private WrappedCoreWebView2ContextMenuItem? _blockEIconMenuItem = null;
+        private WrappedCoreWebView2ContextMenuItem? _unblockEIconMenuItem = null;
+
         private void _webView_ContextMenuRequested(object? sender, CoreWebView2ContextMenuRequestedEventArgs e)
         {
             var prevSeparator = true;
@@ -731,6 +763,156 @@ namespace MinimalWin32Test.UI
                     break;
                 }
             }
+
+            if (e.ContextMenuTarget.Kind == CoreWebView2ContextMenuTargetKind.Image &&
+                TryGetCanonicalUrl(e.ContextMenuTarget.SourceUri, out var canonicalSourceUrl))
+            {
+                const string eiconUrlPrefix = "https://static.f-list.net/images/eicon/";
+                const string eiconUrlSuffix = ".gif";
+                if (canonicalSourceUrl.StartsWith(eiconUrlPrefix) &&
+                    canonicalSourceUrl.EndsWith(eiconUrlSuffix))
+                {
+                    var eiconName = HttpUtility.UrlDecode(canonicalSourceUrl.Substring(eiconUrlPrefix.Length,
+                        canonicalSourceUrl.Length - eiconUrlPrefix.Length - eiconUrlSuffix.Length));
+
+                    var webView = _webView!;
+                    {
+                        _copyEIconMenuItem ??=
+                            new WrappedCoreWebView2ContextMenuItem(webView, "Copy EIcon BBCode");
+                        _copyEIconMenuItem.OnSelected = () =>
+                        {
+                            var str = $"[eicon]{eiconName}[/eicon]";
+                            var dp = new DataPackage();
+                            dp.SetText(str);
+                            Clipboard.SetContent(dp);
+                        };
+                        e.MenuItems.Add(_copyEIconMenuItem.MenuItem);
+                    }
+                    {
+                        _eiconStuffMenuSeparator ??= webView!.Environment.CreateContextMenuItem(
+                            "-", null, CoreWebView2ContextMenuItemKind.Separator);
+                        e.MenuItems.Add(_eiconStuffMenuSeparator);
+                    }
+
+                    var fbm = _backend.GetServiceProviderAsync().Result.GetRequiredService<IEIconFavoriteBlockManager>();
+                    var isFavorite = fbm.IsFavoriteAsync(eiconName, CancellationToken.None).Result;
+                    var isBlocked = fbm.IsBlockedAsync(eiconName, CancellationToken.None).Result;
+
+                    if (!isFavorite)
+                    {
+                        _favoriteEIconMenuItem ??= new WrappedCoreWebView2ContextMenuItem(
+                            webView, "Favorite this EIcon");
+                        _favoriteEIconMenuItem.OnSelected = () =>
+                        {
+                            fbm.AddFavoriteAsync(eiconName, CancellationToken.None).Wait();
+                        };
+                        e.MenuItems.Add(_favoriteEIconMenuItem.MenuItem);
+                    }
+                    else
+                    {
+                        _unfavoriteEIconMenuItem ??= new WrappedCoreWebView2ContextMenuItem(
+                            webView, "Unfavorite this EIcon");
+                        _unfavoriteEIconMenuItem.OnSelected = () =>
+                        {
+                            fbm.RemoveFavoriteAsync(eiconName, CancellationToken.None).Wait();
+                        };
+                        e.MenuItems.Add(_unfavoriteEIconMenuItem.MenuItem);
+                    }
+
+                    if (!isBlocked)
+                    {
+                        _blockEIconMenuItem ??= new WrappedCoreWebView2ContextMenuItem(
+                            webView, "Block this EIcon");
+                        _blockEIconMenuItem.OnSelected = () =>
+                        {
+                            fbm.AddBlockedAsync(eiconName, CancellationToken.None).Wait();
+                        };
+                        e.MenuItems.Add(_blockEIconMenuItem.MenuItem);
+                    }
+                    else
+                    {
+                        _unblockEIconMenuItem ??= new WrappedCoreWebView2ContextMenuItem(
+                            webView, "Unblock this EIcon");
+                        _unblockEIconMenuItem.OnSelected += () =>
+                        {
+                            fbm.RemoveBlockedAsync(eiconName, CancellationToken.None).Wait();
+                        };
+                        e.MenuItems.Add(_unblockEIconMenuItem.MenuItem);
+                    }
+                }
+            }
+        }
+
+        private Dictionary<string, string> ParseFormContent(string str)
+        {
+            var result = new Dictionary<string, string>();
+            foreach (var part in str.Split('&'))
+            {
+                var eqIdx = part.IndexOf('=');
+                if (eqIdx >= 0)
+                {
+                    var name = HttpUtility.UrlDecode(part.Substring(0, eqIdx));
+                    var value = HttpUtility.UrlDecode(part.Substring(eqIdx + 1));
+                    result[name] = value;
+                }
+                else
+                {
+                    result[HttpUtility.UrlDecode(part)] = "";
+                }
+            }
+            return result;
+        }
+
+        private bool TryGetCanonicalUrl(string rawUrl, [NotNullWhen(true)] out string? canonicalUrl)
+        {
+            try
+            {
+                {
+                    var u = new Uri(rawUrl);
+                    if (u.Fragment is not null && u.Fragment.StartsWith("#"))
+                    {
+                        var parts = u.Fragment.Substring(1).Split("&")
+                            .Select(x => x.Split("="))
+                            .Select(x => new KeyValuePair<string, string>(x[0], HttpUtility.UrlDecode(x[1])));
+                        foreach (var part in parts)
+                        {
+                            if (String.Equals("canonicalUrl", part.Key, StringComparison.OrdinalIgnoreCase))
+                            {
+                                canonicalUrl = part.Value;
+                                return true;
+                            }
+                        }
+                    }
+                }
+
+                if (rawUrl.Contains("proxyImageUrl"))
+                {
+                    var u = new Uri(rawUrl);
+                    var targetUri = u.Query.Substring(1).Split("&").Select(qp =>
+                    {
+                        var eidx = qp.IndexOf('=');
+                        if (eidx > -1)
+                        {
+                            return new KeyValuePair<string, string>(
+                                qp.Substring(0, eidx),
+                                HttpUtility.UrlDecode(qp.Substring(eidx + 1)));
+                        }
+                        else
+                        {
+                            return new KeyValuePair<string, string>(qp, "");
+                        }
+                    })
+                        .Where(x => x.Key == "url")
+                        .FirstOrDefault();
+                    
+                    canonicalUrl = targetUri.Value;
+                    return true;
+                }
+            }
+            catch { }
+
+            canonicalUrl = null;
+            return false;
         }
 
         private CoreWebView2ContextMenuItem FixupMenuItem(
@@ -746,49 +928,8 @@ namespace MinimalWin32Test.UI
                     if (contextMenuTarget.Kind == CoreWebView2ContextMenuTargetKind.Image)
                     {
                         var sourceUri = contextMenuTarget.SourceUri;
-                        string? resultingUri = null;
 
-                        try
-                        {
-                            var u = new Uri(sourceUri);
-                            if (u.Fragment is not null && u.Fragment.StartsWith("#"))
-                            {
-                                var parts = u.Fragment.Substring(1).Split("&")
-                                    .Select(x => x.Split("="))
-                                    .Select(x => new KeyValuePair<string, string>(x[0], HttpUtility.UrlDecode(x[1])));
-                                foreach (var part in parts)
-                                {
-                                    if (String.Equals("canonicalUrl", part.Key, StringComparison.OrdinalIgnoreCase))
-                                    {
-                                        resultingUri = part.Value;
-                                    }
-                                }
-                            }
-                        }
-                        catch { }
-
-                        if (resultingUri == null && sourceUri.Contains("proxyImageUrl"))
-                        {
-                            var u = new Uri(sourceUri);
-                            var targetUri = u.Query.Substring(1).Split("&").Select(qp =>
-                                {
-                                    var eidx = qp.IndexOf('=');
-                                    if (eidx > -1)
-                                    {
-                                        return new KeyValuePair<string, string>(
-                                            qp.Substring(0, eidx),
-                                            HttpUtility.UrlDecode(qp.Substring(eidx + 1)));
-                                    }
-                                    else
-                                    {
-                                        return new KeyValuePair<string, string>(qp, "");
-                                    }
-                                })
-                                .Where(x => x.Key == "url")
-                                .FirstOrDefault();
-                            resultingUri = targetUri.Value ?? sourceUri;
-                        }
-                        else if (resultingUri == null)
+                        if (!TryGetCanonicalUrl(sourceUri, out var resultingUri))
                         {
                             resultingUri = sourceUri;
                         }

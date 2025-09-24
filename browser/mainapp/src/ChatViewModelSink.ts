@@ -6,6 +6,7 @@ import { ChannelName } from "./shared/ChannelName";
 import { CharacterName } from "./shared/CharacterName";
 import { CharacterStatus } from "./shared/CharacterSet";
 import { OnlineStatus, OnlineStatusConvert } from "./shared/OnlineStatus";
+import { TypingStatus } from "./shared/TypingStatus";
 import { SnapshottableMap } from "./util/collections/SnapshottableMap";
 import { Logger, Logging } from "./util/Logger";
 import { StringUtils } from "./util/StringUtils";
@@ -657,6 +658,26 @@ export class ChatViewModelSink implements ChatConnectionSink {
                     newStatus.status == OnlineStatus.IDLE ||
                     previousStatus.status == OnlineStatus.IDLE;
 
+                    
+                if (s.characterName != ns.characterName && 
+                    s.typingStatus != null &&
+                    s.typingStatus != TypingStatus.NONE && 
+                    !this.viewModel.ignoredChars.has(s.characterName)) {
+                    const openPmTabSetting = this.viewModel.getConfigSettingById("openPmTabForIncomingTyping") as number;
+                    if (openPmTabSetting > 0) {
+                        let pmc = ns.getPmConvo(s.characterName)
+                        if (!pmc) {
+                            pmc = ns.getOrCreatePmConvo(s.characterName);
+                            pmc!.addSystemMessage(new Date(), 
+                                `Opened PM tab because [user]${s.characterName.value}[/user] started typing a message to you.`,
+                                false, openPmTabSetting == 1);
+                            if (openPmTabSetting == 2) {
+                                pmc!.hasPing = true;
+                                pmc!.playPingSound();
+                            }
+                        }
+                    }
+                }
                 if (s.characterName! == ns.characterName) {
                     if (!this.isLoggingIn && newStatus.status != OnlineStatus.OFFLINE) {
                         ns.savedChatState.statusMessage = newStatus.statusMessage;

@@ -4,6 +4,7 @@ import { HTMLUtils } from "../../util/HTMLUtils";
 import { KeyCodes } from "../../util/KeyCodes";
 import { Collection } from "../../util/ObservableCollection";
 import { PromiseSource } from "../../util/PromiseSource";
+import { Scheduler } from "../../util/Scheduler";
 import { TransitionUtils } from "../../util/TransitionUtils";
 import { WhenChangeManager } from "../../util/WhenChange";
 import { DialogButtonViewModel, DialogCaptionButtonViewModel, DialogViewModel } from "../../viewmodel/dialogs/DialogViewModel";
@@ -143,7 +144,7 @@ export class DialogFrame extends ComponentBase<DialogViewModel<any>> {
         let clickedInDialog = false;
         this.elMain.addEventListener("click", (ev: MouseEvent) => {
             clickedInDialog = true;
-            window.requestIdleCallback(() => clickedInDialog = false);
+            Scheduler.scheduleNamedCallback("DialogFrame.elMainclick", ["idle", 250], () => clickedInDialog = false);
         });
         this.addEventListener("click", (ev: MouseEvent) => {
             if (!clickedInDialog) {
@@ -198,7 +199,7 @@ export class DialogFrame extends ComponentBase<DialogViewModel<any>> {
     animateOpen() {
         //this.log("ADDING NEW CLASS");
         this.elMain.classList.add("new");
-        window.requestIdleCallback(() => {
+        Scheduler.scheduleNamedCallback("DialogFrame.animateOpen", ["idle", 250], () => {
             //this.log("REMOVING NEW CLASS");
             this.elMain.classList.remove("new");
         });

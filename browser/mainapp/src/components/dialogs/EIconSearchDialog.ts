@@ -12,6 +12,7 @@ import { EIconUtils } from "../../util/EIconUtils";
 import { EventListenerUtil } from "../../util/EventListenerUtil";
 import { asDisposable, IDisposable } from "../../util/Disposable";
 import { Logger } from "../../util/Logger";
+import { Scheduler } from "../../util/Scheduler";
 
 type MoveNavResultUpDown = { accepted: false } | { accepted: true, exitedAtColumn?: number };
 type MoveNavResultLeftRight = { accepted: false } | { accepted: true, exited: boolean };
@@ -50,19 +51,17 @@ export class EIconSearchDialog extends DialogComponentBase<EIconSearchDialogView
                 </div>
                 <div class="resultdisplay-welcomepage" id="elResultDisplayEmptyResults">
                     <div class="resultdisplay-welcome">
-                        Enter your search criteria above, or choose from your most used or recently used
-                        eicons below.  Or from your favorites, if you've linked this character to
-                        xariah.net.
+                        Enter your search criteria above, or choose from your favorite, most used, or recently used
+                        eicons below.
                     </div>
 
-                    <!--
                     <div class="resultdisplay-sectiontitle">Your Favorite EIcons</div>
                     <div class="resultdisplay-sectioncontents">
-                        <div class="resultdisplay-hint" id="elFavoritesSetViewHint">
-                            Not yet implemented.
+                        <div class="resultdisplay-hint" id="elFavoriteSetViewHint">
+                            You haven't marked any eicons as favorites.  Right-click an eicon image to favorite/unfavorite it.
                         </div>
+                        <x-eiconsetview class="resultdisplay-setview" id="elFavoriteSetView" updatefast="true" maxrows="2"></x-eiconsetview>
                     </div>
-                    -->
 
                     <div class="resultdisplay-sectiontitle">Your Recently Used EIcons</div>
                     <div class="resultdisplay-sectioncontents">
@@ -99,9 +98,11 @@ export class EIconSearchDialog extends DialogComponentBase<EIconSearchDialogView
         const elResultDisplayEmptyResults = this.$("elResultDisplayEmptyResults") as HTMLDivElement;
         const elResultDisplayInnerContainer = this.$("elResultDisplayInnerContainer") as HTMLDivElement;
         const elSetView = this.$("elSetView") as EIconSetView;
+        const elFavoriteSetView = this.$("elFavoriteSetView") as EIconSetView;
         const elRecentlyUsedSetView = this.$("elRecentlyUsedSetView") as EIconSetView;
         const elMostUsedSetView = this.$("elMostUsedSetView") as EIconSetView;
 
+        const elFavoriteSetViewHint = this.$("elFavoriteSetViewHint") as HTMLDivElement;
         const elRecentlyUsedSetViewHint = this.$("elRecentlyUsedSetViewHint") as HTMLDivElement;
         const elMostUsedSetViewHint = this.$("elMostUsedSetViewHint") as HTMLDivElement;
 
@@ -123,6 +124,10 @@ export class EIconSearchDialog extends DialogComponentBase<EIconSearchDialogView
 
         this.watchExpr(vm => vm.currentResultSet, crs => {
             elSetView.viewModel = crs ?? null;
+        });
+        this.watchExpr(vm => vm.favoriteEIcons, fui => {
+            elFavoriteSetView.viewModel = fui ?? null;
+            elFavoriteSetViewHint.style.display = (((fui ?? null)?.searchResultCount ?? 0) > 0) ? "none" : "block";
         });
         this.watchExpr(vm => vm.recentlyUsedEIcons, rui => {
             elRecentlyUsedSetView.viewModel = rui ?? null;
@@ -153,9 +158,11 @@ export class EIconSearchDialog extends DialogComponentBase<EIconSearchDialogView
             }
             else if (isWelcomePage) {
                 if (knm) {
-                    knm.participants = [ elRecentlyUsedSetView, elMostUsedSetView ];
+                    knm.participants = [ elFavoriteSetView, elRecentlyUsedSetView, elMostUsedSetView ];
                 }
+                elFavoriteSetView.refreshDisplayImmediately();
                 elRecentlyUsedSetView.refreshDisplayImmediately();
+                elMostUsedSetView.refreshDisplayImmediately();
             }
             else {
                 if (knm) {
@@ -260,7 +267,7 @@ export class EIconSearchDialog extends DialogComponentBase<EIconSearchDialogView
         // elKeyboardNavTextbox.addEventListener("input", (e) => { elKeyboardNavTextbox.value = ""; });
         // elKeyboardNavTextbox.addEventListener("change", (e) => { elKeyboardNavTextbox.value = ""; });
 
-        for (let setView of [elSetView, elRecentlyUsedSetView]) {
+        for (let setView of [elSetView, elFavoriteSetView, elRecentlyUsedSetView, elMostUsedSetView]) {
             if (!setView) { continue; }
             setView.addEventListener("eiconselected", (e) => {
                 const eiconName = (e as any).eiconName;
@@ -355,7 +362,7 @@ export class EIconSetView extends ComponentBase<EIconResultSet> implements Keybo
                     this.recalculateDisplayInner();
                 }
                 else {
-                    window.requestAnimationFrame(() => {
+                    Scheduler.scheduleNamedCallback("EIconSetView.recalculateDisplay", ["frame", "idle", 250], () => {
                         this._recalcRequested = false;
                         this.recalculateDisplayInner();
                     });

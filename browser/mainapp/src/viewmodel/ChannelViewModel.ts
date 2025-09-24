@@ -1,4 +1,3 @@
-import { ChannelView } from "../components/ChannelView.js";
 import { PingLineItemDefinition, PingLineItemMatchStyle } from "../configuration/ConfigSchemaItem.js";
 import { BottleSpinData, ChannelMessageData, RollData } from "../fchat/ChatConnectionSink.js";
 import { CharacterGender } from "../shared/CharacterGender.js";
@@ -30,6 +29,8 @@ import { ActiveLoginViewModel } from "./ActiveLoginViewModel.js";
 import { AppNotifyEventType, AppViewModel } from "./AppViewModel.js";
 import { ChannelFiltersViewModel } from "./ChannelFiltersViewModel.js";
 import { MultiSelectPopupViewModel } from "./popups/MultiSelectPopupViewModel.js";
+import { FriendsListTabViewModel } from "./sidebartabs/FriendsListTabViewModel.js";
+import { SidebarTabContainerViewModel, SidebarTabViewModel } from "./sidebartabs/SidebarTabContainerViewModel.js";
 import { SlashCommandViewModel } from "./SlashCommandViewModel.js";
 
 export interface ChannelViewModelState {

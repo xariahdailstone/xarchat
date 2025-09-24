@@ -8,6 +8,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
+using XarChat.Backend.Common;
 
 namespace XarChat.Backend.Features.SingleInstanceManager.ProfileLockFile
 {
@@ -132,7 +133,7 @@ namespace XarChat.Backend.Features.SingleInstanceManager.ProfileLockFile
 
 			try
 			{
-				File.Delete(_lockFileName);
+				FileSystemUtil.Delete(_lockFileName);
 			}
 			catch { }
 			nonAcquiredSingleInstance = default;
@@ -162,7 +163,7 @@ namespace XarChat.Backend.Features.SingleInstanceManager.ProfileLockFile
 				_activationListener.Dispose();
 				_lockFileStream.Dispose();
 				Thread.Sleep(250);
-				try { File.Delete(_lockFileName); }
+				try { FileSystemUtil.Delete(_lockFileName); }
 				catch { }
 			}
 		}

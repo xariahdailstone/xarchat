@@ -6,6 +6,7 @@ using System.Text.Json.Serialization;
 using System.Collections.Immutable;
 using System.Text.Json.Nodes;
 using System.Threading;
+using XarChat.Backend.Features.AppSettings.AppDataFile;
 
 namespace XarChat.Backend.Features.AppConfiguration.Impl
 {
@@ -21,6 +22,8 @@ namespace XarChat.Backend.Features.AppConfiguration.Impl
 
         private FileSystemWatcher _watcher;
 
+        private readonly RotatingJsonManager _jsonManager;
+
         public AppConfigurationImpl(
             IAppDataFolder appDataFolder,
             ICommandLineOptions commandLineOptions)
@@ -29,19 +32,10 @@ namespace XarChat.Backend.Features.AppConfiguration.Impl
             _commandLineOptions = commandLineOptions;
 
             _filename = Path.Combine(appDataFolder.GetAppDataFolder(), "config.json");
-            TRYAGAIN:
-            if (!File.Exists(_filename))
-            {
-                if (File.Exists(_filename + ".old"))
-                {
-                    File.Move(_filename + ".old", _filename);
-                    goto TRYAGAIN;
-                }
-                using var f = File.CreateText(_filename);
-                f.Write("{}");
-            }
+            _jsonManager = new RotatingJsonManager(null, _filename);
 
             _watcher = InitializeFileWatcher(_filename);
+
             LoadAppConfigJson();
         }
 
@@ -107,8 +101,10 @@ namespace XarChat.Backend.Features.AppConfiguration.Impl
         {
             try
             {
-                using var f = File.OpenText(_filename);
-                var jsonStr = f.ReadToEnd();
+                var jsonObj = _jsonManager.ReadFromFile();
+
+                var jsonStr = JsonUtilities.Serialize(jsonObj,
+                    SourceGenerationContext.Default.JsonObject);
                 var fdata = JsonUtilities.Deserialize<Dictionary<string, JsonNode>>(jsonStr,
                     SourceGenerationContext.Default.DictionaryStringJsonNode);
 
@@ -240,27 +236,9 @@ namespace XarChat.Backend.Features.AppConfiguration.Impl
                         _watcher.EnableRaisingEvents = false;
                         try
                         {
-                            var tmpFn = _filename + ".tmp";
-                            var oldFn = _filename + ".old";
-
-                            if (File.Exists(tmpFn))
-                            {
-                                File.Delete(tmpFn);
-                            }
-                            if (File.Exists(oldFn))
-                            {
-                                File.Delete(oldFn);
-                            }
-
-                            using (var f = File.Create(tmpFn))
-                            {
-                                using var jw = new Utf8JsonWriter(f, new JsonWriterOptions() { Indented = true });
-                                JsonUtilities.Serialize(jw, _appConfigData!, SourceGenerationContext.Default.IImmutableDictionaryStringJsonNode);
-                            }
-
-                            File.Move(_filename, oldFn);
-                            File.Move(tmpFn, _filename);
-                            File.Delete(oldFn);
+                            var jsonStr = JsonUtilities.Serialize(_appConfigData!, SourceGenerationContext.Default.IImmutableDictionaryStringJsonNode);
+                            var jsonObj = JsonUtilities.Deserialize<JsonObject>(jsonStr, SourceGenerationContext.Default.JsonObject);
+                            await _jsonManager.WriteToFileAsync(jsonObj);
                         }
                         catch
                         {
@@ -323,6 +301,11 @@ namespace XarChat.Backend.Features.AppConfiguration.Impl
         public bool DisableGpuAcceleration =>
             (_commandLineOptions.DisableGpuAcceleration == true) ? true :
             !(Convert.ToBoolean(GetArbitraryValueString("global.useGpuAcceleration") ?? "true"));
+
+        public string? BrowserLanguage =>
+            _commandLineOptions.BrowserLanguage ??
+            GetArbitraryValueString("global.spellCheckLanguage") ??
+            null;
 
         public IEnumerable<KeyValuePair<string, JsonNode>> GetAllArbitraryValues()
         {

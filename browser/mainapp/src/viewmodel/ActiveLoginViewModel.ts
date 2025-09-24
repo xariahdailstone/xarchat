@@ -46,6 +46,9 @@ import { LogSearch2ViewModel } from "./newlogsearch/LogSearch2ViewModel.js";
 import { PartnerSearchViewModel } from "./PartnerSearchViewModel.js";
 import { AutoAdManager } from "../util/AutoAdManager.js";
 import { NicknameSet } from "../shared/NicknameSet.js";
+import { EIconFavoriteBlockViewModel } from "./EIconFavoriteBlockViewModel.js";
+import { LeftSidebarTabContainerViewModel } from "./sidebartabs/LeftSidebarTabContainerViewModel.js";
+import { RightSidebarTabContainerViewModel } from "./sidebartabs/RightSidebarTabContainerViewModel.js";
 
 declare const XCHost: any;
 
@@ -80,6 +83,13 @@ export class ActiveLoginViewModel extends ObservableBase implements IDisposable 
         this._logSearchViewModel2 = new LogSearch2ViewModel(this, this.appViewModel, savedChatState.characterName);
         this.miscTabs.push(new MiscTabViewModel(this, "Log Viewer 2", this._logSearchViewModel2));
         this.miscTabs.push(new MiscTabViewModel(this, "Partner Search", this.partnerSearch));
+
+        this.leftTabs = new LeftSidebarTabContainerViewModel(this);
+        this.rightTabs = new RightSidebarTabContainerViewModel(this);
+        this._disposeActions.push(() => {
+            this.leftTabs.dispose();
+            this.rightTabs.dispose();
+        });
 
         //this.serverOps.addEventListener("collectionchange", (ev) => { this.notifyChannelsOfCharacterChange(this.serverOps, ev); });
         //this.watchedChars.addEventListener("collectionchange", (ev) => { this.notifyChannelsOfCharacterChange(this.watchedChars, ev); });
@@ -167,6 +177,7 @@ export class ActiveLoginViewModel extends ObservableBase implements IDisposable 
         });
 
         this.bbcodeSink = new ActiveLoginViewModelBBCodeSink(this, this._logger);
+        this.eIconFavoriteBlockViewModel = new EIconFavoriteBlockViewModel(this);
 
         this.getMyFriendsListInfo(CancellationToken.NONE);
     }
@@ -193,6 +204,8 @@ export class ActiveLoginViewModel extends ObservableBase implements IDisposable 
     private readonly _logger: Logger;
 
     private readonly _logSearchViewModel: LogSearchViewModel;
+
+    eIconFavoriteBlockViewModel: EIconFavoriteBlockViewModel;
 
     private readonly _logSearchViewModel2: LogSearch2ViewModel;
 
@@ -707,6 +720,12 @@ export class ActiveLoginViewModel extends ObservableBase implements IDisposable 
 
     @observableProperty
     leftListSelectedPane: LeftListSelectedPane = LeftListSelectedPane.CHATS;
+
+    @observableProperty
+    leftTabs: LeftSidebarTabContainerViewModel;
+
+    @observableProperty
+    rightTabs: RightSidebarTabContainerViewModel;
 
     private _selectedChannelHistory: ChannelViewModel[] = [];
     private pushToSelectedChannelHistory(chan: ChannelViewModel) {

@@ -70,6 +70,7 @@ class CompatCSSStyleSheet implements SharedStyleSheet {
     }
 }
 
+const SYM_ADOPTEDSHEETS = Symbol("adoptedStylesheets");
 export function setStylesheetAdoption(target: DocumentOrShadowRoot, sheets: SharedStyleSheet[]) {
     if (!useCompat) {
         target.adoptedStyleSheets = sheets.map(s => (s as NativeCSSStyleSheet).sheet);
@@ -87,6 +88,16 @@ export function setStylesheetAdoption(target: DocumentOrShadowRoot, sheets: Shar
                 target.head.appendChild((x as CompatCSSStyleSheet).getStylesheetElement());
             }
         }
+    }
+    (target as any)[SYM_ADOPTEDSHEETS] = sheets;
+}
+export function getStylesheetAdoption(target: DocumentOrShadowRoot): SharedStyleSheet[] {
+    const x = (target as any)[SYM_ADOPTEDSHEETS];
+    if (x) {
+        return x;
+    }
+    else {
+        return [];
     }
 }
 

@@ -17,11 +17,11 @@ import { IterableUtils } from "../util/IterableUtils.js";
 import { ObservableValue } from "../util/Observable.js";
 import { FirstInAnimationFrameManager } from "../util/RequestAnimationFrameHook.js";
 import { ResizeObserverNice } from "../util/ResizeObserverNice.js";
+import { Scheduler } from "../util/Scheduler.js";
 import { ScrollAnchorTo } from "../util/ScrollAnchorTo.js";
 import { URLUtils } from "../util/URLUtils.js";
 import { ChannelMessageDisplayStyle, ChannelMessageType, ChannelMessageViewModel, ChannelViewModel, ChannelViewScrollPositionModel } from "../viewmodel/ChannelViewModel.js";
 import { ChannelStreamMessageViewRenderer } from "./ChannelStreamMessageViewRenderer.js";
-import { ChannelView } from "./ChannelView.js";
 import { CollectionView2 } from "./CollectionView2.js";
 import { CollectionViewLightweight } from "./CollectionViewLightweight.js";
 import { ComponentBase, componentElement } from "./ComponentBase.js";
@@ -85,7 +85,7 @@ export class ChannelStream extends ComponentBase<ChannelViewModel> {
             const vm = currentScrollToVm;
             if (vm) {
                 if ((v ?? null) != vm.scrolledTo) {
-                    this.logger.logInfo("DefaultStreamScrollManager.scrolledTo change", v, vm.title);
+                    this.logger.logDebug("DefaultStreamScrollManager.scrolledTo change", v, vm.title);
                     if (v) {
                         vm.scrolledTo = v;
                     }
@@ -145,7 +145,7 @@ export class ChannelStream extends ComponentBase<ChannelViewModel> {
 
         elMessageContainer.addEventListener("copy", (e: ClipboardEvent) => {
             BBCodeParser.performCopy(e);
-        });
+        }, true);
         elScrolledUp.addEventListener("click", (e) => {
             if (this.viewModel) {
                 this._scrollManager.setNextUpdateIsSmooth();
@@ -227,45 +227,65 @@ export class ChannelStream extends ComponentBase<ChannelViewModel> {
     }
 
     private _previousCollapseHostRO: ResizeObserver | null = null;
-    private _roAnimHandle: number | null = null;
+    private _roAnimHandle: IDisposable | null = null;
     private _roAnimEntries: ResizeObserverEntry[] = [];
+    private readonly _previousCollapseHostROObserved: Set<Element> = new Set();
     updateCollapseHostMonitoring() {
-        const vm = this.viewModel;
-        const elMessageContainer = this.$("elMessageContainer") as HTMLDivElement;
+        // this.logDebug("updateCollapseHostMonitoring");
+        // const vm = this.viewModel;
+        // const elMessageContainer = this.$("elMessageContainer") as HTMLDivElement;
 
-        if (this._previousCollapseHostRO) {
-            this._previousCollapseHostRO.disconnect();
-            this._previousCollapseHostRO = null;
-        }
-        if (!vm) { return; }
+        // if (!vm) {
+        //     if (this._previousCollapseHostRO) {
+        //         this._previousCollapseHostRO.disconnect();
+        //         this._previousCollapseHostRO = null;
+        //     }
+        //     this._previousCollapseHostROObserved.clear();
+        //     return;
+        // }
 
-        const ro = new ResizeObserver(entries => {
-            this._roAnimEntries.push(...entries);
-            if (this._roAnimHandle == null) {
-                this._roAnimHandle = window.requestAnimationFrame(() => {
-                    this._roAnimHandle = null;
-                    const entries = this._roAnimEntries;
-                    this._roAnimEntries = [];
-                    for (let entry of entries) {
-                        const target = entry.target;
-                        if (target.classList.contains("messageitem")) {
-                            const mheight = entry.contentRect.height;
-                            if (mheight > 0) {
-                                const mvm = (target as any)["__vm"] as ChannelMessageViewModel;
-                                const overflowHeight = +(window.getComputedStyle(target).getPropertyValue("--ad-collapse-max-height-numeric") ?? "40");
-                                const isOversized = (mheight > overflowHeight);
-                                if (isOversized != mvm.isOversized) {
-                                    mvm.isOversized = (mheight > overflowHeight);
-                                    this.logger.logDebug("ad oversize changed", target, isOversized);
-                                }
-                            }
-                        }
-                    }
-                });
-            }
-        });
-        this._previousCollapseHostRO = ro;
-        elMessageContainer.querySelectorAll(".collapse-host.collapsible .messageitem").forEach(el => { ro.observe(el); });
+        // if (!this._previousCollapseHostRO) {
+        //     const ro = new ResizeObserver(entries => {
+        //         this._roAnimEntries.push(...entries);
+        //         if (this._roAnimHandle == null) {
+        //             this._roAnimHandle = Scheduler.scheduleNamedCallback("ChannelStream.collapseHostSize", ["frame", "idle", 250], () => {
+        //                 this._roAnimHandle = null;
+        //                 const entries = this._roAnimEntries;
+        //                 this._roAnimEntries = [];
+        //                 let overflowHeight: number | null = null;
+        //                 for (let entry of entries) {
+        //                     const target = entry.target;
+        //                     if (target.classList.contains("messageitem")) {
+        //                         const mheight = entry.contentRect.height;
+        //                         if (mheight > 0) {
+        //                             const mvm = (target as any)["__vm"] as ChannelMessageViewModel;
+        //                             overflowHeight = overflowHeight ?? +(window.getComputedStyle(target).getPropertyValue("--ad-collapse-max-height-numeric") ?? "40");
+        //                             const isOversized = (mheight > overflowHeight);
+        //                             if (isOversized != mvm.isOversized) {
+        //                                 mvm.isOversized = (mheight > overflowHeight);
+        //                                 this.logger.logDebug("ad oversize changed", target, isOversized);
+        //                             }
+        //                         }
+        //                     }
+        //                 }
+        //             });
+        //         }
+        //     });
+        //     this._previousCollapseHostRO = ro;
+        // }
+
+        // const tro = this._previousCollapseHostRO;
+        // const thisObserve = new Set<Element>();
+        // elMessageContainer.querySelectorAll(".collapse-host.collapsible .messageitem").forEach(el => { 
+        //     if (!this._previousCollapseHostROObserved.has(el)) {
+        //         tro.observe(el); 
+        //     }
+        //     thisObserve.add(el);
+        // });
+        // for (let removeEl of [...this._previousCollapseHostROObserved.difference(thisObserve).values()]) {
+        //     tro.unobserve(removeEl);
+        //     this._previousCollapseHostROObserved.delete(removeEl);
+        // }
     }
 
     protected get myRequiredStylesheets() {
@@ -275,7 +295,7 @@ export class ChannelStream extends ComponentBase<ChannelViewModel> {
         ];
     }
 
-    get viewModel(): (ChannelViewModel | null) { return super.viewModel; }
+    //get viewModel(): (ChannelViewModel | null) { return super.viewModel; }
 
     private _scrollManager: DefaultStreamScrollManager;
 
@@ -494,13 +514,13 @@ export class DefaultStreamScrollManager implements StreamScrollManager {
             lastTimestamp = msElapsed;
 
             if (this.containerElement.scrollTop != targetTop && msRemaining > 0) {
-                window.requestAnimationFrame(tick);
+                Scheduler.scheduleNamedCallback("DefaultStreamScrollManager.resumeScrollRecordingWhenTop(tick)", ["nextframe", 250], tick);
             }
             else {
                 this.resumeScrollRecording(ScrollSuppressionReason.ScrollingStreamToSmooth);
             }
         };
-        window.requestAnimationFrame(tick);
+        Scheduler.scheduleNamedCallback("DefaultStreamScrollManager.resumeScrollRecordingWhenTop(tick)", ["nextframe", 250], tick);
     }
 
     get isRecordingSuppressed() { return this._suppressionCount > 0; }

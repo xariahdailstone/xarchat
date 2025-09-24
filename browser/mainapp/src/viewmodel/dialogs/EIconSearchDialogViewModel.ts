@@ -8,6 +8,7 @@ import { StringUtils } from "../../util/StringUtils";
 import { CancellationTokenSource } from "../../util/CancellationTokenSource";
 import { ActiveLoginViewModel } from "../ActiveLoginViewModel";
 import { PromiseSource } from "../../util/PromiseSource";
+import { asDisposable, ConvertibleToDisposable } from "../../util/Disposable";
 
 export enum EIconSearchStatus {
     WELCOME_PAGE,
@@ -29,8 +30,30 @@ export class EIconSearchDialogViewModel extends DialogViewModel<string | null> {
 
         //this.searchResultCount = 20000;
 
+        if (session) {
+            this.createFavoriteEIconsSet(session);
+        }
         this.recentlyUsedEIcons = session ? this.createRecentlyUsedEIconsSet(session) : null;
         this.mostUsedEIcons = session ? this.createMostUsedEIconsSet(session) : null;
+    }
+
+    private createFavoriteEIconsSet(session: ActiveLoginViewModel) {
+        const updateFavoriteSet = (v: any) => {
+            try {
+                const favs = v ?? [];
+                this.favoriteEIcons = new EIconResultSetFixed(this, favs as string[]);
+                return;
+            }
+            catch { }
+            this.favoriteEIcons =  new EIconResultSetFixed(this, []);
+        };
+        
+        this._disposablesOnClose.push(
+            session.appViewModel.configBlock.observe("global.favoriteEIcons", v => {
+                updateFavoriteSet(v);
+            })
+        );
+        updateFavoriteSet(session.appViewModel.configBlock.get("global.favoriteEIcons"));
     }
 
     private createRecentlyUsedEIconsSet(session: ActiveLoginViewModel): EIconResultSet {
@@ -56,6 +79,14 @@ export class EIconSearchDialogViewModel extends DialogViewModel<string | null> {
 
     confirmEntry() {
         this.close(this.searchText);
+    }
+
+    private _disposablesOnClose: ConvertibleToDisposable[] = [];
+
+    override close(result: string | null): void {
+        asDisposable(...this._disposablesOnClose).dispose();
+        this._disposablesOnClose = [];
+        super.close(result);
     }
 
     // confirmKeyboardEntry() {
@@ -97,6 +128,9 @@ export class EIconSearchDialogViewModel extends DialogViewModel<string | null> {
 
     @observableProperty
     currentResultSet: EIconResultSetDynamic | null = null;
+
+    @observableProperty
+    favoriteEIcons: EIconResultSet | null = null;
 
     @observableProperty
     recentlyUsedEIcons: EIconResultSet | null = null;

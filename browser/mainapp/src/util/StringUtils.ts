@@ -1,6 +1,7 @@
+import { DateFormatSpecifier, LocaleViewModel, TimeFormatSpecifier } from "../viewmodel/LocaleViewModel";
 import { Optional } from "./Optional";
 
-const intlDTFCache: Map<string, Intl.DateTimeFormat> = new Map();
+//const intlDTFCache: Map<string, Intl.DateTimeFormat> = new Map();
 const intlNFCache: Map<string, Intl.NumberFormat> = new Map();
 
 let confusablesMap: Map<string, string> | undefined = undefined;
@@ -28,20 +29,30 @@ export class StringUtils {
         return false;
     }
 
+    static makeTwoDigitString(n: number) {
+        let res = n.toString();
+        if (res.length == 1) {
+            return "0" + res;
+        }
+        else {
+            return res;
+        }
+    }
+
     static discardUnseen(str: string) {
         const xstr = [...str];
         return xstr.join("");
     }
 
-    static dateToString(date: Date, formatting: Intl.DateTimeFormatOptions) {
-        const key = JSON.stringify(formatting);
-        let v = intlDTFCache.get(key);
-        if (!v) {
-            v = new Intl.DateTimeFormat(undefined, formatting);
-            intlDTFCache.set(key, v);
+    static dateToString(locale: LocaleViewModel, date: Date, formatting: { dateStyle?: DateFormatSpecifier, timeStyle?: TimeFormatSpecifier }) {
+        const sb: string[] = [];
+        if (formatting.dateStyle) {
+            sb.push(locale.getDateString(date, formatting.dateStyle));
         }
-        const result = v.format(date);
-        return result;
+        if (formatting.timeStyle) {
+            sb.push(locale.getTimeString(date, formatting.timeStyle));
+        }
+        return sb.join(" ");
     }
 
     static leftPad(str: string, padChar: string, padLength: number) {
