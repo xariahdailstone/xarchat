@@ -41,9 +41,9 @@ export class LogSearch2 extends RenderingComponentBase<LogSearch2ViewModel> {
         const criteria = vm.searchCriteria;
 
         const vnode = <div classList={[ "search-criteria" ]}>
-            { this.renderWhoSpecCriteria(vm, addDisposable) }
             { this.renderStreamSpecCriteria(vm, addDisposable) }
             { this.renderTextSpecCriteria(vm, addDisposable) }
+            { this.renderWhoSpecCriteria(vm, addDisposable) }
             { this.renderTimeSpecCriteria(vm, addDisposable) }
             <div classList={[ "search-criteria-buttons-container" ]}>
                 <button classList={[ "search-criteria-buttons-search" ]} props={{ "disabled": !criteria.isValid }} on={{
@@ -65,7 +65,7 @@ export class LogSearch2 extends RenderingComponentBase<LogSearch2ViewModel> {
         VNodeTextInputBinding.bind(whoSpecInput, criteria.speakingCharacter.value, s => criteria.speakingCharacter.value = s);
         
         return <div classList={[ "search-criteria-whospec-row" ]}>
-            <div classList={[ "search-criteria-label", "search-criteria-whospec-label" ]}>Messages From:</div>
+            <div classList={[ "search-criteria-label", "search-criteria-whospec-label" ]}>From:</div>
                 {whoSpecInput}
                 {/* <x-suggesttextbox classList={[ "search-criteria-field", "search-criteria-whospec-field" ]} attr-props={{
                     "viewModel": criteria.speakingCharacter
@@ -121,7 +121,7 @@ export class LogSearch2 extends RenderingComponentBase<LogSearch2ViewModel> {
         }
 
         return <div classList={[ "search-criteria-streamspec-row" ]}>
-            <div classList={[ "search-criteria-label", "search-criteria-streamspec-label" ]}>In:</div>
+            <div classList={[ "search-criteria-label", "search-criteria-streamspec-label" ]}>Messages In:</div>
             <div classList={[ "search-criteria-field", "search-criteria-streamspec-field" ]}>
                 <select classList={[ "search-criteria-streamspec-field-textbox" ]} props={{ "value": selValue }} on={{
                         "change": onSelValueChange,

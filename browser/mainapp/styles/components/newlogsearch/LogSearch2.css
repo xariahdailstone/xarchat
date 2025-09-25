@@ -17,9 +17,9 @@
         grid-template-rows: auto auto auto auto;
         grid-template-columns: auto 1fr auto;
         grid-template-areas:
-            "whospec-label whospec-field buttons"
             "streamspec-label streamspec-field buttons"
             "textspec-label textspec-field buttons"
+            "whospec-label whospec-field buttons"
             "timespec-label timespec-field buttons";
         gap: 8px;
         padding: 8px;
