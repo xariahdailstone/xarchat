@@ -12,7 +12,9 @@ import { asDisposable, ConvertibleToDisposable, IDisposable } from "../Disposabl
 import { EL } from "../EL";
 import { EventListenerUtil } from "../EventListenerUtil";
 import { getRoot } from "../GetRoot";
+import { HTMLUtils } from "../HTMLUtils";
 import { HostInterop } from "../HostInterop";
+import { ObjectUniqueId } from "../ObjectUniqueId";
 import { ObservableValue } from "../Observable";
 import { BBCodeTag } from "./BBCodeTag";
 import { BBCodeTagB } from "./tags/BBCodeTagB";
@@ -289,12 +291,24 @@ export class BBCodeParser {
             element: resFragment,
             usedEIcons: usedEIcons,
             asVNode(): VNode {
-                let child = h('span', {hook: {
-                    insert(vnode: VNode) {
-                        (vnode.elm as HTMLElement).replaceWith(resFragment)
-                        //vnode.elm = resFragment;
+                let child = h('span', { 
+                    key: ObjectUniqueId.get(this).toString(),
+                    attrs: {
+                        "data-bbcodeid": ObjectUniqueId.get(this).toString(),
+                    },
+                    hook: {
+                        insert(vnode: VNode) {
+                            //(vnode.elm as HTMLElement).replaceWith(resFragment)
+                            //vnode.elm = resFragment;
+                            vnode.elm!.appendChild(resFragment);
+                        },
+                        postpatch(oldVNode, vnode) {
+                            //vnode.elm as HTMLElement).replaceWith(resFragment)
+                             HTMLUtils.clearChildren(vnode.elm as HTMLElement);
+                             vnode.elm!.appendChild(resFragment);
+                        }
                     }
-                }});
+                });
                 child.elm = resFragment;
                 return child;
             },

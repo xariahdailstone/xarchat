@@ -20,10 +20,14 @@ export class AboutDialog extends DialogComponentBase<AboutViewModel> {
     render(): [VNode, IDisposable] {
         const vm = this.viewModel;
         if (!vm) { return [<></>, EmptyDisposable] }
+
+        const acknowledgements = vm.acknowledgements;
         
+        this.logger.logInfo("rendering about dialog");
         const vnode = <div classList={[ "about-container" ]}>
             <div classList={[ "about-title" ]}>{vm.productName}</div>
             <div classList={[ "about-version" ]}>{vm.fullClientVersion}</div>
+            <div classList={[ "about-acknowledgements" ]}>{acknowledgements?.asVNode()}</div>
         </div>
 
         return [vnode, EmptyDisposable];

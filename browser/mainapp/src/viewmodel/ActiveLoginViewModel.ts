@@ -10,7 +10,7 @@ import { Observable, ObservableValue, PropertyChangeEvent } from "../util/Observ
 import { ObservableBase, observableProperty, observablePropertyExt } from "../util/ObservableBase.js";
 import { Collection, CollectionChangeEvent, CollectionChangeType, ObservableCollection } from "../util/ObservableCollection.js";
 import { DictionaryChangeType, ObservableKeyExtractedOrderedDictionary, ObservableOrderedDictionaryImpl, ObservableOrderedSet } from "../util/ObservableKeyedLinkedList.js";
-import { AppNotifyEventType, AppViewModel, GetConfigSettingChannelViewModel } from "./AppViewModel.js";
+import { AppNotifyEventType, AppViewModel, AppViewModelBBCodeSink, GetConfigSettingChannelViewModel } from "./AppViewModel.js";
 import { ChannelMessageViewModel, ChannelViewModel } from "./ChannelViewModel.js";
 import { CharacterNameSet, FilteredWatchedCharsCharacterNameSet, OnlineWatchedCharsCharacterNameSet } from "./CharacterNameSet.js";
 import { ChatChannelPresenceState, ChatChannelViewModel, ChatChannelViewModelSortKey } from "./ChatChannelViewModel.js";
@@ -1294,13 +1294,13 @@ export interface SelectableTabViewModel {
     isTabActive: boolean;
 }
 
-class ActiveLoginViewModelBBCodeSink implements BBCodeParseSink {
+class ActiveLoginViewModelBBCodeSink extends AppViewModelBBCodeSink {
     constructor(
         private readonly owner: ActiveLoginViewModel,
         private readonly logger: Logger) {
-    }
 
-    private get appViewModel() { return this.owner.appViewModel; }
+        super(owner.appViewModel);
+    }
 
     userClick(name: CharacterName, context: BBCodeClickContext) {
         this.logger.logInfo("userclick", name.value, context.rightClick);
@@ -1312,19 +1312,6 @@ class ActiveLoginViewModelBBCodeSink implements BBCodeParseSink {
             else {
                 const pd = new CharacterProfileDialogViewModel(this.appViewModel, this.owner, name);
                 this.appViewModel.showDialogAsync(pd);
-            }
-        }
-        catch { }
-    }
-
-    webpageClick(url: string, forceExternal: boolean, context: BBCodeClickContext) {
-        try {
-            const maybeProfileTarget = URLUtils.tryGetProfileLinkTarget(url);
-            if (maybeProfileTarget != null && !forceExternal) {
-                this.userClick(CharacterName.create(maybeProfileTarget), context);
-            }
-            else {
-                this.appViewModel.launchUrlAsync(url, forceExternal);
             }
         }
         catch { }
