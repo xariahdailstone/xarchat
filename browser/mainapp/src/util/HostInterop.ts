@@ -26,6 +26,7 @@ import { UpdateCheckerState } from "./UpdateCheckerClient";
 import { URLUtils } from "./URLUtils";
 import { Scheduler } from "./Scheduler";
 import { Mutex } from "./Mutex";
+import { HostInteropLogSearch2, XarHost2HostInteropLogSearch2Impl } from "./HostInteropLogSearch2";
 // import { SqliteConnection } from "./sqlite/SqliteConnection";
 // import { XarHost2SqliteConnection } from "./sqlite/xarhost2/XarHost2SqliteConnection";
 
@@ -100,6 +101,7 @@ export interface IHostInterop {
     registerConfigChangeCallback(callback: (value: ConfigKeyValue) => void): IDisposable;
 
     readonly logSearch: HostInteropLogSearch;
+    readonly logSearch2: HostInteropLogSearch2;
 
     chooseLocalFileAsync(options?: ChooseLocalFileOptions): Promise<string | null>;
     getLocalFileUrl(fn: string): string;
@@ -159,7 +161,7 @@ export enum HostWindowState {
 }
 
 
-class XarHost2Interop implements IXarHost2HostInterop {
+export class XarHost2Interop implements IXarHost2HostInterop {
     constructor() {
         this.logger = Logging.createLogger("XarHost2Interop");
 
@@ -192,6 +194,10 @@ class XarHost2Interop implements IXarHost2HostInterop {
         }
 
         this.logSearch = new XarHost2InteropLogSearch((msg) => this.writeToXCHostSocket("logsearch." + msg));
+
+        // TODO:
+        this.logSearch2 = new XarHost2HostInteropLogSearch2Impl();
+
         this.doClientResize(window.innerWidth, window.innerHeight, true);
 
         this._windowCommandSession = new XarHost2InteropWindowCommand();
@@ -288,6 +294,7 @@ class XarHost2Interop implements IXarHost2HostInterop {
     readonly logger: Logger;
 
     readonly logSearch: XarHost2InteropLogSearch;
+    readonly logSearch2: HostInteropLogSearch2;
 
     readonly sessions: XarHost2InteropSession[];
     private _windowCommandSession: XarHost2InteropWindowCommand;

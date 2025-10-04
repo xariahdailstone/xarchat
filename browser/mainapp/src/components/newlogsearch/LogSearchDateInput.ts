@@ -1,15 +1,16 @@
-import { FastEventSource } from "../util/FastEventSource";
-import { HTMLUtils } from "../util/HTMLUtils";
-import { StringUtils } from "../util/StringUtils";
-import { setStylesheetAdoption } from "../util/StyleSheetPolyfill";
-import { AppViewModel } from "../viewmodel/AppViewModel";
-import { LocaleViewModel } from "../viewmodel/LocaleViewModel";
-import { LogSearchDate, SearchDate } from "../viewmodel/LogSearchViewModel";
+import { FastEventSource } from "../../util/FastEventSource";
+import { HTMLUtils } from "../../util/HTMLUtils";
+import { StringUtils } from "../../util/StringUtils";
+import { setStylesheetAdoption } from "../../util/StyleSheetPolyfill";
+import { AppViewModel } from "../../viewmodel/AppViewModel";
+import { LocaleViewModel } from "../../viewmodel/LocaleViewModel";
+import { LogSearchDate, SearchDate } from "../../viewmodel/LogSearchViewModel";
 //import { LogSearchDateSelectionPopupViewModel } from "../viewmodel/popups/LogSearchDateSelectionPopupViewModel";
-import { StyleLoader, componentElement } from "./ComponentBase";
+import { StyleLoader, componentArea, componentElement } from "../ComponentBase";
 
 //const dtfWithDate = new Intl.DateTimeFormat(undefined, { dateStyle: "long", timeStyle: "long" });
 
+@componentArea("newlogsearch")
 @componentElement("x-logsearchdateinput")
 export class LogSearchDateInput extends HTMLElement {
 
@@ -26,7 +27,7 @@ export class LogSearchDateInput extends HTMLElement {
         `);
 
         (async () => {
-            const css = await StyleLoader.loadAsync("styles/components/LogSearchDateInput.css");
+            const css = await StyleLoader.loadAsync("styles/components/newlogsearch/LogSearchDateInput.css");
             //(sroot as any).adoptedStyleSheets = [ css ];
             setStylesheetAdoption(sroot, [ css ]);
             this.elButton.style.removeProperty("display");

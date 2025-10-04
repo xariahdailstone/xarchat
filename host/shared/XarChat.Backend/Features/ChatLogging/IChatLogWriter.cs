@@ -48,6 +48,8 @@ namespace XarChat.Backend.Features.ChatLogging
 
         //Task<bool> ValidatePMConvoInLogsAsync(
         //    string myCharacterName, string interlocutorName, CancellationToken cancellationToken);
+
+        Task PerformExpirationAsync(CancellationToken cancellationToken);
     }
 
     public enum DateAnchor

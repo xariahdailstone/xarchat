@@ -16,6 +16,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Features\ChatLogging\FChat3\**" />
+    <EmbeddedResource Remove="Features\ChatLogging\FChat3\**" />
+    <None Remove="Features\ChatLogging\FChat3\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Compile Remove="Features\ChatLogging\Sqlite\File\DbLogFileSwarm.cs" />
     <Compile Remove="Features\ChatLogging\Sqlite\File\SingleDbLogFile.cs" />
     <Compile Remove="Features\ChatLogging\Sqlite\File\SwarmingChatLogWriter.cs" />
@@ -42,6 +48,7 @@
   <ItemGroup>
     <PackageReference Include="HtmlAgilityPack" Version="1.11.72" />
     <PackageReference Include="Microsoft.Data.Sqlite.Core" Version="9.0.0" />
+    <PackageReference Include="System.Linq.Async" Version="6.0.3" />
     <PackageReference Include="System.Text.Json" Version="9.0.0" />
   </ItemGroup>
 
