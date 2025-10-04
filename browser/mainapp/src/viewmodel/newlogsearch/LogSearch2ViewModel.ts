@@ -1,5 +1,7 @@
 import { CharacterName } from "../../shared/CharacterName";
 import { CancellationToken, CancellationTokenSource } from "../../util/CancellationTokenSource";
+import { HostInterop } from "../../util/HostInterop";
+import { LogSearchKind } from "../../util/HostInteropLogSearch";
 import { IterableUtils } from "../../util/IterableUtils";
 import { ObservableBase, observableProperty } from "../../util/ObservableBase";
 import { OperationCancelledError } from "../../util/PromiseSource";
@@ -21,7 +23,17 @@ export class LogSearch2ViewModel extends ObservableBase {
         this.assignResultSet(new LogSearch2DynamicResultSet(this, 3000));
     }
 
-    performSearch() {
+    async performSearch() {
+        this.currentResultSet = null;
+        if (this.searchCriteria.isValid) {
+            this.isSearching = true;
+            try {
+                // TODO:
+            }
+            finally {
+                this.isSearching = false;
+            }
+        }
     }
 
     resetCriteria() {
@@ -57,6 +69,9 @@ export class LogSearch2ViewModel extends ObservableBase {
 
     @observableProperty
     resultView: VirtualScrollViewModel<LogSearch2ResultItemViewModel> | null = null;
+
+    @observableProperty
+    isSearching: boolean = false;
 
     @observableProperty
     currentResultSet: LogSearch2DynamicResultSet | null = null;
