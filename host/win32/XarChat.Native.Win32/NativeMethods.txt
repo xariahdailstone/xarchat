@@ -25,6 +25,7 @@ EnumDisplayMonitors
 GetMonitorInfo
 FindWindow
 SetForegroundWindow
+FlashWindow
 // Kernel32
 GetModuleHandle
 GetModuleFileName

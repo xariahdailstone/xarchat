@@ -20,6 +20,8 @@ namespace XarChat.Backend.Features.WindowControl
         void Restore();
         void Close();
 
+        void FlashWindow();
+
         Task SetBrowserZoomLevelAsync(float zoomLevel);
 
         Task InvokeOnUIThread(Action action);

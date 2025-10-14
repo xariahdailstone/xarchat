@@ -595,6 +595,23 @@ export class AppViewModel extends ObservableBase {
 
         fn = this.getConfigEntryHierarchical(`sound.event.${event.eventType.toString()}`, event.activeLoginViewModel, event.channel) as (string | null);
 
+        if (this.getConfigSettingById("flashTaskbarButton") ?? true) {
+            let shouldFlashWindow: boolean;
+            switch (event.eventType) {
+                case AppNotifyEventType.CONNECTED:
+                case AppNotifyEventType.DISCONNECTED:
+                    shouldFlashWindow = false;
+                    break;
+                case AppNotifyEventType.HIGHLIGHT_MESSAGE_RECEIVED:
+                case AppNotifyEventType.PRIVATE_MESSAGE_RECEIVED:
+                    shouldFlashWindow = true;
+                    break;
+            }
+            if (shouldFlashWindow) {
+                HostInterop.flashWindow();
+            }
+        }
+
         if (fn == null || fn == "default:")
         {
             switch (event.eventType) {

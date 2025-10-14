@@ -367,6 +367,15 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                             type: "pinglist",
                             defaultValue: [],
                             configBlockKey: "pingWords"
+                        },
+                        {
+                            id: "flashTaskbarButton",
+                            scope: getScopeArray(["global"]),
+                            title: "Flash Taskbar Button on Pings and Unseen PMs",
+                            description: "Flash the Windows taskbar button for XarChat when a ping or unseen private message is received.",
+                            type: "boolean",
+                            defaultValue: true,
+                            configBlockKey: "flashTaskbarButton"
                         }
                     ]
                 },
