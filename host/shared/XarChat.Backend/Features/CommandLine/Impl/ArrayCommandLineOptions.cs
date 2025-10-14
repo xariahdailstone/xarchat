@@ -97,6 +97,15 @@ namespace XarChat.Backend.Features.CommandLine.Impl
                             }
                         }
                         break;
+                    case "--log-to":
+                        {
+                            var fn = GetNextOrNull();
+                            if (!String.IsNullOrWhiteSpace(fn))
+                            {
+                                this.LogToFile = fn;
+                            }
+                        }
+                        break;
                 }
             }
         }
@@ -118,5 +127,7 @@ namespace XarChat.Backend.Features.CommandLine.Impl
         public bool DisableGpuAcceleration { get; private set; } = false;
 
         public string? BrowserLanguage { get; private set; } = null;
+
+        public string? LogToFile { get; private set; } = null;
     }
 }

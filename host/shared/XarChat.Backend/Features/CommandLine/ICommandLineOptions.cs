@@ -25,5 +25,7 @@ namespace XarChat.Backend.Features.CommandLine
         bool DisableGpuAcceleration { get; }
 
         string? BrowserLanguage { get; }
+
+        string? LogToFile { get; }
     }
 }
