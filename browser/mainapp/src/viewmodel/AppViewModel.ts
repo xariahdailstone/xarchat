@@ -356,6 +356,9 @@ export class AppViewModel extends ObservableBase {
 
     async launchUrlAsync(url: string, forceExternal?: boolean): Promise<void> {
         try {
+            const canLaunchInternally = !!this.getConfigSettingById("launchImagesInternally");
+            forceExternal = (forceExternal ?? false) || (!canLaunchInternally);
+
             await HostInterop.launchUrl(this, url, forceExternal ?? false);
         }
         catch { }

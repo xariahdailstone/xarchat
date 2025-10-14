@@ -110,6 +110,9 @@ export class LinkPreviewProvider {
         };
 
         const mouseOverHandler = MouseOverUtils.addMouseOverHandler(el, async () => {
+            const popupsEnabled = !!appViewModel.getConfigSettingById("showImagePreviewPopups");
+            if (!popupsEnabled) { return; }
+
             this.logger.logDebug("link mouseover");
             mouseStillOver = true;
             if (linkPreviewData === undefined) {

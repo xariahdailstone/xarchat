@@ -270,10 +270,35 @@ namespace XarChat.Backend.Features.AppConfiguration.Impl
             NullIfWhiteSpace(GetArbitraryValueString("WebSocketPath")) ??
             "wss://chat.f-list.net/chat2";
 
-        public string UrlLaunchExecutable =>
-            NullIfWhiteSpace(_commandLineOptions.UrlLaunchExecutable) ??
-            NullIfWhiteSpace(GetArbitraryValueString("UrlLaunchExecutable")) ??
-            "shell:";
+        public string UrlLaunchExecutable
+        {
+            get
+            {
+                string EmptyAsShell(string str)
+                    => (str.Trim() == "") ? "shell:" : str;
+
+                var commandLineOption = _commandLineOptions.UrlLaunchExecutable;
+                if (commandLineOption is not null)
+                {
+                    return EmptyAsShell(commandLineOption);
+                }
+
+                var configedValue = GetArbitraryValueString("global.urlLaunchExecutable");
+                if (configedValue is not null)
+                {
+                    return EmptyAsShell(configedValue);
+                }
+
+                var legacyConfigedValue = GetArbitraryValueString("UrlLaunchExecutable");
+                if (legacyConfigedValue is not null)
+                {
+                    return EmptyAsShell(legacyConfigedValue);
+                }
+
+                return "shell:";
+            }
+        }
+            
 
         public bool LaunchImagesInternally =>
             _commandLineOptions.LaunchImagesInternally ??
