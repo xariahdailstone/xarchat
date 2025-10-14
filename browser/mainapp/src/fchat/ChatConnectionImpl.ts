@@ -287,29 +287,55 @@ export class ChatConnectionImpl implements ChatConnection {
         await this.sendMessageRawAsync({ code: "XIL", body: { state: userState, screen: screenState }});
     }
 
+    private _lastAssignedStatus: { status: string, statusmsg: string } | null = null;
+    private _currentlyAssigningStatus: { status: string, statusmsg: string } | null = null;
     async setStatusAsync(status: OnlineStatus, statusMessage: string): Promise<void> {
-        let attemptCount = 0;
-        let sendAgain = true;
-        while (sendAgain) {
-            sendAgain = false;
-            attemptCount++;
+        const myCurrentlyAssigningStatus = { 
+            status: OnlineStatusConvert.toString(status).toLowerCase(), 
+            statusmsg: statusMessage ?? "" 
+        };
+        this._currentlyAssigningStatus = myCurrentlyAssigningStatus;
 
-            await this.bracketedSendAsync({ code: "STA", body: { 
-                status: OnlineStatusConvert.toString(status).toLowerCase(), 
-                statusmsg: statusMessage ?? "" 
-            }}, (msg: HandleableChatMessage) => {
-                if (msg.code == "ERR" && (msg.body as ServerERRMessage).number == ServerErrorNumbers.StatusUpdatesTooFast && (attemptCount < 8)) {
-                    msg.handled = true;
-                    sendAgain = true;
+        try {
+            let attemptCount = 0;
+            let sendAgain = true;
+            while (sendAgain) {
+                sendAgain = false;
+                attemptCount++;
+
+                // Don't assign if this isn't the most recent status assign...
+                if (this._currentlyAssigningStatus !== myCurrentlyAssigningStatus) { break; }
+
+                // Don't assign if this status is identical to the last assigned status...
+                if (this._lastAssignedStatus?.status == myCurrentlyAssigningStatus.status &&
+                    this._lastAssignedStatus.statusmsg == myCurrentlyAssigningStatus.statusmsg) {
+                    break;
+                }
+                
+                await this.bracketedSendAsync({ code: "STA", body: { 
+                    status: OnlineStatusConvert.toString(status).toLowerCase(), 
+                    statusmsg: statusMessage ?? "" 
+                }}, (msg: HandleableChatMessage) => {
+                    if (msg.code == "ERR" && (msg.body as ServerERRMessage).number == ServerErrorNumbers.StatusUpdatesTooFast && (attemptCount < 8)) {
+                        msg.handled = true;
+                        sendAgain = true;
+                    }
+                    else {
+                        ERRAsFailure(msg);
+                    }
+                });
+
+                if (sendAgain) {
+                    await TaskUtils.delay(1000);
                 }
                 else {
-                    ERRAsFailure(msg);
+                    this._lastAssignedStatus = myCurrentlyAssigningStatus;
                 }
-            });
-
-            if (sendAgain) {
-                await TaskUtils.delay(1000);
             }
+        }
+        catch (e) {
+            if (this._currentlyAssigningStatus === myCurrentlyAssigningStatus) { this._currentlyAssigningStatus = null; }
+            throw e;
         }
     }
 

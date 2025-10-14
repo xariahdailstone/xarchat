@@ -42,10 +42,13 @@ import { StringUtils } from "../util/StringUtils.js";
 import { NamedObservableExpression, ObservableExpression } from "../util/ObservableExpression.js";
 import { InAppToastViewModel } from "./InAppToastViewModel.js";
 import { InAppToastManagerViewModel } from "./InAppToastManagerViewModel.js";
+import { LogSearch2ViewModel } from "./newlogsearch/LogSearch2ViewModel.js";
 import { PartnerSearchViewModel } from "./PartnerSearchViewModel.js";
 import { AutoAdManager } from "../util/AutoAdManager.js";
 import { NicknameSet } from "../shared/NicknameSet.js";
 import { EIconFavoriteBlockViewModel } from "./EIconFavoriteBlockViewModel.js";
+import { LeftSidebarTabContainerViewModel } from "./sidebartabs/LeftSidebarTabContainerViewModel.js";
+import { RightSidebarTabContainerViewModel } from "./sidebartabs/RightSidebarTabContainerViewModel.js";
 
 declare const XCHost: any;
 
@@ -77,7 +80,17 @@ export class ActiveLoginViewModel extends ObservableBase implements IDisposable 
         this.miscTabs.push(new MiscTabViewModel(this, "Console", this.console));
         this._logSearchViewModel = new LogSearchViewModel(this, this.appViewModel, savedChatState.characterName);
         this.miscTabs.push(new MiscTabViewModel(this, "Log Viewer", this._logSearchViewModel));
+        this._logSearchViewModel2 = new LogSearch2ViewModel(this, this.appViewModel, savedChatState.characterName);
+        // TODO:
+        //this.miscTabs.push(new MiscTabViewModel(this, "Log Viewer 2", this._logSearchViewModel2));
         this.miscTabs.push(new MiscTabViewModel(this, "Partner Search", this.partnerSearch));
+
+        this.leftTabs = new LeftSidebarTabContainerViewModel(this);
+        this.rightTabs = new RightSidebarTabContainerViewModel(this);
+        this._disposeActions.push(() => {
+            this.leftTabs.dispose();
+            this.rightTabs.dispose();
+        });
 
         //this.serverOps.addEventListener("collectionchange", (ev) => { this.notifyChannelsOfCharacterChange(this.serverOps, ev); });
         //this.watchedChars.addEventListener("collectionchange", (ev) => { this.notifyChannelsOfCharacterChange(this.watchedChars, ev); });
@@ -194,6 +207,8 @@ export class ActiveLoginViewModel extends ObservableBase implements IDisposable 
     private readonly _logSearchViewModel: LogSearchViewModel;
 
     eIconFavoriteBlockViewModel: EIconFavoriteBlockViewModel;
+
+    private readonly _logSearchViewModel2: LogSearch2ViewModel;
 
     get appViewModel() { return this.parent; }
 
@@ -707,6 +722,12 @@ export class ActiveLoginViewModel extends ObservableBase implements IDisposable 
     @observableProperty
     leftListSelectedPane: LeftListSelectedPane = LeftListSelectedPane.CHATS;
 
+    @observableProperty
+    leftTabs: LeftSidebarTabContainerViewModel;
+
+    @observableProperty
+    rightTabs: RightSidebarTabContainerViewModel;
+
     private _selectedChannelHistory: ChannelViewModel[] = [];
     private pushToSelectedChannelHistory(chan: ChannelViewModel) {
         this.removeFromSelectedChannelHistory(chan, false);
@@ -1187,7 +1208,7 @@ export class ActiveLoginViewModel extends ObservableBase implements IDisposable 
     }
 }
 
-export type SelectedChannel = ChannelViewModel | AddChannelsViewModel | LogSearchViewModel;
+export type SelectedChannel = ChannelViewModel | AddChannelsViewModel | LogSearchViewModel | LogSearch2ViewModel;
 
 export type SelectableTab = SelectedChannel | PartnerSearchViewModel;
 

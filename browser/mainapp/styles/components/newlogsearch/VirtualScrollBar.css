@@ -1,0 +1,54 @@
+:host {
+    display: block;
+    position: relative;
+
+    width: var(--scrollbar-width);
+}
+
+#elMain {
+    background: inherit;
+
+    width: 100%;
+    height: 100%;
+
+    --scroll-down-pct: 0fr;
+    --thumb-size: 10%;
+
+    display: grid;
+    grid-template-columns: var(--scrollbar-width);
+    grid-template-rows: var(--scroll-down-pct) var(--thumb-size) calc(1fr - var(--scroll-down-pct));
+    grid-template-areas:
+        "scrollup"
+        "thumb"
+        "scrolldown";
+
+    background: var(--scrollbar-track-bg);
+    pointer-events: all;
+}
+#elMain:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.scroll-region-up,
+.scroll-region-down {
+    top: 0;
+    left: 0;
+    width: 100%;
+
+    pointer-events: all;
+    cursor: default;
+}
+
+.scroll-thumb {
+    background: var(--scrollbar-thumb-bg);
+    background-clip: padding-box;
+    border-radius: var(--scrollbar-thumb-border-radius);
+    border: var(--scrollbar-thumb-border-size) solid transparent;
+    cursor: default;
+}
+.scroll-thumb:hover {
+    background: var(--scrollbar-thumb-hover-bg);
+    background-clip: padding-box;
+    border-radius: var(--scrollbar-thumb-border-radius);
+    border: var(--scrollbar-thumb-border-size) solid transparent;
+}

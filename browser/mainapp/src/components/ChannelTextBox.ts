@@ -5,6 +5,7 @@ import { EL } from "../util/EL.js";
 import { FocusMagnet } from "../util/FocusMagnet.js";
 import { HTMLUtils } from "../util/HTMLUtils.js";
 import { KeyCodes } from "../util/KeyCodes.js";
+import { Scheduler } from "../util/Scheduler.js";
 import { TextEditShortcutsHelper } from "../util/TextEditShortcutsHelper.js";
 import { WhenChangeManager } from "../util/WhenChange.js";
 import { ChatConnectionState } from "../viewmodel/ActiveLoginViewModel.js";
@@ -340,17 +341,19 @@ export class ChannelTextBox extends ComponentBase<ChannelViewModel> {
     }
 
     focusTextBox() {
-        window.requestAnimationFrame(() => {
+        Scheduler.scheduleNamedCallback("ChannelTextBox.focusTextBox", ["nextframe", 250], () => {
+
+        //window.requestAnimationFrame(() => {
             // Workaround: when focusTextBox is called during viewActivated, the first RAF will have the view rendering
             // being done, which will invalidate layout/styles.  To avoid a forced reflow due to focus(), we'll wait
             // for the *next* animation frame.
-            window.requestAnimationFrame(() => {
+            //window.requestAnimationFrame(() => {
                 this.logger.logDebug("focusTextBox");
                 const elTextbox = this.$("elTextbox")! as HTMLTextAreaElement;
                 if (FocusMagnet.instance.ultimateFocus != elTextbox) {
                     elTextbox.focus();
                 }
-            });
+            //});
         });
     }
 
@@ -418,7 +421,7 @@ export class ChannelTextBox extends ComponentBase<ChannelViewModel> {
         }
     }
 
-    get viewModel(): (ChannelViewModel | null) { return super.viewModel; }
+    //get viewModel(): (ChannelViewModel | null) { return super.viewModel; }
 
     private async sendChat() {
         const vm = this.viewModel;

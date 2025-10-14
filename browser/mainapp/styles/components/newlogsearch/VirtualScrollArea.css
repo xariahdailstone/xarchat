@@ -1,0 +1,48 @@
+#elMain {
+    --scrollbar-width: 16px;
+    --scrollbar-track-bg: transparent;
+    --scrollbar-thumb-bg: rgba(0, 0, 0, 0.5);
+    --scrollbar-thumb-hover-bg: rgba(255, 255, 255, 0.6);
+    --scrollbar-thumb-border-radius: 8px;
+    --scrollbar-thumb-border-size: 4px;
+
+    --scrollbar-hover-track-bg: rgba(255, 255, 255, 0.2);
+
+    width: 100%;
+    height: 100%;
+
+    display: grid;
+    grid-template-rows: 1fr;
+    grid-template-columns: 1fr 16px;
+    grid-template-areas:
+        "client sbarea";
+
+    position: relative;
+}
+
+.clientarea {
+    grid-area: client;
+    position: relative;
+    overflow: hidden;
+}
+
+.vscroll {
+    grid-area: sbarea;
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+}
+
+.clientarea > * {
+    position: absolute;
+}
+
+/* .debuganchorline {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    height: 1px;
+    background-color: yellow;
+} */
+ .debuganchorline { display: none; }

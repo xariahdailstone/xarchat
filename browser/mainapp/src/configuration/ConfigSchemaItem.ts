@@ -702,11 +702,24 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     id: "joinFriendsAndBookmarks",
                     scope: getScopeArray(["global", "char"]),
                     title: "Show Friends and Bookmarks Together",
-                    description: "Show friends and bookmarks together in the left bar tab strip and in channel character lists.",
+                    description: "Show friends and bookmarks together in the friends tab and in channel character lists.",
                     type: "boolean",
                     defaultValue: true,
                     configBlockKey: "joinFriendsAndBookmarks"
                 },
+                {
+                    id: "friendsTabLocation",
+                    scope: getScopeArray(["global"]),
+                    title: "Friends/Bookmarks Tab Location",
+                    description: "Show the friends and bookmarks tab on which side of the interface?",
+                    type: "select",
+                    selectOptions: [
+                        { value: "left", displayValue: "Left (Default)" },
+                        { value: "right", displayValue: "Right" }
+                    ],
+                    defaultValue: "left",
+                    configBlockKey: "friendsTabLocation"
+                },                
                 {
                     id: "messageDisplayStyle",
                     scope: getScopeArray(["global", "char", "chan", "convo"]),

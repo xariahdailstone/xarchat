@@ -5,6 +5,7 @@ import { Logger, Logging } from "./Logger.js";
 import { ObjectUniqueId } from "./ObjectUniqueId.js";
 import { Observable, PropertyChangeEvent, PropertyChangeEventListener, ValueSubscription } from "./Observable.js";
 import { Collection } from "./ObservableCollection.js";
+import { Scheduler } from "./Scheduler.js";
 
 const DEBUG_PROP: string | null = null; // "scrolledTo";
 
@@ -14,12 +15,12 @@ type ObservableReader = [string, (instance: any) => any];
 
 const obsPropsMetadata: Map<Function, ObservableReader[]> = new Map();
 
-let _idleIngestHandle: number | null = null;
+let _idleIngestHandle: IDisposable | null = null;
 let _idleIngestCallbacks: (() => any)[] = [];
-function registerIdleIngest(func: () => any): number {
+function registerIdleIngest(func: () => any): IDisposable {
     _idleIngestCallbacks.push(func);
     if (_idleIngestHandle == null) {
-        _idleIngestHandle = window.requestIdleCallback(() => {
+        _idleIngestHandle = Scheduler.scheduleNamedCallback("registerIdleIngest", ["idle", 250], () => {
             _idleIngestHandle = null;
             const callbacks = _idleIngestCallbacks;
             _idleIngestCallbacks = [];

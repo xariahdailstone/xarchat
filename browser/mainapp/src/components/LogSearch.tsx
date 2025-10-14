@@ -13,6 +13,7 @@ import { ScrollAnchorTo } from "../util/ScrollAnchorTo";
 import { TextboxBinding } from "../util/bindings/TextboxBinding";
 import { getMappedValueReference, getValueReference } from "../util/ValueReference";
 import { CharacterName } from "../shared/CharacterName";
+import { Scheduler } from "../util/Scheduler";
 
 @componentElement("x-logsearch")
 @stageViewFor(LogSearchViewModel)
@@ -42,13 +43,13 @@ export class LogSearch extends RenderingStageViewComponent<LogSearchViewModel> {
     }
 
     private _storedScrollToCommand: ScrollToCommand | null = null;
-    private _scrollToHandle: number | null = null;
+    private _scrollToHandle: IDisposable | null = null;
 
     private setScrollToCommand(stc: ScrollToCommand | null) {
         if (stc != null) {
             this._storedScrollToCommand = stc;
             if (this._scrollToHandle == null) {
-                this._scrollToHandle = window.requestAnimationFrame(() => {
+                this._scrollToHandle = Scheduler.scheduleNamedCallback("LogSearch.setScrollToCommand", ["frame", "idle", 250], () => {
                     this._scrollToHandle = null;
                     this.executeScrollToCommand();
                 });
@@ -193,7 +194,7 @@ class LogSearchResultItemCollectionView extends CollectionViewLightweight<LogSea
 
             const ssp = savedScrollPos;
             const sat = this.scrollAnchorTo;
-            window.requestAnimationFrame(() => {
+            Scheduler.scheduleNamedCallback("LogSearchResultItemCollectionView.completeElementUpdate", ["frame", "idle", 250], () => {
                 const containerElement = this.containerElement;
                 if (containerElement != null && ssp != null) {
                     switch (sat) {

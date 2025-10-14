@@ -1,5 +1,6 @@
-import { asDisposable } from "../../util/Disposable";
+import { asDisposable, IDisposable } from "../../util/Disposable";
 import { HTMLUtils } from "../../util/HTMLUtils";
+import { Scheduler } from "../../util/Scheduler";
 import { ImagePreviewPopupViewModel } from "../../viewmodel/popups/ImagePreviewPopupViewModel";
 import { TweetPreviewPopupViewModel } from "../../viewmodel/popups/TweetPreviewPopupViewModel";
 import { componentArea, componentElement } from "../ComponentBase";
@@ -30,10 +31,10 @@ export class TweetPreviewPopup extends PopupBase<TweetPreviewPopupViewModel> {
         });
 
         this.whenConnected(() => {
-            let rafHandle: number | null = null;
+            let rafHandle: IDisposable | null = null;
 
             const updateIFramePos = () => {
-                rafHandle = window.requestAnimationFrame(updateIFramePos);
+                rafHandle = Scheduler.scheduleNamedCallback("TweetPreviewPopup.updateIFramePos", ["nextframe", 250], updateIFramePos);
 
                 const phRect = elPlaceholder.getClientRects().item(0);
                 if (this.viewModel && this.viewModel.element) {
@@ -41,11 +42,11 @@ export class TweetPreviewPopup extends PopupBase<TweetPreviewPopupViewModel> {
                 }
             };
 
-            rafHandle = window.requestAnimationFrame(updateIFramePos);
+            rafHandle = Scheduler.scheduleNamedCallback("TweetPreviewPopup.updateIFramePos", ["frame", 250], updateIFramePos);
 
             return asDisposable(() => {
                 if (rafHandle != null) {
-                    window.cancelAnimationFrame(rafHandle);
+                    rafHandle.dispose();
                     rafHandle = null;
                 }
             })

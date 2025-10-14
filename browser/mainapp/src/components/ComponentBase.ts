@@ -99,9 +99,11 @@ export class StyleLoader {
     await StyleLoader.refreshCss(filename);
 };
 
+const ATTR_IGNOREPARENT = "ignoreparent";
+
 export abstract class ComponentBase<TViewModel> extends HTMLElement {
 
-    static get observedAttributes(): string[] { return [ ]; };
+    static get observedAttributes(): string[] { return [ ATTR_IGNOREPARENT ]; };
 
     static readonly INHERITED_VIEW_MODEL = {};
 
@@ -138,6 +140,21 @@ export abstract class ComponentBase<TViewModel> extends HTMLElement {
         });
 
         this.uniqueId = ComponentBase._nextUniqueId++;
+    }
+
+    get ignoreParent() {
+        return (this.getAttribute(ATTR_IGNOREPARENT) ?? "false") == "true";
+    }
+    set ignoreParent(value: boolean) {
+        if (value !== this.ignoreParent) {
+            if (value) {
+                this.setAttribute(ATTR_IGNOREPARENT, "true");
+            }
+            else {
+                this.setAttribute(ATTR_IGNOREPARENT, "false");
+            }
+            this.viewModelContextUpdated();
+        }
     }
 
     get fastEvents() { return [ "viewmodelchange", "connected", "disconnected" ]; }
@@ -288,6 +305,9 @@ export abstract class ComponentBase<TViewModel> extends HTMLElement {
         this._inAttributeChangedCallback = true;
         try
         {
+            if (name == ATTR_IGNOREPARENT) {
+                this.ignoreParent = (newValue == "true");
+            }
         }
         finally{
             this._inAttributeChangedCallback = false;
@@ -318,7 +338,7 @@ export abstract class ComponentBase<TViewModel> extends HTMLElement {
         const parentComponent = this.parentComponent;
         let vm: any = this._explicitViewModel;
 
-        if (vm == ComponentBase.INHERITED_VIEW_MODEL) {
+        if (vm == ComponentBase.INHERITED_VIEW_MODEL && !this.ignoreParent) {
             if (parentComponent) {
                 vm = parentComponent.viewModel;    
             }

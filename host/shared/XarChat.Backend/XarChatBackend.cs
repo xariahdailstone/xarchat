@@ -75,6 +75,7 @@ using XarChat.Backend.Features.StyleUpdateWatcher;
 using XarChat.Backend.Features.EIconFavoriteManager;
 using XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.GetLocaleList;
 using XarChat.Backend.Logging;
+using XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.AppSettings;
 
 namespace XarChat.Backend
 {
@@ -364,6 +365,8 @@ namespace XarChat.Backend
             services.AddXCHostCommandHandler<SetZoomLevelCommandHandler>("setZoomLevel");
             services.AddXCHostCommandHandler<GetMemoCommandHandler>("getMemo");
             services.AddXCHostCommandHandler<GetLocaleListCommandHandler>("getLocales");
+            services.AddXCHostCommandHandler<GetAppSettingsCommandHandler>("getAppSettings");
+            services.AddXCHostCommandHandler<SetAppSettingsCommandHandler>("setAppSettings");
         }
 
         private object _concurrentCountLock = new object();
