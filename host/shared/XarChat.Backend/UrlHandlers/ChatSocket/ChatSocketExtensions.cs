@@ -2,6 +2,8 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using SQLitePCL;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -16,6 +18,8 @@ using XarChat.Backend.Features.FListApi;
 
 namespace XarChat.Backend.UrlHandlers.ChatSocket
 {
+    internal class ChatSocketExtensionsClass { }
+
     internal static class ChatSocketExtensions
     {
         public static void UseChatSocketProxy(this WebApplication app, string urlBase)
@@ -29,8 +33,10 @@ namespace XarChat.Backend.UrlHandlers.ChatSocket
             [FromServices] IAppConfiguration appConfiguration,
             [FromServices] IHostApplicationLifetime hostApplicationLifetime,
             [FromServices] IFalsifiedClientTicketManager fctm,
+            [FromServices] ILogger<ChatSocketExtensionsClass> logger,
             CancellationToken cancellationToken)
         {
+            Guid connectionGuid = Guid.NewGuid();
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(
                 cancellationToken, hostApplicationLifetime.ApplicationStopping);
             cancellationToken = cts.Token;
@@ -42,14 +48,17 @@ namespace XarChat.Backend.UrlHandlers.ChatSocket
                     using var clientWebSocket = await context.WebSockets.AcceptWebSocketAsync();
                     try
                     {
+                        logger.LogInformation("Chat proxy connection from UI opened (guid={guid})", connectionGuid);
+
                         using var connectionCTS = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
                         // Get IDN from client
-                        var idnMsg = await ReadTextMessageAsync(clientWebSocket, 1024, cancellationToken);
+                        var idnMsg = await ReadTextMessageAsync(clientWebSocket, 1024, cancellationToken) ?? "";
                         if (!idnMsg.StartsWith("IDN "))
                         {
                             throw new ApplicationException("Expected IDN message");
                         }
+
                         var body = JsonSerializer.Deserialize<JsonObject>(idnMsg.Substring(4),
                             SourceGenerationContext.Default.JsonObject);
                         if (body is null) { throw new ApplicationException("body is null"); }
@@ -62,9 +71,13 @@ namespace XarChat.Backend.UrlHandlers.ChatSocket
                         var cname = body["cname"]?.ToString() ?? throw new ApplicationException("cname expected");
                         var cversion = body["cversion"]?.ToString() ?? throw new ApplicationException("cversion expected");
 
+                        logger.LogInformation("Chat proxy connection getting identified websocket (guid={guid})...", connectionGuid);
                         var (maybeFChatWebSocket, initialMessage) = await GetIdentifiedChatWebSocketAsync(
                             flistApi, appConfiguration,
-                            method, account, character, cname, cversion, cancellationToken);
+                            method, account, character, cname, cversion,
+                            logger, connectionGuid, cancellationToken);
+
+                        logger.LogInformation("Chat proxy connection got identified websocket (guid={guid})", connectionGuid);
 
                         await clientWebSocket.SendAsync(System.Text.Encoding.UTF8.GetBytes(initialMessage),
                             WebSocketMessageType.Text, true, cancellationToken);
@@ -73,8 +86,8 @@ namespace XarChat.Backend.UrlHandlers.ChatSocket
                         {
                             using var fchatWebSocket = maybeFChatWebSocket;
 
-                            var stcLoop = SocketToSocketLoop(fchatWebSocket, clientWebSocket, connectionCTS.Token);
-                            var ctsLoop = SocketToSocketLoop(clientWebSocket, fchatWebSocket, connectionCTS.Token);
+                            var stcLoop = SocketToSocketLoop(fchatWebSocket, clientWebSocket, $"{connectionGuid}-S2C", logger, connectionCTS.Token);
+                            var ctsLoop = SocketToSocketLoop(clientWebSocket, fchatWebSocket, $"{connectionGuid}-C2S", logger, connectionCTS.Token);
 
                             await Task.WhenAny(stcLoop, ctsLoop);
 
@@ -83,10 +96,12 @@ namespace XarChat.Backend.UrlHandlers.ChatSocket
                             await Task.WhenAll(stcLoop, ctsLoop);
                         }
                     }
-                    catch
+                    catch (Exception ex)
                     {
+                        logger.LogError(ex, "Error during chat proxy connection (guid={guid}, msg={msg}", connectionGuid, ex.Message);
                     }
 
+                    logger.LogInformation("Chat proxy connection closed (guid={guid})", connectionGuid);
                     return EmptyHttpResult.Instance;
                 }
                 else
@@ -103,12 +118,15 @@ namespace XarChat.Backend.UrlHandlers.ChatSocket
         private static async Task<(ClientWebSocket?, string)> GetIdentifiedChatWebSocketAsync(
             IFListApi fListApi, IAppConfiguration appConfiguration,
             string method, string account, string character, string cname, string cversion,
+            ILogger logger, Guid connectionGuid,
             CancellationToken cancellationToken)
         {
             try
             {
                 var authApi = await fListApi.GetAlreadyAuthenticatedFListApiAsync(account, cancellationToken);
                 var gatResp = await authApi.GetApiTicketAsync(cancellationToken);
+                logger.LogInformation("Using ApiTicket (guid={guid}, ticket={ticket}, cameFromCache={cameFromCache})", 
+                    connectionGuid, gatResp.Value.Ticket, gatResp.CameFromCache);
                 var canRetry = true;
                 var canRetryAgain = true;
                 while (gatResp.CameFromCache && canRetry)
@@ -118,7 +136,9 @@ namespace XarChat.Backend.UrlHandlers.ChatSocket
                     var fchatWebSocketReturned = false;
                     try
                     {
+                        logger.LogInformation("Opening server connection (guid={guid})...", connectionGuid);
                         await fchatWebSocket.ConnectAsync(new Uri(appConfiguration.WebSocketPath), cancellationToken);
+                        logger.LogInformation("Opened server connection (guid={guid})", connectionGuid);
 
                         var jobj = new JsonObject();
                         jobj.Add("method", "ticket");
@@ -129,13 +149,17 @@ namespace XarChat.Backend.UrlHandlers.ChatSocket
                         jobj.Add("cversion", cversion);
                         var idnToSend = "IDN " + JsonSerializer.Serialize(jobj,
                                 SourceGenerationContextUnindented.Default.JsonObject);
+
+                        logger.LogInformation("Sending IDN (guid={guid}, ticket={ticket})...", connectionGuid, gatResp.Value.Ticket);
                         await fchatWebSocket.SendAsync(
                             System.Text.Encoding.UTF8.GetBytes(idnToSend),
                             WebSocketMessageType.Text,
                             true, cancellationToken);
+                        logger.LogInformation("Sent IDN (guid={guid}, ticket={ticket})...", connectionGuid, gatResp.Value.Ticket);
 
                         // Get IDN response
-                        var idnRespMsg = await ReadTextMessageAsync(fchatWebSocket, 1024, cancellationToken);
+                        var idnRespMsg = await ReadTextMessageAsync(fchatWebSocket, 1024, cancellationToken) ?? "";
+                        logger.LogInformation("Got resp (guid={guid}, msg={msg})", connectionGuid, idnRespMsg);
                         if (idnRespMsg.StartsWith("IDN "))
                         {
                             // Success!
@@ -145,6 +169,7 @@ namespace XarChat.Backend.UrlHandlers.ChatSocket
                         else if (gatResp.CameFromCache && canRetry)
                         {
                             // Failure, but we can retry
+                            logger.LogWarning("Failure, but we can retry (guid={guid})", connectionGuid);
                             await authApi.InvalidateApiTicketAsync(gatResp.Value.Ticket, cancellationToken);
                             gatResp = await authApi.GetApiTicketAsync(cancellationToken);
                             canRetryAgain = false;
@@ -152,6 +177,7 @@ namespace XarChat.Backend.UrlHandlers.ChatSocket
                         else
                         {
                             // Failure, retry not possible
+                            logger.LogWarning("Failure, retry not possible (guid={guid})", connectionGuid);
                             return (null, idnRespMsg);
                         }
                     }
@@ -164,19 +190,21 @@ namespace XarChat.Backend.UrlHandlers.ChatSocket
                     }
                 }
 
+                logger.LogError("Failure, could not connect to F-Chat (guid={guid})", connectionGuid);
                 var ejobj = new JsonObject();
                 ejobj.Add("message", $"XarChat was unable to connect to F-Chat.");
                 return (null, "ERR " + JsonSerializer.Serialize(ejobj, SourceGenerationContextUnindented.Default.JsonObject));
             }
             catch (Exception ex)
             {
+                logger.LogError("Failure, unexpected exception (guid={guid}, msg={msg})", connectionGuid, ex.Message);
                 var ejobj = new JsonObject();
                 ejobj.Add("message", $"XarChat was unable to connect to F-Chat: {ex.Message}");
                 return (null, "ERR " + JsonSerializer.Serialize(ejobj, SourceGenerationContextUnindented.Default.JsonObject));
             }
         }
 
-        private static async Task<string> ReadTextMessageAsync(
+        private static async Task<string?> ReadTextMessageAsync(
             WebSocket clientWebSocket, int maxLengthBytes, CancellationToken cancellationToken)
         {
             var rbytes = 0;
@@ -194,7 +222,7 @@ namespace XarChat.Backend.UrlHandlers.ChatSocket
                     case WebSocketMessageType.Binary:
                         throw new ApplicationException("Unexpected binary message received");
                     case WebSocketMessageType.Close:
-                        throw new ApplicationException("Connection closed");
+                        return null;
                     case WebSocketMessageType.Text:
                         rbytes += rmsg.Count;
                         if (rmsg.EndOfMessage)
@@ -210,6 +238,7 @@ namespace XarChat.Backend.UrlHandlers.ChatSocket
             HttpContext context,
             [FromServices] IAppConfiguration appConfiguration,
             [FromServices] IHostApplicationLifetime hostApplicationLifetime,
+            [FromServices] ILogger<ChatSocketExtensionsClass> logger,
             CancellationToken cancellationToken)
         {
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(
@@ -228,8 +257,8 @@ namespace XarChat.Backend.UrlHandlers.ChatSocket
                     {
                         using var connectionCTS = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
-                        var stcLoop = SocketToSocketLoop(fchatWebSocket, clientWebSocket, connectionCTS.Token);
-                        var ctsLoop = SocketToSocketLoop(clientWebSocket, fchatWebSocket, connectionCTS.Token);
+                        var stcLoop = SocketToSocketLoop(fchatWebSocket, clientWebSocket, "S2C", logger, connectionCTS.Token);
+                        var ctsLoop = SocketToSocketLoop(clientWebSocket, fchatWebSocket, "C2S", logger, connectionCTS.Token);
 
                         await Task.WhenAny(stcLoop, ctsLoop);
 
@@ -254,7 +283,8 @@ namespace XarChat.Backend.UrlHandlers.ChatSocket
             }
         }
 
-        private static async Task SocketToSocketLoop(WebSocket inSocket, WebSocket outSocket, CancellationToken cancellationToken)
+        private static async Task SocketToSocketLoop(
+            WebSocket inSocket, WebSocket outSocket, string loopType, ILogger logger, CancellationToken cancellationToken)
         {
             var buf = new byte[128 * 1024];
             while (true)
