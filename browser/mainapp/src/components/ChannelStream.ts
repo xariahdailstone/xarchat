@@ -20,7 +20,8 @@ import { ResizeObserverNice } from "../util/ResizeObserverNice.js";
 import { Scheduler } from "../util/Scheduler.js";
 import { ScrollAnchorTo } from "../util/ScrollAnchorTo.js";
 import { URLUtils } from "../util/URLUtils.js";
-import { ChannelMessageDisplayStyle, ChannelMessageType, ChannelMessageViewModel, ChannelViewModel, ChannelViewScrollPositionModel } from "../viewmodel/ChannelViewModel.js";
+import { ChannelMessageDisplayStyle, ChannelMessageType, ChannelMessageViewModel, ChannelViewModel, ChannelViewScrollPositionModel, IChannelStreamViewModel } from "../viewmodel/ChannelViewModel.js";
+import { ChannelFiltersBar } from "./ChannelFiltersBar.js";
 import { ChannelStreamMessageViewRenderer } from "./ChannelStreamMessageViewRenderer.js";
 import { CollectionView2 } from "./CollectionView2.js";
 import { CollectionViewLightweight } from "./CollectionViewLightweight.js";
@@ -38,12 +39,12 @@ enum ScrollSuppressionReason {
 }
 
 @componentElement("x-channelstream")
-export class ChannelStream extends ComponentBase<ChannelViewModel> {
+export class ChannelStream extends ComponentBase<IChannelStreamViewModel> {
     constructor() {
         super();
 
         HTMLUtils.assignStaticHTMLFragment(this.elMain, `
-            <x-channelfiltersbar class="filtersbar"></x-channelfiltersbar>
+            <x-channelfiltersbar class="filtersbar" id="elFiltersBar"></x-channelfiltersbar>
             <div class="messagecontainerouter">
                 <div class="messagecontainer" id="elMessageContainer">
                 </div>
@@ -63,6 +64,7 @@ export class ChannelStream extends ComponentBase<ChannelViewModel> {
         const elScrolledUp = this.$("elScrolledUp") as HTMLButtonElement;
         const elNewMessagesBelow = this.$("elNewMessagesBelow") as HTMLButtonElement;
         const elSending = this.$("elSending") as HTMLDivElement;
+        const elFiltersBar = this.$("elFiltersBar") as ChannelFiltersBar;
 
         const iterateElements = function* (): Iterable<AnchorElementInfo> {
             for (let i = 0; i < elMessageContainer.children.length; i++) {
@@ -79,7 +81,7 @@ export class ChannelStream extends ComponentBase<ChannelViewModel> {
             return result;
         };
 
-        let currentScrollToVm: ChannelViewModel | null = null;
+        let currentScrollToVm: IChannelStreamViewModel | null = null;
         this._scrollManager = new DefaultStreamScrollManager(elMessageContainer, iterateElements, getElementByIdentity, (v) => {
             //this.logger.logDebug("setting scrolledTo", v, this.viewModel?.collectiveName);
             const vm = currentScrollToVm;
@@ -166,6 +168,10 @@ export class ChannelStream extends ComponentBase<ChannelViewModel> {
             elScrolledUp.classList.toggle("shown", scrolledUp && !newMsgs);
         };
 
+        this.watchExpr(vm => vm.showFilterBar, sfb => {
+            elFiltersBar.classList.toggle("hidden", !sfb);
+        });
+
         this.watchExpr(vm => vm.newMessagesBelowNotify, v => {
             updateAlerts();
         });
@@ -223,6 +229,10 @@ export class ChannelStream extends ComponentBase<ChannelViewModel> {
             return asDisposable(() => {
                 hem.dispose();
             });
+        });
+
+        this.watchExpr(vm => vm.isHistoricalView, v => {
+            this.elMain.classList.toggle("historical-view", !!v);
         });
     }
 

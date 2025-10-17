@@ -116,6 +116,8 @@ export interface IHostInterop {
     getMemoAsync(account: string, getForChar: CharacterName, cancellationToken?: CancellationToken): Promise<string | null>;
 
     getAvailableLocales(cancellationToken?: CancellationToken): Promise<HostLocaleInfo[]>;
+
+    flashWindow(): void;
 }
 
 export interface HostLocaleInfo {
@@ -1278,6 +1280,10 @@ export class XarHost2Interop implements IXarHost2HostInterop {
 
         const result = await ps.promise;
         return result;        
+    }
+
+    flashWindow() {
+        this.writeToXCHostSocket("flashWindow");
     }
 }
 

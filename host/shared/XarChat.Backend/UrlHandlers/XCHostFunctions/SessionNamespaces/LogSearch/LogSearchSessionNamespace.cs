@@ -42,6 +42,10 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions.SessionNamespaces.LogSearc
             this.RegisterTypedStreamCommandHandler<PerformPMConvoSearchArgs>(
                 "performPMConvoSearch",
                 PerformPMConvoSearchAsync);
+
+            this.RegisterTypedStreamCommandHandler<PerformRecentConversationsSearchArgs>(
+                "getRecentConversations",
+                PerformRecentConversationsSearchAsync);
         }
 
         protected override JsonTypeInfo GetTypeInfo(Type type)
@@ -141,6 +145,20 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions.SessionNamespaces.LogSearc
                 new PerformedPMConvoSearchResponse() { Results = results },
                 cancellationToken);
         }
+
+        private async Task PerformRecentConversationsSearchAsync(StreamHandlerArgs<PerformRecentConversationsSearchArgs> args)
+        {
+            var cancellationToken = args.CancellationToken;
+
+            var results = await _chatLogSearch.GetRecentConversationsAsync(
+                args.Data!.LogsFor,
+                args.Data.ResultLimit,
+                cancellationToken);
+
+            await args.WriteMessageAsync("gotRecentConversations",
+                new PerformRecentConversationsSearchResponse() { Results = new List<RecentConversationInfo>(results) },
+                cancellationToken);
+        }
     }
 
     public class GetHintsFromTermArgs : StreamCommandMessage
@@ -224,6 +242,21 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions.SessionNamespaces.LogSearc
         public List<LoggedPMConvoMessageInfo> Results { get; set; } = new List<LoggedPMConvoMessageInfo>();
     }
 
+    public class PerformRecentConversationsSearchArgs : StreamCommandMessage
+    {
+        [JsonPropertyName("logsFor")]
+        public string LogsFor { get; set; } = "";
+
+        [JsonPropertyName("resultLimit")]
+        public int ResultLimit { get; set; } = 100;
+    }
+
+    public class PerformRecentConversationsSearchResponse : StreamCommandMessage
+    {
+        [JsonPropertyName("results")]
+        public List<RecentConversationInfo> Results { get; set; } = new List<RecentConversationInfo>();
+    }
+
     [JsonSerializable(typeof(GetHintsFromTermArgs))]
     [JsonSerializable(typeof(GotHintsFromTermResponse))]
     [JsonSerializable(typeof(ValidateSearchTextArgs))]
@@ -232,6 +265,8 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions.SessionNamespaces.LogSearc
     [JsonSerializable(typeof(PerformedChannelSearchResponse))]
     [JsonSerializable(typeof(PerformPMConvoSearchArgs))]
     [JsonSerializable(typeof(PerformedPMConvoSearchResponse))]
+    [JsonSerializable(typeof(PerformRecentConversationsSearchArgs))]
+    [JsonSerializable(typeof(PerformRecentConversationsSearchResponse))]
     internal partial class LogSearchSourceGenerationContext : JsonSerializerContext
     {
     }

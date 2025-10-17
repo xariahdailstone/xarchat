@@ -10,7 +10,7 @@ import { Observable, ObservableValue, PropertyChangeEvent } from "../util/Observ
 import { ObservableBase, observableProperty, observablePropertyExt } from "../util/ObservableBase.js";
 import { Collection, CollectionChangeEvent, CollectionChangeType, ObservableCollection } from "../util/ObservableCollection.js";
 import { DictionaryChangeType, ObservableKeyExtractedOrderedDictionary, ObservableOrderedDictionaryImpl, ObservableOrderedSet } from "../util/ObservableKeyedLinkedList.js";
-import { AppNotifyEventType, AppViewModel, GetConfigSettingChannelViewModel } from "./AppViewModel.js";
+import { AppNotifyEventType, AppViewModel, AppViewModelBBCodeSink, GetConfigSettingChannelViewModel } from "./AppViewModel.js";
 import { ChannelMessageViewModel, ChannelViewModel } from "./ChannelViewModel.js";
 import { CharacterNameSet, FilteredWatchedCharsCharacterNameSet, OnlineWatchedCharsCharacterNameSet } from "./CharacterNameSet.js";
 import { ChatChannelPresenceState, ChatChannelViewModel, ChatChannelViewModelSortKey } from "./ChatChannelViewModel.js";
@@ -49,6 +49,7 @@ import { NicknameSet } from "../shared/NicknameSet.js";
 import { EIconFavoriteBlockViewModel } from "./EIconFavoriteBlockViewModel.js";
 import { LeftSidebarTabContainerViewModel } from "./sidebartabs/LeftSidebarTabContainerViewModel.js";
 import { RightSidebarTabContainerViewModel } from "./sidebartabs/RightSidebarTabContainerViewModel.js";
+import { RecentConversationsViewModel } from "./RecentConversationsViewModel.js";
 
 declare const XCHost: any;
 
@@ -77,6 +78,7 @@ export class ActiveLoginViewModel extends ObservableBase implements IDisposable 
 
         this.console = new ConsoleChannelViewModel(this);
         this.partnerSearch = new PartnerSearchViewModel(this);
+        this.recentConversations = new RecentConversationsViewModel(this);
         this.miscTabs.push(new MiscTabViewModel(this, "Console", this.console));
         this._logSearchViewModel = new LogSearchViewModel(this, this.appViewModel, savedChatState.characterName);
         this.miscTabs.push(new MiscTabViewModel(this, "Log Viewer", this._logSearchViewModel));
@@ -84,6 +86,7 @@ export class ActiveLoginViewModel extends ObservableBase implements IDisposable 
         // TODO:
         //this.miscTabs.push(new MiscTabViewModel(this, "Log Viewer 2", this._logSearchViewModel2));
         this.miscTabs.push(new MiscTabViewModel(this, "Partner Search", this.partnerSearch));
+        this.miscTabs.push(new MiscTabViewModel(this, "Recent Conversations", this.recentConversations));
 
         this.leftTabs = new LeftSidebarTabContainerViewModel(this);
         this.rightTabs = new RightSidebarTabContainerViewModel(this);
@@ -443,6 +446,8 @@ export class ActiveLoginViewModel extends ObservableBase implements IDisposable 
     readonly console: ConsoleChannelViewModel;
 
     readonly partnerSearch: PartnerSearchViewModel;
+
+    readonly recentConversations: RecentConversationsViewModel;
 
     get pingWords() { return this.savedChatState.pingWords; };
 
@@ -1210,7 +1215,7 @@ export class ActiveLoginViewModel extends ObservableBase implements IDisposable 
 
 export type SelectedChannel = ChannelViewModel | AddChannelsViewModel | LogSearchViewModel | LogSearch2ViewModel;
 
-export type SelectableTab = SelectedChannel | PartnerSearchViewModel;
+export type SelectableTab = SelectedChannel | PartnerSearchViewModel | RecentConversationsViewModel;
 
 export type CharactersEventListener = (characters: CharacterName[]) => void;
 
@@ -1294,13 +1299,13 @@ export interface SelectableTabViewModel {
     isTabActive: boolean;
 }
 
-class ActiveLoginViewModelBBCodeSink implements BBCodeParseSink {
+class ActiveLoginViewModelBBCodeSink extends AppViewModelBBCodeSink {
     constructor(
         private readonly owner: ActiveLoginViewModel,
         private readonly logger: Logger) {
-    }
 
-    private get appViewModel() { return this.owner.appViewModel; }
+        super(owner.appViewModel);
+    }
 
     userClick(name: CharacterName, context: BBCodeClickContext) {
         this.logger.logInfo("userclick", name.value, context.rightClick);
@@ -1312,19 +1317,6 @@ class ActiveLoginViewModelBBCodeSink implements BBCodeParseSink {
             else {
                 const pd = new CharacterProfileDialogViewModel(this.appViewModel, this.owner, name);
                 this.appViewModel.showDialogAsync(pd);
-            }
-        }
-        catch { }
-    }
-
-    webpageClick(url: string, forceExternal: boolean, context: BBCodeClickContext) {
-        try {
-            const maybeProfileTarget = URLUtils.tryGetProfileLinkTarget(url);
-            if (maybeProfileTarget != null && !forceExternal) {
-                this.userClick(CharacterName.create(maybeProfileTarget), context);
-            }
-            else {
-                this.appViewModel.launchUrlAsync(url, forceExternal);
             }
         }
         catch { }

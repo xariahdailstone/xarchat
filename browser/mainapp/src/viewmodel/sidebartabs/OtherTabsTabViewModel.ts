@@ -9,3 +9,4 @@ export class OtherTabsTabViewModel extends StandardSidebarTabViewModel {
 
     readonly tabId = "othertabs";
 }
+

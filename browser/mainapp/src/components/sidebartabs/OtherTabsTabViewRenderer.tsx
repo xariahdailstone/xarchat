@@ -19,3 +19,4 @@ export class OtherTabsTabViewRenderer extends SidebarTabViewRenderer<OtherTabsTa
     }
 
 }
+

@@ -15,10 +15,12 @@ import { Collection, CollectionChangeEvent, CollectionChangeType } from "../util
 import { ObservableExpression } from "../util/ObservableExpression.js";
 import { PromiseSource } from "../util/PromiseSource.js";
 import { StringUtils } from "../util/StringUtils.js";
+import { URLUtils } from "../util/URLUtils.js";
 import { UpdateCheckerClient, UpdateCheckerState } from "../util/UpdateCheckerClient.js";
+import { BBCodeClickContext, BBCodeParseSink } from "../util/bbcode/BBCode.js";
 import { StdObservableCollectionChangeType } from "../util/collections/ReadOnlyStdObservableCollection.js";
 import { ActiveLoginViewModel } from "./ActiveLoginViewModel.js";
-import { ChannelViewModel } from "./ChannelViewModel.js";
+import { ChannelViewModel, IChannelStreamViewModel } from "./ChannelViewModel.js";
 import { ChatChannelUserViewModel, ChatChannelViewModel } from "./ChatChannelViewModel.js";
 import { ColorThemeViewModel } from "./ColorThemeViewModel.js";
 import { DateFormatSpecifier, LocaleViewModel, TimeFormatSpecifier } from "./LocaleViewModel.js";
@@ -40,6 +42,8 @@ export class AppViewModel extends ObservableBase {
 
         this.configBlock = configBlock;
         this.colorTheme = new ColorThemeViewModel(this);
+
+        this.bbcodeParseSink = new AppViewModelBBCodeSink(this);
 
         //this.flistApi = new FListApiImpl();
         this.flistApi = new HostInteropApi();
@@ -113,6 +117,8 @@ export class AppViewModel extends ObservableBase {
     isInStartup: boolean = true;
 
     readonly colorTheme: ColorThemeViewModel;
+
+    readonly bbcodeParseSink: BBCodeParseSink;
 
     private _updateCheckerClient: UpdateCheckerClient | null = null;
 
@@ -350,6 +356,9 @@ export class AppViewModel extends ObservableBase {
 
     async launchUrlAsync(url: string, forceExternal?: boolean): Promise<void> {
         try {
+            const canLaunchInternally = !!this.getConfigSettingById("launchImagesInternally");
+            forceExternal = (forceExternal ?? false) || (!canLaunchInternally);
+
             await HostInterop.launchUrl(this, url, forceExternal ?? false);
         }
         catch { }
@@ -586,6 +595,23 @@ export class AppViewModel extends ObservableBase {
 
         fn = this.getConfigEntryHierarchical(`sound.event.${event.eventType.toString()}`, event.activeLoginViewModel, event.channel) as (string | null);
 
+        if (this.getConfigSettingById("flashTaskbarButton") ?? true) {
+            let shouldFlashWindow: boolean;
+            switch (event.eventType) {
+                case AppNotifyEventType.CONNECTED:
+                case AppNotifyEventType.DISCONNECTED:
+                    shouldFlashWindow = false;
+                    break;
+                case AppNotifyEventType.HIGHLIGHT_MESSAGE_RECEIVED:
+                case AppNotifyEventType.PRIVATE_MESSAGE_RECEIVED:
+                    shouldFlashWindow = true;
+                    break;
+            }
+            if (shouldFlashWindow) {
+                HostInterop.flashWindow();
+            }
+        }
+
         if (fn == null || fn == "default:")
         {
             switch (event.eventType) {
@@ -634,7 +660,7 @@ export class AppViewModel extends ObservableBase {
 }
 
 export type GetConfigSettingChannelViewModel = 
-    ChannelViewModel | 
+    IChannelStreamViewModel | 
     { channelTitle: string, channelCategory: string } |
     { characterName: CharacterName };
 
@@ -649,4 +675,29 @@ export interface AppNotifyEvent {
     eventType: AppNotifyEventType,
     activeLoginViewModel: ActiveLoginViewModel,
     channel?: ChannelViewModel
+}
+
+export class AppViewModelBBCodeSink implements BBCodeParseSink {
+    constructor(
+        protected readonly appViewModel: AppViewModel) {
+    }
+
+    userClick(name: CharacterName, context: BBCodeClickContext) {
+    }
+
+    webpageClick(url: string, forceExternal: boolean, context: BBCodeClickContext) {
+        try {
+            const maybeProfileTarget = URLUtils.tryGetProfileLinkTarget(url);
+            if (maybeProfileTarget != null && !forceExternal) {
+                this.userClick(CharacterName.create(maybeProfileTarget), context);
+            }
+            else {
+                this.appViewModel.launchUrlAsync(url, forceExternal);
+            }
+        }
+        catch { }
+    }
+
+    async sessionClick(target: string, titleHint: string, context: BBCodeClickContext) {
+    }
 }

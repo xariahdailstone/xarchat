@@ -9,7 +9,7 @@ import { Collection } from "../../util/ObservableCollection";
 import { ReadOnlyStdObservableCollection } from "../../util/collections/ReadOnlyStdObservableCollection";
 import { ActiveLoginViewModel } from "../ActiveLoginViewModel";
 import { AppViewModel } from "../AppViewModel";
-import { ChannelViewModel } from "../ChannelViewModel";
+import { ChannelViewModel, IChannelStreamViewModel } from "../ChannelViewModel";
 import { ChatChannelViewModel } from "../ChatChannelViewModel";
 import { DialogButtonStyle } from "../dialogs/DialogViewModel";
 import { ReportSource, ReportViewModel } from "../dialogs/ReportViewModel";
@@ -20,7 +20,7 @@ export class CharacterDetailPopupViewModel extends ContextPopupViewModel {
         public app: AppViewModel,
         public readonly session: ActiveLoginViewModel, 
         public readonly char: CharacterName,
-        public readonly channelViewModel: ChannelViewModel | null,
+        public readonly channelViewModel: IChannelStreamViewModel | null,
         contextElement: HTMLElement) {
 
         super(app, contextElement);

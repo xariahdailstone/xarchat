@@ -3,6 +3,7 @@ import { CharacterName } from "../shared/CharacterName";
 import { CancellationToken } from "../util/CancellationTokenSource";
 import { HostInterop } from "../util/HostInterop";
 import { IterableUtils } from "../util/IterableUtils";
+import { AppViewModel } from "../viewmodel/AppViewModel";
 
 export interface ConfigSchemaDefinition {
     settings: ConfigSchemaItemDefinition[];
@@ -27,7 +28,17 @@ export interface ConfigSchemaItemDefinitionItem {
     items?: ConfigSchemaItemDefinition[];
     notYetImplemented?: boolean;
     notifRouteOptions?: ConfigSchemaNotifRouteItemOptions;
+    actionButtons?: ActionButtonDefinition[];
     enableIf?: (options: EnableIfOptions) => boolean;
+}
+
+export interface ActionButtonDefinition {
+    readonly title: string;
+    readonly onClick: (args: ActionButtonClickArgs) => any;
+}
+
+export interface ActionButtonClickArgs {
+    readonly appViewModel: AppViewModel;
 }
 
 export interface ConfigSchemaNotifRouteItemOptions {
@@ -73,11 +84,11 @@ export class PingLineItemMatchStyleConvert {
         switch (style) {
             default:
             case PingLineItemMatchStyle.CONTAINS:
-                return "Contains";
+                return "When message contains";
             case PingLineItemMatchStyle.WHOLE_WORD:
-                return "Whole Word";
+                return "When message has as a whole word";
             case PingLineItemMatchStyle.REGEX:
-                return "Regex";
+                return "When message matches a regex pattern";
         }
     }
 }
@@ -220,7 +231,52 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     ],
                     defaultValue: 0,
                     configBlockKey: "openPmTabForIncomingTyping.enabled"
-                },                
+                },
+                {
+                    scope: getScopeArray(["global"]),
+                    sectionTitle: "Links and Images",
+                    items: [
+                        {
+                            id: "showImagePreviewPopups",
+                            scope: getScopeArray(["global"]),
+                            title: "Show Image Preview Popups",
+                            description: "Show a preview of images and certain other links when the mouse pointer is hovered over them.",
+                            type: "boolean",
+                            defaultValue: true,
+                            configBlockKey: "showImagePreviewPopups"
+                        },
+                        {
+                            id: "launchImagesInternally",
+                            scope: getScopeArray(["global"]),
+                            title: "Use Internal Image Viewer",
+                            description: "Show images using XarChat's internal image viewer pane when clicked instead of opening them in your browser.",
+                            type: "boolean",
+                            defaultValue: true,
+                            configBlockKey: "launchImagesInternally"
+                        },
+                        {
+                            id: "urlLaunchExecutable",
+                            scope: getScopeArray(["global"]),
+                            title: "Custom Command for Opening Links",
+                            description: "Specify a custom command-line command to open links clicked within XarChat.  To use the default " +
+                                "behavior of opening links in your system default web browser, leave this field blank.  When specifying a " +
+                                "custom command, use \"%s\" as a placeholder for the URL of the link being opened.  If the main executable " +
+                                "to be run has spaces in its name or path, enclose it within double-quotes.",
+                            type: "text",
+                            defaultValue: "",
+                            fieldWidth: "200em",
+                            actionButtons: [
+                                {
+                                    "title": "Test URL Launch",
+                                    "onClick": (args) => {
+                                        HostInterop.launchUrl(args.appViewModel, "https://xariah.net/", true);
+                                    }
+                                }
+                            ],
+                            configBlockKey: "urlLaunchExecutable"
+                        },
+                    ]
+                },
                 {
                     scope: getScopeArray(["global"]),
                     sectionTitle: "Auto Idle/Away",
@@ -311,6 +367,15 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                             type: "pinglist",
                             defaultValue: [],
                             configBlockKey: "pingWords"
+                        },
+                        {
+                            id: "flashTaskbarButton",
+                            scope: getScopeArray(["global"]),
+                            title: "Flash Taskbar Button on Pings and Unseen PMs",
+                            description: "Flash the Windows taskbar button for XarChat when a ping or unseen private message is received.",
+                            type: "boolean",
+                            defaultValue: true,
+                            configBlockKey: "flashTaskbarButton"
                         }
                     ]
                 },

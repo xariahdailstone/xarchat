@@ -491,5 +491,54 @@ namespace XarChat.Backend.Features.ChatLogging.Sqlite.Search
 
             return result;
         }
+
+        public async Task<IList<RecentConversationInfo>> GetRecentConversationsAsync(
+            string myCharacterName, int resultLimit, CancellationToken cancellationToken)
+        {
+            var result = await RunWithDisposeCancellation(
+                cancellationToken: cancellationToken,
+                func: async (connection, cancellationToken) =>
+                {
+                    try
+                    {
+                        using var cmd = connection.CreateCommand();
+                        cmd.CommandText = $@"
+                            select c.id as channelid, ilocchar.name as interlocutorname,
+	                            (select max(timestamp) from channelmessage cm where cm.channelid = c.id) as lastmessageat
+                            from channel c
+                            inner join character mychar on mychar.id = c.mycharacterid
+                            inner join character ilocchar on ilocchar.id = c.interlocutorcharacterid
+                            where channeltype = 'P' and mychar.namelower = @MyCharacterName
+                            order by lastmessageat desc
+                            limit {resultLimit}
+                        ";
+                        cmd.Parameters.Add("@MyCharacterName", SqliteType.Text).Value = myCharacterName.ToLower();
+
+                        var result = new List<RecentConversationInfo>();
+
+                        using var dr = await cmd.ExecuteReaderAsync(cancellationToken);
+                        while (await dr.ReadAsync(cancellationToken))
+                        {
+                            var channelId = Convert.ToInt64(dr["channelid"]);
+                            var interlocutorName = Convert.ToString(dr["interlocutorname"])!;
+                            var lastMessageAt = Convert.ToInt64(dr["lastmessageat"]);
+                            result.Add(new RecentConversationInfo() 
+                            { 
+                                ChannelId = channelId,
+                                InterlocutorName = interlocutorName,
+                                LastMessageAt = lastMessageAt
+                            });
+                        }
+
+                        return result;
+                    }
+                    catch (Exception ex)
+                    {
+                        return new List<RecentConversationInfo>();
+                    }
+                });
+
+            return result;
+        }
     }
 }

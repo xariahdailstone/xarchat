@@ -5,14 +5,16 @@ import { h } from "../../snabbdom/h";
 import { VNode } from "../../snabbdom/vnode";
 import { ActiveLoginViewModel } from "../../viewmodel/ActiveLoginViewModel";
 import { AppViewModel } from "../../viewmodel/AppViewModel";
-import { ChannelViewModel } from "../../viewmodel/ChannelViewModel";
+import { ChannelViewModel, IChannelStreamViewModel } from "../../viewmodel/ChannelViewModel";
 import { ImagePreviewPopupViewModel } from "../../viewmodel/popups/ImagePreviewPopupViewModel";
 import { CancellationTokenSource } from "../CancellationTokenSource";
 import { asDisposable, ConvertibleToDisposable, IDisposable } from "../Disposable";
 import { EL } from "../EL";
 import { EventListenerUtil } from "../EventListenerUtil";
 import { getRoot } from "../GetRoot";
+import { HTMLUtils } from "../HTMLUtils";
 import { HostInterop } from "../HostInterop";
+import { ObjectUniqueId } from "../ObjectUniqueId";
 import { ObservableValue } from "../Observable";
 import { BBCodeTag } from "./BBCodeTag";
 import { BBCodeTagB } from "./tags/BBCodeTagB";
@@ -59,14 +61,14 @@ export interface BBCodeParseSink {
 
 export interface BBCodeClickContext {
     readonly rightClick: boolean;
-    readonly channelContext: (ChannelViewModel | null | undefined);
+    readonly channelContext: (IChannelStreamViewModel | null | undefined);
     readonly targetElement: (HTMLElement | null | undefined);
 }
 
 export interface BBCodeParseOptions {
     appViewModel?: AppViewModel;
     activeLoginViewModel?: ActiveLoginViewModel;
-    channelViewModel?: ChannelViewModel;
+    channelViewModel?: IChannelStreamViewModel;
     sink?: BBCodeParseSink;
     addUrlDomains: boolean;
     syncGifs: boolean;
@@ -289,12 +291,24 @@ export class BBCodeParser {
             element: resFragment,
             usedEIcons: usedEIcons,
             asVNode(): VNode {
-                let child = h('span', {hook: {
-                    insert(vnode: VNode) {
-                        (vnode.elm as HTMLElement).replaceWith(resFragment)
-                        //vnode.elm = resFragment;
+                let child = h('span', { 
+                    key: ObjectUniqueId.get(this).toString(),
+                    attrs: {
+                        "data-bbcodeid": ObjectUniqueId.get(this).toString(),
+                    },
+                    hook: {
+                        insert(vnode: VNode) {
+                            //(vnode.elm as HTMLElement).replaceWith(resFragment)
+                            //vnode.elm = resFragment;
+                            vnode.elm!.appendChild(resFragment);
+                        },
+                        postpatch(oldVNode, vnode) {
+                            //vnode.elm as HTMLElement).replaceWith(resFragment)
+                             HTMLUtils.clearChildren(vnode.elm as HTMLElement);
+                             vnode.elm!.appendChild(resFragment);
+                        }
                     }
-                }});
+                });
                 child.elm = resFragment;
                 return child;
             },

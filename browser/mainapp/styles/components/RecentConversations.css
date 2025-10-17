@@ -1,0 +1,112 @@
+
+#elMain {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    max-width: 100%;
+    max-height: 100%;
+    overflow: clip;
+
+    padding: 8px 8px;
+    padding-left: 0px;
+}
+
+* { box-sizing: border-box; }
+
+.recentconversations-outer {
+    width: 100%;
+    height: 100%;
+
+    display: grid;
+    grid-template-columns: auto auto 1fr;
+    grid-template-rows: auto auto 1fr;
+    grid-template-areas:
+        "icon heading heading"
+        "icon description description"
+        "list list preview";
+    
+    overflow: clip;
+
+    .recentconversations-heading { grid-area: heading; }
+    .recentconversations-description { grid-area: description; }
+    .recentconversations-icon { grid-area: icon; }
+    .recentconversations-listcontainer { grid-area: list; min-width: 250px; }
+    .recentconversations-previewcontainer { grid-area: preview; }
+}
+
+.recentconversations-heading {
+    font-weight: bold;
+    font-size: 120%;
+    align-self: flex-end;
+}
+
+.recentconversations-description {
+    align-self: flex-start;
+    font-size: 90%;
+}
+
+.recentconversations-icon {
+    width: 55px;
+    height: 55px;
+    margin-right: 8px;
+}
+
+.recentconversations-listcontainer {
+    background-color: var(--bg-level-3);
+    margin-top: 8px;
+    overflow-y: auto;
+    padding: 4px 4px;
+}
+
+.recentconversations-item {
+    display: grid;
+    grid-template-rows: auto;
+    grid-template-columns: auto auto auto 1fr;
+    grid-template-areas: "avatarimage statusdot name .";
+    align-items: center;
+    padding: 4px 4px;
+    border-radius: 6px;
+
+    &.selected-item {
+        background-color: var(--bg-level-3-highlight);
+    }
+
+    .recentconversations-item-avatarimage { 
+        grid-area: avatarimage; 
+        width: 40px;
+        height: 40px;
+        margin-right: 6px;
+    }
+    .recentconversations-item-statusdotcontainer { 
+        grid-area: statusdot; 
+        margin-right: 4px;
+    }
+    .recentconversations-item-namecontainer { grid-area: name; }
+}
+
+.recentconversations-previewcontainer {
+    margin-top: 8px;
+    margin-left: 8px;
+
+    display: grid;
+    grid-template-rows: 1fr auto;
+    grid-template-columns: 1fr;
+    grid-template-areas:
+        "stream"
+        "buttons";
+
+    .recentconversations-preview-stream {
+        grid-area: stream;
+    }
+    .recentconversations-preview-buttonscontainer {
+        grid-area: buttons;
+        margin-top: 8px;
+        display: flex;
+        flex-direction: row;
+        justify-content: flex-end;
+    }
+}
+
+.recentconversations-preview-stream {
+    background: var(--bg-level-3);
+}
