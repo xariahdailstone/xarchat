@@ -23,3 +23,6 @@
 * Improved performance of display of ads that were collapsed due to their height.
 * Fixed some issues that might have resulted in XarChat becoming unresponsive if left minimized or
   completely covered by other windows for long periods of time.
+* Added the ability to have XarChat write a debug log file.
+  * This can be enabled via the command line (e.g. `XarChat.exe --log-to xclog.txt`)
+  * You should not use this unless trying to diagnose a problem, the log files can be quite large.
