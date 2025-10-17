@@ -20,7 +20,7 @@ import { UpdateCheckerClient, UpdateCheckerState } from "../util/UpdateCheckerCl
 import { BBCodeClickContext, BBCodeParseSink } from "../util/bbcode/BBCode.js";
 import { StdObservableCollectionChangeType } from "../util/collections/ReadOnlyStdObservableCollection.js";
 import { ActiveLoginViewModel } from "./ActiveLoginViewModel.js";
-import { ChannelViewModel } from "./ChannelViewModel.js";
+import { ChannelViewModel, IChannelStreamViewModel } from "./ChannelViewModel.js";
 import { ChatChannelUserViewModel, ChatChannelViewModel } from "./ChatChannelViewModel.js";
 import { ColorThemeViewModel } from "./ColorThemeViewModel.js";
 import { DateFormatSpecifier, LocaleViewModel, TimeFormatSpecifier } from "./LocaleViewModel.js";
@@ -660,7 +660,7 @@ export class AppViewModel extends ObservableBase {
 }
 
 export type GetConfigSettingChannelViewModel = 
-    ChannelViewModel | 
+    IChannelStreamViewModel | 
     { channelTitle: string, channelCategory: string } |
     { characterName: CharacterName };
 

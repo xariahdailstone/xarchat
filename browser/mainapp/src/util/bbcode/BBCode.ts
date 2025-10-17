@@ -5,7 +5,7 @@ import { h } from "../../snabbdom/h";
 import { VNode } from "../../snabbdom/vnode";
 import { ActiveLoginViewModel } from "../../viewmodel/ActiveLoginViewModel";
 import { AppViewModel } from "../../viewmodel/AppViewModel";
-import { ChannelViewModel } from "../../viewmodel/ChannelViewModel";
+import { ChannelViewModel, IChannelStreamViewModel } from "../../viewmodel/ChannelViewModel";
 import { ImagePreviewPopupViewModel } from "../../viewmodel/popups/ImagePreviewPopupViewModel";
 import { CancellationTokenSource } from "../CancellationTokenSource";
 import { asDisposable, ConvertibleToDisposable, IDisposable } from "../Disposable";
@@ -61,14 +61,14 @@ export interface BBCodeParseSink {
 
 export interface BBCodeClickContext {
     readonly rightClick: boolean;
-    readonly channelContext: (ChannelViewModel | null | undefined);
+    readonly channelContext: (IChannelStreamViewModel | null | undefined);
     readonly targetElement: (HTMLElement | null | undefined);
 }
 
 export interface BBCodeParseOptions {
     appViewModel?: AppViewModel;
     activeLoginViewModel?: ActiveLoginViewModel;
-    channelViewModel?: ChannelViewModel;
+    channelViewModel?: IChannelStreamViewModel;
     sink?: BBCodeParseSink;
     addUrlDomains: boolean;
     syncGifs: boolean;
