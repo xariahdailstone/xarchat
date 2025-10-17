@@ -10,3 +10,10 @@
 * Fixed an issue where Created/Last Modified dates in profiles were displaying incorrectly.
 * Added better error handling for message display (if, by some chance, an invalid message gets into the log)
 * Added some extra resiliency to updating config files to avoid data loss in the event of an OS crash
+* Added a "Recent Conversations" tab under the "..." options on the left bar.  You can use this tab to
+  view the most recent PM conversations you participated in, even if you've closed the PM tab.
+* Added an option to show the Friends/Bookmarks listing on the right side of the main interface instead of
+  on the left side.
+* Improved performance of display of ads that were collapsed due to their height.
+* Fixed some issues that might have resulted in XarChat becoming unresponsive if left minimized or
+  completely covered by other windows for long periods of time.
