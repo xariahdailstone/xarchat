@@ -14,6 +14,12 @@
   view the most recent PM conversations you participated in, even if you've closed the PM tab.
 * Added an option to show the Friends/Bookmarks listing on the right side of the main interface instead of
   on the left side.
+* XarChat will now flash the Windows taskbar button when unseen private messages and pings are received.
+  * This new behavior can be disabled in the options.
+* Added the ability to specify a custom command to be executed when XarChat is launching a link in your
+  web browser.
+  * You can, for example, use this functionality to ensure all links opened from XarChat open with a
+	specific web browser or a specific browser profile.
 * Improved performance of display of ads that were collapsed due to their height.
 * Fixed some issues that might have resulted in XarChat becoming unresponsive if left minimized or
   completely covered by other windows for long periods of time.
