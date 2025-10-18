@@ -1,0 +1,102 @@
+:host {
+    position: relative;
+}
+
+#elMain {
+    display: contents;
+}
+
+.tabcontainer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+
+    display: grid;
+    grid-template-rows: auto 1fr;
+    grid-template-columns: 100%;
+    grid-template-areas:
+        "tabstrip"
+        "tabbody";
+
+
+    .tabstrip { grid-area: tabstrip; }
+    .tabbody { grid-area: tabbody; }
+
+    background-color: var(--bg-level-2);
+    color: var(--fg-level-2);
+}
+
+.tabstrip {
+    display: flex;
+    flex-direction: row;
+
+    background-color: var(--bg-level-2);
+    color: var(--fg-level-2);
+}
+
+.tab-title { 
+    flex-shrink: 1;
+    flex-grow: 1;
+    flex-basis: 0;
+    max-width: 50%;
+     
+    &.standardtabtitle {
+        display: grid;
+        grid-template-columns: 1fr auto auto auto auto 1fr;
+        grid-template-rows: auto;
+        grid-template-areas: ". preicon icon posticon title .";
+
+        padding: 5px 5px;
+        max-width: 50%;
+
+        align-items: center;
+
+        .title-preicon {
+            grid-area: preicon;
+            margin-right: 4px;
+            font-size: 65%;
+        }
+        .title-icon {
+            grid-area: icon;
+            width: 15px;
+            height: 15px;
+            max-width: 15px;
+            max-height: 15px;
+        }
+        .title-posticon {
+            grid-area: posticon;
+            margin-left: 4px;
+            font-size: 65%;
+        }
+        .title-additionaltext {
+            grid-area: title;
+            margin-left: 4px;
+            font-size: 65%;
+        }
+    }    
+
+    &.tab-title-selected {
+        background-color: var(--bg-level-3);
+        color: var(--fg-level-3);
+    }
+}
+
+
+.tabbody {
+    overflow-y: auto;
+
+    background-color: var(--bg-level-3);
+    color: var(--fg-level-3);
+
+    position: relative;
+
+    & > * {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+    }
+}

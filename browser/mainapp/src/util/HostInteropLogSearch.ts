@@ -9,6 +9,8 @@ export interface HostInteropLogSearch {
 
     performSearchAsync(logsFor: CharacterName, kind: LogSearchKind, searchText: string, 
         dateAnchor: DateAnchor, date: Date, maxEntries: number, cancellationToken: CancellationToken): Promise<LogSearchResult[]>;
+
+    getRecentConversationsAsync(logsFor: CharacterName, resultLimit: number, cancellationToken: CancellationToken): Promise<RecentConversationResult[]>;
 }
 
 export enum LogSearchKind {
@@ -28,6 +30,12 @@ export interface LogSearchResult {
     speakerName: string;
     status: number;
     timestamp: number;
+}
+
+export interface RecentConversationResult {
+    channelId: number;
+    interlocutorName: string;
+    lastMessageAt: number;
 }
 
 export interface LogSearchResultChannelMessage extends LogSearchResult {
@@ -213,6 +221,23 @@ export class XarHost2InteropLogSearch implements HostInteropLogSearch {
                 }
             });
         }
+        return results;
+    }
+
+    async getRecentConversationsAsync(
+        logsFor: CharacterName, resultLimit: number, cancellationToken: CancellationToken): Promise<RecentConversationResult[]> {
+
+        let results: RecentConversationResult[] = [];
+
+        await this.sendAndReceiveAsync("getRecentConversations", {
+            logsFor: logsFor.value,
+            resultLimit: resultLimit
+        }, cancellationToken, (rcmd, rdata) => {
+            if (rcmd == "gotRecentConversations") {
+                results = rdata.results;
+            }
+        });
+
         return results;
     }
 }

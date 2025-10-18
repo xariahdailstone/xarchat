@@ -30,8 +30,12 @@ interface RenderUserNodeCacheEntry {
 }
 type RenderUserNodeCache = Map<CharacterName, RenderUserNodeCacheEntry>;
 
+const ATTR_SHOWTOTALCOUNT = "showtotalcount";
+
 @componentElement("x-channeluserlist")
 export class ChannelUserList extends RenderingComponentBase<ChatChannelViewModel> {
+    static get observedAttributes() { return [...super.observedAttributes, ATTR_SHOWTOTALCOUNT ]}
+
     constructor() {
         super();
 
@@ -96,6 +100,26 @@ export class ChannelUserList extends RenderingComponentBase<ChatChannelViewModel
     private _characterSubSetLooking: ObservableValue<CharacterSubSet | null> = new ObservableValue(null);
     private _characterSubSetOther: ObservableValue<CharacterSubSet | null> = new ObservableValue(null);
 
+    protected override attributeChangedCallback(name: string, oldValue?: string, newValue?: string) {
+        super.attributeChangedCallback(name, oldValue, newValue);
+        if (name == ATTR_SHOWTOTALCOUNT) {
+            this.showTotalCount = (newValue == "true");
+        }
+    }
+
+    get showTotalCount() { return this.getAttribute(ATTR_SHOWTOTALCOUNT) == "true"; }
+    set showTotalCount(value: boolean) {
+        if (value !== this.showTotalCount) {
+            if (value) {
+                this.setAttribute(ATTR_SHOWTOTALCOUNT, "true");
+            }
+            else {
+                this.removeAttribute(ATTR_SHOWTOTALCOUNT);
+            }
+            this.refreshDOM();
+        }
+    }
+
     protected render(): (VNode | [VNode, IDisposable]) {
         const vm = this.viewModel;
         if (!vm) return <></>;
@@ -106,7 +130,7 @@ export class ChannelUserList extends RenderingComponentBase<ChatChannelViewModel
         const charLinkMgr = new MassCharacterLinkManager(vm.activeLoginViewModel, vm);
         addDisposable(charLinkMgr);
 
-        const totalUserCount = (vm.usersModerators.length + vm.usersWatched.length + vm.usersLooking.length + vm.usersOther.length);
+        const totalUserCount = this.showTotalCount ? (vm.usersModerators.length + vm.usersWatched.length + vm.usersLooking.length + vm.usersOther.length) : 0;
         const joinFriendsAndBookmarks = vm.getConfigSettingById("joinFriendsAndBookmarks");
 
         const sectionNodes: (VNode | null)[] = [];
@@ -125,10 +149,14 @@ export class ChannelUserList extends RenderingComponentBase<ChatChannelViewModel
         const othersTitle = (sectionNodes.filter(x => x != null).length == 0) ? "Everyone" : "Others";
         sectionNodes.push(this.renderSection(vm, charLinkMgr, "sec-others", "elOthers", othersTitle, this._characterSubSetOther.value));
 
-        return [<>
-            <div key="sec-usercount" id="elUserCountContainer" classList={["usercount"]}>
+        const totalCountNode = this.showTotalCount
+            ? <div key="sec-usercount" id="elUserCountContainer" classList={["usercount"]}>
                 {totalUserCount.toLocaleString()} in channel
-            </div>
+              </div>
+            : null;
+
+        return [<>
+            {totalCountNode}
             {sectionNodes}
         </>, asDisposable(...disposables)];
     }

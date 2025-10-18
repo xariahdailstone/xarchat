@@ -27,39 +27,4 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.ChatLoggin
                 args.MessageType, args.MessageText, cancellationToken);
         }
     }
-
-    internal class LogPMConvoMessageCommandHandler : AsyncXCHostCommandHandlerBase<LogPMConvoMessageArgs>
-    {
-        private readonly IChatLogWriter _chatLogWriter;
-
-        public LogPMConvoMessageCommandHandler(IChatLogWriter chatLogWriter)
-        {
-            _chatLogWriter = chatLogWriter;
-        }
-
-        protected override async Task HandleCommandAsync(LogPMConvoMessageArgs args, CancellationToken cancellationToken)
-        {
-            await _chatLogWriter.LogPMConvoMessageAsync(
-                args.MyCharacterName,
-                args.Interlocutor,
-                args.SpeakingCharacter, args.CharacterGender, args.CharacterStatus,
-                args.MessageType, args.MessageText, cancellationToken);
-        }
-    }
-
-    internal class EndCharacterSessionCommandHandler : AsyncXCHostCommandHandlerBase
-    {
-        private readonly IChatLogWriter _chatLogWriter;
-
-        public EndCharacterSessionCommandHandler(IChatLogWriter chatLogWriter)
-        {
-            _chatLogWriter = chatLogWriter;
-        }
-
-        protected override Task HandleCommandAsync(CancellationToken cancellationToken)
-        {
-            _chatLogWriter.EndLogSource(CommandContext.Args);
-            return Task.CompletedTask;
-        }
-    }
 }

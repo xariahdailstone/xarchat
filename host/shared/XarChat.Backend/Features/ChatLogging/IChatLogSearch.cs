@@ -1,4 +1,6 @@
-﻿namespace XarChat.Backend.Features.ChatLogging
+﻿using System.Text.Json.Serialization;
+
+namespace XarChat.Backend.Features.ChatLogging
 {
     public interface IChatLogSearch
     {
@@ -24,6 +26,21 @@
 
         Task<bool> ValidatePMConvoInLogsAsync(
             string myCharacterName, string interlocutorName, CancellationToken cancellationToken);
+
+        Task<IList<RecentConversationInfo>> GetRecentConversationsAsync(
+            string myCharacterName, int resultLimit, CancellationToken cancellationToken);
+    }
+
+    public class RecentConversationInfo
+    {
+        [JsonPropertyName("channelId")]
+        public required long ChannelId { get; set; }
+
+        [JsonPropertyName("interlocutorName")]
+        public required string InterlocutorName { get; set; }
+
+        [JsonPropertyName("lastMessageAt")]
+        public required long LastMessageAt { get; set; }
     }
 
     public class SearchCriteria
@@ -73,6 +90,8 @@
 
     public class SearchPrivateMessagesWithCriterion : SearchStreamSpecCriterion
     {
+        public string MyCharacterName { get; set; }
+
         public string InterlocutorCharacterName { get; set; }
     }
 

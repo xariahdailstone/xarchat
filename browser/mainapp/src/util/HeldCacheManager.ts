@@ -1,5 +1,6 @@
 import { CallbackSet } from "./CallbackSet";
 import { asDisposable, IDisposable } from "./Disposable";
+import { Scheduler } from "./Scheduler";
 
 export interface HeldCacheManager {
     addReleasableItem(
@@ -21,7 +22,7 @@ class HeldCacheManagerImpl implements HeldCacheManager {
             if (myTimeoutHandle) {
                 const mth = myTimeoutHandle;
                 myTimeoutHandle = null;
-                window.requestIdleCallback(() => {
+                Scheduler.scheduleNamedCallback("HeldCacheManagerImpl.addReleasableItem", ["idle", 250], () => {
                     window.clearTimeout(mth);
                 })
             }
@@ -44,7 +45,7 @@ class HeldCacheManagerImpl implements HeldCacheManager {
             if (myTimeoutHandle) {
                 const mth = myTimeoutHandle;
                 myTimeoutHandle = null;
-                window.requestIdleCallback(() => {
+                Scheduler.scheduleNamedCallback("HeldCacheManagerImpl.addReleasableItem.ret", ["idle", 250], () => {
                     window.clearTimeout(mth);
                 });
             }

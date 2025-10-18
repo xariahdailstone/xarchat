@@ -4,7 +4,7 @@ import { CharacterStatus, CharacterStatusNoEquals, CharacterSubSet } from "../sh
 import { h, jsx, VNode } from "../snabbdom/index";
 import { ActiveLoginViewModel } from "../viewmodel/ActiveLoginViewModel";
 import { AppViewModel } from "../viewmodel/AppViewModel";
-import { ChannelViewModel } from "../viewmodel/ChannelViewModel";
+import { ChannelViewModel, IChannelStreamViewModel } from "../viewmodel/ChannelViewModel";
 import { ChatChannelViewModel } from "../viewmodel/ChatChannelViewModel";
 import { CharacterDetailPopupViewModel } from "../viewmodel/popups/CharacterDetailPopupViewModel";
 import { CallbackSet } from "./CallbackSet";
@@ -16,13 +16,13 @@ import { Observable, PropertyChangeEvent, PropertyChangeEventListener, ValueSubs
 import { setupValueSubscription } from "./ObservableBase";
 
 export class CharacterLinkUtils {
-    static createStaticCharacterLinkVNode(sess: ActiveLoginViewModel, char: CharacterName, csi: CharacterStatusNoEquals, channelContext?: ChannelViewModel | null): VNode {
+    static createStaticCharacterLinkVNode(sess: ActiveLoginViewModel, char: CharacterName, csi: CharacterStatusNoEquals, channelContext?: IChannelStreamViewModel | null): VNode {
         const ecni = getEffectiveCharacterNameInfo(csi, channelContext ?? sess);
         return CharacterLinkUtils.createStaticCharacterLinkVNode2(sess, char, csi, channelContext ?? null, ecni);
     }
 
     static createStaticCharacterLinkVNode2(
-        sess: ActiveLoginViewModel, char: CharacterName, csi: CharacterStatusNoEquals, channelContext: ChannelViewModel | null, ecni: EffectiveCharacterNameInfo): VNode {
+        sess: ActiveLoginViewModel, char: CharacterName, csi: CharacterStatusNoEquals, channelContext: IChannelStreamViewModel | null, ecni: EffectiveCharacterNameInfo): VNode {
 
         const vnode = <span classList={[ "character-link", `gender-${CharacterGenderConvert.toString(csi.gender)}` ]}
             on={{

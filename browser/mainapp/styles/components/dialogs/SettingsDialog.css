@@ -134,6 +134,13 @@
     margin-top: 2px;
 }
 
+.setting-actionbuttons {
+    margin-top: 6px;
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-end;
+}
+
 .setting-group > .setting-title,
 .setting-group > .setting-description,
 .setting-group-container {
@@ -151,15 +158,17 @@
 .setting-item {
     display: grid;
     grid-template-columns: 1fr auto;
-    grid-template-rows: auto auto auto;
+    grid-template-rows: auto auto auto auto;
     grid-template-areas:
         "title input"
         "description input"
-        "inheritprompt input";
+        "inheritprompt input"
+        "actionbuttons input";
 }
 .setting-title { grid-area: title; align-self: flex-end; }
 .setting-description { grid-area: description; }
 .setting-inheritprompt { grid-area: inheritprompt; font-size: 80%; }
+.setting-actionbuttons { grid-area: actionbuttons; }
 .setting-entry { 
     grid-area: input; 
     align-self: center;
@@ -194,12 +203,13 @@
 .setting-item:has(.setting-entry-textlist) {
     display: grid;
     grid-template-columns: 100%;
-    grid-template-rows: auto auto auto auto;
+    grid-template-rows: auto auto auto auto auto;
     grid-template-areas:
         "title"
         "description"
         "inheritprompt"
-        "input";
+        "input"
+        "actionbuttons";
 }
 .setting-entry-textlist-item-container,
 .setting-entry-textlist-item-container-add {
@@ -214,12 +224,13 @@
 .setting-item:has(.setting-entry-pinglist) {
     display: grid;
     grid-template-columns: 100%;
-    grid-template-rows: auto auto auto auto;
+    grid-template-rows: auto auto auto auto auto;
     grid-template-areas:
         "title"
         "description"
         "inheritprompt"
-        "input";
+        "input"
+        "actionbuttons";
 }
 .setting-entry-pinglist-item-container,
 .setting-entry-pinglist-item-container-add {
@@ -242,12 +253,13 @@
 .setting-item:has(.setting-entry-radio-container) {
     display: grid;
     grid-template-columns: 100%;
-    grid-template-rows: auto auto auto auto;
+    grid-template-rows: auto auto auto auto auto;
     grid-template-areas:
         "title"
         "description"
         "inheritprompt"
-        "input";
+        "input"
+        "actionbuttons";
 }
 .setting-entry-radio-container {
     justify-self: normal;
@@ -270,12 +282,13 @@
 .setting-item:has(.setting-entry-notifroute) {
     display: grid;
     grid-template-columns: 100%;
-    grid-template-rows: auto auto auto auto;
+    grid-template-rows: auto auto auto auto auto;
     grid-template-areas:
         "title"
         "description"
         "inheritprompt"
-        "input";
+        "input"
+        "actionbuttons";
 }
 .setting-entry-notifroute {
     font-size: 80%;
@@ -324,12 +337,13 @@
 .setting-item:has(.setting-entry-text) {
     display: grid;
     grid-template-columns: 100%;
-    grid-template-rows: auto auto auto auto;
+    grid-template-rows: auto auto auto auto auto;
     grid-template-areas:
         "title"
         "description"
         "inheritprompt"
-        "input";
+        "input"
+        "actionbuttons";
 
     .setting-entry-text {
         margin-top: 7px;

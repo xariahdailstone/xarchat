@@ -2,10 +2,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 using XarChat.Backend.Common.DbSchema;
+using XarChat.Backend.Features.AppConfiguration;
 using XarChat.Backend.Features.AppDataFolder;
 using XarChat.Backend.Features.ChatLogging.Sqlite.Migrations;
 using XarChat.Backend.Features.StartupTasks;
@@ -14,6 +16,8 @@ namespace XarChat.Backend.Features.ChatLogging.Sqlite
 {
     public class SqliteChatLogWriter : IChatLogWriter, IDisposable
     {
+        private readonly IAppConfiguration _appConfiguration;
+
         private readonly SemaphoreSlim _sem = new SemaphoreSlim(1);
         private Microsoft.Data.Sqlite.SqliteConnection? _cnn;
 
@@ -21,8 +25,11 @@ namespace XarChat.Backend.Features.ChatLogging.Sqlite
         private readonly CancellationTokenSource _disposeCTS = new CancellationTokenSource();
 
         public SqliteChatLogWriter(
-            IAppDataFolder appDataFolder)
+            IAppDataFolder appDataFolder,
+            IAppConfiguration appConfiguration)
         {
+            _appConfiguration = appConfiguration;
+
             var adf = appDataFolder.GetAppDataFolder();
             var fn = Path.Combine(adf, "chatlog.db");
             VerifySchema(fn);
@@ -43,7 +50,7 @@ namespace XarChat.Backend.Features.ChatLogging.Sqlite
                             new Migration02AddSchemaVersionTable(),
                             new Migration03AddGenderStatusToMessageLog(),
                             new Migration04AddGenderStatusToPMLog(),
-                            new Migration05MovePMConvosToChannels()
+                            new Migration05MovePMConvosToChannels(),
                         ],
                         _disposeCTS.Token);
 
@@ -557,6 +564,179 @@ namespace XarChat.Backend.Features.ChatLogging.Sqlite
                     }
                 });
             return result;
+        }
+
+        private record struct ChannelInfo(long Id, string Name, string Title);
+        private record struct PMConvoInfo(
+            long MyCharacterId, string MyCharacterName, 
+            long InterlocutorCharacterId, string InterlocutorCharacterName);
+
+        private async IAsyncEnumerable<ChannelInfo> EnumerateChannelsAsync(
+            SqliteConnection connection, SqliteTransaction xa, [EnumeratorCancellation] CancellationToken cancellationToken)
+        {
+            using (var qCmd = connection.CreateCommand())
+            {
+                qCmd.Transaction = xa;
+                qCmd.CommandText = @"
+                    select id, name, title
+                    from channel c
+";
+                await using var dr = await qCmd.ExecuteReaderAsync(cancellationToken);
+                while (await dr.ReadAsync(cancellationToken))
+                {
+                    var id = Convert.ToInt64(dr["id"]);
+                    var chanName = Convert.ToString(dr["name"]) ?? "";
+                    var chanTitle = Convert.ToString(dr["title"]) ?? "";
+                    yield return new ChannelInfo(id, chanName, chanTitle);
+                }
+            }
+        }
+
+        private async IAsyncEnumerable<PMConvoInfo> EnumeratePMConvosAsync(
+            SqliteConnection connection, SqliteTransaction xa, [EnumeratorCancellation] CancellationToken cancellationToken)
+        {
+            using (var qCmd = connection.CreateCommand())
+            {
+                qCmd.Transaction = xa;
+                qCmd.CommandText = @"
+                    select distinct mycharacterid, interlocutorcharacterid,
+                        c1.name as mycharactername, c2.name as interlocutorcharactername
+                    from pmconvomessage pmm
+                    inner join character c1 on c1.id = pmm.mycharacterid
+                    inner join character c2 on c2.id = pmm.interlocutorcharacterid
+                ";
+                await using var dr = await qCmd.ExecuteReaderAsync(cancellationToken);
+                while (await dr.ReadAsync(cancellationToken))
+                {
+                    var myCharacterId = Convert.ToInt64(dr["mycharacterid"]);
+                    var interlocutorCharacterId = Convert.ToInt64(dr["interlocutorcharacterid"]);
+                    var myCharacterName = Convert.ToString(dr["mycharactername"]) ?? "";
+                    var interlocutorCharacterName = Convert.ToString(dr["interlocutorcharactername"]) ?? "";
+                    
+                    yield return new PMConvoInfo(myCharacterId, myCharacterName, interlocutorCharacterId, interlocutorCharacterName);
+                }
+            }
+        }
+
+        private async Task<int> PerformExpirationPMConvoAsync(
+            SqliteConnection connection, SqliteTransaction xa,
+            PMConvoInfo pmConvoInfo,
+            CancellationToken cancellationToken)
+        {
+            var retentionDays =
+                (int?)_appConfiguration.GetArbitraryValue($"character.{pmConvoInfo.MyCharacterName.ToLower()}.pm.{pmConvoInfo.InterlocutorCharacterName.ToLower()}.logging.retentionDays")
+                ?? (int?)_appConfiguration.GetArbitraryValue($"character.{pmConvoInfo.MyCharacterName.ToLower()}.any.logging.defaultPmConvoRretentionDays")
+                ?? (int?)_appConfiguration.GetArbitraryValue("global.logging.defaultPmConvoRretentionDays");
+
+            if (retentionDays is not null && retentionDays > 0)
+            {
+                var expireBeforeDate = DateTimeOffset.UtcNow - TimeSpan.FromDays(retentionDays.Value);
+
+                using (var purgeCmd = connection.CreateCommand())
+                {
+                    purgeCmd.Transaction = xa;
+                    purgeCmd.CommandText = @"
+                        delete from pmconvomessage
+                        where mycharacterid = @mycharacterid 
+                            and interlocutorcharacterid = @interlocutorcharacterid 
+                            and timestamp < @expirebefore
+                    ";
+                    purgeCmd.Parameters.Add("@mycharacterid", SqliteType.Integer).Value = pmConvoInfo.MyCharacterId;
+                    purgeCmd.Parameters.Add("@interlocutorcharacterid", SqliteType.Integer).Value = pmConvoInfo.InterlocutorCharacterId;
+                    purgeCmd.Parameters.Add("@expirebefore", SqliteType.Integer).Value = expireBeforeDate.ToUnixTimeMilliseconds();
+                    var rowsPurged = await purgeCmd.ExecuteNonQueryAsync(cancellationToken);
+                    return rowsPurged;
+                }
+            }
+            else
+            {
+                return 0;
+            }
+        }
+
+        private async Task<int> PerformExpirationChannelAsync(
+            SqliteConnection connection, SqliteTransaction xa, 
+            ChannelInfo channelInfo,
+            CancellationToken cancellationToken)
+        {
+            var retentionDays = 
+                (int?)_appConfiguration.GetArbitraryValue($"global.logging.channel.{channelInfo.Name}.retentionDays")
+                ?? (int?)_appConfiguration.GetArbitraryValue("global.logging.defaultChannelRetentionDays");
+
+            if (retentionDays is not null && retentionDays > 0)
+            {
+                var expireBeforeDate = DateTimeOffset.UtcNow - TimeSpan.FromDays(retentionDays.Value);
+
+                using (var purgeCmd = connection.CreateCommand())
+                {
+                    purgeCmd.Transaction = xa;
+                    purgeCmd.CommandText = @"
+                        delete from channelmessage
+                        where channelid = @channelid
+                            and timestamp < @expirebefore
+                    ";
+                    purgeCmd.Parameters.Add("@channelid", SqliteType.Integer).Value = channelInfo.Id;
+                    purgeCmd.Parameters.Add("@expirebefore", SqliteType.Integer).Value = expireBeforeDate.ToUnixTimeMilliseconds();
+                    var rowsPurged = await purgeCmd.ExecuteNonQueryAsync(cancellationToken);
+                    return rowsPurged;
+                }
+            }
+            else
+            {
+                return 0;
+            }
+        }
+
+        public async Task PerformExpirationAsync(CancellationToken cancellationToken)
+        {
+            var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+            var result = await WithSemaphore(
+                cancellationToken: cancellationToken,
+                func: async (connection, cancellationToken) =>
+                {
+                    using var xa = connection.BeginTransaction();
+
+                    var channels = await EnumerateChannelsAsync(connection, xa, cancellationToken)
+                        .ToListAsync(cancellationToken);
+
+                    var totalRowsRemoved = 0;
+                    foreach (var chan in channels)
+                    {
+                        totalRowsRemoved +=  await PerformExpirationChannelAsync(connection, xa, chan, cancellationToken);
+                    }
+
+                    var pmConvos = await EnumeratePMConvosAsync(connection, xa, cancellationToken)
+                        .ToListAsync(cancellationToken);
+
+                    foreach (var pmConvo in pmConvos)
+                    {
+                        totalRowsRemoved += await PerformExpirationPMConvoAsync(connection, xa,
+                            pmConvo, cancellationToken);
+                    }
+
+                    //if (totalRowsRemoved > 0)
+                    //{
+                    using (var purgeStringsCmd = connection.CreateCommand())
+                    {
+                        purgeStringsCmd.Transaction = xa;
+                        purgeStringsCmd.CommandText = @"
+                            delete from strings
+                            where id not in (
+	                            select distinct cm.textstringid
+	                            from channelmessage cm
+	                            union
+	                            select distinct pmm.textstringid
+	                            from pmconvomessage pmm
+                            )
+                        ";
+                        await purgeStringsCmd.ExecuteNonQueryAsync(cancellationToken);
+                    }
+                    //}
+
+                    xa.Commit();
+                    return 0;
+                });
         }
     }
 }

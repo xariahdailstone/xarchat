@@ -32,6 +32,8 @@
     width: 100%;
 }
 
+x-sidebartabcontainer { grid-area: main; }
+
 #elCharPanel {
     grid-area: characterpanel;
 

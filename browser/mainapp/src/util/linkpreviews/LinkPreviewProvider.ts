@@ -6,6 +6,7 @@ import { asDisposable, IDisposable } from "../Disposable";
 import { EventListenerUtil } from "../EventListenerUtil";
 import { Logger, Logging } from "../Logger";
 import { MouseOverUtils } from "../MouseOverUtils";
+import { Scheduler } from "../Scheduler";
 
 class CheckData {
     constructor(
@@ -109,6 +110,9 @@ export class LinkPreviewProvider {
         };
 
         const mouseOverHandler = MouseOverUtils.addMouseOverHandler(el, async () => {
+            const popupsEnabled = !!appViewModel.getConfigSettingById("showImagePreviewPopups");
+            if (!popupsEnabled) { return; }
+
             this.logger.logDebug("link mouseover");
             mouseStillOver = true;
             if (linkPreviewData === undefined) {
@@ -142,7 +146,7 @@ export class LinkPreviewProvider {
                             this.logger.logDebug("embed message", data);
                             if (data.cmd == "embed-loaded" && data.embedId == richEmbedData.embedId) {
                                 myPopupViewModel.iframeSize = [ data.width, data.height ];
-                                window.requestAnimationFrame(() => {
+                                Scheduler.scheduleNamedCallback("LinkPreviewProvider.mouseOverHandler", ["frame", "idle", 250], () => {
                                     myPopupViewModel.visible = true;
                                 });
                             }

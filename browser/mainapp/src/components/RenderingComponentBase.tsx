@@ -14,6 +14,7 @@ import { idModule } from "../util/snabbdom/id.js";
 import { CharacterGender } from "../shared/CharacterGender.js";
 import { HTMLUtils } from "../util/HTMLUtils.js";
 import { valueSyncModule } from "../util/snabbdom/valueSyncHook.js";
+import { Scheduler } from "../util/Scheduler.js";
 
 export interface RenderArguments {
     addDisposable(disp: ConvertibleToDisposable): void;
@@ -44,7 +45,7 @@ export function makeRenderingComponent<TViewModel>(
 
     let refreshing: number = 0;
     let refreshDisposable: IDisposable | null = null;
-    let statehasChangedRegistration: number | null = null;
+    let statehasChangedRegistration: IDisposable | null = null;
 
     let currentDependencies = new DisposableOwnerField();
     
@@ -52,7 +53,7 @@ export function makeRenderingComponent<TViewModel>(
 
     const stateHasChanged = (obs?: any, propName?: string) => {
         if (statehasChangedRegistration == null) {
-            statehasChangedRegistration = window.requestAnimationFrame(() => {
+            statehasChangedRegistration = Scheduler.scheduleNamedCallback("makeRenderingComponent.stateHasChanged", ["frame", "idle", 250], () => {
                 statehasChangedRegistration = null;
                 refreshDOM();
             });
@@ -61,7 +62,7 @@ export function makeRenderingComponent<TViewModel>(
     let curDepSet: DependencySet | null = null;
     const refreshDOM = () => {
         if (statehasChangedRegistration != null) {
-            window.cancelAnimationFrame(statehasChangedRegistration);
+            statehasChangedRegistration.dispose();
             statehasChangedRegistration = null;
         }
         if (!isConnected) { return; }
@@ -140,6 +141,9 @@ export function makeRenderingComponent<TViewModel>(
                     refreshDisposable = asDisposable(refreshDisposable, afterRenderResult as IDisposable)
                 }
             }
+        }
+        catch (e) {
+            logger.logError("rendering component failure", e);
         }
         finally
         {

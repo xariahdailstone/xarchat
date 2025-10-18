@@ -1123,6 +1123,14 @@ namespace MinimalWin32Test.UI
             });
         }
 
+        public void FlashWindow()
+        {
+            InvokeInApplication(() =>
+            {
+                User32.FlashWindow(this.WindowHandle);
+            });
+        }
+
         public void ShowDevTools() => InvokeInApplication(() => _browserWindow?.ShowDevTools());
 
         public void StylesheetChanged(string stylesheetPath)

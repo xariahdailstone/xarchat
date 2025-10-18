@@ -9,6 +9,7 @@ import { asDisposable, asNamedDisposable, DisposableOwnerField, IDisposable } fr
 import { HTMLUtils } from "../util/HTMLUtils";
 import { IterableUtils } from "../util/IterableUtils";
 import { Observable } from "../util/Observable";
+import { Scheduler } from "../util/Scheduler";
 import { classListNewModule } from "../util/snabbdom/classList-new";
 import { rawAttributesModule } from "../util/snabbdom/rawAttributes";
 import { valueSyncModule } from "../util/snabbdom/valueSyncHook";
@@ -22,6 +23,94 @@ function areSameDate(a: Date, b: Date) {
     const aDate = a.getFullYear().toString() + '-' + a.getMonth().toString() + '-' + a.getDate().toString();
     const bDate = b.getFullYear().toString() + '-' + b.getMonth().toString() + '-' + b.getDate().toString();
     return (aDate == bDate);
+}
+
+function createMessageContainerVNode(options: { 
+    vm: ChannelMessageViewModel, 
+    innerNode: VNode }): VNode {
+
+    const vm = options.vm;
+    const uniqueMessageId = vm.uniqueMessageId.toString();
+    const innerNode = options.innerNode;
+
+    const collapseAds = vm.type == ChannelMessageType.AD && (vm.channelViewModel?.getConfigSettingById("collapseAds") ?? false);
+    if (collapseAds) {
+        // const collapseHostStyles: string[] = [];
+        // let collapseBtnEl: VNode;
+        // if (vm.isOversized) {
+        //     collapseHostStyles.push("is-oversized");
+        //     if (vm.collapsed) {
+        //         collapseHostStyles.push("collapsed");
+        //         collapseBtnEl = <div classList={["collapse-button-container"]} attrs={{
+        //                 "data-copycontent": ""
+        //             }}><button classList={["collapse-button"]} attrs={{
+        //                 "data-copycontent": "",
+        //                 "data-iscollapsebutton": "true"
+        //             }} on={{
+        //                 "click": () => {
+        //                     vm.collapsed = false;
+        //                 }
+        //             }}>Expand</button></div>;  
+        //     }
+        //     else {
+        //         collapseHostStyles.push("expanded");
+        //         collapseBtnEl = <div classList={["collapse-button-container"]} attrs={{
+        //                 "data-copycontent": ""
+        //             }}><button classList={["collapse-button"]} attrs={{
+        //                 "data-copycontent": "",
+        //                 "data-iscollapsebutton": "true"
+        //             }} on={{
+        //                 "click": () => {
+        //                     vm.collapsed = true;
+        //                 }
+        //             }}>Collapse</button></div>;  
+        //     }
+        // }
+        // else {
+        //     collapseHostStyles.push("collapsed");
+        //     collapseBtnEl = <div classList={["collapse-button-container"]} attrs={{
+        //         "data-copycontent": ""
+        //     }}><button classList={["collapse-button"]} attrs={{
+        //         "data-copycontent": "",
+        //         "data-iscollapsebutton": "true"
+        //     }}>Expand</button></div>;  
+        // }
+
+        let outerEl = <div key={`msg-${uniqueMessageId}`} class={{
+                "collapse-host": true,
+                "collapsible": true,
+                "collapsed": vm.collapsed ?? true,
+                "expanded": !(vm.collapsed ?? true)
+            }} attrs={{
+                "data-messageid": uniqueMessageId,
+                "data-copyinline": "true"
+            }}>
+                <div classList={["collapse-host-innera"]} attrs={{ "data-copyinline": "true" }}>
+                    <div classList={["collapse-host-inner"]} attrs={{ "data-copyinline": "true" }}>
+                        <button classList={[ "collapse-host-expandbuttonspacer", "collapse-button-appearance" ]} attrs={{ "data-copycontent": "" }}>Collapse</button>
+                        <div classList={["collapse-host-inner-message"]} attrs={{ "data-copyinline": "true" }}>
+                            {innerNode}
+                        </div>
+                    </div>
+                    <div classList={["collapse-host-expandcollapsecontainer"]} attrs={{ "data-copycontent": "" }}>
+                        <button classList={[ "collapse-host-collapsebutton", "collapse-button-appearance" ]} attrs={{ "data-copycontent": "" }}
+                            on={{
+                                "click": () => {
+                                    vm.collapsed = !vm.collapsed;
+                                }
+                            }}><div classList={[ "collapse-host-collapsebutton-content" ]}></div></button>
+                    </div>
+                </div>
+            </div>;
+        return outerEl;
+    }
+    else {
+        let outerEl = <div key={`msg-${uniqueMessageId}`} classList={["collapse-host"]} attrs={{
+                "data-messageid": uniqueMessageId,
+                "data-copyinline": "true"
+            }}>{innerNode}</div>;
+        return outerEl;
+    }
 }
 
 export class ChannelStreamMessageViewRenderer implements IDisposable {
@@ -127,10 +216,10 @@ export class ChannelStreamMessageViewRenderer implements IDisposable {
     private readonly _previousRenderDisposable = new DisposableOwnerField();
 
     private _lastRenderedElement: HTMLElement | null = null;
-    private _performRenderHandle: number | null = null;
+    private _performRenderHandle: IDisposable | null = null;
     private performRender() {
         if (this._performRenderHandle == null) {
-            this._performRenderHandle = window.requestAnimationFrame(() => {
+            this._performRenderHandle = Scheduler.scheduleNamedCallback("ChannelStreamMessageViewRenderer.performRender", ["frame", "idle", 250], () => {
                 this._performRenderHandle = null;
                 const element = this.element;
                 const collection = this.collection;
@@ -231,10 +320,16 @@ class ChannelStreamMessageViewRendererFChat implements MessageRenderer {
 
         const messageNodes: VNode[] = [];
         for (let kvp of vm.iterateValues()) {
-            const mvm = kvp.value;
-            const rmResult = this.renderMessage(vm, mvm);
-            messageNodes.push(rmResult[0]);
-            resultDisposables.push(rmResult[1]);
+            try {
+                const mvm = kvp.value;
+                const rmResult = this.renderMessage(vm, mvm);
+                messageNodes.push(rmResult[0]);
+                resultDisposables.push(rmResult[1]);
+            }
+            catch (e) {
+                // TODO: write to error log
+                messageNodes.push(<div>(A message could not be displayed)</div>);
+            }
         }
 
         const resVNode = <>{messageNodes}</>;
@@ -268,16 +363,18 @@ class ChannelStreamMessageViewRendererFChat implements MessageRenderer {
         const displayStyle = vm.channelViewModel?.messageDisplayStyle ?? ChannelMessageDisplayStyle.FCHAT;
         let isSystemMessage = vm.type == ChannelMessageType.SYSTEM || vm.type == ChannelMessageType.SYSTEM_IMPORTANT;
 
+        const vmtext = vm.text ?? "<<XarChat warning: invalid message, no text available>>";
+
         let emoteStyle: ("none" | "normal" | "possessive") = "none";
-        if (vm.type == ChannelMessageType.CHAT && vm.text.startsWith("/me ")) {
+        if (vm.type == ChannelMessageType.CHAT && vmtext.startsWith("/me ")) {
             emoteStyle = "normal";
         }
-        else if (vm.type == ChannelMessageType.CHAT && vm.text.startsWith("/me's ")) {
+        else if (vm.type == ChannelMessageType.CHAT && vmtext.startsWith("/me's ")) {
             emoteStyle = "possessive";
         }
 
         let isImportant = vm.type == ChannelMessageType.SYSTEM_IMPORTANT;
-        if (vm.type == ChannelMessageType.CHAT && vm.text.startsWith("/warn ")) {
+        if (vm.type == ChannelMessageType.CHAT && vmtext.startsWith("/warn ")) {
             const isChanOp = vm.channelViewModel?.isEffectiveOp(vm.characterStatus.characterName) ?? false;
             if (isChanOp) {
                 isImportant = true;
@@ -289,21 +386,30 @@ class ChannelStreamMessageViewRendererFChat implements MessageRenderer {
             elIcon = <img classList={["icon"]} attr-src={URLUtils.getAvatarImageUrl(vm.characterStatus.characterName)} />;
         }
 
+        const vmtimestamp = vm.timestamp;
         let tsText: string;
-        let copyText: string = "[" + ( areSameDate(new Date(), vm.timestamp)
-            ? locale.getShortTimeString(vm.timestamp) /* dtf.format(vm.timestamp) */
-            : locale.getNumericDateWithShortTimeString(vm.timestamp) /* dtfWithDate.format(vm.timestamp) */ ) + "]";
-        if (displayStyle == ChannelMessageDisplayStyle.DISCORD) {
-            tsText = 
-                areSameDate(new Date(), vm.timestamp) ? ("Today at " + locale.getShortTimeString(vm.timestamp) /* dtf.format(vm.timestamp) */)
-                : areSameDate(DateUtils.addMilliseconds(new Date(), TimeSpanUtils.fromDays(-1)), vm.timestamp) ? ("Yesterday at " +
-                    locale.getShortTimeString(vm.timestamp) /* dtf.format(vm.timestamp) */ ) 
-                : (locale.getNumericDateString(vm.timestamp) /* dtfDate.format(vm.timestamp) */ + 
-                    " at " + locale.getShortTimeString(vm.timestamp) /* dtf.format(vm.timestamp) */);
+        let copyText: string;
+        try {
+            copyText = "[" + ( areSameDate(new Date(), vmtimestamp)
+                ? locale.getShortTimeString(vmtimestamp) /* dtf.format(vm.timestamp) */
+                : locale.getNumericDateWithShortTimeString(vmtimestamp) /* dtfWithDate.format(vm.timestamp) */ ) + "]";
+            if (displayStyle == ChannelMessageDisplayStyle.DISCORD) {
+                tsText = 
+                    areSameDate(new Date(), vmtimestamp) ? ("Today at " + locale.getShortTimeString(vmtimestamp) /* dtf.format(vm.timestamp) */)
+                    : areSameDate(DateUtils.addMilliseconds(new Date(), TimeSpanUtils.fromDays(-1)), vmtimestamp) ? ("Yesterday at " +
+                        locale.getShortTimeString(vmtimestamp) /* dtf.format(vm.timestamp) */ ) 
+                    : (locale.getNumericDateString(vmtimestamp) /* dtfDate.format(vm.timestamp) */ + 
+                        " at " + locale.getShortTimeString(vmtimestamp) /* dtf.format(vm.timestamp) */);
+            }
+            else {
+                tsText = copyText;
+            }
         }
-        else {
-            tsText = copyText;
+        catch (e) {
+            tsText = "(invalid timestamp)";
+            copyText = "(invalid timestamp)";
         }
+        
         const elTimestamp = <span classList={["timestamp"]} attrs={{
                 "data-copycontent": `[sub]${copyText}[/sub]`
             }}>{tsText}</span>
@@ -430,63 +536,8 @@ class ChannelStreamMessageViewRendererFChat implements MessageRenderer {
 
         const uniqueMessageId = vm.uniqueMessageId.toString();
 
-        const collapseAds = vm.type == ChannelMessageType.AD && (vm.channelViewModel?.getConfigSettingById("collapseAds") ?? false);
-        if (collapseAds) {
-            const collapseHostStyles: string[] = [];
-            let collapseBtnEl: VNode;
-            if (vm.isOversized) {
-                collapseHostStyles.push("is-oversized");
-                if (vm.collapsed) {
-                    collapseHostStyles.push("collapsed");
-                    collapseBtnEl = <div classList={["collapse-button-container"]} attrs={{
-                            "data-copycontent": ""
-                        }}><button classList={["collapse-button"]} attrs={{
-                            "data-copycontent": "",
-                            "data-iscollapsebutton": "true"
-                        }} on={{
-                            "click": () => {
-                                vm.collapsed = false;
-                            }
-                        }}>Expand</button></div>;  
-                }
-                else {
-                    collapseHostStyles.push("expanded");
-                    collapseBtnEl = <div classList={["collapse-button-container"]} attrs={{
-                            "data-copycontent": ""
-                        }}><button classList={["collapse-button"]} attrs={{
-                            "data-copycontent": "",
-                            "data-iscollapsebutton": "true"
-                        }} on={{
-                            "click": () => {
-                                vm.collapsed = true;
-                            }
-                        }}>Collapse</button></div>;  
-                }
-            }
-            else {
-                collapseHostStyles.push("collapsed");
-                collapseBtnEl = <div classList={["collapse-button-container"]} attrs={{
-                    "data-copycontent": ""
-                }}><button classList={["collapse-button"]} attrs={{
-                    "data-copycontent": "",
-                    "data-iscollapsebutton": "true"
-                }}>Expand</button></div>;  
-            }
-
-            let outerEl = <div key={`msg-${uniqueMessageId}`} classList={["collapse-host", "collapsible", ...collapseHostStyles]} attrs={{
-                    "data-messageid": uniqueMessageId,
-                    "data-copyinline": "true"
-                }}>{collapseBtnEl}{innerNode}</div>;
-            return [outerEl, asDisposable(...resultDisposables)];
-            // TODO: AdCollapseManager.add(vm, outerEl, elMain);
-        }
-        else {
-            let outerEl = <div key={`msg-${uniqueMessageId}`} classList={["collapse-host"]} attrs={{
-                    "data-messageid": uniqueMessageId,
-                    "data-copyinline": "true"
-                }}>{innerNode}</div>;
-            return [outerEl, asDisposable(...resultDisposables)];
-        }
+        const messageContainerVNode = createMessageContainerVNode({ vm, innerNode });
+        return [messageContainerVNode, asDisposable(...resultDisposables)];
     }
 
     private createLogNavUserElement(vm: ChannelMessageViewModel): [VNode, IDisposable] {
@@ -497,11 +548,7 @@ class ChannelStreamMessageViewRendererFChat implements MessageRenderer {
 
         const uniqueMessageId = vm.uniqueMessageId.toString();
 
-        let resultEl = <div key={`msg-${uniqueMessageId}`} classList={["collapse-host"]} attrs={{
-                "data-messageid": vm.uniqueMessageId.toString(),
-                "data-copyinline": "true"
-            }}>
-                <div classList={["messageitem", "messageitem-lognav"]} on={{
+        const innerNode = <div classList={["messageitem", "messageitem-lognav"]} on={{
                         "click": () => {
                             if (vm.onClick) {
                                 vm.onClick();
@@ -509,10 +556,10 @@ class ChannelStreamMessageViewRendererFChat implements MessageRenderer {
                         }
                     }}>
                     <div classList={["lognavtext"]}>{vm.parseResult.asVNode()}</div>
-                </div>
-            </div>;
+                </div>;
 
-        return [resultEl, asDisposable(...resultDisposables)];
+        const messageContainerVNode = createMessageContainerVNode({ vm, innerNode });
+        return [messageContainerVNode, asDisposable(...resultDisposables)];
     }
 
     private createTypingStatusElement(vm: ChannelMessageViewModel): [VNode, IDisposable] {
@@ -537,13 +584,20 @@ class ChannelStreamMessageViewRendererDiscord implements MessageRenderer {
         let previousRMC: PreviousRenderedMessageContainer | null = null;
         const messageNodes: VNode[] = [];
         for (let kvp of vm.iterateValues()) {
-            const mvm = kvp.value;
-            const rmResult = this.renderMessage(vm, mvm, previousRMC);
-            if (rmResult[0]) {
-                messageNodes.push(rmResult[0]);
+            try {
+                const mvm = kvp.value;
+                const rmResult = this.renderMessage(vm, mvm, previousRMC);
+                if (rmResult[0]) {
+                    messageNodes.push(rmResult[0]);
+                }
+                resultDisposables.push(rmResult[1]);
+                previousRMC = rmResult[2];
             }
-            resultDisposables.push(rmResult[1]);
-            previousRMC = rmResult[2];
+            catch (e) {
+                previousRMC = null;
+                // TODO: write to error log
+                messageNodes.push(<div>(A message could not be displayed)</div>);
+            }
         }
 
         const resVNode = <>{messageNodes}</>;
@@ -624,10 +678,19 @@ class ChannelStreamMessageViewRendererDiscord implements MessageRenderer {
                     "data-copycontent": ""
                 }} />;
 
-            let copyText: string = "[" + ( areSameDate(new Date(), vm.timestamp) 
-                ? locale.getShortTimeString(vm.timestamp) /* dtf.format(vm.timestamp) */
-                : locale.getNumericDateWithShortTimeString(vm.timestamp) /* dtfWithDate.format(vm.timestamp) */ ) + "]";
-            const tsText = this.getTimestampDisplay(locale, vm.timestamp);
+            const vmtimestamp = vm.timestamp;
+            let copyText: string;
+            let tsText: string;
+            try {
+                copyText = "[" + ( areSameDate(new Date(), vm.timestamp) 
+                    ? locale.getShortTimeString(vm.timestamp) /* dtf.format(vm.timestamp) */
+                    : locale.getNumericDateWithShortTimeString(vm.timestamp) /* dtfWithDate.format(vm.timestamp) */ ) + "]";
+                tsText = this.getTimestampDisplay(locale, vm.timestamp);
+            }
+            catch (e) {
+                copyText = "(invalid timestamp)";
+                tsText = "(invalid timestamp)";
+            }
             const elTimestamp = <span key={`msg-${uniqueMessageId}-timestamp`} classList={["timestamp"]} attrs={{
                     "data-copycontent": ""
                 }}>{tsText}</span>
@@ -696,71 +759,23 @@ class ChannelStreamMessageViewRendererDiscord implements MessageRenderer {
             </div>;
 
             const collapseAds = vm.type == ChannelMessageType.AD && (vm.channelViewModel?.getConfigSettingById("collapseAds") ?? false);
-            if (collapseAds) {
-                const collapseHostStyles: string[] = [];
-                let collapseBtnEl: VNode;
-                if (vm.isOversized) {
-                    collapseHostStyles.push("is-oversized");
-                    if (vm.collapsed) {
-                        collapseHostStyles.push("collapsed");
-                        collapseBtnEl = <div classList={["collapse-button-container"]} attrs={{
-                                "data-copycontent": ""
-                            }}><button classList={["collapse-button"]} attrs={{
-                                "data-copycontent": "",
-                                "data-iscollapsebutton": "true"
-                            }} on={{
-                                "click": () => {
-                                    vm.collapsed = false;
-                                }
-                            }}>Expand</button></div>;  
-                    }
-                    else {
-                        collapseHostStyles.push("expanded");
-                        collapseBtnEl = <div classList={["collapse-button-container"]} attrs={{
-                                "data-copycontent": ""
-                            }}><button classList={["collapse-button"]} attrs={{
-                                "data-copycontent": "",
-                                "data-iscollapsebutton": "true"
-                            }} on={{
-                                "click": () => {
-                                    vm.collapsed = true;
-                                }
-                            }}>Collapse</button></div>;  
-                    }
-                }
-                else {
-                    collapseHostStyles.push("collapsed");
-                    collapseBtnEl = <div classList={["collapse-button-container"]} attrs={{
-                        "data-copycontent": ""
-                    }}><button classList={["collapse-button"]} attrs={{
-                        "data-copycontent": "",
-                        "data-iscollapsebutton": "true"
-                    }}>Expand</button></div>;  
-                }
-    
-                let outerEl = <div key={`msg-${uniqueMessageId}`} classList={["collapse-host", "collapsible", ...collapseHostStyles]} attrs={{
-                        "data-messageid": uniqueMessageId,
-                        "data-copyinline": "true"
-                    }}>{collapseBtnEl}{innerNode}</div>;
-                return [outerEl, asDisposable(...resultDisposables), null];
-            }
-            else {
-                let outerEl = <div key={`msg-${uniqueMessageId}`} classList={["collapse-host"]} attrs={{
-                        "data-messageid": uniqueMessageId,
-                        "data-copyinline": "true"
-                    }} hook={{
-                        "create": (_, e) => {
-                            (e.elm! as HTMLElement).setAttribute("data-el-createdat", new Date().getTime().toString());
-                        }
-                    }}>{innerNode}</div>;
-                return [outerEl, asDisposable(...resultDisposables), canIncludeSubsequent ? {
-                        speakingCharacterName: vm.characterStatus.characterName,
-                        appendMessageContent: (vnode: VNode) => {
-                            msgContainer.children!.push(vnode);
-                        },
-                        lastTimestamp: vm.timestamp
-                    } : null];
-            }
+
+            const messageContainerVNode = createMessageContainerVNode({ vm, innerNode });
+            return [ 
+                messageContainerVNode, 
+                asDisposable(...resultDisposables), 
+                collapseAds 
+                    ? null
+                    : canIncludeSubsequent
+                        ? {
+                            speakingCharacterName: vm.characterStatus.characterName,
+                            appendMessageContent: (vnode: VNode) => {
+                                msgContainer.children!.push(vnode);
+                            },
+                            lastTimestamp: vm.timestamp
+                        } 
+                        : null
+            ];
         }
     }
     areWithinMessageCombineInterval(a: Date, b: Date) {
@@ -775,16 +790,18 @@ class ChannelStreamMessageViewRendererDiscord implements MessageRenderer {
 
         let isSystemMessage = vm.type == ChannelMessageType.SYSTEM || vm.type == ChannelMessageType.SYSTEM_IMPORTANT;
 
+        const vmtext = vm.text ?? "<<XarChat warning: invalid message text>>";
+
         let emoteStyle: ("none" | "normal" | "possessive") = "none";
-        if (vm.type == ChannelMessageType.CHAT && vm.text.startsWith("/me ")) {
+        if (vm.type == ChannelMessageType.CHAT && vmtext.startsWith("/me ")) {
             emoteStyle = "normal";
         }
-        else if (vm.type == ChannelMessageType.CHAT && vm.text.startsWith("/me's ")) {
+        else if (vm.type == ChannelMessageType.CHAT && vmtext.startsWith("/me's ")) {
             emoteStyle = "possessive";
         }
 
         let isImportant = vm.type == ChannelMessageType.SYSTEM_IMPORTANT;
-        if (vm.type == ChannelMessageType.CHAT && vm.text.startsWith("/warn ")) {
+        if (vm.type == ChannelMessageType.CHAT && vmtext.startsWith("/warn ")) {
             const isChanOp = vm.channelViewModel?.isEffectiveOp(vm.characterStatus.characterName) ?? false;
             if (isChanOp) {
                 isImportant = true;
@@ -901,9 +918,15 @@ class ChannelStreamMessageViewRendererDiscord implements MessageRenderer {
 
         const copyPrefix: string[] = [];
 
-        const timestampCopyText: string = "[" + ( areSameDate(new Date(), vm.timestamp) 
-            ? locale.getShortTimeString(vm.timestamp) /* dtf.format(vm.timestamp) */
-            : locale.getNumericDateWithShortTimeString(vm.timestamp) /* dtfWithDate.format(vm.timestamp) */ ) + "]";
+        let timestampCopyText: string;
+        try {
+            timestampCopyText = "[" + ( areSameDate(new Date(), vm.timestamp) 
+                ? locale.getShortTimeString(vm.timestamp) /* dtf.format(vm.timestamp) */
+                : locale.getNumericDateWithShortTimeString(vm.timestamp) /* dtfWithDate.format(vm.timestamp) */ ) + "]";
+        }
+        catch (e) {
+            timestampCopyText = "[(invalid timestamp)]";
+        }
         copyPrefix.push("[sub]");
         copyPrefix.push(timestampCopyText);
         copyPrefix.push("[/sub] ");
@@ -933,11 +956,7 @@ class ChannelStreamMessageViewRendererDiscord implements MessageRenderer {
 
         const uniqueMessageId = vm.uniqueMessageId.toString();
 
-        let resultEl = <div key={`msg-${uniqueMessageId}`} classList={["collapse-host"]} attrs={{
-                "data-messageid": vm.uniqueMessageId.toString(),
-                "data-copyinline": "true"
-            }}>
-                <div classList={["messageitem", "messageitem-lognav"]} on={{
+        const innerNode = <div classList={["messageitem", "messageitem-lognav"]} on={{
                         "click": () => {
                             if (vm.onClick) {
                                 vm.onClick();
@@ -945,10 +964,10 @@ class ChannelStreamMessageViewRendererDiscord implements MessageRenderer {
                         }
                     }}>
                     <div classList={["lognavtext"]}>{vm.parseResult.asVNode()}</div>
-                </div>
-            </div>;
+                </div>;
 
-        return [resultEl, asDisposable(...resultDisposables), null];
+        const messageContainerVNode = createMessageContainerVNode({ vm, innerNode });
+        return [messageContainerVNode, asDisposable(...resultDisposables), null];
     }
 
     private createTypingStatusElement(vm: ChannelMessageViewModel, previousRMC: PreviousRenderedMessageContainer | null): [VNode, IDisposable, PreviousRenderedMessageContainer | null] {

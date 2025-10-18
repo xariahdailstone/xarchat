@@ -2,7 +2,7 @@ import { CharacterName } from "../shared/CharacterName";
 import { CharacterStatus, CharacterStatusNoEquals } from "../shared/CharacterSet";
 import { jsx, JsxVNodeChild, JsxVNodeChildren, VNode } from "../snabbdom/index.js";
 import { ActiveLoginViewModel } from "../viewmodel/ActiveLoginViewModel";
-import { ChannelViewModel } from "../viewmodel/ChannelViewModel";
+import { ChannelViewModel, IChannelStreamViewModel } from "../viewmodel/ChannelViewModel";
 import { ChatChannelViewModel } from "../viewmodel/ChatChannelViewModel";
 import { asDisposable, IDisposable } from "./Disposable";
 import { EL } from "./EL";
@@ -49,7 +49,7 @@ export interface EffectiveCharacterNameInfo {
 export type EffectiveCharacterNameInfoProvider = (charOrStatus: CharacterName | CharacterStatusNoEquals, vm: ChannelViewModel | ActiveLoginViewModel) => EffectiveCharacterNameInfo;
 
 export function getEffectiveCharacterNameInfo(
-    charOrStatus: CharacterName | CharacterStatusNoEquals, vm: ChannelViewModel | ActiveLoginViewModel, skipDependencies: boolean = false): EffectiveCharacterNameInfo {
+    charOrStatus: CharacterName | CharacterStatusNoEquals, vm: IChannelStreamViewModel | ActiveLoginViewModel, skipDependencies: boolean = false): EffectiveCharacterNameInfo {
     const res: EffectiveCharacterNameInfo = {
         modType: "none",
         watchType: "none",
