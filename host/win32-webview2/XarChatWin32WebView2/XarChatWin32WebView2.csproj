@@ -4,7 +4,7 @@
     
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net9.0-windows10.0.17763.0</TargetFramework>
+    <TargetFramework>net10.0-windows10.0.17763.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <ApplicationManifest>app.manifest</ApplicationManifest>
@@ -119,10 +119,10 @@
   <PropertyGroup Condition="$(IsPublishing)=='true'">
     <Configuration>Release</Configuration>
     <Platform>Any CPU</Platform>
-    <PublishDir>bin\Release\net9.0-windows10.0.17763.0\publish\win-x64\</PublishDir>
+    <PublishDir>bin\Release\net10.0-windows10.0.17763.0\publish\win-x64\</PublishDir>
     <PublishProtocol>FileSystem</PublishProtocol>
     <_TargetId>Folder</_TargetId>
-    <TargetFramework>net9.0-windows10.0.17763.0</TargetFramework>
+    <TargetFramework>net10.0-windows10.0.17763.0</TargetFramework>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <SelfContained>true</SelfContained>
     <PublishSingleFile>true</PublishSingleFile>
