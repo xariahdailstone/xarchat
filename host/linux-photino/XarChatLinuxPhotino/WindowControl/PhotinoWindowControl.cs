@@ -31,6 +31,11 @@ namespace XarChatLinuxPhotino.WindowControl
             _photinoWindow.Close();
         }
 
+        public void FlashWindow()
+        {
+            // TODO:
+        }
+
         public Task InvokeOnUIThread(Action action)
         {
             var t = Task.Run(() =>
@@ -78,5 +83,6 @@ namespace XarChatLinuxPhotino.WindowControl
         {
             // TODO:
         }
+
     }
 }
