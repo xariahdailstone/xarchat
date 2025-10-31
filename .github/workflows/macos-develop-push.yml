@@ -1,4 +1,4 @@
-name: "develop push"
+name: "MacOS develop push"
 
 on:
   push:
