@@ -98,29 +98,37 @@ jobs:
       shell: bash
       working-directory: ${{ github.workspace }}
       run: |
-        mkdir broot
-        mkdir preproot
-        mkdir preproot/app-staging-area
-        cp -r host/mac/AppRoot/. preproot/app-staging-area/.
-        cp host/linux-photino/XarChatLinuxPhotino/bin/Release/net9.0/osx-arm64/publish/XarChatMacPhotino preproot/app-staging-area/Contents/MacOS/XarChatMacPhotino
-        cp host/shared/photino.Native/lib/arm64/Photino.Native.dylib preproot/app-staging-area/Contents/MacOS/Photino.native.dylib
-        chmod +x preproot/app-staging-area/Contents/MacOS/XarChatMacPhotino
+        set PREPDIR=preproot
+        set APPDIR=$PREPDIR/XarChat.app
+        mkdir $PREPDIR
+        mkdir $APPDIR
+        cp -r host/mac/AppRoot/. $APPDIR/.
+        cp host/linux-photino/XarChatLinuxPhotino/bin/Release/net9.0/osx-arm64/publish/XarChatMacPhotino $APPDIR/Contents/MacOS/XarChatMacPhotino
+        cp host/shared/photino.Native/lib/arm64/Photino.Native.dylib $APPDIR/Contents/MacOS/Photino.native.dylib
+        chmod +x $APPDIR/Contents/MacOS/XarChatMacPhotino
 
-    - id: create_pkg
-      name: "Create Installer PKG"
-      uses: akiojin/generate-mac-installer-github-action@v0.1.0
+    - id: create_dmg
+      name: "Create Installer DMG"
+      uses: L-Super/create-dmg-actions@v1.0.3
       with:
-        root-directory: preproot/app-staging-area/.
-        bundle-path: broot/XarChat.app
-        identifier: net.xariah.xarchat
-        version: ${{ steps.extract_timestamp.outputs.timestamp }}
-          
-    - id: publish_artifact
-      name: "Publish Artifact"
+        dmg_name: "XarChat-${{ steps.extract_timestamp.outputs.timestamp }}"
+        src_dir: "${{ github.workspace }}/preproot/XarChat.app"
+
+    - id: publish_artifact_preproot
+      name: "Publish Preproot Artifact"
       # if: steps.extract_branch.outputs.publishartifact == 'true'
       uses: actions/upload-artifact@v4
       with:
         name: macos-exe
-        path: ${{ github.workspace }}/broot
+        path: ${{ github.workspace }}/preproot
+        retention-days: 5
+
+    - id: publish_artifact
+      name: "Publish DMG Artifact"
+      # if: steps.extract_branch.outputs.publishartifact == 'true'
+      uses: actions/upload-artifact@v4
+      with:
+        name: macos-dmg
+        path: ${{ github.workspace }}/XarChat-*.dmg
         retention-days: 5
 
