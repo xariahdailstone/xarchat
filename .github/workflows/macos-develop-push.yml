@@ -108,7 +108,7 @@ jobs:
 
     - id: create_pkg
       name: "Create Installer PKG"
-      uses: akiojin/generate-mac-installer-github-action:v0.1.0
+      uses: akiojin/generate-mac-installer-github-action@v0.1.0
       with:
         root-directory: preproot/app-staging-area/.
         bundle-path: broot/XarChat.app
