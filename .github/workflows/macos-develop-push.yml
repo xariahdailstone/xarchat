@@ -98,8 +98,8 @@ jobs:
       shell: bash
       working-directory: ${{ github.workspace }}
       run: |
-        set PREPDIR=preproot
-        set APPDIR=$PREPDIR/XarChat.app
+        PREPDIR=preproot
+        APPDIR=$PREPDIR/XarChat.app
         mkdir $PREPDIR
         mkdir $APPDIR
         cp -r host/mac/AppRoot/. $APPDIR/.
