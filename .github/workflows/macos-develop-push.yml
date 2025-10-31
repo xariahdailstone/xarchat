@@ -99,11 +99,21 @@ jobs:
       working-directory: ${{ github.workspace }}
       run: |
         mkdir broot
-        mkdir broot/XarChatMacPhotino.app
-        cp -r host/mac/AppRoot/. broot/XarChatMacPhotino.app/.
-        cp host/linux-photino/XarChatLinuxPhotino/bin/Release/net9.0/osx-arm64/publish/XarChatMacPhotino broot/XarChatMacPhotino.app/Contents/MacOS/XarChatMacPhotino
-        cp host/shared/photino.Native/lib/arm64/Photino.Native.dylib broot/XarChatMacPhotino.app/Contents/MacOS/Photino.native.dylib
-        chmod +x broot/XarChatMacPhotino.app/Contents/MacOS/XarChatMacPhotino
+        mkdir preproot
+        mkdir preproot/app-staging-area
+        cp -r host/mac/AppRoot/. preproot/app-staging-area/.
+        cp host/linux-photino/XarChatLinuxPhotino/bin/Release/net9.0/osx-arm64/publish/XarChatMacPhotino preproot/app-staging-area/Contents/MacOS/XarChatMacPhotino
+        cp host/shared/photino.Native/lib/arm64/Photino.Native.dylib preproot/app-staging-area/Contents/MacOS/Photino.native.dylib
+        chmod +x preproot/app-staging-area/Contents/MacOS/XarChatMacPhotino
+
+    - id: create_pkg
+      name: "Create Installer PKG"
+      uses: akiojin/generate-mac-installer-github-action:v0.1.0
+      with:
+        root-directory: preproot/app-staging-area/.
+        bundle-path: broot/XarChat.app
+        identifier: net.xariah.xarchat
+        version: ${{ steps.extract_timestamp.outputs.timestamp }}
           
     - id: publish_artifact
       name: "Publish Artifact"
