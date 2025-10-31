@@ -73,6 +73,10 @@ using XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.ZoomLevel;
 using XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.GetMemo;
 using XarChat.Backend.Features.StyleUpdateWatcher;
 using XarChat.Backend.Features.EIconFavoriteManager;
+using XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.GetLocaleList;
+using XarChat.Backend.Logging;
+using XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.AppSettings;
+using XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.FlashWindow;
 
 namespace XarChat.Backend
 {
@@ -158,7 +162,7 @@ namespace XarChat.Backend
             });
 
             startupLogWriter("XarChatBackend.RunAsync - configuring app services");
-            ConfigureServices(builder.Services);
+            ConfigureServices(builder);
 
             startupLogWriter("XarChatBackend.RunAsync - building app");
             await using var app = builder.Build();
@@ -235,8 +239,10 @@ namespace XarChat.Backend
             return -1;
         }
 
-        private void ConfigureServices(IServiceCollection services)
+        private void ConfigureServices(WebApplicationBuilder builder)
         {
+            var services = builder.Services;
+
             services.AddHttpClient();
             services.AddHttpClient<IFListApi>()
                 .ConfigurePrimaryHttpMessageHandler(() =>
@@ -291,6 +297,12 @@ namespace XarChat.Backend
             services.AddSingleton<IFalsifiedClientTicketManager, FalsifiedClientTicketManager>();
 
             services.AddSingleton<ICommandLineOptions>(_commandLineOptions);
+            if (!String.IsNullOrWhiteSpace(_commandLineOptions.LogToFile))
+            {
+                var sw = new StreamWriter(_commandLineOptions.LogToFile, append: true);
+                sw.AutoFlush = true;
+                builder.Logging.AddProvider(new CustomFileLoggerProvider(sw));
+            }
 
             services.AddSingleton<IAppFileServer>(sp =>
             {
@@ -353,6 +365,10 @@ namespace XarChat.Backend
             services.AddXCHostCommandHandler<SubmitEIconMetadataCommandHandler>("submiteiconmetadata");
             services.AddXCHostCommandHandler<SetZoomLevelCommandHandler>("setZoomLevel");
             services.AddXCHostCommandHandler<GetMemoCommandHandler>("getMemo");
+            services.AddXCHostCommandHandler<GetLocaleListCommandHandler>("getLocales");
+            services.AddXCHostCommandHandler<GetAppSettingsCommandHandler>("getAppSettings");
+            services.AddXCHostCommandHandler<SetAppSettingsCommandHandler>("setAppSettings");
+            services.AddXCHostCommandHandler<FlashWindowCommandHandler>("flashWindow");
         }
 
         private object _concurrentCountLock = new object();

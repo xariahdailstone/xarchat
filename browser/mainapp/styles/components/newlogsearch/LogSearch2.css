@@ -1,0 +1,68 @@
+#elMain {
+    width: 100%;
+    height: 100%;
+    
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-columns: 100%;
+    grid-template-areas:
+        "searchcriteria"
+        "resultview";
+
+    .search-criteria { grid-area: searchcriteria; }
+    .result-view { grid-area: resultview; }
+
+    .search-criteria {
+        display: grid;
+        grid-template-rows: auto auto auto auto;
+        grid-template-columns: auto 1fr auto;
+        grid-template-areas:
+            "streamspec-label streamspec-field buttons"
+            "textspec-label textspec-field buttons"
+            "whospec-label whospec-field buttons"
+            "timespec-label timespec-field buttons";
+        gap: 8px;
+        padding: 8px;
+
+        .search-criteria-whospec-row { 
+            display: contents;
+            .search-criteria-whospec-label { grid-area: whospec-label; }
+            .search-criteria-whospec-field { grid-area: whospec-field; width: 15em; }
+        }
+        .search-criteria-streamspec-row { 
+            display: contents;
+            .search-criteria-streamspec-label { grid-area: streamspec-label; }
+            .search-criteria-streamspec-field { grid-area: streamspec-field; }
+        }
+        .search-criteria-textspec-row { 
+            display: contents;
+            .search-criteria-textspec-label { grid-area: textspec-label; }
+            .search-criteria-textspec-field { grid-area: textspec-field; width: 25em; }
+        }
+        .search-criteria-timespec-row { 
+            display: contents;
+            .search-criteria-timespec-label { grid-area: timespec-label; }
+            .search-criteria-timespec-field { grid-area: timespec-field; }
+        }
+        .search-criteria-buttons-container { grid-area: buttons; }
+
+        .search-criteria-label { text-align: right; }
+
+        .search-criteria-buttons-container {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding-left: 8px;
+        }
+    }
+}
+
+.result-view {
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+
+    font-size: var(--chat-font-size);
+    font-family: var(--chat-font-family);
+}

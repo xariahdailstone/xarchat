@@ -1,13 +1,16 @@
-import { FastEventSource } from "../util/FastEventSource";
-import { HTMLUtils } from "../util/HTMLUtils";
-import { setStylesheetAdoption } from "../util/StyleSheetPolyfill";
-import { AppViewModel } from "../viewmodel/AppViewModel";
-import { LogSearchDate, SearchDate } from "../viewmodel/LogSearchViewModel";
+import { FastEventSource } from "../../util/FastEventSource";
+import { HTMLUtils } from "../../util/HTMLUtils";
+import { StringUtils } from "../../util/StringUtils";
+import { setStylesheetAdoption } from "../../util/StyleSheetPolyfill";
+import { AppViewModel } from "../../viewmodel/AppViewModel";
+import { LocaleViewModel } from "../../viewmodel/LocaleViewModel";
+import { LogSearchDate, SearchDate } from "../../viewmodel/LogSearchViewModel";
 //import { LogSearchDateSelectionPopupViewModel } from "../viewmodel/popups/LogSearchDateSelectionPopupViewModel";
-import { StyleLoader, componentElement } from "./ComponentBase";
+import { StyleLoader, componentArea, componentElement } from "../ComponentBase";
 
-const dtfWithDate = new Intl.DateTimeFormat(undefined, { dateStyle: "long", timeStyle: "long" });
+//const dtfWithDate = new Intl.DateTimeFormat(undefined, { dateStyle: "long", timeStyle: "long" });
 
+@componentArea("newlogsearch")
 @componentElement("x-logsearchdateinput")
 export class LogSearchDateInput extends HTMLElement {
 
@@ -24,13 +27,13 @@ export class LogSearchDateInput extends HTMLElement {
         `);
 
         (async () => {
-            const css = await StyleLoader.loadAsync("styles/components/LogSearchDateInput.css");
+            const css = await StyleLoader.loadAsync("styles/components/newlogsearch/LogSearchDateInput.css");
             //(sroot as any).adoptedStyleSheets = [ css ];
             setStylesheetAdoption(sroot, [ css ]);
             this.elButton.style.removeProperty("display");
         })();
 
-        this.elDateText.innerText = this.dateToString(new Date());
+        this.elDateText.innerText = this.dateToString(LocaleViewModel.default, new Date());
         this.elButton.addEventListener("click", async () => {
             this.elButton.classList.toggle("popupshown", true);
             try {
@@ -66,25 +69,25 @@ export class LogSearchDateInput extends HTMLElement {
     set value(v: LogSearchDate) { 
         if (v != this._value) {
             this._value = v;
-            this.onValueChanged(v);
+            this.onValueChanged(this.appViewModel?.locale ?? LocaleViewModel.default, v);
         }
     }
 
-    private onValueChanged(v: LogSearchDate) {
+    private onValueChanged(locale: LocaleViewModel, v: LogSearchDate) {
         const elButton = this.elButton;
         const vIsDate = v instanceof Date;
 
         elButton.classList.toggle("nowtext", (v === SearchDate.Now));
         elButton.classList.toggle("datetext", vIsDate);
         if (vIsDate) {
-            this.elDateText.innerText = this.dateToString(v);
+            this.elDateText.innerText = this.dateToString(locale, v);
         }
 
         this.dispatchEvent(new Event("valuechanged"));
     }
 
-    private dateToString(dt: Date) {
-        const result = dtfWithDate.format(dt);
+    private dateToString(locale: LocaleViewModel, dt: Date) {
+        const result = StringUtils.dateToString(locale, dt, { dateStyle: "long", timeStyle: "long" });
         return result;
     }
 

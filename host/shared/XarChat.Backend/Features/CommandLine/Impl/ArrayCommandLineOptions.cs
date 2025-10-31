@@ -88,6 +88,24 @@ namespace XarChat.Backend.Features.CommandLine.Impl
                     case "--disable-gpu":
                         this.DisableGpuAcceleration = true;
                         break;
+                    case "--lang":
+                        {
+                            var lang = GetNextOrNull();
+                            if (!String.IsNullOrWhiteSpace(lang))
+                            {
+                                this.BrowserLanguage = lang;
+                            }
+                        }
+                        break;
+                    case "--log-to":
+                        {
+                            var fn = GetNextOrNull();
+                            if (!String.IsNullOrWhiteSpace(fn))
+                            {
+                                this.LogToFile = fn;
+                            }
+                        }
+                        break;
                 }
             }
         }
@@ -107,5 +125,9 @@ namespace XarChat.Backend.Features.CommandLine.Impl
         public string? ProfilePath { get; private set; } = null;
 
         public bool DisableGpuAcceleration { get; private set; } = false;
+
+        public string? BrowserLanguage { get; private set; } = null;
+
+        public string? LogToFile { get; private set; } = null;
     }
 }

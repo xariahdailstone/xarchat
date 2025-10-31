@@ -12,6 +12,7 @@ import { EIconUtils } from "../../util/EIconUtils";
 import { EventListenerUtil } from "../../util/EventListenerUtil";
 import { asDisposable, IDisposable } from "../../util/Disposable";
 import { Logger } from "../../util/Logger";
+import { Scheduler } from "../../util/Scheduler";
 
 type MoveNavResultUpDown = { accepted: false } | { accepted: true, exitedAtColumn?: number };
 type MoveNavResultLeftRight = { accepted: false } | { accepted: true, exited: boolean };
@@ -266,7 +267,7 @@ export class EIconSearchDialog extends DialogComponentBase<EIconSearchDialogView
         // elKeyboardNavTextbox.addEventListener("input", (e) => { elKeyboardNavTextbox.value = ""; });
         // elKeyboardNavTextbox.addEventListener("change", (e) => { elKeyboardNavTextbox.value = ""; });
 
-        for (let setView of [elSetView, elRecentlyUsedSetView]) {
+        for (let setView of [elSetView, elFavoriteSetView, elRecentlyUsedSetView, elMostUsedSetView]) {
             if (!setView) { continue; }
             setView.addEventListener("eiconselected", (e) => {
                 const eiconName = (e as any).eiconName;
@@ -361,7 +362,7 @@ export class EIconSetView extends ComponentBase<EIconResultSet> implements Keybo
                     this.recalculateDisplayInner();
                 }
                 else {
-                    window.requestAnimationFrame(() => {
+                    Scheduler.scheduleNamedCallback("EIconSetView.recalculateDisplay", ["frame", "idle", 250], () => {
                         this._recalcRequested = false;
                         this.recalculateDisplayInner();
                     });

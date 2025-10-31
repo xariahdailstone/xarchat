@@ -7,6 +7,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using XarChat.AutoUpdate;
 using XarChat.Backend;
+using XarChat.Backend.Common;
 using XarChat.Backend.Features.AppConfiguration.Impl;
 using XarChat.Backend.Features.CommandLine.Impl;
 using XarChat.Backend.Features.CrashLogWriter;
@@ -30,7 +31,7 @@ namespace MinimalWin32Test
             var startupLogFile = Path.Combine(Path.GetTempPath(), $"XarChat.startup-{DateTime.Now.ToString("yyyyMMhddHHmmss")}-{pid}.log");
             if (File.Exists(startupLogFile))
             {
-                try { File.Delete(startupLogFile); }
+                try { FileSystemUtil.Delete(startupLogFile); }
                 catch { }
             }
 
@@ -163,7 +164,7 @@ namespace MinimalWin32Test
 
                 if (File.Exists(startupLogFile))
                 {
-                    try { File.Delete(startupLogFile); } catch { }
+                    try { FileSystemUtil.Delete(startupLogFile); } catch { }
                 }
 
                 var exitCode = app.Run();
@@ -433,7 +434,7 @@ namespace MinimalWin32Test
                     {
                         try
                         {
-                            File.Delete(tmpFn);
+                            await FileSystemUtil.DeleteAsync(tmpFn);
                             break;
                         }
                         catch

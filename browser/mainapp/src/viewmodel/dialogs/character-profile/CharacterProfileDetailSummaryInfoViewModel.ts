@@ -1,9 +1,11 @@
 import { ProfileInfo, ProfileFieldsInfoList, MappingList, ProfileFieldsSectionListItem } from "../../../fchat/api/FListApi";
 import { ObservableBase, observableProperty } from "../../../util/ObservableBase";
 import { StringUtils } from "../../../util/StringUtils";
+import { AppViewModel } from "../../AppViewModel";
 
 export class CharacterProfileDetailSummaryInfoViewModel extends ObservableBase {
     constructor(
+        appViewModel: AppViewModel,
         private readonly profileInfo: ProfileInfo,
         private readonly profileFieldsInfoList: ProfileFieldsInfoList,
         private readonly mappingList: MappingList
@@ -20,8 +22,8 @@ export class CharacterProfileDetailSummaryInfoViewModel extends ObservableBase {
 
         const createdAt = new Date(profileInfo.created_at * 1000);
         const updatedAt = new Date(profileInfo.updated_at * 1000);
-        this.created = StringUtils.dateToString(createdAt, { dateStyle: 'medium', timeStyle: 'short' });
-        this.lastUpdated = StringUtils.dateToString(updatedAt, { dateStyle: 'medium', timeStyle: 'short' });
+        this.created = StringUtils.dateToString(appViewModel.locale, createdAt, { dateStyle: 'medium', timeStyle: 'short' });
+        this.lastUpdated = StringUtils.dateToString(appViewModel.locale, updatedAt, { dateStyle: 'medium', timeStyle: 'short' });
         this.views = StringUtils.numberToString(profileInfo.views, {});
         this.timezone = profileInfo.timezone ?
             (profileInfo.timezone == 0 ? "GMT"

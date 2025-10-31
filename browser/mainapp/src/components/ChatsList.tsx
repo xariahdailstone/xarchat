@@ -112,7 +112,7 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
             this.elMain.classList.toggle("has-alerts-below", elementsNotVisibleBelow.size > 0);
         };
         const recalculateAlertDisplay = () => {
-            this.logger.logInfo("recalculatingAlertDisplay");
+            this.logger.logDebug("recalculatingAlertDisplay");
             if (io) {
                 elementsNotVisibleAbove.clear();
                 elementsNotVisibleBelow.clear();
@@ -155,7 +155,7 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
                 hasAlertEls.forEach(el => {
                     io!.observe(el as HTMLElement);
                 });
-                this.logger.logInfo("recalculatingAlertDisplay watching element count", hasAlertEls.length);
+                this.logger.logDebug("recalculatingAlertDisplay watching element count", hasAlertEls.length);
             }
         };
         const scrollToNext = (map: Map<HTMLElement, number>, shouldTake: (curBound: number, maxBound: number) => boolean) => {
@@ -583,7 +583,7 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
             return (isPMConvo && charStatusSubSet) ? charStatusSubSet.rawAddChar((cvm as PMConvoChannelViewModel).character) : null;
         });
 
-        const result = this._chatSubrenderingManagerPMs!.getOrCreate(cvm.collectiveName,
+        const result = this._chatSubrenderingManagerPMs!.getOrCreate(`${cvm.activeLoginViewModel.characterName.canonicalValue}-${cvm.collectiveName}`,
             { 
                 isSelected: isSelected,
                 cs: cs,
@@ -599,7 +599,7 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
                 let charStatusDot: VNode | null = null;
                 if (isChatChannel) {
                     const ccvm = cvm as ChatChannelViewModel;
-                    itemKey = `channel-${ccvm.name.canonicalValue}`;
+                    itemKey = `char-${ccvm.activeLoginViewModel.characterName.canonicalValue}-channel-${ccvm.name.canonicalValue}`;
                     title = cvmState.title ?? "(none)";
                 }
                 else if (isPMConvo) {
@@ -619,7 +619,7 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
                         }
                     }
 
-                    itemKey = `pmconvo-${pcvm.character.canonicalValue}`;
+                    itemKey = `char-${pcvm.activeLoginViewModel.characterName.canonicalValue}pmconvo-${pcvm.character.canonicalValue}`;
                     switch (cs.typingStatus) {
                         case TypingStatus.NONE:
                             typingIndicatorNode = null;
@@ -759,7 +759,11 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
                     ? null
                     : <span>{" "}<span classList={["nickname"]}>{`(${nickname})`}</span></span>;
 
-                return <div key={itemKey} classList={["sectionitems-item"]} attrs={mainAttributes} on={mainEvents}>
+                if (mainEvents.click) {
+                    mainAttributes["data-has-click"] = itemKey ?? "true";
+                }
+
+                return <div key={itemKey} id={itemKey} attrs={mainAttributes} on={mainEvents}>
                     <div classList={["sectionitems-item-inner", 
                             isChatChannel ? "chatchannel" : isPMConvo ? "pmconvo" : "", 
                             isSelected ? "selected" : "not-selected"]}>

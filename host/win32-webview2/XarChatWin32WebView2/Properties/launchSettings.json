@@ -2,7 +2,8 @@
   "profiles": {
     "MinimalWin32Test": {
       "commandName": "Project",
-      "commandLineArgs": "-d -p C:\\Users\\drysa\\AppData\\Local\\XarChatz-debug -zzc E:\\src-XarChat\\browser\\mainapp --zzautoupdate:url=https://localhost:44314/xarchat/api/AutoUpdate/GetUpdateInfo --devtoolsonlaunch --zzshowinitwindow -zzw wss://flprox.evercrest.com/connect"
+      "commandLineArgs": "-d -p C:\\Users\\drysa\\AppData\\Local\\XarChatz-debug -zzc E:\\src-XarChat\\browser\\mainapp --zzautoupdate:url=https://localhost:44314/xarchat/api/AutoUpdate/GetUpdateInfo --devtoolsonlaunch --zzshowinitwindow -zzw wss://flprox.evercrest.com/connect --lang en-GB --lzzog-to clog.txt",
+      "workingDirectory": "E:\\src-XarChat\\host\\win32-webview2\\XarChatWin32WebView2\\bin\\Debug\\net9.0-windows10.0.17763.0"
     }
   }
 }

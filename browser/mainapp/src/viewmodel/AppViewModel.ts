@@ -6,18 +6,24 @@ import { RawSavedWindowLocation } from "../settings/RawAppSettings.js";
 import { ChannelName } from "../shared/ChannelName.js";
 import { CharacterName } from "../shared/CharacterName.js";
 import { ConfigBlock } from "../util/ConfigBlock.js";
+import { IDisposable } from "../util/Disposable.js";
 import { HostInterop, HostWindowState } from "../util/HostInterop.js";
 import { IdleDetection, IdleDetectionScreenState, IdleDetectionUserState } from "../util/IdleDetection.js";
 import { Observable, ObservableValue, PropertyChangeEvent } from "../util/Observable.js";
 import { ObservableBase, observableProperty } from "../util/ObservableBase.js";
 import { Collection, CollectionChangeEvent, CollectionChangeType } from "../util/ObservableCollection.js";
+import { ObservableExpression } from "../util/ObservableExpression.js";
 import { PromiseSource } from "../util/PromiseSource.js";
+import { StringUtils } from "../util/StringUtils.js";
+import { URLUtils } from "../util/URLUtils.js";
 import { UpdateCheckerClient, UpdateCheckerState } from "../util/UpdateCheckerClient.js";
+import { BBCodeClickContext, BBCodeParseSink } from "../util/bbcode/BBCode.js";
 import { StdObservableCollectionChangeType } from "../util/collections/ReadOnlyStdObservableCollection.js";
 import { ActiveLoginViewModel } from "./ActiveLoginViewModel.js";
-import { ChannelViewModel } from "./ChannelViewModel.js";
+import { ChannelViewModel, IChannelStreamViewModel } from "./ChannelViewModel.js";
 import { ChatChannelUserViewModel, ChatChannelViewModel } from "./ChatChannelViewModel.js";
 import { ColorThemeViewModel } from "./ColorThemeViewModel.js";
+import { DateFormatSpecifier, LocaleViewModel, TimeFormatSpecifier } from "./LocaleViewModel.js";
 import { PMConvoChannelViewModel } from "./PMConvoChannelViewModel.js";
 import { AboutViewModel } from "./dialogs/AboutViewModel.js";
 import { AlertOptions, AlertViewModel } from "./dialogs/AlertViewModel.js";
@@ -36,6 +42,8 @@ export class AppViewModel extends ObservableBase {
 
         this.configBlock = configBlock;
         this.colorTheme = new ColorThemeViewModel(this);
+
+        this.bbcodeParseSink = new AppViewModelBBCodeSink(this);
 
         //this.flistApi = new FListApiImpl();
         this.flistApi = new HostInteropApi();
@@ -102,11 +110,15 @@ export class AppViewModel extends ObservableBase {
                 this.updateCheckerState = state;
             });
         })();
+
+        this.setupLocaleMonitoring();
     }
 
     isInStartup: boolean = true;
 
     readonly colorTheme: ColorThemeViewModel;
+
+    readonly bbcodeParseSink: BBCodeParseSink;
 
     private _updateCheckerClient: UpdateCheckerClient | null = null;
 
@@ -151,6 +163,101 @@ export class AppViewModel extends ObservableBase {
 
     @observableProperty
     appWindowState: HostWindowState;
+
+    @observableProperty
+    locale: LocaleViewModel = LocaleViewModel.default;
+
+    setupLocaleMonitoring(): IDisposable {
+        const setDefaultLocale = () => {
+            this.locale = LocaleViewModel.default;
+        };
+
+        const oe = new ObservableExpression(
+            () => [ this.configBlock.get("global.locale.dateFormat"), this.configBlock.get("global.locale.timeFormat") ],
+            (v) => {
+                if (v) {
+                    const dateFormat = v[0];
+                    const timeFormat = v[1];
+
+                    let dateFormatFunc: (d: Date, format: DateFormatSpecifier) => string;
+                    let timeFormatFunc: (d: Date, format: TimeFormatSpecifier) => string;
+
+                    switch (dateFormat) {
+                        case "mdyyyy":
+                            dateFormatFunc = (d: Date, format: DateFormatSpecifier) => {
+                                const mm = d.getMonth() + 1;
+                                const dd = d.getDate();
+                                const yy = d.getFullYear();
+                                return `${mm}/${dd}/${yy}`;
+                            };
+                            break;
+                        case "mmddyyyy":
+                            dateFormatFunc = (d: Date, format: DateFormatSpecifier) => {
+                                const mm = StringUtils.makeTwoDigitString(d.getMonth() + 1);
+                                const dd = StringUtils.makeTwoDigitString(d.getDate());
+                                const yy = d.getFullYear();
+                                return `${mm}/${dd}/${yy}`;
+                            };
+                            break;
+                        case "dmyyyy":
+                            dateFormatFunc = (d: Date, format: DateFormatSpecifier) => {
+                                const mm = d.getMonth() + 1;
+                                const dd = d.getDate();
+                                const yy = d.getFullYear();
+                                return `${dd}/${mm}/${yy}`;
+                            };
+                            break;
+                        case "ddmmyyyy":
+                            dateFormatFunc = (d: Date, format: DateFormatSpecifier) => {
+                                const mm = StringUtils.makeTwoDigitString(d.getMonth() + 1);
+                                const dd = StringUtils.makeTwoDigitString(d.getDate());
+                                const yy = d.getFullYear();
+                                return `${dd}/${mm}/${yy}`;
+                            };
+                            break;
+                        case "yyyymmdd":
+                            dateFormatFunc = (d: Date, format: DateFormatSpecifier) => {
+                                const mm = StringUtils.makeTwoDigitString(d.getMonth() + 1);
+                                const dd = StringUtils.makeTwoDigitString(d.getDate());
+                                const yy = d.getFullYear();
+                                return `${yy}/${mm}/${dd}`;
+                            };
+                            break;
+                        default:
+                        case "default":
+                            dateFormatFunc = LocaleViewModel.defaultConvertDate;
+                            break;
+                    }
+
+                    switch (timeFormat) {
+                        case "12h":
+                            timeFormatFunc = (d: Date, format: TimeFormatSpecifier) => {
+                                return new Intl.DateTimeFormat(undefined, { timeStyle: format, hourCycle: "h12" }).format(d);
+                            };
+                            break;
+                        case "24h":
+                            timeFormatFunc = (d: Date, format: TimeFormatSpecifier) => {
+                                return new Intl.DateTimeFormat(undefined, { timeStyle: format, hourCycle: "h23" }).format(d);
+                            };
+                            break;
+                        default:
+                        case "default":
+                            timeFormatFunc = LocaleViewModel.defaultConvertTime;
+                            break;
+                    }
+
+                    this.locale = new LocaleViewModel({ convertDate: dateFormatFunc, convertTime: timeFormatFunc });
+                }
+                else {
+                    setDefaultLocale();
+                }
+            },
+            (err) => {
+                setDefaultLocale();
+            }
+        );
+        return oe;
+    }
 
     @observableProperty
     get showTitlebar(): boolean {
@@ -249,6 +356,9 @@ export class AppViewModel extends ObservableBase {
 
     async launchUrlAsync(url: string, forceExternal?: boolean): Promise<void> {
         try {
+            const canLaunchInternally = !!this.getConfigSettingById("launchImagesInternally");
+            forceExternal = (forceExternal ?? false) || (!canLaunchInternally);
+
             await HostInterop.launchUrl(this, url, forceExternal ?? false);
         }
         catch { }
@@ -485,6 +595,23 @@ export class AppViewModel extends ObservableBase {
 
         fn = this.getConfigEntryHierarchical(`sound.event.${event.eventType.toString()}`, event.activeLoginViewModel, event.channel) as (string | null);
 
+        if (this.getConfigSettingById("flashTaskbarButton") ?? true) {
+            let shouldFlashWindow: boolean;
+            switch (event.eventType) {
+                case AppNotifyEventType.CONNECTED:
+                case AppNotifyEventType.DISCONNECTED:
+                    shouldFlashWindow = false;
+                    break;
+                case AppNotifyEventType.HIGHLIGHT_MESSAGE_RECEIVED:
+                case AppNotifyEventType.PRIVATE_MESSAGE_RECEIVED:
+                    shouldFlashWindow = true;
+                    break;
+            }
+            if (shouldFlashWindow) {
+                HostInterop.flashWindow();
+            }
+        }
+
         if (fn == null || fn == "default:")
         {
             switch (event.eventType) {
@@ -533,7 +660,7 @@ export class AppViewModel extends ObservableBase {
 }
 
 export type GetConfigSettingChannelViewModel = 
-    ChannelViewModel | 
+    IChannelStreamViewModel | 
     { channelTitle: string, channelCategory: string } |
     { characterName: CharacterName };
 
@@ -548,4 +675,29 @@ export interface AppNotifyEvent {
     eventType: AppNotifyEventType,
     activeLoginViewModel: ActiveLoginViewModel,
     channel?: ChannelViewModel
+}
+
+export class AppViewModelBBCodeSink implements BBCodeParseSink {
+    constructor(
+        protected readonly appViewModel: AppViewModel) {
+    }
+
+    userClick(name: CharacterName, context: BBCodeClickContext) {
+    }
+
+    webpageClick(url: string, forceExternal: boolean, context: BBCodeClickContext) {
+        try {
+            const maybeProfileTarget = URLUtils.tryGetProfileLinkTarget(url);
+            if (maybeProfileTarget != null && !forceExternal) {
+                this.userClick(CharacterName.create(maybeProfileTarget), context);
+            }
+            else {
+                this.appViewModel.launchUrlAsync(url, forceExternal);
+            }
+        }
+        catch { }
+    }
+
+    async sessionClick(target: string, titleHint: string, context: BBCodeClickContext) {
+    }
 }

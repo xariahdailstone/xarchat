@@ -267,6 +267,11 @@ namespace XarChat.Native.Win32
             return PInvoke.SetForegroundWindow(new Windows.Win32.Foundation.HWND(hwnd));
         }
 
+        public static bool FlashWindow(nint hwnd)
+        {
+            return PInvoke.FlashWindow(new Windows.Win32.Foundation.HWND(hwnd), true);
+        }
+
         public enum IDC : int
         {
             ARROW = 32512,

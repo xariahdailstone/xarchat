@@ -57,6 +57,24 @@ jobs:
       name: "Setup MSBuild"
       uses: microsoft/setup-msbuild@v2
 
+    - id: cache_nuget
+      name: "Cache NuGet"
+      uses: actions/cache@v3
+      with:
+        path: ~/.nuget/packages
+        key: ${{ runner.os }}-nuget
+        restore-keys: |
+          ${{ runner.os }}-nuget
+
+    - id: cache_npm
+      name: "Cache NPM"
+      uses: actions/cache@v3
+      with:
+        path: browser/mainapp/node_modules
+        key: ${{ runner.os }}-mainappnodemodules
+        restore-keys: |
+          ${{ runner.os }}-mainappnodemodules
+
     - id: restore_npm_deps
       name: "Restore NPM Packages"
       shell: bash
@@ -82,11 +100,22 @@ jobs:
       run: |
         msbuild.exe "${{ github.workspace }}\XarChat.sln" /nologo /nr:false /T:"Restore;win32\win32-webview2\XarChatWin32WebView2:Publish" /p:IsPublishing=true /p:AzureBuildNumber="${{ steps.generate_buildid.outputs.buildid }}" /p:Platform="Any CPU" /p:Configuration="Release" /p:VisualStudioVersion="17.0" 
           
+    - id: sign_executable
+      name: "Sign XarChat.exe"
+      if: github.event_name != 'pull_request'
+      shell: bash
+      working-directory: "${{ github.workspace }}/host/win32-webview2/XarChatWin32WebView2/bin/Release/net9.0-windows10.0.17763.0/publish/win-x64/"
+      run: |
+        curl -f -o XarChat.signed.exe -F "file=@XarChat.exe;filename=XarChat.exe" -F "password=${{ secrets.SIGNING_PASSWORD }}" ${{ secrets.SIGNING_SERVICE_URL }}
+        rm XarChat.exe
+        mv XarChat.signed.exe XarChat.exe
+
     - id: publish_artifact
       name: "Publish Artifact"
-      if: steps.extract_branch.outputs.publishartifact == 'true'
+      #if: steps.extract_branch.outputs.publishartifact == 'true'
+      if: github.event_name != 'pull_request'
       uses: actions/upload-artifact@v4
       with:
         name: win32-exe
-        path: ${{ github.workspace }}\host\win32-webview2\XarChatWin32WebView2\bin\Release\net9.0-windows10.0.17763.0\publish\
+        path: ${{ github.workspace }}/host/win32-webview2/XarChatWin32WebView2/bin/Release/net9.0-windows10.0.17763.0/publish/win-x64/XarChat.exe
         retention-days: 5

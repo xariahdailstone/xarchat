@@ -1,4 +1,3 @@
-import { ChannelView } from "../components/ChannelView.js";
 import { PingLineItemDefinition, PingLineItemMatchStyle } from "../configuration/ConfigSchemaItem.js";
 import { BottleSpinData, ChannelMessageData, RollData } from "../fchat/ChatConnectionSink.js";
 import { CharacterGender } from "../shared/CharacterGender.js";
@@ -30,6 +29,8 @@ import { ActiveLoginViewModel } from "./ActiveLoginViewModel.js";
 import { AppNotifyEventType, AppViewModel } from "./AppViewModel.js";
 import { ChannelFiltersViewModel } from "./ChannelFiltersViewModel.js";
 import { MultiSelectPopupViewModel } from "./popups/MultiSelectPopupViewModel.js";
+import { FriendsListTabViewModel } from "./sidebartabs/FriendsListTabViewModel.js";
+import { SidebarTabContainerViewModel, SidebarTabViewModel } from "./sidebartabs/SidebarTabContainerViewModel.js";
 import { SlashCommandViewModel } from "./SlashCommandViewModel.js";
 
 export interface ChannelViewModelState {
@@ -39,7 +40,105 @@ export interface ChannelViewModelState {
     readonly title: string;
 }
 
-export abstract class ChannelViewModel extends ObservableBase implements IDisposable {
+export interface IChannelStreamViewModel {
+    readonly appViewModel: AppViewModel;
+    readonly activeLoginViewModel: ActiveLoginViewModel;
+    readonly parent: ActiveLoginViewModel;
+    readonly messages: ReadOnlyStdObservableCollection<KeyValuePair<ChannelMessageViewModel, ChannelMessageViewModel>>;
+    scrolledTo: ChannelViewScrollPositionModel | null;
+    newMessagesBelowNotify: boolean;
+
+    readonly title: string;
+    readonly channelTitle: string;
+
+    readonly channelCategory: string;
+
+    readonly pendingSendsCount: number;
+
+    readonly messageDisplayStyle: ChannelMessageDisplayStyle;
+
+    readonly showFilterBar: boolean;
+
+    readonly isHistoricalView: boolean;
+
+    getConfigSettingById(id: string): any;
+    getPingWordSet(): (PingLineItemDefinition & { pattern: RegExp | null })[];
+    
+    isEffectiveOwner(character: CharacterName): boolean;
+    isEffectiveOp(character: CharacterName): boolean;
+}
+
+export class TransientChannelStreamViewModel extends ObservableBase implements IDisposable, IChannelStreamViewModel {
+    constructor(
+        public readonly activeLoginViewModel: ActiveLoginViewModel,
+        public readonly title: string) {
+
+        super();
+    }
+
+    private _isDisposed: boolean = false;
+    get isDisposed() { return this._isDisposed; }
+
+    dispose() {
+        if (!this._isDisposed) {
+            this._isDisposed = true;
+            for (let m of this.messages) {
+                m.value.dispose();
+            }
+        }
+    }
+    [Symbol.dispose]() { this.dispose(); }
+
+    get appViewModel() { return this.activeLoginViewModel.appViewModel; }
+    get parent() { return this.activeLoginViewModel; }
+
+    readonly messages: Collection<KeyValuePair<ChannelMessageViewModel, ChannelMessageViewModel>> = new Collection();
+
+    private _isHistoricalView: ObservableValue<boolean> = new ObservableValue(true);
+
+    get isHistoricalView() { return this._isHistoricalView.value; }
+    set isHistoricalView(value: boolean) { this._isHistoricalView.value = value; }
+
+    @observableProperty
+    scrolledTo: ChannelViewScrollPositionModel | null = null;
+
+    @observableProperty
+    newMessagesBelowNotify: boolean = false;
+
+    get channelTitle() { return this.title; }
+
+    get channelCategory() { return "Other Channels"; }
+
+    readonly pendingSendsCount: number = 0;
+
+    //readonly messageDisplayStyle: ChannelMessageDisplayStyle = ChannelMessageDisplayStyle.FCHAT;
+
+    get messageDisplayStyle(): ChannelMessageDisplayStyle {
+        const cfgValue = this.activeLoginViewModel
+            .getConfigSettingById("messageDisplayStyle", { characterName: CharacterName.create(this.title) });
+        return cfgValue as ChannelMessageDisplayStyle;
+    }
+
+    readonly showFilterBar: boolean = false;
+
+    getConfigSettingById(id: string): any {
+        return this.activeLoginViewModel.getConfigSettingById(id, this);
+    }
+
+    getPingWordSet(): (PingLineItemDefinition & { pattern: RegExp | null })[] {
+        return [];
+    }
+    
+    isEffectiveOwner(character: CharacterName): boolean {
+        return false;
+    }
+
+    isEffectiveOp(character: CharacterName): boolean {
+        return false;
+    }
+}
+
+export abstract class ChannelViewModel extends ObservableBase implements IDisposable, IChannelStreamViewModel {
     constructor(parent: ActiveLoginViewModel, title: string) {
         super();
 
@@ -88,9 +187,17 @@ export abstract class ChannelViewModel extends ObservableBase implements IDispos
     get activeLoginViewModel() { return this.parent; }
     get appViewModel() { return this.parent.appViewModel; }
 
+    readonly isHistoricalView: boolean = false;
+
     @observableProperty
     get title(): string { return this.channelState.title; }
     set title(value) { this.channelState = { ...this.channelState, title: value }; }
+
+    get channelTitle(): string { return this.channelState.title; }
+
+    get channelCategory(): string { return "Other Channels"; }
+
+    readonly showFilterBar: boolean = true;
 
     abstract get collectiveName(): string;
 
@@ -515,7 +622,7 @@ export abstract class ChannelViewModel extends ObservableBase implements IDispos
     }
 
     public static convertFromLoggedMessage(
-        cvm: ChannelViewModel | null, 
+        cvm: IChannelStreamViewModel | null, 
         activeLoginViewModel: ActiveLoginViewModel,
         appViewModel: AppViewModel,
         loggedMessage: LoggedMessage): ChannelMessageViewModel | null {
@@ -859,7 +966,7 @@ const channelMessageContentStringPool = new StringPool("channelMessageContentStr
 
 let nextUniqueMessageId: number = 1;
 export class ChannelMessageViewModel extends ObservableBase implements IDisposable {
-    static createChatMessage(parent: ChannelViewModel, timestamp: Date, character: CharacterName, text: string,
+    static createChatMessage(parent: IChannelStreamViewModel, timestamp: Date, character: CharacterName, text: string,
         gender?: CharacterGender | null, onlineStatus?: OnlineStatus | null): ChannelMessageViewModel {
 
         const isSelfMessage = parent.activeLoginViewModel.characterName.equals(character);
@@ -987,7 +1094,7 @@ export class ChannelMessageViewModel extends ObservableBase implements IDisposab
 
 
     private constructor(
-        parent: ChannelViewModel | null,
+        parent: IChannelStreamViewModel | null,
         public readonly activeLoginViewModel: ActiveLoginViewModel,
         public readonly appViewModel: AppViewModel,
         public readonly timestamp: Date,
@@ -999,7 +1106,7 @@ export class ChannelMessageViewModel extends ObservableBase implements IDisposab
     ) {
         super();
         this._pooledText = channelMessageContentStringPool.create(text);
-        this._weakParent = parent ? new WeakRef<ChannelViewModel>(parent) : null;
+        this._weakParent = parent ? new WeakRef<IChannelStreamViewModel>(parent) : null;
         this.uniqueMessageId = nextUniqueMessageId++;
         this.containsPing = this.checkForPing();
     }
@@ -1018,7 +1125,7 @@ export class ChannelMessageViewModel extends ObservableBase implements IDisposab
     }
     get isDisposed() { return this._disposed; }
 
-    private readonly _weakParent: WeakRef<ChannelViewModel> | null;
+    private readonly _weakParent: WeakRef<IChannelStreamViewModel> | null;
 
     get parent() { return this._weakParent?.deref() ?? null; }
 
@@ -1159,7 +1266,7 @@ export class ChannelMessageViewModel extends ObservableBase implements IDisposab
     }
 
     static deserializeFromLog(
-        parent: ChannelViewModel | null, 
+        parent: IChannelStreamViewModel | null, 
         activeLoginViewModel: ActiveLoginViewModel,
         appViewModel: AppViewModel,
         serialized: SerializedChannelMessageViewModel) {

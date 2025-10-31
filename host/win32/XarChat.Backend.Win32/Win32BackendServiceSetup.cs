@@ -9,6 +9,7 @@ using XarChat.Backend.Features.AppSettings;
 using XarChat.Backend.Features.CrashLogWriter;
 using XarChat.Backend.Features.FileChooser;
 using XarChat.Backend.Features.IdleDetection;
+using XarChat.Backend.Features.LocaleList;
 using XarChat.Backend.Features.MemoryHinter;
 using XarChat.Backend.Features.NotificationBadge;
 using XarChat.Backend.Features.UpdateChecker;
@@ -18,6 +19,7 @@ using XarChat.Backend.Win32.CrashLogWriterCallback;
 using XarChat.Backend.Win32.DataProtection;
 using XarChat.Backend.Win32.FileChooser;
 using XarChat.Backend.Win32.IdleDetection;
+using XarChat.Backend.Win32.LocaleList;
 using XarChat.Backend.Win32.MemoryHinter;
 using XarChat.Backend.Win32.NotificationBadge;
 
@@ -45,6 +47,7 @@ namespace XarChat.Backend.Win32
             services.AddSingleton<IMemoryHinter, Win32MemoryHinter>();
             services.AddSingleton<IFileChooser, Win32FileChooser>();
             services.AddSingleton<ICrashLogWriterCallback, Win32CrashLogWriterCallback>();
+            services.AddSingleton<ILocaleList, Win32LocaleList>();
         }
     }
 }

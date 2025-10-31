@@ -1,6 +1,9 @@
 import { ChannelName } from "../shared/ChannelName";
 import { CharacterName } from "../shared/CharacterName";
+import { CancellationToken } from "../util/CancellationTokenSource";
+import { HostInterop } from "../util/HostInterop";
 import { IterableUtils } from "../util/IterableUtils";
+import { AppViewModel } from "../viewmodel/AppViewModel";
 
 export interface ConfigSchemaDefinition {
     settings: ConfigSchemaItemDefinition[];
@@ -25,7 +28,17 @@ export interface ConfigSchemaItemDefinitionItem {
     items?: ConfigSchemaItemDefinition[];
     notYetImplemented?: boolean;
     notifRouteOptions?: ConfigSchemaNotifRouteItemOptions;
+    actionButtons?: ActionButtonDefinition[];
     enableIf?: (options: EnableIfOptions) => boolean;
+}
+
+export interface ActionButtonDefinition {
+    readonly title: string;
+    readonly onClick: (args: ActionButtonClickArgs) => any;
+}
+
+export interface ActionButtonClickArgs {
+    readonly appViewModel: AppViewModel;
 }
 
 export interface ConfigSchemaNotifRouteItemOptions {
@@ -71,11 +84,11 @@ export class PingLineItemMatchStyleConvert {
         switch (style) {
             default:
             case PingLineItemMatchStyle.CONTAINS:
-                return "Contains";
+                return "When message contains";
             case PingLineItemMatchStyle.WHOLE_WORD:
-                return "Whole Word";
+                return "When message has as a whole word";
             case PingLineItemMatchStyle.REGEX:
-                return "Regex";
+                return "When message matches a regex pattern";
         }
     }
 }
@@ -129,6 +142,19 @@ function generateNumericOptions(min: number, max: number): ConfigSchemaSelectOpt
     return results;
 }
 
+const spellCheckLanguageItem: ConfigSchemaItemDefinitionItem = {
+    id: "spellCheckLanguage",
+    scope: getScopeArray(["global"]),
+    title: "Spell Check Language",
+    description: "Which language should be used to check spelling? (Changes to this setting require a restart of XarChat)",
+    type: "select",
+    selectOptions: [
+        { value: "default", displayValue: "System Default" }
+    ],
+    defaultValue: 0,
+    configBlockKey: "spellCheckLanguage"
+};
+
 export const ConfigSchema: ConfigSchemaDefinition = {
     settings: [
         {
@@ -155,6 +181,7 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     defaultValue: true,
                     configBlockKey: "useGpuAcceleration"
                 },
+                spellCheckLanguageItem,
                 {
                     id: "autoReconnect",
                     scope: getScopeArray(["global", "char"]),
@@ -190,6 +217,65 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     type: "boolean",
                     defaultValue: true,
                     configBlockKey: "eiconSearch.enabled"
+                },
+                {
+                    id: "openPmTabForIncomingTyping",
+                    scope: getScopeArray(["global"]),
+                    title: "Open a PM Tab on Typing",
+                    description: "Should XarChat open a PM tab (if you don't have one already open) when someone starts typing a private message to you?",
+                    type: "select",
+                    selectOptions: [
+                        { value: 0, displayValue: "No" },
+                        { value: 1, displayValue: "Yes" },
+                        { value: 2, displayValue: "Yes and Ping" },
+                    ],
+                    defaultValue: 0,
+                    configBlockKey: "openPmTabForIncomingTyping.enabled"
+                },
+                {
+                    scope: getScopeArray(["global"]),
+                    sectionTitle: "Links and Images",
+                    items: [
+                        {
+                            id: "showImagePreviewPopups",
+                            scope: getScopeArray(["global"]),
+                            title: "Show Image Preview Popups",
+                            description: "Show a preview of images and certain other links when the mouse pointer is hovered over them.",
+                            type: "boolean",
+                            defaultValue: true,
+                            configBlockKey: "showImagePreviewPopups"
+                        },
+                        {
+                            id: "launchImagesInternally",
+                            scope: getScopeArray(["global"]),
+                            title: "Use Internal Image Viewer",
+                            description: "Show images using XarChat's internal image viewer pane when clicked instead of opening them in your browser.",
+                            type: "boolean",
+                            defaultValue: true,
+                            configBlockKey: "launchImagesInternally"
+                        },
+                        {
+                            id: "urlLaunchExecutable",
+                            scope: getScopeArray(["global"]),
+                            title: "Custom Command for Opening Links",
+                            description: "Specify a custom command-line command to open links clicked within XarChat.  To use the default " +
+                                "behavior of opening links in your system default web browser, leave this field blank.  When specifying a " +
+                                "custom command, use \"%s\" as a placeholder for the URL of the link being opened.  If the main executable " +
+                                "to be run has spaces in its name or path, enclose it within double-quotes.",
+                            type: "text",
+                            defaultValue: "",
+                            fieldWidth: "200em",
+                            actionButtons: [
+                                {
+                                    "title": "Test URL Launch",
+                                    "onClick": (args) => {
+                                        HostInterop.launchUrl(args.appViewModel, "https://xariah.net/", true);
+                                    }
+                                }
+                            ],
+                            configBlockKey: "urlLaunchExecutable"
+                        },
+                    ]
                 },
                 {
                     scope: getScopeArray(["global"]),
@@ -281,6 +367,15 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                             type: "pinglist",
                             defaultValue: [],
                             configBlockKey: "pingWords"
+                        },
+                        {
+                            id: "flashTaskbarButton",
+                            scope: getScopeArray(["global"]),
+                            title: "Flash Taskbar Button on Pings and Unseen PMs",
+                            description: "Flash the Windows taskbar button for XarChat when a ping or unseen private message is received.",
+                            type: "boolean",
+                            defaultValue: true,
+                            configBlockKey: "flashTaskbarButton"
                         }
                     ]
                 },
@@ -672,11 +767,24 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     id: "joinFriendsAndBookmarks",
                     scope: getScopeArray(["global", "char"]),
                     title: "Show Friends and Bookmarks Together",
-                    description: "Show friends and bookmarks together in the left bar tab strip and in channel character lists.",
+                    description: "Show friends and bookmarks together in the friends tab and in channel character lists.",
                     type: "boolean",
                     defaultValue: true,
                     configBlockKey: "joinFriendsAndBookmarks"
                 },
+                {
+                    id: "friendsTabLocation",
+                    scope: getScopeArray(["global"]),
+                    title: "Friends/Bookmarks Tab Location",
+                    description: "Show the friends and bookmarks tab on which side of the interface?",
+                    type: "select",
+                    selectOptions: [
+                        { value: "left", displayValue: "Left (Default)" },
+                        { value: "right", displayValue: "Right" }
+                    ],
+                    defaultValue: "left",
+                    configBlockKey: "friendsTabLocation"
+                },                
                 {
                     id: "messageDisplayStyle",
                     scope: getScopeArray(["global", "char", "chan", "convo"]),
@@ -804,6 +912,44 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                             type: "bgcolorcontrol",
                             defaultValue: "246;36;1",
                             configBlockKey: "unseenIndicatorHighlightColor"
+                        },
+                    ]
+                },
+                {
+                    scope: getScopeArray(["global"]),
+                    sectionTitle: "Locale",
+                    description: "Configure localization settings for XarChat.",
+                    items: [
+                        {
+                            id: "locale.dateFormat",
+                            scope: getScopeArray(["global"]),
+                            title: "Date Formatting",
+                            description: "Select the format used for displaying dates.",
+                            type: "select",
+                            selectOptions: [
+                                { value: "default", displayValue: "Use Auto-Detected Setting" },
+                                { value: "mdyyyy", displayValue: "M/D/YYYY" },
+                                { value: "mmddyyyy", displayValue: "MM/DD/YYYY" },
+                                { value: "dmyyyy", displayValue: "D/M/YYYY" },
+                                { value: "ddmmyyyy", displayValue: "DD/MM/YYYY" },
+                                { value: "yyyymmdd", displayValue: "YYYY/MM/DD" }
+                            ],
+                            defaultValue: "default",
+                            configBlockKey: "locale.dateFormat"
+                        },
+                        {
+                            id: "locale.timeFormat",
+                            scope: getScopeArray(["global"]),
+                            title: "Time Formatting",
+                            description: "Select the format used for displaying times.",
+                            type: "select",
+                            selectOptions: [
+                                { value: "default", displayValue: "Use Auto-Detected Setting" },
+                                { value: "12h", displayValue: "12 Hour (AM/PM)" },
+                                { value: "24h", displayValue: "24 Hour" }
+                            ],
+                            defaultValue: "default",
+                            configBlockKey: "locale.timeFormat"
                         },
                     ]
                 },
@@ -1295,3 +1441,10 @@ export function getConfigSchemaItemById(id: string): ConfigSchemaItemDefinitionI
         return result;
     }
 }
+
+(async () => {
+    const locales = await HostInterop.getAvailableLocales(CancellationToken.NONE);
+    for (let l of locales) {
+        spellCheckLanguageItem.selectOptions?.push({ value: l.code, displayValue: l.name });
+    }
+})();

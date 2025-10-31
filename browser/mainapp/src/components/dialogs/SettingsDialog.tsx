@@ -97,6 +97,7 @@ export class SettingsDialog extends DialogComponentBase<SettingsDialogViewModel>
 
     private renderSetting(vm: SettingsDialogViewModel, setting: SettingsDialogSettingViewModel): VNode {
         let inner: VNode;
+        let actionButtonsNode: VNode | null = null;
         let settingClasses: string[] = ["setting"];
 
         if (setting instanceof SettingsDialogSectionViewModel) {
@@ -146,6 +147,23 @@ export class SettingsDialog extends DialogComponentBase<SettingsDialogViewModel>
                     inner = this.renderSettingSelect(setting);
                     break;
             }
+
+            if (setting.schema.actionButtons && setting.schema.actionButtons.length > 0) {
+                const buttonNodes: VNode[] = [];
+                for (let ab of setting.schema.actionButtons) {
+                    const buttonNode = <button classList={[ "setting-actionbuttons-button", "themed" ]} on={{
+                        "click": () => {
+                            ab.onClick({
+                               appViewModel: vm.parent 
+                            });
+                        }
+                    }}>{ab.title}</button>;
+                    buttonNodes.push(buttonNode);
+                }
+                actionButtonsNode = <div classList={[ "setting-actionbuttons" ]}>
+                    { buttonNodes }
+                </div>;
+            }
         }
         else {
             inner = <div classList={["setting-entry"]}>Unknown Setting Type: {setting.constructor.name}</div>;
@@ -181,11 +199,13 @@ export class SettingsDialog extends DialogComponentBase<SettingsDialogViewModel>
             }
         }
 
+        
         return <div classList={settingClasses} data-sectiontitle={setting.title} props={{ "inert": setting.isDisabled }}>
             <div classList={["setting-title"]}>{setting.title}</div>
             <div classList={["setting-description"]}>{setting.description}</div>
             { this.getInheritedInfoVNode(setting) }
             { inner }
+            { actionButtonsNode }
         </div>;
     }
 
@@ -238,6 +258,9 @@ export class SettingsDialog extends DialogComponentBase<SettingsDialogViewModel>
         };
         if (setting.schema.maxLength != null) {
             attrs["maxlength"] = setting.schema.maxLength.toString();
+        }
+        if (setting.schema.fieldWidth != null) {
+            attrs["style"] = `width: ${setting.schema.fieldWidth}; max-width: 100%;`;
         }
 
         return <input classList={["setting-entry", "setting-entry-text", "themed"]}

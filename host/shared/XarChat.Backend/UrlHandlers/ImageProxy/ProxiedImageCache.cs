@@ -7,6 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using XarChat.Backend.Common;
 using XarChat.Backend.Features.AppDataFolder;
 
 namespace XarChat.Backend.UrlHandlers.ImageProxy
@@ -147,7 +148,7 @@ namespace XarChat.Backend.UrlHandlers.ImageProxy
                                     {
                                         try 
                                         { 
-                                            File.Delete(cei.Filename);
+                                            await FileSystemUtil.DeleteAsync(cei.Filename);
                                             break;
                                         }
                                         catch 
@@ -229,7 +230,7 @@ namespace XarChat.Backend.UrlHandlers.ImageProxy
 
                 try
                 {
-                    File.Delete(fn);
+                    FileSystemUtil.Delete(fn);
                 }
                 catch
                 {
@@ -240,7 +241,7 @@ namespace XarChat.Backend.UrlHandlers.ImageProxy
                         {
                             try
                             {
-                                File.Delete(tfn);
+                                await FileSystemUtil.DeleteAsync(tfn);
                                 break;
                             }
                             catch
@@ -286,7 +287,7 @@ namespace XarChat.Backend.UrlHandlers.ImageProxy
             }
             foreach (var fn in Directory.GetFiles(_cacheDirectory))
             {
-                File.Delete(fn);
+                FileSystemUtil.Delete(fn);
             }
         }
 
@@ -541,7 +542,7 @@ namespace XarChat.Backend.UrlHandlers.ImageProxy
                             while (retryCount < 10)
                             {
                                 retryCount++;
-                                try { File.Delete(_fileName); break; }
+                                try { FileSystemUtil.Delete(_fileName); break; }
                                 catch { }
                                 await Task.Delay(500);
                             }

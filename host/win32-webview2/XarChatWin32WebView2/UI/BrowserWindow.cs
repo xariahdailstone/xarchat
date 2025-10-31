@@ -506,13 +506,19 @@ namespace MinimalWin32Test.UI
                     browserArguments.Add("--disable-software-rasterizer");
                 }
 
+                string? browserLanguage = null;
+                if (!String.IsNullOrWhiteSpace(appCfg.BrowserLanguage) && appCfg.BrowserLanguage != "default")
+                {
+                    browserLanguage = appCfg.BrowserLanguage;
+                }
+
                 WriteToStartupLog("BrowserWindow.OnHandleCreated - Creating CoreWebView2Environment");
                 var cenv = await Microsoft.Web.WebView2.Core.CoreWebView2Environment.CreateAsync(
                     browserExecutableFolder: null,
                     userDataFolder: Path.Combine(appDataFolder, "WebView2Data"),
                     new Microsoft.Web.WebView2.Core.CoreWebView2EnvironmentOptions(
                         additionalBrowserArguments: String.Join(" ", browserArguments),
-                        language: null,
+                        language: browserLanguage,
                         targetCompatibleBrowserVersion: null,
                         allowSingleSignOnUsingOSPrimaryAccount: false
                     ));
@@ -1114,6 +1120,14 @@ namespace MinimalWin32Test.UI
             InvokeInApplication(() =>
             {
                 if (_browserWindow != null) { _browserWindow.WindowState = WindowState.Normal; }
+            });
+        }
+
+        public void FlashWindow()
+        {
+            InvokeInApplication(() =>
+            {
+                User32.FlashWindow(this.WindowHandle);
             });
         }
 
