@@ -213,6 +213,12 @@ export class ChatChannelViewModel extends ChannelViewModel implements IHasRightB
 
     get collectiveName(): string { return `ch:${this.name.value}`; }
 
+    @observableProperty
+    userListSearchOpen: boolean = false;
+
+    @observableProperty
+    userListSearchText: string = "";
+
     override async showSettingsDialogAsync() { 
         await this.parent.appViewModel.showSettingsDialogForChannelAsync(this.parent, this);
     }

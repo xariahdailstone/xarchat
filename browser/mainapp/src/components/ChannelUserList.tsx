@@ -155,7 +155,22 @@ export class ChannelUserList extends RenderingComponentBase<ChatChannelViewModel
               </div>
             : null;
 
+        const userListSearchTextbox = vm.userListSearchOpen
+            ? <input classList={[ "search-textbox" ]} attr-type="text" attr-value={vm.userListSearchText} value-sync="true" data-canhavefocus="true" on={{
+                "change": (e) => { vm.userListSearchText = (e.target as HTMLInputElement).value; },
+                "input": (e) => { vm.userListSearchText = (e.target as HTMLInputElement).value; }
+            }}/>
+            : null;
+
         return [<>
+            <div classList={[ "search-container" ]}>
+                <div classList={[ "search-toggle-icon" ]} on={{
+                    "click": () => {
+                        vm.userListSearchOpen = !vm.userListSearchOpen;
+                    }
+                }}>S</div>
+                {userListSearchTextbox}
+            </div>
             {totalCountNode}
             {sectionNodes}
         </>, asDisposable(...disposables)];

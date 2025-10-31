@@ -23,6 +23,39 @@
     contain: layout paint;
 }
 
+.search-container {
+    display: contents;
+}
+#elMain:has(.search-textbox) .search-container {
+    display: grid;
+    grid-template-rows: auto;
+    grid-template-columns: 1fr auto;
+    grid-template-areas: "textbox icon";
+}
+
+.search-toggle-icon {
+    float: right;
+    padding-top: 10px;
+    padding-right: 10px;
+    padding-left: 5px;
+    padding-bottom: 5px;
+}
+
+#elMain:has(.search-textbox) .search-toggle-icon {
+    float: none;
+    grid-area: icon;
+}
+.search-textbox {
+    grid-area: textbox;
+    border: none;
+    background: rgba(0, 0, 0, 0.5);
+    color: white;
+    margin-top: 8px;
+    margin-left: 8px;
+    padding: 2px;
+    display: block;
+}
+
 .usercount {
     font-size: 80%;
     font-variant: small-caps;
