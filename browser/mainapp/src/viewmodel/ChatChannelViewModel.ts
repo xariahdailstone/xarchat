@@ -213,11 +213,25 @@ export class ChatChannelViewModel extends ChannelViewModel implements IHasRightB
 
     get collectiveName(): string { return `ch:${this.name.value}`; }
 
+    private _userListSearchOpen: boolean = false;
     @observableProperty
-    userListSearchOpen: boolean = false;
+    get userListSearchOpen(): boolean { return this._userListSearchOpen; }
+    set userListSearchOpen(value: boolean) {
+        if (value != this._userListSearchOpen) {
+            this._userListSearchOpen = value;
+            this.updatedSearchText();
+        }
+    }
 
+    private _userListSearchText: string = "";
     @observableProperty
-    userListSearchText: string = "";
+    get userListSearchText(): string { return this._userListSearchText; }
+    set userListSearchText(value: string) {
+        if (value != this._userListSearchText) {
+            this._userListSearchText = value;
+            this.updatedSearchText();
+        }
+    }
 
     override async showSettingsDialogAsync() { 
         await this.parent.appViewModel.showSettingsDialogForChannelAsync(this.parent, this);
@@ -358,6 +372,10 @@ export class ChatChannelViewModel extends ChannelViewModel implements IHasRightB
     private _usersLooking: ObservableKeyExtractedOrderedDictionary<CharacterName, ChatChannelUserViewModel> = new ObservableOrderedDictionaryImpl<CharacterName, ChatChannelUserViewModel>(x => x.character, CharacterName.compare);
     private _usersOther: ObservableKeyExtractedOrderedDictionary<CharacterName, ChatChannelUserViewModel> = new ObservableOrderedDictionaryImpl<CharacterName, ChatChannelUserViewModel>(x => x.character, CharacterName.compare);
 
+    private _searchExactMatch: ObservableKeyExtractedOrderedDictionary<CharacterName, ChatChannelUserViewModel> = new ObservableOrderedDictionaryImpl<CharacterName, ChatChannelUserViewModel>(x => x.character, CharacterName.compare);
+    private _searchInitialMatch: ObservableKeyExtractedOrderedDictionary<CharacterName, ChatChannelUserViewModel> = new ObservableOrderedDictionaryImpl<CharacterName, ChatChannelUserViewModel>(x => x.character, CharacterName.compare);
+    private _searchAnywhereMatch: ObservableKeyExtractedOrderedDictionary<CharacterName, ChatChannelUserViewModel> = new ObservableOrderedDictionaryImpl<CharacterName, ChatChannelUserViewModel>(x => x.character, CharacterName.compare);
+
     @observableProperty
     get usersModerators(): ObservableKeyExtractedOrderedDictionary<CharacterName, ChatChannelUserViewModel> { return this._usersModerators; }
 
@@ -369,6 +387,15 @@ export class ChatChannelViewModel extends ChannelViewModel implements IHasRightB
 
     @observableProperty
     get usersOther(): ObservableKeyExtractedOrderedDictionary<CharacterName, ChatChannelUserViewModel> { return this._usersOther; }
+
+    @observableProperty
+    get searchExactMatch(): ObservableKeyExtractedOrderedDictionary<CharacterName, ChatChannelUserViewModel> { return this._searchExactMatch; }
+
+    @observableProperty
+    get searchInitialMatch(): ObservableKeyExtractedOrderedDictionary<CharacterName, ChatChannelUserViewModel> { return this._searchInitialMatch; }
+
+    @observableProperty
+    get searchAnywhereMatch(): ObservableKeyExtractedOrderedDictionary<CharacterName, ChatChannelUserViewModel> { return this._searchAnywhereMatch; }
 
     private readonly _allUsers: SnapshottableMap<CharacterName, ChatChannelUserViewModel> = new SnapshottableMap();
     private _channelOwner: CharacterName | null = null;
@@ -460,61 +487,55 @@ export class ChatChannelViewModel extends ChannelViewModel implements IHasRightB
 
         const cs = this.parent.characterSet.getCharacterStatus(character);
 
-        let uvm = this._allUsers.get(character);
-        let isInChannel = uvm != null;
-        let isModerator = isInChannel 
+        const uvm = this._allUsers.get(character);
+        const isInChannel = uvm != null;
+        const isModerator = isInChannel 
             && (CharacterName.equals(this._channelOwner, character) || this._channelOps.has(character) || this.parent.serverOps.has(character));
-        let isWatched = isInChannel && !isModerator && (cs.isFriend || cs.isBookmark || cs.isInterest);
-        let isLooking = isInChannel && !isModerator && !isWatched && (cs.status == OnlineStatus.LOOKING);
-        let isOther = isInChannel && !isModerator && !isWatched && !isLooking;
+        const isWatched = isInChannel && !isModerator && (cs.isFriend || cs.isBookmark || cs.isInterest);
+        const isLooking = isInChannel && !isModerator && !isWatched && (cs.status == OnlineStatus.LOOKING);
+        const isOther = isInChannel && !isModerator && !isWatched && !isLooking;
 
-        const alreadyModerator = this._usersModerators.has(character);
-        const alreadyWatched = this._usersWatched.has(character);
-        const alreadyLooking = this._usersLooking.has(character);
-        const alreadyOther = this._usersOther.has(character);
+        const isSearching = this._userListSearchOpen && this._userListSearchText != "";
+        const isExactMatch = isInChannel && isSearching
+            ? CharacterName.equals(character, this._userListSearchText) 
+            : false;
+        const isInitialMatch = isInChannel && !isExactMatch && isSearching
+            ? character.canonicalValue.startsWith(this._userListSearchText.toLowerCase())
+            : false;
+        const isAnywhereMatch = isInChannel && !isExactMatch && !isInitialMatch && isSearching
+            ? (character.canonicalValue.indexOf(this._userListSearchText.toLowerCase()) >= 0)
+            : false;
 
-        if (isModerator) {
-            if (!alreadyModerator) {
-                this._usersModerators.add(uvm!);
+        const toggleContain = (
+                collection: ObservableKeyExtractedOrderedDictionary<CharacterName, ChatChannelUserViewModel>, 
+                shouldContain: boolean) => {
+            const alreadyContains = collection.has(character);
+            if (shouldContain) {
+                if (!alreadyContains) {
+                    collection.add(uvm!);
+                }
             }
-        }
-        else {
-            if (alreadyModerator) {
-                this._usersModerators.delete(character);
+            else {
+                if (alreadyContains) {
+                    collection.delete(character);
+                }
             }
-        }
+        };
 
-        if (isWatched) {
-            if (!alreadyWatched) {
-                this._usersWatched.add(uvm!);
-            }
-        }
-        else {
-            if (alreadyWatched) {
-                this._usersWatched.delete(character);
-            }
-        }
+        toggleContain(this._usersModerators, isModerator);
+        toggleContain(this._usersWatched, isWatched);
+        toggleContain(this._usersLooking, isLooking);
+        toggleContain(this._usersOther, isOther);
 
-        if (isLooking) {
-            if (!alreadyLooking) {
-                this._usersLooking.add(uvm!);
-            }
-        }
-        else {
-            if (alreadyLooking) {
-                this._usersLooking.delete(character);
-            }
-        }
+        toggleContain(this._searchExactMatch, isExactMatch);
+        toggleContain(this._searchInitialMatch, isInitialMatch);
+        toggleContain(this._searchAnywhereMatch, isAnywhereMatch);
+    }
 
-        if (isOther) {
-            if (!alreadyOther) {
-                this._usersOther.add(uvm!);
-            }
-        }
-        else {
-            if (alreadyOther) {
-                this._usersOther.delete(character);
-            }
+    private updatedSearchText() {
+        const searchText = this.userListSearchText;
+        for (let uvm of this._allUsers.values()) {
+            this.updateUserInLists(uvm.character);
         }
     }
 

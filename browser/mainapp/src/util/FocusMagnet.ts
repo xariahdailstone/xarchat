@@ -15,23 +15,23 @@ export class FocusUtil {
         let curEl: DocumentOrShadowRoot = document;
         while (curEl) {
             if (curEl.activeElement) {
-                console.log("activeel", curEl, curEl.activeElement);
+                //console.log("activeel", curEl, curEl.activeElement);
                 const activeElement = curEl.activeElement;
                 if ((activeElement as any)._sroot) {
                     curEl = (activeElement as any)._sroot as DocumentOrShadowRoot;
                 }
                 else {
                     const res = activeElement;
-                    console.log("ultimateFocus", res);
+                    //console.log("ultimateFocus", res);
                     return res;
                 }
             }
             else {
-                console.log("ultimateFocus null");
+                //console.log("ultimateFocus null");
                 return null;
             }
         }
-        console.log("ultimateFocus null");
+        //console.log("ultimateFocus null");
         return null;
     }
 }

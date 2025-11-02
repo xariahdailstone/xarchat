@@ -369,7 +369,7 @@ export class ChannelTextBox extends ComponentBase<ChannelViewModel> {
 
     canHaveFocusAwayFromTextBox(el: Element | null) {
         const sel = (document as Document).getSelection();
-        console.log("sel.type", sel?.type);
+        //console.log("sel.type", sel?.type);
         if (sel?.type == "Range") return true;
 
         return (el?.hasAttribute("data-canhavefocus") ?? false);

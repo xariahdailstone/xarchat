@@ -35,10 +35,17 @@
 
 .search-toggle-icon {
     float: right;
-    padding-top: 10px;
-    padding-right: 10px;
+    margin-top: 5px;
+    margin-right: 5px;
+    padding-top: 5px;
+    padding-right: 5px;
     padding-left: 5px;
     padding-bottom: 5px;
+    cursor: pointer;
+
+    &:hover {
+        background: var(--bg-level-2);
+    }
 }
 
 #elMain:has(.search-textbox) .search-toggle-icon {
@@ -48,12 +55,24 @@
 .search-textbox {
     grid-area: textbox;
     border: none;
-    background: rgba(0, 0, 0, 0.5);
-    color: white;
+    background: var(--bg-level-2);
+    color: var(--fg-level-2);
     margin-top: 8px;
     margin-left: 8px;
-    padding: 2px;
+    padding: 1px 4px;
     display: block;
+    outline: none;
+    border: 1px solid transparent;
+    font: inherit;
+
+    &:focus {
+        border: 1px solid var(--fg-level-2);
+    }
+}
+
+.search-toggle-icon-image {
+    max-width: 16px;
+    max-height: 16px;
 }
 
 .usercount {

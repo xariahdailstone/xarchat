@@ -13,6 +13,7 @@ import { IterableUtils } from "../util/IterableUtils.js";
 import { ObservableValue } from "../util/Observable.js";
 import { CollectionChangeEvent, CollectionChangeType, ReadOnlyObservableCollection } from "../util/ObservableCollection.js";
 import { DictionaryChangeEvent, DictionaryChangeType, ObservableKeyExtractedOrderedDictionary, ObservableOrderedDictionary } from "../util/ObservableKeyedLinkedList.js";
+import { Scheduler } from "../util/Scheduler.js";
 import { WhenChangeManager } from "../util/WhenChange.js";
 import { KeyValuePair } from "../util/collections/KeyValuePair.js";
 import { StdObservableCollectionChangeType } from "../util/collections/ReadOnlyStdObservableCollection.js";
@@ -47,6 +48,9 @@ export class ChannelUserList extends RenderingComponentBase<ChatChannelViewModel
                 { coll: vm.usersWatched, subsetAssigner: (x: CharacterSubSet | null) => this._characterSubSetWatched.value = x },
                 { coll: vm.usersLooking, subsetAssigner: (x: CharacterSubSet | null) => this._characterSubSetLooking.value = x },
                 { coll: vm.usersOther, subsetAssigner: (x: CharacterSubSet | null) => this._characterSubSetOther.value = x },
+                { coll: vm.searchExactMatch, subsetAssigner: (x: CharacterSubSet | null) => this._characterSubSetSearchExact.value = x },
+                { coll: vm.searchInitialMatch, subsetAssigner: (x: CharacterSubSet | null) => this._characterSubSetSearchInitial.value = x },
+                { coll: vm.searchAnywhereMatch, subsetAssigner: (x: CharacterSubSet | null) => this._characterSubSetSearchAnywhere.value = x },
             ]) {
 
                 const iterable = IterableUtils.asQueryable(x.coll.iterateValues()).select(kvp => kvp.key);
@@ -100,6 +104,10 @@ export class ChannelUserList extends RenderingComponentBase<ChatChannelViewModel
     private _characterSubSetLooking: ObservableValue<CharacterSubSet | null> = new ObservableValue(null);
     private _characterSubSetOther: ObservableValue<CharacterSubSet | null> = new ObservableValue(null);
 
+    private _characterSubSetSearchExact: ObservableValue<CharacterSubSet | null> = new ObservableValue(null);
+    private _characterSubSetSearchInitial: ObservableValue<CharacterSubSet | null> = new ObservableValue(null);
+    private _characterSubSetSearchAnywhere: ObservableValue<CharacterSubSet | null> = new ObservableValue(null);
+
     protected override attributeChangedCallback(name: string, oldValue?: string, newValue?: string) {
         super.attributeChangedCallback(name, oldValue, newValue);
         if (name == ATTR_SHOWTOTALCOUNT) {
@@ -130,33 +138,52 @@ export class ChannelUserList extends RenderingComponentBase<ChatChannelViewModel
         const charLinkMgr = new MassCharacterLinkManager(vm.activeLoginViewModel, vm);
         addDisposable(charLinkMgr);
 
-        const totalUserCount = this.showTotalCount ? (vm.usersModerators.length + vm.usersWatched.length + vm.usersLooking.length + vm.usersOther.length) : 0;
+        const totalUserCount = vm.usersModerators.length + vm.usersWatched.length + vm.usersLooking.length + vm.usersOther.length;
         const joinFriendsAndBookmarks = vm.getConfigSettingById("joinFriendsAndBookmarks");
+
+        const isSearching = vm.userListSearchOpen && vm.userListSearchText != "";
 
         const sectionNodes: (VNode | null)[] = [];
 
-        sectionNodes.push(this.renderSection(vm, charLinkMgr, "sec-mods", "elMods", "Moderators", this._characterSubSetModerators.value));
+        if (!isSearching) {
+            sectionNodes.push(this.renderSection(vm, charLinkMgr, "sec-mods", "elMods", "Moderators", this._characterSubSetModerators.value));
 
-        if (joinFriendsAndBookmarks) {
-            sectionNodes.push(this.renderSection(vm, charLinkMgr, "sec-watched", "elWatched", "Friends/Bookmarks", this._characterSubSetWatched.value));
+            if (joinFriendsAndBookmarks) {
+                sectionNodes.push(this.renderSection(vm, charLinkMgr, "sec-watched", "elWatched", "Friends/Bookmarks", this._characterSubSetWatched.value));
+            }
+            else {
+                sectionNodes.push(this.renderSection(vm, charLinkMgr, "sec-friends", "elFriends", "Friends", this._characterSubSetWatched.value, cs => cs.isFriend));
+                sectionNodes.push(this.renderSection(vm, charLinkMgr, "sec-bookmarks", "elBookmarks", "Bookmarks", this._characterSubSetWatched.value, cs => !cs.isFriend));
+            }
+            sectionNodes.push(this.renderSection(vm, charLinkMgr, "sec-looking", "elLooking", "Looking", this._characterSubSetLooking.value));
+
+            const othersTitle = (sectionNodes.filter(x => x != null).length == 0) ? "Everyone" : "Others";
+            sectionNodes.push(this.renderSection(vm, charLinkMgr, "sec-others", "elOthers", othersTitle, this._characterSubSetOther.value));
         }
         else {
-            sectionNodes.push(this.renderSection(vm, charLinkMgr, "sec-friends", "elFriends", "Friends", this._characterSubSetWatched.value, cs => cs.isFriend));
-            sectionNodes.push(this.renderSection(vm, charLinkMgr, "sec-bookmarks", "elBookmarks", "Bookmarks", this._characterSubSetWatched.value, cs => !cs.isFriend));
+            sectionNodes.push(this.renderSection(vm, charLinkMgr, "sec-exactmatch", "elExactMatch", "Exact Match", this._characterSubSetSearchExact.value));
+            sectionNodes.push(this.renderSection(vm, charLinkMgr, "sec-initialmatch", "elInitialMatch", "Initial Match", this._characterSubSetSearchInitial.value));
+            sectionNodes.push(this.renderSection(vm, charLinkMgr, "sec-anywherematch", "elAnywhereMatch", "Anywhere Match", this._characterSubSetSearchAnywhere.value));
         }
-        sectionNodes.push(this.renderSection(vm, charLinkMgr, "sec-looking", "elLooking", "Looking", this._characterSubSetLooking.value));
 
-        const othersTitle = (sectionNodes.filter(x => x != null).length == 0) ? "Everyone" : "Others";
-        sectionNodes.push(this.renderSection(vm, charLinkMgr, "sec-others", "elOthers", othersTitle, this._characterSubSetOther.value));
-
-        const totalCountNode = this.showTotalCount
-            ? <div key="sec-usercount" id="elUserCountContainer" classList={["usercount"]}>
-                {totalUserCount.toLocaleString()} in channel
-              </div>
-            : null;
+        let totalCountNode: VNode | null;
+        if (!isSearching) {
+            totalCountNode = this.showTotalCount
+                ? <div key="sec-usercount" id="elUserCountContainer" classList={["usercount"]}>
+                    {totalUserCount.toLocaleString()} in channel
+                </div>
+                : null;
+        }
+        else {
+            const matchCount = vm.searchExactMatch.size + vm.searchInitialMatch.size + vm.searchAnywhereMatch.size;
+            totalCountNode =
+                <div key="sec-usercount" id="elUserCountContainer" classList={["usercount"]}>
+                    {matchCount} of {totalUserCount.toLocaleString()} matches
+                </div>;
+        }
 
         const userListSearchTextbox = vm.userListSearchOpen
-            ? <input classList={[ "search-textbox" ]} attr-type="text" attr-value={vm.userListSearchText} value-sync="true" data-canhavefocus="true" on={{
+            ? <input classList={[ "search-textbox" ]} id="elSearchTextbox" attr-type="text" attr-value={vm.userListSearchText} value-sync="true" data-canhavefocus="true" on={{
                 "change": (e) => { vm.userListSearchText = (e.target as HTMLInputElement).value; },
                 "input": (e) => { vm.userListSearchText = (e.target as HTMLInputElement).value; }
             }}/>
@@ -167,8 +194,18 @@ export class ChannelUserList extends RenderingComponentBase<ChatChannelViewModel
                 <div classList={[ "search-toggle-icon" ]} on={{
                     "click": () => {
                         vm.userListSearchOpen = !vm.userListSearchOpen;
+                        if (vm.userListSearchOpen) {
+                            //console.log("scheduling AFTERFRAME search box show");
+                            Scheduler.scheduleCallback("afternextframe", () => {
+                                //console.log("AFTERFRAME search box shown");
+                                const searchTextbox = this._sroot.getElementById("elSearchTextbox");
+                                if (searchTextbox) {
+                                    searchTextbox.focus();
+                                }
+                            });
+                        }
                     }
-                }}>S</div>
+                }}><x-iconimage classList={[ "search-toggle-icon-image" ]} attr-src="assets/ui/search-icon.svg"></x-iconimage></div>
                 {userListSearchTextbox}
             </div>
             {totalCountNode}
