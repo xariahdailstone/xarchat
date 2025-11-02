@@ -4,7 +4,7 @@ const SYM_UNDERLYINGOBJ = Symbol("disposeOnFinalize.underlyingObject");
 const SYM_IDENTITYOBJ = Symbol("disposeOnFinalize.identityObject");
 
 const selfDisposeFR = new FinalizationRegistry<any>(obj => {
-    console.log("####### performing self-dispose", obj);
+    //console.log("####### performing self-dispose", obj);
      tryDispose(obj);
 });
 

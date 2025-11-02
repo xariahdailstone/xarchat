@@ -2,7 +2,8 @@ import { TypingStatus } from "../shared/TypingStatus.js";
 import { BBCodeUtils } from "../util/BBCodeUtils.js";
 import { asDisposable } from "../util/Disposable.js";
 import { EL } from "../util/EL.js";
-import { FocusMagnet } from "../util/FocusMagnet.js";
+import { EventListenerUtil } from "../util/EventListenerUtil.js";
+import { FocusMagnet, FocusUtil } from "../util/FocusMagnet.js";
 import { HTMLUtils } from "../util/HTMLUtils.js";
 import { KeyCodes } from "../util/KeyCodes.js";
 import { Scheduler } from "../util/Scheduler.js";
@@ -301,6 +302,32 @@ export class ChannelTextBox extends ComponentBase<ChannelViewModel> {
             onTextChanged: (value) => { this.viewModel!.textBoxContent = value; }
         });
 
+        this.whenConnected(() => {
+            const disposables = [];
+            let mouseIsDown = false;
+
+            disposables.push(EventListenerUtil.addDisposableEventListener(document, "mousedown", () => {
+                mouseIsDown = true;
+            }));
+            disposables.push(EventListenerUtil.addDisposableEventListener(document, "mouseup", () => {
+                mouseIsDown = false;
+                this.focusTextBox(false);
+            }));
+            disposables.push(EventListenerUtil.addDisposableEventListener(document, "focusin", (e: Event) => {
+                if (!mouseIsDown) {
+                    this.logger.logInfo("focusin on document", e.target);
+                    this.focusTextBox(false);
+                }
+            }));
+            return asDisposable(...disposables);
+        });
+
+        // elTextbox.addEventListener("blur", () => {
+        //     if (this.isConnected) {
+        //         this.focusTextBox(true);
+        //     }
+        // });
+
         elSendChat.addEventListener("click", () => this.sendChat());
         elSendAd.addEventListener("click", () => this.sendAd());
 
@@ -340,21 +367,35 @@ export class ChannelTextBox extends ComponentBase<ChannelViewModel> {
         });
     }
 
-    focusTextBox() {
-        Scheduler.scheduleNamedCallback("ChannelTextBox.focusTextBox", ["nextframe", 250], () => {
+    canHaveFocusAwayFromTextBox(el: Element | null) {
+        const sel = (document as Document).getSelection();
+        //console.log("sel.type", sel?.type);
+        if (sel?.type == "Range") return true;
 
-        //window.requestAnimationFrame(() => {
+        return (el?.hasAttribute("data-canhavefocus") ?? false);
+    }
+
+    focusTextBox(delay: boolean) {
+        if (delay) {
             // Workaround: when focusTextBox is called during viewActivated, the first RAF will have the view rendering
             // being done, which will invalidate layout/styles.  To avoid a forced reflow due to focus(), we'll wait
             // for the *next* animation frame.
-            //window.requestAnimationFrame(() => {
-                this.logger.logDebug("focusTextBox");
+            Scheduler.scheduleNamedCallback("ChannelTextBox.focusTextBox", ["nextframe", 250], () => {
+                this.focusTextBox(false);
+            });
+        }
+        else {
+            if (this.isConnected) {
+                this.logger.logInfo("focusTextBox");
                 const elTextbox = this.$("elTextbox")! as HTMLTextAreaElement;
-                if (FocusMagnet.instance.ultimateFocus != elTextbox) {
+                //if (FocusMagnet.instance.ultimateFocus != elTextbox) {
+                if (FocusUtil.instance.ultimateFocus != elTextbox &&
+                    !this.canHaveFocusAwayFromTextBox(FocusUtil.instance.ultimateFocus)) {
+
                     elTextbox.focus();
                 }
-            //});
-        });
+            }
+        }
     }
 
     private tryHandleButtonCommand(cmd: string) {
