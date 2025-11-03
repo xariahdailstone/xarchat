@@ -119,13 +119,14 @@ jobs:
         md5sum distribution.p12
 
     - id: install_asc_api_key
-      name: "Install App Store Connect API key"
+      name: "Install App Store Connect API key JSON"
       shell: bash
+      working-directory: ${{ github.workspace }}
       env:
-        APPSTORECONNECTAPIKEY: ${{ secrets.APPSTORECONNECTAPIKEY }}
+        APPSTORECONNECTAPIKEYJSON: ${{ secrets.APPSTORECONNECTAPIKEYJSON }}
       run: |
-        mkdir -p private_keys/
-        echo $APPSTORECONNECTAPIKEY | base64 --decode > private_keys/AuthKey_H3HD3ZRT43.p8 
+        echo APPSTORECONNECTAPIKEYJSON > asc.json
+
 
     - id: sign_app_bundle
       name: "Sign app bundle"
@@ -136,8 +137,7 @@ jobs:
         staple: true
         p12_file: distribution.p12
         p12_password: ${{ secrets.APPLEDISTRIBUTIONP12PASSWORD }}
-        app_store_connect_api_issuer: '59e5f6fe-b5e1-4e4b-839b-1a5362cacab3'
-        app_store_connect_api_key: 'H3HD3ZRT43'
+        app_store_connect_api_key_json_file: asc.json
 
     - id: create_dmg
       name: "Create Installer DMG"
