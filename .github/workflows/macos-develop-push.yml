@@ -138,7 +138,11 @@ jobs:
         p12_file: distribution.p12
         p12_password: ${{ secrets.DEVIDP12PASSWORD }}
         app_store_connect_api_key_json_file: asc.json
-        sign_args: "--code-signature-flags runtime"
+        sign_args: |
+          --code-signature-flags
+          runtime
+          --code-signature-flags
+          Content/MacOS/Photino.native.dylib:runtime
 
     - id: create_dmg
       name: "Create Installer DMG"
