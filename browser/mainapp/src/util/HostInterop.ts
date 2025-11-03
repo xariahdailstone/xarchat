@@ -1299,7 +1299,7 @@ export class XarHost2Interop implements IXarHost2HostInterop {
 export type ChooseLocalFileOptions = {
     title?: string | null,
     file?: string | null,
-    filters?: ({ name: string, pattern: string }[])
+    filters?: ({ name: string, extensions: string[] }[])
 }
 
 export type ConfigKeyValue = { key: string, value: (unknown | null)};

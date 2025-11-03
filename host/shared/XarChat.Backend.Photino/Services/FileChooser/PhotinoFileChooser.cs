@@ -21,42 +21,16 @@ namespace XarChat.Backend.Photino.Services.FileChooser
 
         public async Task<string?> SelectLocalFileAsync(
             string? initialFile = null, 
-            IReadOnlyList<KeyValuePair<string, string>>? filter = null, 
+            IReadOnlyList<SelectLocalFileFilterEntry>? filters = null, 
             string? dialogTitle = null, 
             CancellationToken cancellationToken = default)
         {
-            if (filter == null)
+            if (filters == null)
             {
-                filter = new List<KeyValuePair<string, string>>()
+                filters = new List<SelectLocalFileFilterEntry>()
                 {
-                    new KeyValuePair<string, string>("All Files", "*.*")
+                    new SelectLocalFileFilterEntry("All Files", [])
                 };
-            }
-
-            // For Photino, filter entries should be just the extension; but per our
-            // contract they're passed in like "*.mp3", or even "*.txt;*.pdf"...
-            // so we'll split the list by semicolon, and then remove the "*." from
-            // the start of each entry.
-
-            var pfilters = new List<(string Name, string[] Extensions)>();
-            foreach (var kvp in filter)
-            {
-                var pfname = kvp.Key;
-                var pexts = new List<string>();
-                foreach (var epart in kvp.Value.Split(';').Select(x => x.Trim()))
-                {
-                    var tepart = epart;
-                    if (tepart.StartsWith("*."))
-                    {
-                        tepart = tepart.Substring(2);
-                    }
-                    if (tepart == "*")
-                    {
-                        tepart = "";
-                    }
-                    pexts.Add(tepart);
-                }
-                pfilters.Add((pfname, pexts.ToArray()));
             }
 
             string? res = null;
@@ -66,7 +40,7 @@ namespace XarChat.Backend.Photino.Services.FileChooser
                 res = _windowControl.ShowFileChooser(
                     title: dialogTitle ?? "Select a File",
                     defaultPath: Path.GetDirectoryName(initialFile) ?? System.Environment.CurrentDirectory,
-                    filters: pfilters
+                    filters: filters.Select(f => (f.Name, f.Extensions.ToArray())).ToArray()
                 );
             });
 
