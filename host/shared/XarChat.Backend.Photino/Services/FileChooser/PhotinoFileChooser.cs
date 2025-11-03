@@ -25,6 +25,40 @@ namespace XarChat.Backend.Photino.Services.FileChooser
             string? dialogTitle = null, 
             CancellationToken cancellationToken = default)
         {
+            if (filter == null)
+            {
+                filter = new List<KeyValuePair<string, string>>()
+                {
+                    new KeyValuePair<string, string>("All Files", "*.*")
+                };
+            }
+
+            // For Photino, filter entries should be just the extension; but per our
+            // contract they're passed in like "*.mp3", or even "*.txt;*.pdf"...
+            // so we'll split the list by semicolon, and then remove the "*." from
+            // the start of each entry.
+
+            var pfilters = new List<(string Name, string[] Extensions)>();
+            foreach (var kvp in filter)
+            {
+                var pfname = kvp.Key;
+                var pexts = new List<string>();
+                foreach (var epart in kvp.Value.Split(';').Select(x => x.Trim()))
+                {
+                    var tepart = epart;
+                    if (tepart.StartsWith("*."))
+                    {
+                        tepart = tepart.Substring(2);
+                    }
+                    if (tepart == "*")
+                    {
+                        tepart = "";
+                    }
+                    pexts.Add(tepart);
+                }
+                pfilters.Add((pfname, pexts.ToArray()));
+            }
+
             string? res = null;
 
             await _windowControl.InvokeOnUIThread(() =>
@@ -32,9 +66,7 @@ namespace XarChat.Backend.Photino.Services.FileChooser
                 res = _windowControl.ShowFileChooser(
                     title: dialogTitle ?? "Select a File",
                     defaultPath: Path.GetDirectoryName(initialFile) ?? System.Environment.CurrentDirectory,
-                    filters: filter is not null
-                        ? filter.Select(f => (f.Key, new string[] { f.Value })).ToList()
-                        : [ ( "All Files", new string[] { "*" }) ]
+                    filters: pfilters
                 );
             });
 
