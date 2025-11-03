@@ -18,7 +18,7 @@ using XarChat.Backend.Linux.AppDataFolder;
 using XarChat.Backend.Mac;
 using XarChat.Backend.Mac.AppDataFolder;
 #endif
-using XarChatLinuxPhotino.WindowControl;
+using XarChat.Backend.Photino.Services.WindowControl;
 
 namespace XarChatLinuxPhotino
 {

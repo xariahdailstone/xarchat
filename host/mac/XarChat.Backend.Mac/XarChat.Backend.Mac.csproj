@@ -9,6 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\shared\XarChat.Backend.Photino\XarChat.Backend.Photino.csproj" />
     <ProjectReference Include="..\..\shared\XarChat.Backend\XarChat.Backend.csproj" />
   </ItemGroup>
 

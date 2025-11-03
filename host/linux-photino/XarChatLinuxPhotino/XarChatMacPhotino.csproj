@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net9.0</TargetFramework>
@@ -26,6 +26,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\shared\XarChat.AutoUpdate\XarChat.AutoUpdate.csproj" />
+    <ProjectReference Include="..\..\shared\XarChat.Backend.Photino\XarChat.Backend.Photino.csproj" />
     <ProjectReference Include="..\..\shared\XarChat.Backend\XarChat.Backend.csproj" />
     <ProjectReference Include="..\..\mac\XarChat.Backend.Mac\XarChat.Backend.Mac.csproj" />
   </ItemGroup>

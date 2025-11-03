@@ -1,10 +1,22 @@
-
-using Photino.NET;
+﻿using Photino.NET;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 using XarChat.Backend.Features.WindowControl;
 
-namespace XarChatLinuxPhotino.WindowControl
+namespace XarChat.Backend.Photino.Services.WindowControl
 {
-    public class PhotinoWindowControl : IWindowControl
+    public interface IPhotinoWindowControl : IWindowControl
+    {
+        PhotinoWindow PhotinoWindow { get; }
+
+        string? ShowFileChooser(
+            string title, string defaultPath, IReadOnlyList<(string Name, string[] Extensions)> filters);
+    }
+
+    public class PhotinoWindowControl : IPhotinoWindowControl
     {
         private readonly PhotinoWindow _photinoWindow;
 
@@ -14,6 +26,8 @@ namespace XarChatLinuxPhotino.WindowControl
         }
 
         public IServiceProvider? ServiceProvider { get; set; }
+
+        public PhotinoWindow PhotinoWindow => _photinoWindow;
 
         public void ApplicationReady()
         {
@@ -57,26 +71,23 @@ namespace XarChatLinuxPhotino.WindowControl
             _photinoWindow.Minimized = true;
         }
 
-        public Task RestartGPUProcess()
-        {
-            return Task.CompletedTask;
-        }
+        public Task RestartGPUProcess() => Task.CompletedTask;
 
         public void Restore()
         {
-            _photinoWindow.Maximized = false;
             _photinoWindow.Minimized = false;
+            _photinoWindow.Maximized = false;
         }
 
         public Task SetBrowserZoomLevelAsync(float zoomLevel)
         {
-            return Task.CompletedTask; // TODO:
+            // TODO:
+            return Task.CompletedTask;
         }
 
         public void ShowDevTools()
         {
             _photinoWindow.ShowDevTools();
-            //_photinoWindow.DevToolsEnabled = true;
         }
 
         public void StylesheetChanged(string stylesheetPath)
@@ -84,5 +95,22 @@ namespace XarChatLinuxPhotino.WindowControl
             // TODO:
         }
 
+        public string? ShowFileChooser(
+            string title, string defaultPath, IReadOnlyList<(string Name, string[] Extensions)> filters)
+        {
+            var result = _photinoWindow.ShowOpenFile(
+                title: title,
+                defaultPath: defaultPath,
+                multiSelect: false,
+                filters: filters.ToArray());
+            if (result is not null && result.Length > 0)
+            {
+                return result[0];
+            }
+            else
+            {
+                return null;
+            }
+        }
     }
 }
