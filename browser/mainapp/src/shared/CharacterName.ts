@@ -33,7 +33,9 @@ export class CharacterName {
         return newValue;
     }
 
-    static equals(a: (CharacterName | null | undefined), b: (CharacterName | null | undefined)): boolean {
+    static equals(a: (CharacterName | null | undefined | string), b: (CharacterName | null | undefined | string)): boolean {
+        if (typeof a == "string") { a = CharacterName.create(a); }
+        if (typeof b == "string") { b = CharacterName.create(b); }
         if (a == null && b == null) { return true; }
         if (a == null || b == null) { return false; }
         return a.equals(b);

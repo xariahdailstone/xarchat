@@ -14,6 +14,8 @@ class DoublyLinkedList<T> {
     private _head: DoublyLinkedListNode<T> | null = null;
     private _tail: DoublyLinkedListNode<T> | null = null;
 
+    any() { return this._head != null; }
+
     peek() { return this._head ? this._head.item : null; }
     shift() {
         if (this._head) {
@@ -67,14 +69,14 @@ interface CancellableTickQueueItem extends TickQueueItem {
 class SchedulerImpl {
     constructor() {
         this._afterFrameChannel = new MessageChannel();
-        this._afterFrameChannel.port1.addEventListener("message", () => { 
+        this._afterFrameChannel.port1.onmessage = () => { 
             this._afterAnimationFrameTick();
-        });
+        };
 
         this._immediateChannel = new MessageChannel();
-        this._immediateChannel.port1.addEventListener("message", ev => {
+        this._immediateChannel.port1.onmessage = ev => {
             this._processImmediateMessage(ev.data);
-        });
+        };
     }
 
     private readonly _logger: Logger = Logging.createLogger("SchedulerImpl");
@@ -98,7 +100,15 @@ class SchedulerImpl {
             this._thisAnimationTickQueue = this._nextAnimationTickQueue;
             this._nextAnimationTickQueue = new DoublyLinkedList();
 
-            while (this._thisAnimationTickQueue.peek()) {
+            if (this._thisAfterAnimationTickQueue == null || !this._thisAfterAnimationTickQueue.any()) {
+                this._thisAfterAnimationTickQueue = this._nextAfterAnimationTickQueue;
+                this._nextAfterAnimationTickQueue = new DoublyLinkedList();
+            }
+            else {
+                //console.log("thisafterframe queue not clear!")
+            }
+
+            while (this._thisAnimationTickQueue.any()) {
                 const item = this._thisAnimationTickQueue.shift();
                 if (item) {
                     let curCount = handledMessageNames.get(item.name) ?? 0;
@@ -115,8 +125,17 @@ class SchedulerImpl {
                     catch { }
                 }
             }
-            if (this._nextAfterAnimationTickQueue.peek()) {
-                this._afterFrameChannel.port2.postMessage(1);
+            if (this._thisAfterAnimationTickQueue.any()) {
+                //console.log("need to do afterframe work");
+                this._afterFrameChannel.port2.postMessage("");
+            }
+            else {
+                this._thisAfterAnimationTickQueue = null;
+            }
+            if (this._nextAnimationTickQueue.any() || this._nextAfterAnimationTickQueue.any()) {
+                if (!this._currentRAFHandle) {
+                    this._currentRAFHandle = window.requestAnimationFrame((ms) => this._animationFrameTick(ms));
+                }
             }
         }
         finally {
@@ -126,15 +145,25 @@ class SchedulerImpl {
 
     private _afterAnimationFrameTick() {
         try {
-            this._thisAfterAnimationTickQueue = this._nextAfterAnimationTickQueue;
-            this._nextAfterAnimationTickQueue = new DoublyLinkedList();
+            // this._thisAfterAnimationTickQueue = this._nextAfterAnimationTickQueue;
+            // this._nextAfterAnimationTickQueue = new DoublyLinkedList();
 
-            const now = performance.now();
-            while (this._thisAfterAnimationTickQueue.peek()) {
-                const item = this._thisAfterAnimationTickQueue.shift();
-                if (item) {
-                    try { item.callback(now); }
-                    catch { }
+            //console.log("handling afterframe registrations");
+
+            if (this._thisAfterAnimationTickQueue) {
+                const now = performance.now();
+                while (this._thisAfterAnimationTickQueue.any()) {
+                    const item = this._thisAfterAnimationTickQueue.shift();
+                    if (item) {
+                        try { item.callback(now); }
+                        catch { }
+                    }
+                }
+            }
+
+            if (this._nextAnimationTickQueue.any() || this._nextAfterAnimationTickQueue.any()) {
+                if (!this._currentRAFHandle) {
+                    this._currentRAFHandle = window.requestAnimationFrame((ms) => this._animationFrameTick(ms));
                 }
             }
         }
