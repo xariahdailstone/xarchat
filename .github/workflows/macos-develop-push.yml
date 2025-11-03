@@ -107,6 +107,42 @@ jobs:
         cp host/shared/photino.Native/lib/arm64/Photino.Native.dylib $APPDIR/Contents/MacOS/Photino.native.dylib
         chmod +x $APPDIR/Contents/MacOS/XarChatMacPhotino
 
+    - id: write_pem_to_file
+      name: "Write PEM to file"
+      env:
+        SIGNING_KEY_PEM: ${{ secrets.APPLEDISTRIBUTIONPEM }}
+      shell: bash
+      working-directory: ${{ github.workspace }}
+      run: |
+        echo $SIGNING_KEY_PEM | tr ' ' '\n' > distribution.pem
+
+    - id: convert_pem_to_p12
+      name: "Convert PEM to P12"
+      shell: bash
+      working-directory: ${{ github.workspace }}
+      run: |
+        openssl pkcs12 -export -in distrubtion.pem -out distribution.p12 -passin pass:${{ secrets.APPLEDISTRIBUTIONPEMPASSWORD }} -passout pass:${{ secrets.APPLEDISTRIBUTIONPEMPASSWORD }}
+
+    - id: install_asc_api_key
+      name: "Install App Store Connect API key"
+      shell: bash
+      working-directory: ${{ github.workspace }}
+      run: |
+        mkdir -p private_keys/
+        echo '${{ secrets.APPSTORECONNECTAPIKEY }}' > private_keys/AuthKey_H3HD3ZRT43.p8
+
+    - id: sign_app_bundle
+      name: "Sign app bundle"
+      uses: indygreg/apple-code-sign-action@v1
+      with:
+        input_path: preproot/XarChat.app
+        notarize: true
+        staple: true
+        p12_file: distribution.p12
+        p12_password: ${{ secrets.APPLEDISTRIBUTIONPEMPASSWORD }}
+        app_store_connect_api_issuer: '59e5f6fe-b5e1-4e4b-839b-1a5362cacab3'
+        app_store_connect_api_key: 'H3HD3ZRT43'
+
     - id: create_dmg
       name: "Create Installer DMG"
       uses: L-Super/create-dmg-actions@v1.0.3
