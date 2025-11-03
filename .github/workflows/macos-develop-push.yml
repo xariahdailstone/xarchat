@@ -121,7 +121,7 @@ jobs:
       shell: bash
       working-directory: ${{ github.workspace }}
       run: |
-        openssl pkcs12 -export -in distrubtion.pem -out distribution.p12 -passin pass:${{ secrets.APPLEDISTRIBUTIONPEMPASSWORD }} -passout pass:${{ secrets.APPLEDISTRIBUTIONPEMPASSWORD }}
+        openssl pkcs12 -export -in distribution.pem -out distribution.p12 -passin pass:${{ secrets.APPLEDISTRIBUTIONPEMPASSWORD }} -passout pass:${{ secrets.APPLEDISTRIBUTIONPEMPASSWORD }}
 
     - id: install_asc_api_key
       name: "Install App Store Connect API key"
