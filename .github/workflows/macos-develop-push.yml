@@ -111,7 +111,7 @@ jobs:
     - id: write_p12_to_file
       name: "Write P12 to file"
       env:
-        SIGNING_KEY_P12: ${{ secrets.APPLEDISTRIBUTIONP12 }}
+        SIGNING_KEY_P12: ${{ secrets.DEVIDP12 }}
       shell: bash
       working-directory: ${{ github.workspace }}
       run: |
@@ -136,8 +136,9 @@ jobs:
         notarize: true
         staple: true
         p12_file: distribution.p12
-        p12_password: ${{ secrets.APPLEDISTRIBUTIONP12PASSWORD }}
+        p12_password: ${{ secrets.DEVIDP12PASSWORD }}
         app_store_connect_api_key_json_file: asc.json
+        sign_args: "--code-signature-flags runtime"
 
     - id: create_dmg
       name: "Create Installer DMG"
