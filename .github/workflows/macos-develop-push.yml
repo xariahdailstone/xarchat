@@ -133,7 +133,7 @@ jobs:
         notarize: true
         staple: true
         p12_file: distribution.p12
-        p12_password: ${{ secrets.APPLEDISTRIBUTIONPEMPASSWORD }}
+        p12_password: ${{ secrets.APPLEDISTRIBUTIONP12PASSWORD }}
         app_store_connect_api_issuer: '59e5f6fe-b5e1-4e4b-839b-1a5362cacab3'
         app_store_connect_api_key: 'H3HD3ZRT43'
 
