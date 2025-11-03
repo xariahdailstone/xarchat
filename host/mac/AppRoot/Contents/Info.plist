@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
   <key>CFBundleExecutable</key>
-  <string>XarChatMacPhotino</string>
+  <string>XarChat</string>
   <key>CFBundleIdentifier</key>
   <string>net.xariah.xarchat</string>
   <key>CFBundleName</key>
