@@ -125,7 +125,7 @@ jobs:
       env:
         APPSTORECONNECTAPIKEYJSON: ${{ secrets.APPSTORECONNECTAPIKEYJSON }}
       run: |
-        echo APPSTORECONNECTAPIKEYJSON > asc.json
+        echo $APPSTORECONNECTAPIKEYJSON > asc.json
 
 
     - id: sign_app_bundle
