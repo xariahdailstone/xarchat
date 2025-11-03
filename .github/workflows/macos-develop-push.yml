@@ -114,7 +114,8 @@ jobs:
       shell: bash
       working-directory: ${{ github.workspace }}
       run: |
-        echo $SIGNING_KEY_PEM | tr ' ' '\n' > distribution.pem
+        echo $SIGNING_KEY_PEM > distribution.pem
+        md5sum distribution.pem
 
     - id: convert_pem_to_p12
       name: "Convert PEM to P12"
