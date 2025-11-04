@@ -196,6 +196,14 @@ jobs:
       run: |
         cd host/shared/photino.Native
         make mac-arm64
+
+    - id: install_macos_workload
+      name: "Install MacOS .NET Workload"
+      shell: bash
+      working-directory: ${{ github.workspace }}
+      run: |
+        cd host/linux-photino/XarChatLinuxPhotino
+        dotnet workload install macos
           
     - id: csharp_build
       name: "C# Build"
