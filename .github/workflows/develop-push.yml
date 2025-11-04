@@ -202,8 +202,7 @@ jobs:
       shell: bash
       working-directory: ${{ github.workspace }}
       run: |
-        cd host/linux-photino/XarChatLinuxPhotino
-        dotnet workload restore XarChatMacPhotino.csproj
+        dotnet workload restore XarChat-macphotino.sln
           
     - id: csharp_build
       name: "C# Build"
