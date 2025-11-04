@@ -37,10 +37,10 @@ namespace XarChat.Backend.Photino.Services.FileChooser
 
             await _windowControl.InvokeOnUIThread(() =>
             {
-                _windowControl.PhotinoWindow.ShowMessage(
-                    "Debug",
-                    "Showing file chooser for " +
-                    String.Join(";", filters.Select(f => String.Join(";", f.Extensions))));
+                //_windowControl.PhotinoWindow.ShowMessage(
+                //    "Debug",
+                //    "Showing file chooser for " +
+                //    String.Join(";", filters.Select(f => String.Join(";", f.Extensions))));
 
                 res = _windowControl.ShowFileChooser(
                     title: dialogTitle ?? "Select a File",
