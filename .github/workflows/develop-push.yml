@@ -213,7 +213,7 @@ jobs:
           /nr:false /T:"Restore;host\XarChatMacPhotino:Publish" /p:IsPublishing=true \
           /p:AzureBuildNumber="${{ steps.generate_buildid.outputs.buildid }}" \
           /p:Platform="Any CPU" /p:Configuration="Release" /p:VisualStudioVersion="17.0"
-        ls -lR host/linux-photino/XarChatLinuxPhotino/bin/Release/net9.0-macos15.0/osx-arm64/.
+        ls -lR host/linux-photino/XarChatLinuxPhotino/bin/Release/net9.0/osx-arm64/.
           
     - id: create_appdir
       name: "Create app dir"
