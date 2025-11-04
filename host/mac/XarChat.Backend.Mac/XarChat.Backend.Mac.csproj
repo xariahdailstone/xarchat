@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>net9.0-macos15.0</TargetFramework>
-    <RuntimeIdentifier>mac-arm64</RuntimeIdentifier>
+    <RuntimeIdentifier>osx-arm64</RuntimeIdentifier>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
