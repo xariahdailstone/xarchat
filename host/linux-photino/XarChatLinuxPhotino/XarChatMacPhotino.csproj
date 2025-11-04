@@ -17,6 +17,8 @@
     <ApplicationVersion>0.0.0</ApplicationVersion>
     
     <DefineConstants>MAC</DefineConstants>
+    
+    <AssemblyName>XarChat</AssemblyName>
   </PropertyGroup>
   <PropertyGroup Condition="$(AzureBuildNumber)==''">
     <AzureBuildNumber>none</AzureBuildNumber>
