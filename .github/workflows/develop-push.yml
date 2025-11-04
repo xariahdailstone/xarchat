@@ -214,6 +214,7 @@ jobs:
           /p:AzureBuildNumber="${{ steps.generate_buildid.outputs.buildid }}" \
           /p:Platform="Any CPU" /p:Configuration="Release" /p:VisualStudioVersion="17.0" 
           /p:PublishSingleFile=true /p:UseAppHost=true
+        ls host/linux-photino/XarChatLinuxPhotino/bin/Release/net9.0/osx-arm64/publish/.
           
     - id: create_appdir
       name: "Create app dir"

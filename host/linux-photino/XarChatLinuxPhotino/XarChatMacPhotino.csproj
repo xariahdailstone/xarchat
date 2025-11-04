@@ -11,6 +11,10 @@
     <SelfContained>true</SelfContained>
     <IncludeNativeLibrariesForSelfExtract>false</IncludeNativeLibrariesForSelfExtract>
     <PublishTrimmed>true</PublishTrimmed>
+
+    <ApplicationId>net.xariah.xarchat</ApplicationId>
+    <ApplicationTitle>XarChat</ApplicationTitle>
+    <ApplicationVersion>0.0.0</ApplicationVersion>
     
     <DefineConstants>MAC</DefineConstants>
   </PropertyGroup>
