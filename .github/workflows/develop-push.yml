@@ -197,12 +197,12 @@ jobs:
         cd host/shared/photino.Native
         make mac-arm64
 
-    - id: install_macos_workload
-      name: "Install MacOS .NET Workload"
-      shell: bash
-      working-directory: ${{ github.workspace }}
-      run: |
-        dotnet workload restore XarChat-macphotino.sln
+    # - id: install_macos_workload
+    #   name: "Install MacOS .NET Workload"
+    #   shell: bash
+    #   working-directory: ${{ github.workspace }}
+    #   run: |
+    #     dotnet workload restore XarChat-macphotino.sln
           
     - id: csharp_build
       name: "C# Build"
@@ -212,8 +212,7 @@ jobs:
         dotnet msbuild "${{ github.workspace }}\XarChat-macphotino.sln" /nologo \
           /nr:false /T:"Restore;host\XarChatMacPhotino:Publish" /p:IsPublishing=true \
           /p:AzureBuildNumber="${{ steps.generate_buildid.outputs.buildid }}" \
-          /p:Platform="Any CPU" /p:Configuration="Release" /p:VisualStudioVersion="17.0" \
-          /p:PublishSingleFile=false /p:UseAppHost=true /p:PublishAot=true
+          /p:Platform="Any CPU" /p:Configuration="Release" /p:VisualStudioVersion="17.0"
         ls -lR host/linux-photino/XarChatLinuxPhotino/bin/Release/net9.0-macos15.0/osx-arm64/.
           
     - id: create_appdir
