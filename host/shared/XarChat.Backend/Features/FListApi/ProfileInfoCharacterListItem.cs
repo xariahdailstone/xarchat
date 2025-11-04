@@ -5,9 +5,9 @@ namespace XarChat.Backend.Features.FListApi
     public class ProfileInfoCharacterListItem
     {
         [JsonPropertyName("id")]
-        public int Id { get; set; }
+        public required int Id { get; set; }
 
         [JsonPropertyName("name")]
-        public string Name { get; set; }
+        public required string Name { get; set; }
     }
 }

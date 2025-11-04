@@ -5,7 +5,7 @@ namespace XarChat.Backend.Features.FListApi
     public class ProfileFieldsInfoList
     {
         [JsonPropertyName("info")]
-        public ProfileFieldsInfoListInner Info { get; set; }
+        public required ProfileFieldsInfoListInner Info { get; set; }
     }
 
     public class PartnerSearchFieldsDefinitions

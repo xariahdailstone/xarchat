@@ -18,7 +18,7 @@ namespace Microsoft.WindowsAPICodePack.Taskbar
         // Best practice recommends defining a private object to lock on
         private static object _syncLock = new object();
 
-        private static TaskbarManager _instance;
+        private static TaskbarManager? _instance = null;
         /// <summary>
         /// Represents an instance of the Windows Taskbar
         /// </summary>
@@ -46,13 +46,13 @@ namespace Microsoft.WindowsAPICodePack.Taskbar
         /// </summary>
         /// <param name="icon">The overlay icon</param>
         /// <param name="accessibilityText">String that provides an alt text version of the information conveyed by the overlay, for accessibility purposes</param>
-        public void SetOverlayIcon(System.Drawing.Icon icon, string accessibilityText)
+        public void SetOverlayIcon(System.Drawing.Icon? icon, string? accessibilityText)
         {
             Console.WriteLine("SetOverlayIcon OwnerHandle = " + OwnerHandle.ToInt64().ToString());
             TaskbarList.Instance.SetOverlayIcon(
                 OwnerHandle,
                 icon != null ? icon.Handle : IntPtr.Zero,
-                accessibilityText);
+                accessibilityText ?? "");
         }
 
         /// <summary>

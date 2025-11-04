@@ -72,7 +72,7 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.ConfigData
             await this.SetConfigDataAsync(args.Key, args.Value, cancellationToken);
         }
 
-        private async Task SetConfigDataAsync(string key, JsonNode value, CancellationToken cancellationToken)
+        private async Task SetConfigDataAsync(string key, JsonNode? value, CancellationToken cancellationToken)
         {
             var appConfig = _appConfiguration;
             var changeMetadata = new Dictionary<string, object?>

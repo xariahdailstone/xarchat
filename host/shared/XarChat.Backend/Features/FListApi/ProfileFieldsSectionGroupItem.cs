@@ -5,13 +5,13 @@ namespace XarChat.Backend.Features.FListApi
     public class ProfileFieldsSectionGroupItem
     {
         [JsonPropertyName("id")]
-        public long Id { get; set; }
+        public required long Id { get; set; }
 
         [JsonPropertyName("name")]
-        public string Name { get; set; }
+        public required string Name { get; set; }
 
         [JsonPropertyName("type")]
-        public string Type { get; set; }
+        public required string Type { get; set; }
 
         [JsonPropertyName("list")]
         public List<string>? List { get; set; }

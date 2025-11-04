@@ -140,7 +140,7 @@ namespace XarChat.Backend.Features.AppConfiguration.Impl
             {
                 if (handledKeys.Contains(kvp.Key)) continue;
 
-                JsonNode v;
+                JsonNode? v;
                 if (!oldAcd.TryGetValue(kvp.Key, out v))
                 {
                     v = (JsonNode)JsonNode.Parse("null")!;
@@ -158,9 +158,9 @@ namespace XarChat.Backend.Features.AppConfiguration.Impl
             return ((a?.ToJsonString() ?? "null") == (b?.ToJsonString() ?? "null"));
         }
 
-        private void TriggerChange(string key, JsonNode value, Dictionary<string, object?>? changeMetadata)
+        private void TriggerChange(string key, JsonNode? value, Dictionary<string, object?>? changeMetadata)
         {
-            var cbs = new List<Action<string, JsonNode, Dictionary<string, object?>?>>();
+            var cbs = new List<Action<string, JsonNode?, Dictionary<string, object?>?>>();
             lock (_valueChangedCallbacks)
             {
                 cbs = _valueChangedCallbacks.Values.ToList();
@@ -173,8 +173,8 @@ namespace XarChat.Backend.Features.AppConfiguration.Impl
             }
         }
 
-        private readonly Dictionary<object, Action<string, JsonNode, Dictionary<string, object?>?>> _valueChangedCallbacks
-            = new Dictionary<object, Action<string, JsonNode, Dictionary<string, object?>?>>();
+        private readonly Dictionary<object, Action<string, JsonNode?, Dictionary<string, object?>?>> _valueChangedCallbacks
+            = new Dictionary<object, Action<string, JsonNode?, Dictionary<string, object?>?>>();
 
         public IDisposable OnValueChanged(Action<string, JsonNode?, Dictionary<string, object?>?> callback)
         {

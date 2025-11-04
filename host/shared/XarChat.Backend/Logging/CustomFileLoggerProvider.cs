@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using XarChat.Backend.Common;
 
 namespace XarChat.Backend.Logging
 {
@@ -41,8 +42,9 @@ namespace XarChat.Backend.Logging
         }
 
         public IDisposable BeginScope<TState>(TState state)
+            where TState : notnull
         {
-            return null;
+            return ActionDisposable.Null;
         }
 
         public bool IsEnabled(LogLevel logLevel)
@@ -57,8 +59,8 @@ namespace XarChat.Backend.Logging
             LogLevel logLevel,
             EventId eventId,
             TState state,
-            Exception exception,
-            Func<TState, Exception, string> formatter)
+            Exception? exception,
+            Func<TState, Exception?, string> formatter)
         {
             // Ensure that only information level and higher logs are recorded
             if (!IsEnabled(logLevel))

@@ -5,9 +5,9 @@ namespace XarChat.Backend.Features.FListApi
     public class KinkListGroup
     {
         [JsonPropertyName("group")]
-        public string Group { get; set; }
+        public required string Group { get; set; }
 
         [JsonPropertyName("items")]
-        public List<KinkListGroupItem> Items { get; set; }
+        public required List<KinkListGroupItem> Items { get; set; }
     }
 }

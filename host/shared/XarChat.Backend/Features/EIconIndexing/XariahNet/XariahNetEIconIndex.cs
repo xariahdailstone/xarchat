@@ -231,7 +231,7 @@ namespace XarChat.Backend.Features.EIconIndexing.XariahNet
 
         private class EIconSearchResults : IEIconSearchResults
         {
-            public IReadOnlyList<IEIconInfo> Results { get; set; }
+            public required IReadOnlyList<IEIconInfo> Results { get; set; }
 
             public required IReadOnlyDictionary<string, long> SearchTimings { get; set; }
 		}

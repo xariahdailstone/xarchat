@@ -12,7 +12,7 @@ namespace Microsoft.WindowsAPICodePack.Taskbar
     {
         private static object _syncLock = new object();
 
-        private static ITaskbarList4 _taskbarList;
+        private static ITaskbarList4? _taskbarList = null;
         internal static ITaskbarList4 Instance
         {
             get
@@ -50,7 +50,7 @@ namespace Microsoft.WindowsAPICodePack.Taskbar
         {
             [DllImport("ole32.Dll")]
             static public extern uint CoCreateInstance(ref Guid clsid,
-               [MarshalAs(UnmanagedType.IUnknown)] object inner,
+               [MarshalAs(UnmanagedType.IUnknown)] object? inner,
                uint context,
                ref Guid uuid,
                out IntPtr rReturnedComObject);
