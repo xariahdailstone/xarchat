@@ -83,28 +83,28 @@ namespace XarChat.Backend.Features.ChatLogging
 
     public class SearchLogsForCharacterCriterion : SearchWhoSpecCriterion
     { 
-        public string CharacterName { get; set; }
+        public required string CharacterName { get; set; }
     }
 
     public abstract class SearchStreamSpecCriterion : SearchCriterion { }
 
     public class SearchPrivateMessagesWithCriterion : SearchStreamSpecCriterion
     {
-        public string MyCharacterName { get; set; }
+        public required string MyCharacterName { get; set; }
 
-        public string InterlocutorCharacterName { get; set; }
+        public required string InterlocutorCharacterName { get; set; }
     }
 
     public class SearchInChannelCriterion : SearchStreamSpecCriterion
     {
-        public string ChannelTitle { get; set; }
+        public required string ChannelTitle { get; set; }
     }
 
     public abstract class SearchTextSpecCriterion : SearchCriterion { }
 
     public class SearchContainsTextCriterion : SearchTextSpecCriterion
     {
-        public string SearchText { get; set; }
+        public required string SearchText { get; set; }
     }
 
     public class SearchTimeSpecCriterion : SearchCriterion

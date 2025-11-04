@@ -385,9 +385,9 @@ namespace XarChat.Backend
             services.AddXCHostCommandHandler<FlashWindowCommandHandler>("flashWindow");
         }
 
-        private object _concurrentCountLock = new object();
-        private int _concurrentRequestCount = 0;
-        private int _concurrentHighwater = 0;
+        //private object _concurrentCountLock = new object();
+        //private int _concurrentRequestCount = 0;
+        //private int _concurrentHighwater = 0;
 
         private void Configure(Action<string> startupLogWriter, WebApplication app)
         {
@@ -453,7 +453,7 @@ namespace XarChat.Backend
                     {
                         var afs = httpContext.RequestServices.GetRequiredService<IAppFileServer>();
                         var result = await afs.HandleRequestAsync(relPath, cancellationToken);
-                        httpContext.Response.Headers.Add("Cache-Control", "no-cache, no-store");
+                        httpContext.Response.Headers.Append("Cache-Control", "no-cache, no-store");
                         return result;
                     }
                     catch (Exception ex)
@@ -514,11 +514,11 @@ namespace XarChat.Backend
                 //certificate.FriendlyName = commonName;
 
                 // Return the PFX exported version that contains the key
-                return new X509Certificate2(
+                
+                return X509CertificateLoader.LoadPkcs12(
                     certificate.Export(X509ContentType.Pfx, password),
                     password,
                     X509KeyStorageFlags.UserKeySet);
-                //X509KeyStorageFlags.MachineKeySet);
             }
         }
     }

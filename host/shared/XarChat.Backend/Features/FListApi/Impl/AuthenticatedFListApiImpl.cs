@@ -127,17 +127,18 @@ namespace XarChat.Backend.Features.FListApi.Impl
                 await (rawResponseTapFunc is not null ? rawResponseTapFunc(json) : Task.CompletedTask);
                 throw new FListApiException(errStr);
             }
-            try
-            {
+
+            //try
+            //{
                 await (rawResponseTapFunc is not null ? rawResponseTapFunc(json) : Task.CompletedTask);
-                var result = jobj.Deserialize<T>(jsonTypeInfo); // jobj!.ToObject<T>()!;
+                var result = jobj.Deserialize<T>(jsonTypeInfo)!; // jobj!.ToObject<T>()!;
                 System.Diagnostics.Debug.WriteLine($"API returned result");
                 return result;
-            }
-            catch (Exception ex)
-            {
-                throw;
-            }
+            //}
+            //catch (Exception ex)
+            //{
+            //    throw;
+            //}
         }
 
         public async Task AddBookmarkAsync(string name, CancellationToken cancellationToken)

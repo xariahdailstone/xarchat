@@ -5,21 +5,21 @@ namespace XarChat.Backend.Features.FListApi
     public class ProfileInfoImage
     {
         [JsonPropertyName("description")]
-        public string Description { get; set; }
+        public required string Description { get; set; }
 
         [JsonPropertyName("extension")]
-        public string Extension { get; set; }
+        public required string Extension { get; set; }
 
         [JsonPropertyName("height")]
-        public string Height { get; set; }
+        public required string Height { get; set; }
 
         [JsonPropertyName("image_id")]
-        public string ImageId { get; set; }
+        public required string ImageId { get; set; }
 
         [JsonPropertyName("sort_order")]
-        public string SortOrder { get; set; }
+        public required string SortOrder { get; set; }
 
         [JsonPropertyName("width")]
-        public string Width { get; set; }
+        public required string Width { get; set; }
     }
 }

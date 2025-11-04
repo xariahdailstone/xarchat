@@ -144,7 +144,7 @@ namespace XarChat.Backend.Features.FListApi.Impl
             var fn = $"httpdump-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}.log";
             using var f = File.CreateText(fn);
             f.WriteLine("===== REQUEST ====");
-            f.WriteLine($"{req.Method} {req.RequestUri.ToString()}");
+            f.WriteLine($"{req.Method} {req.RequestUri?.ToString()}");
             foreach (var hdr in req.Headers)
             {
                 foreach (var hdrv in hdr.Value)

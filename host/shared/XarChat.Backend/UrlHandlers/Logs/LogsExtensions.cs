@@ -117,7 +117,8 @@ namespace XarChat.Backend.UrlHandlers.Logs
             }
             else if (request.Query.TryGetValue("pm", out var pmStrs))
             {
-                sc.StreamSpec = new SearchPrivateMessagesWithCriterion() { InterlocutorCharacterName = pmStrs.First()!.Trim() };
+                // TODO: support mycharactername!
+                //sc.StreamSpec = new SearchPrivateMessagesWithCriterion() { InterlocutorCharacterName = pmStrs.First()!.Trim() };
             }
 
             if (request.Query.TryGetValue("text", out var txtStrs))

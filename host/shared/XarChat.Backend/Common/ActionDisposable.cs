@@ -8,6 +8,8 @@ namespace XarChat.Backend.Common
 {
     public class ActionDisposable : IDisposable
     {
+        public static ActionDisposable Null => new ActionDisposable(() => { });
+
         private readonly Action _action;
         private bool _disposed = false;
 
