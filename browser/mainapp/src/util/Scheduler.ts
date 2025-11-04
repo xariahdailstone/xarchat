@@ -289,11 +289,16 @@ class SchedulerImpl {
                 }
             case "idle":
                 {
-                    const h = window.requestIdleCallback(() => {
-                        const now = performance.now();
-                        callback(now);
-                    });
-                    return () => window.cancelIdleCallback(h);
+                    if (window.requestIdleCallback) {
+                        const h = window.requestIdleCallback(() => {
+                            const now = performance.now();
+                            callback(now);
+                        });
+                        return () => window.cancelIdleCallback(h);
+                    }
+                    else {
+                        return this.singleScheduleCallbackInternal(name, 1, callback);
+                    }
                 }
             default:
                 {

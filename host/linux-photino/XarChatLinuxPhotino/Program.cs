@@ -18,7 +18,7 @@ using XarChat.Backend.Linux.AppDataFolder;
 using XarChat.Backend.Mac;
 using XarChat.Backend.Mac.AppDataFolder;
 #endif
-using XarChatLinuxPhotino.WindowControl;
+using XarChat.Backend.Photino.Services.WindowControl;
 
 namespace XarChatLinuxPhotino
 {
@@ -98,7 +98,12 @@ namespace XarChatLinuxPhotino
             window.Load($"https://localhost:{assetPortNumber}/app/index.html" +
                 $"?XarHostMode=2" +
                 $"&ClientVersion=0.0.0.0" +
+#if LINUX
                 $"&ClientPlatform=linux-x64" +
+#endif
+#if MAC
+                $"&ClientPlatform=macos-arm64" +
+#endif
                 $"&ClientBranch=unknown" +
                 $"&devmode=true" +
                 $"&wsport={wsPortNumber}");

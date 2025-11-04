@@ -1,7 +1,7 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
     <RuntimeIdentifier>osx-arm64</RuntimeIdentifier>
     <Platforms>AnyCPU</Platforms>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -26,6 +26,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\shared\XarChat.AutoUpdate\XarChat.AutoUpdate.csproj" />
+    <ProjectReference Include="..\..\shared\XarChat.Backend.Photino\XarChat.Backend.Photino.csproj" />
     <ProjectReference Include="..\..\shared\XarChat.Backend\XarChat.Backend.csproj" />
     <ProjectReference Include="..\..\mac\XarChat.Backend.Mac\XarChat.Backend.Mac.csproj" />
   </ItemGroup>
@@ -48,7 +49,7 @@
   </ItemGroup>
 
   <Target Name="PreBuild" BeforeTargets="PreBuildEvent">
-    <Exec Command="./UpdateAssemblyVersionInfo.sh -AzureBuildNumber $(AzureBuildNumber)&#xD;&#xA;./CreateContentZip.sh -AzureBuildNumber $(AzureBuildNumber)" />
+    <Exec Command="pwsh ./UpdateAssemblyVersionInfo.ps1 -AzureBuildNumber $(AzureBuildNumber)&#xD;&#xA;pwsh ./CreateContentZip.ps1 -AzureBuildNumber $(AzureBuildNumber)" />
   </Target>
 
 </Project>

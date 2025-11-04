@@ -77,6 +77,12 @@ using XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.GetLocaleList;
 using XarChat.Backend.Logging;
 using XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.AppSettings;
 using XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.FlashWindow;
+using XarChat.Backend.Features.WindowControl;
+using XarChat.Backend.Features.AppDataFolder;
+using XarChat.Backend.Features.IdleDetection;
+using XarChat.Backend.Features.NotificationBadge;
+using XarChat.Backend.Features.FileChooser;
+using XarChat.Backend.Features.LocaleList;
 
 namespace XarChat.Backend
 {
@@ -325,6 +331,14 @@ namespace XarChat.Backend
             services.AddSingleton<ICommandableWindowRegistry, CommandableWindowRegistry>();
 
             _backendServiceSetup.ConfigureServices(services);
+            services.AddSingleton<IWindowControl>(sp => sp.GetRequiredService<IRequiredServicesProvider>().WindowControl);
+            services.AddSingleton<IAppDataFolder>(sp => sp.GetRequiredService<IRequiredServicesProvider>().AppDataFolder);
+            services.AddSingleton<IIdleDetectionManager>(sp => sp.GetRequiredService<IRequiredServicesProvider>().IdleDetectionManager);
+            services.AddSingleton<INotificationBadgeManager>(sp => sp.GetRequiredService<IRequiredServicesProvider>().NotificationBadgeManager);
+            services.AddSingleton<IAppSettingsDataProtectionManager>(sp => sp.GetRequiredService<IRequiredServicesProvider>().AppSettingsDataProtectionManager);
+            services.AddSingleton<IFileChooser>(sp => sp.GetRequiredService<IRequiredServicesProvider>().FileChooser);
+            services.AddSingleton<ICrashLogWriterCallback>(sp => sp.GetRequiredService<IRequiredServicesProvider>().CrashLogWriterCallback);
+            services.AddSingleton<ILocaleList>(sp => sp.GetRequiredService<IRequiredServicesProvider>().LocaleList);
 
             if (!services.Any(sd => sd.ServiceType == typeof(IMemoryHinter)))
             {

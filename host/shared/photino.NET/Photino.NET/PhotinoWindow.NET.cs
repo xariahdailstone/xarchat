@@ -1137,7 +1137,7 @@ public partial class PhotinoWindow
                 if (_nativeInstance == IntPtr.Zero)
                     _startupParameters.Topmost = value;
                 else
-                    Invoke(() => Photino_SetTopmost(_nativeInstance, value ? 1 : 0));
+                    Invoke(() => Photino_SetTopmost(_nativeInstance, value));
             }
         }
     }

@@ -28,3 +28,4 @@
   * You should not use this unless trying to diagnose a problem, the log files can be quite large.
 * Added the ability to search the list of users currently in a channel (hit the magnifying glass at
   the top of the user list).
+* Added preliminary MacOS Build

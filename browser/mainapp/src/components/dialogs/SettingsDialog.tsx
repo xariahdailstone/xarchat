@@ -518,8 +518,7 @@ export class SettingsDialog extends DialogComponentBase<SettingsDialogViewModel>
                                 title: `Choose Audio File`,
                                 file: curFileName,
                                 filters: [
-                                    { name: "MP3 Files (*.mp3)", pattern: "*.mp3" },
-                                    { name: "All Files (*.*)", pattern: "*.*" },
+                                    { name: "MP3 Files", extensions: [ "mp3" ] }
                                 ]
                             });
                             if (fn) {

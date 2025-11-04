@@ -11,10 +11,12 @@ import { AppViewModel } from "./viewmodel/AppViewModel.js";
 import { AppInitializeViewModel } from "./viewmodel/dialogs/AppInitializeViewModel.js";
 import { registerDebuggingFunctions } from "./util/debugging/DebugUtils.js";
 
+polyfillRequestIdleCallback();
+
 registerDebuggingFunctions();
 
 hookRequestAnimationFrame();
-
+    
 function onReady(func: Function) {
     if (/complete|interactive|loaded/.test(document.readyState)) {
         func();
@@ -42,8 +44,6 @@ onReady(async () => {
     elMain.id = "elMain";
     document.body.insertBefore(elMain, document.body.firstChild);
 
-    polyfillRequestIdleCallback();
-    
     //alert("in main.onReady");
     const cb = await HostInteropConfigBlock.createAsync();
 
