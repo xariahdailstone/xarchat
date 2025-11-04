@@ -2,7 +2,7 @@ name: "MacOS develop push"
 
 on:
   push:
-    branches: [ "develop", "master", "feature/macos-build" ]
+    branches: [ "develop", "master" ]
   workflow_dispatch: {}
   pull_request:
     branches: [ "develop" ]
@@ -129,6 +129,7 @@ jobs:
 
 
     - id: sign_app_bundle
+      if: ${{ github.ref_name == 'master' }}
       name: "Sign app bundle"
       uses: indygreg/apple-code-sign-action@v1
       with:
