@@ -3,10 +3,22 @@ name: "develop push"
 on:
   push:
     branches: [ "develop", "master" ]
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      produce_artifacts:
+        type: boolean
+        description: "Should the build upload artifacts?"
+      sign_macos:
+        type: boolean
+        description: "Should the MacOS build sign its app file?"
   pull_request:
     branches: [ "develop" ]
 
+env:
+  is_pull_request: ${{ github.event.action == 'pull_request' }}
+  is_push: ${{ github.event.action == 'push' }}
+  should_produce_artifacts: ${{ github.event.action == 'push' || inputs.produce_artifacts }}
+  should_sign_macos: ${{ github.event.action == 'push' || inputs.sign_macos }}
 
 jobs:
   build-windows-amd64:
@@ -251,7 +263,7 @@ jobs:
 
 
     - id: sign_app_bundle
-      if: ${{ github.ref_name == 'master' }}
+      if: ${{ github.ref_name == 'master' || inputs.sign_macos }}
       name: "Sign app bundle"
       uses: indygreg/apple-code-sign-action@v1
       with:
