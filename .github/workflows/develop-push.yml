@@ -217,7 +217,7 @@ jobs:
       shell: bash
       working-directory: ${{ github.workspace }}
       run: |
-        dotnet workload install macos XarChat-macphotino.sln
+        dotnet workload install macos
           
     - id: csharp_build
       name: "C# Build"
