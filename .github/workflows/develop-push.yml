@@ -7,10 +7,13 @@ on:
     inputs:
       produce_artifacts:
         type: boolean
-        description: "Should the build upload artifacts?"
+        description: "Upload artifacts"
       sign_macos:
         type: boolean
-        description: "Should the MacOS build sign its app file?"
+        description: "MacOS sign"
+      notarize_macos:
+        type: boolean
+        description: MacOS notarize"
   pull_request:
     branches: [ "develop" ]
 
@@ -19,6 +22,7 @@ env:
   is_push: ${{ github.event_name == 'push' }}
   should_produce_artifacts: ${{ github.event_name == 'push' || inputs.produce_artifacts }}
   should_sign_macos: ${{ github.event_name == 'push' || inputs.sign_macos }}
+  should_notarize_macos: ${{ github.event_name == 'push' || inputs.notarize_macos }}
 
 jobs:
   build-windows-amd64:
@@ -267,7 +271,7 @@ jobs:
       uses: indygreg/apple-code-sign-action@v1
       with:
         input_path: preproot/XarChat.app
-        notarize: true
+        notarize: ${{ env.should_notarize_macos }}
         staple: true
         p12_file: distribution.p12
         p12_password: ${{ secrets.DEVIDP12PASSWORD }}
