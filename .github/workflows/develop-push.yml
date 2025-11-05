@@ -17,8 +17,8 @@ on:
 env:
   is_pull_request: ${{ github.event_name == 'pull_request' }}
   is_push: ${{ github.event_name == 'push' }}
-  should_produce_artifacts: ${{ github.event_name == 'push' || inputs.produce_artifacts == 'true' }}
-  should_sign_macos: ${{ github.event_name == 'push' || inputs.sign_macos == 'true' }}
+  should_produce_artifacts: ${{ github.event_name == 'push' || inputs.produce_artifacts }}
+  should_sign_macos: ${{ github.event_name == 'push' || inputs.sign_macos }}
 
 jobs:
   build-windows-amd64:
