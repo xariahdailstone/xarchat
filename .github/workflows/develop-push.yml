@@ -231,7 +231,8 @@ jobs:
           /p:TargetFramework=net9.0-macos15.0 \
           /p:UseAppHost=true /p:PublishSingleFile=true /p:SelfContained=true \
           /p:ApplicationId=net.xariah.xarchat /p:ApplicationTitle="XarChat" /p:ApplicationVersion="0.0.0" \
-          /p:ApplicationDisplayVersion="0.0.0" \
+          /p:ApplicationDisplayVersion="0.0.0"
+
         ls -lR host/linux-photino/XarChatLinuxPhotino/bin/Release/net9.0/osx-arm64/.
           
     - id: create_appdir
