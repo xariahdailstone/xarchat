@@ -17,8 +17,8 @@ on:
 env:
   is_pull_request: ${{ github.event_name == 'pull_request' }}
   is_push: ${{ github.event_name == 'push' }}
-  should_produce_artifacts: ${{ github.event_name == 'push' || inputs.produce_artifacts }}
-  should_sign_macos: ${{ github.event_name == 'push' || inputs.sign_macos }}
+  should_produce_artifacts: ${{ github.event_name == 'push' || inputs.produce_artifacts == 'true' }}
+  should_sign_macos: ${{ github.event_name == 'push' || inputs.sign_macos == 'true' }}
 
 jobs:
   build-windows-amd64:
@@ -124,7 +124,7 @@ jobs:
 
     - id: publish_artifact
       name: "Publish Artifact"
-      if: ${{ env.should_produce_artifacts }}
+      if: ${{ env.should_produce_artifacts == 'true' }}
       uses: actions/upload-artifact@v4
       with:
         name: win32-exe
@@ -262,7 +262,7 @@ jobs:
 
 
     - id: sign_app_bundle
-      if: ${{ env.should_sign_macos }}
+      if: ${{ env.should_sign_macos == 'true' }}
       name: "Sign app bundle"
       uses: indygreg/apple-code-sign-action@v1
       with:
@@ -287,7 +287,7 @@ jobs:
 
     - id: publish_artifact_preproot
       name: "Publish Preproot Artifact"
-      if: ${{ env.should_produce_artifacts }}
+      if: ${{ env.should_produce_artifacts == 'true' }}
       uses: actions/upload-artifact@v4
       with:
         name: macos-exe
@@ -296,7 +296,7 @@ jobs:
 
     - id: publish_artifact
       name: "Publish DMG Artifact"
-      if: ${{ env.should_produce_artifacts }}
+      if: ${{ env.should_produce_artifacts == 'true' }}
       uses: actions/upload-artifact@v4
       with:
         name: macos-dmg
