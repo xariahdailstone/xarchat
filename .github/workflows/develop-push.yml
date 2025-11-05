@@ -272,7 +272,7 @@ jobs:
       with:
         input_path: preproot/XarChat.app
         notarize: ${{ env.should_notarize_macos }}
-        staple: true
+        staple: ${{ env.should_notarize_macos }}
         p12_file: distribution.p12
         p12_password: ${{ secrets.DEVIDP12PASSWORD }}
         app_store_connect_api_key_json_file: asc.json
