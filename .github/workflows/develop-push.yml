@@ -245,6 +245,7 @@ jobs:
         mkdir $PREPDIR
         mkdir $APPDIR
         cp -r host/mac/AppRoot/. $APPDIR/.
+        cp host/mac/entitlements.plist $PREPDIR
         cp host/linux-photino/XarChatLinuxPhotino/bin/Release/net9.0/osx-arm64/publish/XarChat $APPDIR/Contents/MacOS/XarChat
         cp host/shared/photino.Native/lib/arm64/Photino.Native.dylib $APPDIR/Contents/MacOS/Photino.native.dylib
         rm $APPDIR/Contents/MacOS/dir.txt
@@ -286,8 +287,8 @@ jobs:
           runtime
           --code-signature-flags
           Contents/MacOS/Photino.native.dylib:runtime
-#          --entitlements-xml-file
-#          Contents/entitlements.plist
+          --entitlements-xml-file
+          entitlements.plist
 
     - id: create_dmg
       name: "Create Installer DMG"

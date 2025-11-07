@@ -50,8 +50,8 @@
     </Content>
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\..\mac\AppRoot\Contents\entitlements.plist" Link="entitlements.plist" />
     <None Include="..\..\mac\AppRoot\Contents\Info.plist" Link="Info.plist" />
+    <None Include="..\..\mac\entitlements.plist" Link="entitlements.plist" />
   </ItemGroup>
 
   <Target Name="PreBuild" BeforeTargets="PreBuildEvent">
