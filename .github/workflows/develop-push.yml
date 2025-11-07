@@ -286,7 +286,7 @@ jobs:
           runtime
           --code-signature-flags
           Contents/MacOS/Photino.native.dylib:runtime
-          --entitlements
+          --entitlements-xml-file
           Contents/entitlements.plist
 
     - id: create_dmg
