@@ -3,6 +3,7 @@ import { CharacterName } from "../shared/CharacterName";
 import { CancellationToken } from "../util/CancellationTokenSource";
 import { HostInterop } from "../util/HostInterop";
 import { IterableUtils } from "../util/IterableUtils";
+import { PlatformUtils } from "../util/PlatformUtils";
 import { AppViewModel } from "../viewmodel/AppViewModel";
 
 export interface ConfigSchemaDefinition {
@@ -155,6 +156,7 @@ const spellCheckLanguageItem: ConfigSchemaItemDefinitionItem = {
     configBlockKey: "spellCheckLanguage"
 };
 
+const shortcutKeyCombiningPrefixString = PlatformUtils.shortcutKeyCombiningPrefixString;
 export const ConfigSchema: ConfigSchemaDefinition = {
     settings: [
         {
@@ -213,7 +215,7 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     id: "eiconSearch.enabled",
                     scope: getScopeArray(["global"]),
                     title: "EIcon Search",
-                    description: "Use Ctrl+E to open the eicon search instead of just inserting [eicon][/eicon] tags. (When disabled, Ctrl+Alt+E opens eicon search instead.)",
+                    description: `Use ${shortcutKeyCombiningPrefixString}E to open the eicon search instead of just inserting [eicon][/eicon] tags. (When disabled, ${shortcutKeyCombiningPrefixString}Alt+E opens eicon search instead.)`,
                     type: "boolean",
                     defaultValue: true,
                     configBlockKey: "eiconSearch.enabled"
@@ -804,11 +806,11 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     title: "Chat Font Size",
                     description: "",
                     descriptionByScope: {
-                        "global": "Change the size of the font in the chat message stream for channels and PM conversations. (You can change the size of everything with Ctrl+ScrollWheel.)",
-                        "char": "Change the size of the font in the chat message stream for channels and PM conversations. (You can change the size of everything with Ctrl+ScrollWheel.)",
-                        "char.chancategory": "Change the size of the font in the chat message stream for channels in this category. (You can change the size of everything with Ctrl+ScrollWheel.)",
-                        "char.chan": "Change the size of the font in the chat message stream for this channel. (You can change the size of everything with Ctrl+ScrollWheel.)",
-                        "char.convo": "Change the size of the font in the chat message stream for PM conversations with \"$CONVOCHAR$\". (You can change the size of everything with Ctrl+ScrollWheel.)"
+                        "global": `Change the size of the font in the chat message stream for channels and PM conversations. (You can change the size of everything with ${shortcutKeyCombiningPrefixString}ScrollWheel.)`,
+                        "char": `Change the size of the font in the chat message stream for channels and PM conversations. (You can change the size of everything with ${shortcutKeyCombiningPrefixString}ScrollWheel.)`,
+                        "char.chancategory": `Change the size of the font in the chat message stream for channels in this category. (You can change the size of everything with ${shortcutKeyCombiningPrefixString}ScrollWheel.)`,
+                        "char.chan": `Change the size of the font in the chat message stream for this channel. (You can change the size of everything with ${shortcutKeyCombiningPrefixString}ScrollWheel.)`,
+                        "char.convo": `Change the size of the font in the chat message stream for PM conversations with \"$CONVOCHAR$\". (You can change the size of everything with ${shortcutKeyCombiningPrefixString}ScrollWheel.)`
                     },
                     type: "select",
                     selectOptions: [

@@ -258,6 +258,7 @@
     overflow-y: auto;
     overflow-x: hidden;
     word-break: break-word;
+    -webkit-user-select: text;
     user-select: text;
 }
 

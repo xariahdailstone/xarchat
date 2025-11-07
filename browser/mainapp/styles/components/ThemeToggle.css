@@ -1,6 +1,7 @@
 
 :host {
     display: block;
+    -webkit-user-select: none;
     user-select: none;
 }
 
@@ -8,6 +9,7 @@
 
 #elMain {
     display: contents;
+    -webkit-user-select: none;
     user-select: none;
 }
 
