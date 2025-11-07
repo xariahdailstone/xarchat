@@ -21,6 +21,7 @@ import { getValueReference, ValueReference } from "../util/ValueReference.js";
 import { PopupViewModel } from "../viewmodel/popups/PopupViewModel.js";
 import { DelayedCallManager, DelayedCallScheduler, DelayedCallStyle } from "../util/DelayedCallManager.js";
 import { Scheduler } from "../util/Scheduler.js";
+import { PlatformUtils } from "../util/PlatformUtils.js";
 
 @componentElement("x-maininterface")
 export class MainInterface extends ComponentBase<AppViewModel> {
@@ -113,7 +114,7 @@ export class MainInterface extends ComponentBase<AppViewModel> {
         });
 
         window.addEventListener("wheel", (e) => {
-            if (e.ctrlKey) {
+            if (PlatformUtils.isShortcutKey(e)) {
                 if (this.viewModel) {
                     if (e.deltaY > 0) {
                         this.viewModel.interfaceZoom = Math.max(0.5, this.viewModel.interfaceZoom - 0.02);
@@ -262,6 +263,7 @@ export class MainInterface extends ComponentBase<AppViewModel> {
         }
         else {
             elChatUi.style.removeProperty("pointer-events");
+            elChatUi.style.removeProperty("-webkit-user-select");
             elChatUi.style.removeProperty("user-select");
             //this._chatUiInertDCM.scheduleDelayedCall(() => {
                 elChatUi.inert = false;

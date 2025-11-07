@@ -49,6 +49,10 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\mac\AppRoot\Contents\Info.plist" Link="Info.plist" />
+    <None Include="..\..\mac\entitlements.plist" Link="entitlements.plist" />
+  </ItemGroup>
 
   <Target Name="PreBuild" BeforeTargets="PreBuildEvent">
     <Exec Command="pwsh ./UpdateAssemblyVersionInfo.ps1 -AzureBuildNumber $(AzureBuildNumber)&#xD;&#xA;pwsh ./CreateContentZip.ps1 -AzureBuildNumber $(AzureBuildNumber)" />

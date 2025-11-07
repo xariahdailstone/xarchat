@@ -10,6 +10,7 @@ import { XarChatUtils } from "./util/XarChatUtils.js";
 import { AppViewModel } from "./viewmodel/AppViewModel.js";
 import { AppInitializeViewModel } from "./viewmodel/dialogs/AppInitializeViewModel.js";
 import { registerDebuggingFunctions } from "./util/debugging/DebugUtils.js";
+import { PlatformUtils } from "./util/PlatformUtils.js";
 
 polyfillRequestIdleCallback();
 
@@ -120,19 +121,19 @@ document.body.style.setProperty("--device-pixel-ratio", window.devicePixelRatio.
 
 document.addEventListener("keydown", (e) => {
     if (e.keyCode == KeyCodes.KEY_R) {
-        if (e.ctrlKey) {
+        if (PlatformUtils.isShortcutKey(e)) {
             e.preventDefault();
             e.stopPropagation();
         }
     }
     else if (e.keyCode == KeyCodes.KEY_G) {
-        if (e.ctrlKey && e.shiftKey) {
+        if (PlatformUtils.isShortcutKey(e) && e.shiftKey) {
             HostInterop.performWindowCommandAsync(null, { cmd: "restartgpu" });
             e.preventDefault();
             e.stopPropagation();
         }
     }
-    else if (e.keyCode == KeyCodes.KEY_P && e.ctrlKey) {
+    else if (e.keyCode == KeyCodes.KEY_P && PlatformUtils.isShortcutKey(e)) {
         e.preventDefault();
     }
     else if (e.keyCode == KeyCodes.F11) {
