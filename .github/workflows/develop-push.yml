@@ -288,7 +288,7 @@ jobs:
           --code-signature-flags
           Contents/MacOS/Photino.native.dylib:runtime
           --entitlements-xml-file
-          entitlements.plist
+          preproot/entitlements.plist
 
     - id: create_dmg
       name: "Create Installer DMG"
