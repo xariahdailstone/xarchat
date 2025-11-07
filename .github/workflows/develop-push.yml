@@ -285,7 +285,9 @@ jobs:
           --code-signature-flags
           runtime
           --code-signature-flags
-          Content/MacOS/Photino.native.dylib:runtime
+          Contents/MacOS/Photino.native.dylib:runtime
+          --entitlements
+          Contents/entitlements.plist
 
     - id: create_dmg
       name: "Create Installer DMG"
