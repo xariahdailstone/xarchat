@@ -10,6 +10,8 @@
   <string>XarChat</string>
   <key>CFBundleVersion</key>
   <string>0.0.0</string>
+  <key>CFBundleShortVersionString</key>
+  <string>0.0.0</string>
   <key>NSHumanReadableCopyright</key>
   <string>Copyright 2025, Error 9 LLC</string>
   <key>CFBundlePackageType</key>

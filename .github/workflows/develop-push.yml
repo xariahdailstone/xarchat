@@ -31,6 +31,7 @@ jobs:
     outputs:
       branch: ${{ steps.extract_branch.outputs.branch }}
       timestamp: ${{ steps.extract_timestamp.outputs.timestamp }}
+      year: ${{ steps.extract_timestamp.outputs.year }}
       buildid: ${{ steps.generate_buildid.outputs.buildid }}
 
     steps:
@@ -57,7 +58,9 @@ jobs:
     - id: extract_timestamp
       name: "Generate Build Timestamp"
       shell: bash
-      run: echo "timestamp=$(date +'%Y.%m%d.%H%M.%S')" >> $GITHUB_OUTPUT
+      run: |
+        echo "timestamp=$(date +'%Y.%m%d.%H%M.%S')" >> $GITHUB_OUTPUT
+        echo "year=$(date +'%Y') >> $GITHUB_OUTPUT"
 
     - id: generate_buildid
       name: "Generate Build Identifier"
@@ -231,6 +234,16 @@ jobs:
         cp host/shared/photino.Native/lib/arm64/Photino.Native.dylib $APPDIR/Contents/MacOS/Photino.native.dylib
         rm $APPDIR/Contents/MacOS/dir.txt
         chmod +x $APPDIR/Contents/MacOS/XarChat
+
+    - id: update_info_plist
+      name: "Update Info.plist"
+      shell: bash
+      run: |
+        PREPDIR=preproot
+        APPDIR=$PREPDIR/XarChat.app
+        perl -pi -e 's/0\\.0\\.0/${{ needs.generate_build_branding.outputs.timestamp }}/g' $APPDIR/Contents/Info.plist
+        perl -pi -e 's/Copyright 2005/Copyright ${{ needs.generate_build_branding.outputs.year }}/g' $APPDIR/Contents/Info.plist
+        echo $APPDIR/Contents/Info.plist
 
     - id: write_p12_to_file
       name: "Write P12 to file"

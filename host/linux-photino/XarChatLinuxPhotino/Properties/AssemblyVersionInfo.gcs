@@ -5,10 +5,10 @@ using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 
-//[assembly: AssemblyVersion("0.0.0.0")]
-//[assembly: AssemblyFileVersion("0.0.0.0")]
-//[assembly: AssemblyInformationalVersion("0.0.0.0-unknown")]
-[assembly: System.Runtime.Versioning.SupportedOSPlatform("macos-arm64")]
+//[assembly: AssemblyVersion("2025.1108.1614.28")]
+//[assembly: AssemblyFileVersion("2025.1108.1614.28")]
+//[assembly: AssemblyInformationalVersion("2025.1108.1614.28-unknown")]
+[assembly: System.Runtime.Versioning.SupportedOSPlatformAttribute("windows10.0.17763.0")]
 [assembly: AssemblyCopyright("Copyright 2025, Error 9 LLC")]
 //[assembly: AssemblyProduct("XarChat (unknown)")]
 //[assembly: AssemblyTitle("XarChat")]
@@ -18,7 +18,7 @@ namespace XarChatLinuxPhotino
 {
     internal static class AssemblyVersionInfo
     {
-        public const string XarChatVersion = "0.0.0.0";
+        public const string XarChatVersion = "2025.1108.1614.28";
         public const string XarChatBranch = "unknown";
     }
 }
