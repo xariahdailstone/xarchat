@@ -5,6 +5,7 @@ using System;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO.Pipes;
+using System.Web;
 using XarChat.AutoUpdate.Impl.Disabled;
 using XarChat.Backend;
 using XarChat.Backend.Features.CommandLine.Impl;
@@ -67,7 +68,7 @@ namespace XarChatLinuxPhotino
             var windowTitle = "XarChat (Linux)";
 #endif
 #if MAC
-            var windowTitle = "XarChat (Mac)";
+            var windowTitle = "XarChat";
 #endif            
 
             window
@@ -97,14 +98,14 @@ namespace XarChatLinuxPhotino
             Console.WriteLine("launching...");
             window.Load($"https://localhost:{assetPortNumber}/app/index.html" +
                 $"?XarHostMode=2" +
-                $"&ClientVersion=0.0.0.0" +
+                $"&ClientVersion={HttpUtility.UrlEncode(AssemblyVersionInfo.XarChatVersion)}" +
 #if LINUX
                 $"&ClientPlatform=linux-x64" +
 #endif
 #if MAC
                 $"&ClientPlatform=macos-arm64" +
 #endif
-                $"&ClientBranch=unknown" +
+                $"&ClientBranch={HttpUtility.UrlEncode(AssemblyVersionInfo.XarChatBranch)}" +
                 $"&devmode=true" +
                 $"&wsport={wsPortNumber}");
             //window.Load("http://192.168.1.212/trf/svgembedtest");
@@ -142,7 +143,7 @@ namespace XarChatLinuxPhotino
                     Console.WriteLine($"Resizable = {window.Resizable}");
                     window.Resizable = true;
                     Console.WriteLine($"Resizable = {window.Resizable}");
-                    window.Size = new Size(600, 400);
+                    //window.Size = new Size(600, 400);
 
                     //window.ShowDevTools();
                 };

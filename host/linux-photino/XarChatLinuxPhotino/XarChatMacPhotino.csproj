@@ -58,4 +58,7 @@
     <Exec Command="pwsh ./UpdateAssemblyVersionInfo.ps1 -AzureBuildNumber $(AzureBuildNumber)&#xD;&#xA;pwsh ./CreateContentZip.ps1 -AzureBuildNumber $(AzureBuildNumber)" />
   </Target>
 
+  <ItemGroup>
+    <Compile Include="Properties\AssemblyVersionInfo.gcs" />
+  </ItemGroup>
 </Project>
