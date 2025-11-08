@@ -61,4 +61,9 @@
     <Exec Command="pwsh ./UpdateAssemblyVersionInfo.ps1 -AzureBuildNumber $(AzureBuildNumber)&#xD;&#xA;pwsh ./CreateContentZip.ps1 -AzureBuildNumber $(AzureBuildNumber)" />
   </Target>
 
+  <Target Name="AddGeneratedClasses" AfterTargets="PreBuildEvent" BeforeTargets="BeforeCompile;CoreCompile">
+    <ItemGroup>
+      <Compile Include="Properties\AssemblyVersionInfo.gcs" />
+    </ItemGroup>
+  </Target>
 </Project>
