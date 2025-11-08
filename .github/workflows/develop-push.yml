@@ -25,14 +25,15 @@ env:
   should_notarize_macos: ${{ github.event_name == 'push' || inputs.notarize_macos }}
 
 jobs:
-  build-windows-amd64:
-    runs-on: windows-latest
-    
-    steps:
-    - id: checkout
-      name: "Checkout Current Repository"
-      uses: actions/checkout@v4
+  generate_build_branding:
+    runs-on: ubuntu-latest
 
+    outputs:
+      branch: ${{ steps.extract_branch.outputs.branch }}
+      timestamp: ${{ steps.extract_branch.outputs.timestamp }}
+      buildid: ${{ steps.generate_buildid.outputs.buildid }}
+
+    steps:
     - id: extract_branch
       name: "Get Build Branch"
       shell: bash
@@ -62,6 +63,15 @@ jobs:
       name: "Generate Build Identifier"
       shell: bash
       run: echo "buildid=${{ steps.extract_timestamp.outputs.timestamp }}-${{ steps.extract_branch.outputs.branch }}" >> $GITHUB_OUTPUT
+
+  build-windows-amd64:
+    runs-on: windows-latest
+    needs: generate_build_branding
+    
+    steps:
+    - id: checkout
+      name: "Checkout Current Repository"
+      uses: actions/checkout@v4
 
     - id: setup_dotnet
       name: "Setup .NET 9 SDK"
@@ -114,7 +124,7 @@ jobs:
       shell: cmd
       working-directory: ${{ github.workspace }}
       run: |
-        msbuild.exe "${{ github.workspace }}\XarChat.sln" /nologo /nr:false /T:"Restore;win32\win32-webview2\XarChatWin32WebView2:Publish" /p:IsPublishing=true /p:AzureBuildNumber="${{ steps.generate_buildid.outputs.buildid }}" /p:Platform="Any CPU" /p:Configuration="Release" /p:VisualStudioVersion="17.0" 
+        msbuild.exe "${{ github.workspace }}\XarChat.sln" /nologo /nr:false /T:"Restore;win32\win32-webview2\XarChatWin32WebView2:Publish" /p:IsPublishing=true /p:AzureBuildNumber="${{ needs.generate_build_branding.outputs.buildid }}" /p:Platform="Any CPU" /p:Configuration="Release" /p:VisualStudioVersion="17.0" 
           
     - id: sign_executable
       name: "Sign XarChat.exe"
@@ -137,41 +147,12 @@ jobs:
 
   build-macos-arm64:
     runs-on: macos-latest
+    needs: generate_build_branding
 
     steps:
     - id: checkout
       name: "Checkout Current Repository"
       uses: actions/checkout@v4
-
-    - id: extract_branch
-      name: "Get Build Branch"
-      shell: bash
-      run: |
-        BRANCHNAME=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}
-        echo "BRANCHNAME=$BRANCHNAME"
-        FILTEREDBRANCHNAME=${BRANCHNAME//\//-}
-        echo "FILTEREDBRANCHNAME=$FILTEREDBRANCHNAME"
-        echo "outputting rawbranch=$BRANCHNAME"
-        echo "outputting branch=$FILTEREDBRANCHNAME"
-        echo "rawbranch=$BRANCHNAME" >> $GITHUB_OUTPUT
-        echo "branch=$FILTEREDBRANCHNAME" >> $GITHUB_OUTPUT
-        if [[ ( $BRANCHNAME == 'master' ) || ( $BRANCHNAME == 'develop' ) ]]; then
-          echo "outputting publishartifact=true"
-          echo "publishartifact=true" >> $GITHUB_OUTPUT
-        else
-          echo "outputting publishartifact=false"
-          echo "publishartifact=false" >> $GITHUB_OUTPUT
-        fi;
-
-    - id: extract_timestamp
-      name: "Generate Build Timestamp"
-      shell: bash
-      run: echo "timestamp=$(date +'%Y.%m%d.%H%M.%S')" >> $GITHUB_OUTPUT
-
-    - id: generate_buildid
-      name: "Generate Build Identifier"
-      shell: bash
-      run: echo "buildid=${{ steps.extract_timestamp.outputs.timestamp }}-${{ steps.extract_branch.outputs.branch }}" >> $GITHUB_OUTPUT
 
     - id: setup_dotnet
       name: "Setup .NET 9 SDK"
@@ -226,7 +207,7 @@ jobs:
       run: |
         dotnet msbuild "${{ github.workspace }}\XarChat-macphotino.sln" /nologo \
           /nr:false /T:"Restore;host\XarChatMacPhotino:Publish" /p:IsPublishing=true \
-          /p:AzureBuildNumber="${{ steps.generate_buildid.outputs.buildid }}" \
+          /p:AzureBuildNumber="${{ needs.generate_build_branding.outputs.buildid }}" \
           /p:Platform="Any CPU" /p:Configuration="Release" /p:VisualStudioVersion="17.0"
           # /p:TargetFramework=net9.0-macos15.0 \
           # /p:UseAppHost=true /p:PublishSingleFile=true /p:SelfContained=true \
@@ -294,7 +275,7 @@ jobs:
       name: "Create Installer DMG"
       uses: L-Super/create-dmg-actions@v1.0.3
       with:
-        dmg_name: "XarChat-${{ steps.extract_timestamp.outputs.timestamp }}"
+        dmg_name: "XarChat-${{ needs.generate_build_branding.outputs.timestamp }}"
         src_dir: "${{ github.workspace }}/preproot/XarChat.app"
 
     - id: publish_artifact_preproot
