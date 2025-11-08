@@ -786,7 +786,20 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     ],
                     defaultValue: "left",
                     configBlockKey: "friendsTabLocation"
-                },                
+                },              
+                {
+                    id: "leftBar.sectionOrdering",
+                    scope: getScopeArray(["global"]),
+                    title: "Left Bar Section Ordering",
+                    description: "What order should sections be shown in the left bar channel/PM list?",
+                    type: "select",
+                    selectOptions: [
+                        { value: "cp", displayValue: "Channels, Private Messages" },
+                        { value: "pc", displayValue: "Private Messages, Channels" }
+                    ],
+                    defaultValue: "cp",
+                    configBlockKey: "leftBar.sectionOrdering"
+                } ,
                 {
                     id: "messageDisplayStyle",
                     scope: getScopeArray(["global", "char", "chan", "convo"]),

@@ -29,3 +29,4 @@
 * Added the ability to search the list of users currently in a channel (hit the magnifying glass at
   the top of the user list).
 * Added preliminary MacOS Build
+* Added an option to show private messages on the top of the left bar instead of the bottom.

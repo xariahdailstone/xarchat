@@ -442,14 +442,27 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
         
         const unseenDotStyle = vm.getConfigSettingById("unseenIndicatorStyle") as string;
 
+        const sectionOrdering = vm.getConfigSettingById("leftBar.sectionOrdering") as string;
+
         this._chatSubrenderingManagerPMs?.mark();
         //this._chatSubrenderingManagerChans?.mark();
         try {
-            return <div key={`scroller-${vm.characterName.canonicalValue}`} id="scroller">
-                {this.renderPinnedChannelsSection(vm, unseenDotStyle)}
-                {this.renderUnpinnedChannelsSection(vm, unseenDotStyle)}
-                {this.renderPrivateMessagesSection(vm, unseenDotStyle, charStatusSubSet, nicknameSubSet)}
-            </div>;
+            if (sectionOrdering == "pc")
+            {
+                return <div key={`scroller-${vm.characterName.canonicalValue}`} id="scroller">
+                    {this.renderPrivateMessagesSection(vm, unseenDotStyle, charStatusSubSet, nicknameSubSet)}
+                    {this.renderPinnedChannelsSection(vm, unseenDotStyle)}
+                    {this.renderUnpinnedChannelsSection(vm, unseenDotStyle)}
+                </div>;
+            }
+            else
+            {
+                return <div key={`scroller-${vm.characterName.canonicalValue}`} id="scroller">
+                    {this.renderPinnedChannelsSection(vm, unseenDotStyle)}
+                    {this.renderUnpinnedChannelsSection(vm, unseenDotStyle)}
+                    {this.renderPrivateMessagesSection(vm, unseenDotStyle, charStatusSubSet, nicknameSubSet)}
+                </div>;
+            }
         }
         finally {
         //    this._chatSubrenderingManagerChans?.sweep();
