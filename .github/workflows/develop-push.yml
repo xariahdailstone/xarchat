@@ -60,7 +60,7 @@ jobs:
       shell: bash
       run: |
         echo "timestamp=$(date +'%Y.%m%d.%H%M.%S')" >> $GITHUB_OUTPUT
-        echo "year=$(date +'%Y') >> $GITHUB_OUTPUT"
+        echo "year=$(date +'%Y')" >> $GITHUB_OUTPUT
 
     - id: generate_buildid
       name: "Generate Build Identifier"
@@ -241,9 +241,9 @@ jobs:
       run: |
         PREPDIR=preproot
         APPDIR=$PREPDIR/XarChat.app
-        perl -pi -e 's/0\\.0\\.0/${{ needs.generate_build_branding.outputs.timestamp }}/g' $APPDIR/Contents/Info.plist
-        perl -pi -e 's/Copyright 2005/Copyright ${{ needs.generate_build_branding.outputs.year }}/g' $APPDIR/Contents/Info.plist
-        echo $APPDIR/Contents/Info.plist
+        perl -i -pe 's/0\.0\.0/${{ needs.generate_build_branding.outputs.timestamp }}/g' $APPDIR/Contents/Info.plist
+        perl -i -pe 's/Copyright 2005/Copyright ${{ needs.generate_build_branding.outputs.year }}/g' $APPDIR/Contents/Info.plist
+        cat $APPDIR/Contents/Info.plist
 
     - id: write_p12_to_file
       name: "Write P12 to file"
