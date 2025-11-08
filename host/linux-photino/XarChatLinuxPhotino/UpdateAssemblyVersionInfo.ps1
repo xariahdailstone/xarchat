@@ -62,7 +62,7 @@ using System.Threading.Tasks;
 //[assembly: AssemblyTitle("XarChat")]
 [assembly: AssemblyDescription("A chat client for F-List by Xariah.Net")]
 
-namespace MinimalWin32Test.Properties
+namespace XarChatLinuxPhotino
 {
     internal static class AssemblyVersionInfo
     {

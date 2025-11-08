@@ -50,9 +50,6 @@
     </Content>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Properties\AssemblyVersionInfo.gcs" />
-  </ItemGroup>
-  <ItemGroup>
     <None Include="..\..\mac\AppRoot\Contents\Info.plist" Link="Info.plist" />
     <None Include="..\..\mac\entitlements.plist" Link="entitlements.plist" />
   </ItemGroup>
