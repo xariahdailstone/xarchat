@@ -30,7 +30,7 @@ jobs:
 
     outputs:
       branch: ${{ steps.extract_branch.outputs.branch }}
-      timestamp: ${{ steps.extract_branch.outputs.timestamp }}
+      timestamp: ${{ steps.extract_timestamp.outputs.timestamp }}
       buildid: ${{ steps.generate_buildid.outputs.buildid }}
 
     steps:
