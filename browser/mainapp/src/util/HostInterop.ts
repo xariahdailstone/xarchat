@@ -548,11 +548,16 @@ export class XarHost2Interop implements IXarHost2HostInterop {
                         break;
                     case "macos-arm64":
                         {
-                            const pxScaleFactor = window.devicePixelRatio;
+                            //const pxScaleFactor = window.devicePixelRatio;
+                            //elMain.style.top = "0px";
+                            //elMain.style.width = `${this.neededWidth / pxScaleFactor}px`;
+                            //elMain.style.height = `${this.neededHeight / pxScaleFactor}px`;
+                            //elMain.style.setProperty("--main-interface-width", `${this.neededWidth / pxScaleFactor}px`);
+
                             elMain.style.top = "0px";
-                            elMain.style.width = `${this.neededWidth / pxScaleFactor}px`;
-                            elMain.style.height = `${this.neededHeight / pxScaleFactor}px`;
-                            elMain.style.setProperty("--main-interface-width", `${this.neededWidth / pxScaleFactor}px`);
+                            elMain.style.width = "100vw";
+                            elMain.style.height = "100vh";
+                            elMain.style.setProperty("--main-interface-width", "100vw");
                         }
                         break;
                     default:

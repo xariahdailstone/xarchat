@@ -5,13 +5,13 @@ using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 
-[assembly: AssemblyVersion("0.0.0.0")]
-[assembly: AssemblyFileVersion("0.0.0.0")]
-[assembly: AssemblyInformationalVersion("0.0.0.0-unknown")]
-[assembly: System.Runtime.Versioning.SupportedOSPlatformAttribute("macos-arm64")]
+//[assembly: AssemblyVersion("0.0.0.0")]
+//[assembly: AssemblyFileVersion("0.0.0.0")]
+//[assembly: AssemblyInformationalVersion("0.0.0.0-unknown")]
+[assembly: System.Runtime.Versioning.SupportedOSPlatform("macos-arm64")]
 [assembly: AssemblyCopyright("Copyright 2025, Error 9 LLC")]
-[assembly: AssemblyProduct("XarChat (unknown)")]
-[assembly: AssemblyTitle("XarChat")]
+//[assembly: AssemblyProduct("XarChat (unknown)")]
+//[assembly: AssemblyTitle("XarChat")]
 [assembly: AssemblyDescription("A chat client for F-List by Xariah.Net")]
 
 namespace XarChatLinuxPhotino
