@@ -17,13 +17,13 @@ using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 
-[assembly: AssemblyVersion("$version")]
-[assembly: AssemblyFileVersion("$version")]
-[assembly: AssemblyInformationalVersion("$version-$buildkind")]
+//[assembly: AssemblyVersion("$version")]
+//[assembly: AssemblyFileVersion("$version")]
+//[assembly: AssemblyInformationalVersion("$version-$buildkind")]
 [assembly: System.Runtime.Versioning.SupportedOSPlatformAttribute("macos-arm64")]
 [assembly: AssemblyCopyright("Copyright $year, Error 9 LLC")]
-[assembly: AssemblyProduct("XarChat ($buildkind)")]
-[assembly: AssemblyTitle("XarChat")]
+//[assembly: AssemblyProduct("XarChat ($buildkind)")]
+//[assembly: AssemblyTitle("XarChat")]
 [assembly: AssemblyDescription("A chat client for F-List by Xariah.Net")]
 
 namespace XarChatLinuxPhotino
