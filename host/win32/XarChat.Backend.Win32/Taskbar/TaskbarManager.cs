@@ -1,6 +1,10 @@
 ﻿
 using System;
 using System.Diagnostics;
+using XarChat.Backend.Common;
+using XarChat.Backend.Win32;
+using XarChat.Native.Win32;
+using XarChat.Native.Win32.Wrapped;
 
 namespace Microsoft.WindowsAPICodePack.Taskbar
 {
@@ -53,6 +57,27 @@ namespace Microsoft.WindowsAPICodePack.Taskbar
                 OwnerHandle,
                 icon != null ? icon.Handle : IntPtr.Zero,
                 accessibilityText ?? "");
+        }
+
+        public IDisposable AddTaskbarButtonCreatedHandler(IWindowMessageHandlerSource window, Action action)
+        {
+            var msgId = User32.RegisterWindowMessage("TaskbarButtonCreated");
+
+            var reg = window.AddWindowMessageHandler(
+                (WindowHandle windowHandle, uint msg, nuint wParam, nint lParam) =>
+                {
+                    if (msg == msgId && windowHandle.Handle == window.WindowHandle)
+                    {
+                        try
+                        {
+                            action();
+                        }
+                        catch { }
+                    }
+                    return null;
+                });
+
+            return reg;
         }
 
         /// <summary>

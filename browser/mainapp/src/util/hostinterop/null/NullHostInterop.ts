@@ -72,7 +72,7 @@ export class NullHostInterop extends HostInteropBase implements IHostInterop {
         this._appSettings = settings;
     }
 
-    updateAppBadge(hasPings: boolean, hasUnseen: boolean): void {
+    updateAppBadge(pingCount: number, unseenCount: number): void {
     }
 
     registerIdleDetectionAsync(idleAfterMs: number, callback: (userState: IdleDetectionUserState, screenState: IdleDetectionScreenState) => void): IDisposable {

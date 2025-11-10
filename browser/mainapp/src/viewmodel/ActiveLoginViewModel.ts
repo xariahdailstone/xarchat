@@ -451,24 +451,23 @@ export class ActiveLoginViewModel extends ObservableBase implements IDisposable 
 
     get pingWords() { return this.savedChatState.pingWords; };
 
-    @observableProperty
-    hasUnseenMessages: boolean = false;
+    private readonly _unseenCount: ObservableValue<number> = new ObservableValue(0);
+    private readonly _pingCount: ObservableValue<number> = new ObservableValue(0);
 
-    @observableProperty
-    hasPings: boolean = false;
+    get unseenCount() { return this._unseenCount.value; }
+    get pingCount() { return this._pingCount.value; }
+    get hasUnseenMessages() { return Observable.calculate("ActiveLoginViewModel.hasUnseenMessages", () => this._unseenCount.value > 0); }
+    get hasPings() { return Observable.calculate("ActiveLoginViewModel.hasPings", () => this._pingCount.value > 0); }
 
     private refreshPingMentionCount() {
-        let newUnseen = false;
-        let newPings = false;
+        let unseenTotal = 0;
+        let pingTotal = 0;
         for (let ch of IterableUtils.combine<ChannelViewModel>(this.openChannels, this._pmConversations2)) {
-            newPings = newPings || ch.hasPing;
-            newUnseen = newUnseen || (ch.unseenMessageCount > 0);
-            if (newPings && newUnseen) {
-                break;
-            }
+            pingTotal += ch.pingMessagesCount;
+            unseenTotal += ch.unseenMessageCount;
         }
-        this.hasUnseenMessages = newUnseen;
-        this.hasPings = newPings;
+        this._unseenCount.value = unseenTotal;
+        this._pingCount.value = pingTotal;
     }
 
     private readonly _pinnedChannels2: Collection<ChatChannelViewModel> = new Collection<ChatChannelViewModel>();

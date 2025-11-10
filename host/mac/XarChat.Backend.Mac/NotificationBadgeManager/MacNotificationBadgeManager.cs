@@ -4,7 +4,7 @@ namespace XarChat.Backend.Mac.NotificationBadgeManager
 {
     public class MacNotificationBadgeManager : INotificationBadgeManager
     {
-        public void SetNotificationBadge(NotificationBadgeType notificationBadgeType)
+        public void SetNotificationBadge(int pingCount, int unseenCount)
         {
             // TODO:
         }

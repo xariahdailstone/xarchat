@@ -44,7 +44,7 @@ export interface IHostInterop {
 
     getAppSettings(): Promise<unknown>;
     updateAppSettings(settings: any): Promise<void>;
-    updateAppBadge(hasPings: boolean, hasUnseen: boolean): void;
+    updateAppBadge(pingCount: number, unseenCount: number): void;
 
     registerIdleDetectionAsync(idleAfterMs: number, callback: (userState: IdleDetectionUserState, screenState: IdleDetectionScreenState) => void): IDisposable;
 

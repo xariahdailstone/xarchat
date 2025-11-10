@@ -2,8 +2,7 @@
 
 namespace XarChat.Backend.Win32
 {
-    public interface IWin32WindowControl : IWindowControl
+    public interface IWin32WindowControl : IWindowControl, IWindowMessageHandlerSource
     {
-        IntPtr WindowHandle { get; }
     }
 }

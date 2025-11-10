@@ -672,7 +672,8 @@ export class ChatViewModelSink implements ChatConnectionSink {
                                 `Opened PM tab because [user]${s.characterName.value}[/user] started typing a message to you.`,
                                 false, openPmTabSetting == 1);
                             if (openPmTabSetting == 2) {
-                                pmc!.hasPing = true;
+                                //pmc!.hasPing = true;
+                                pmc!.addPingMessage();
                                 pmc!.playPingSound();
                             }
                         }

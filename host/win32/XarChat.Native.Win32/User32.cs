@@ -81,6 +81,11 @@ namespace XarChat.Native.Win32
 
 		}
 
+        public static uint RegisterWindowMessage(string messageName)
+        {
+            return PInvoke.RegisterWindowMessage(messageName);
+        }
+
         public static void MessageBox(nint hWnd, string text, string caption)
         {
             PInvoke.MessageBox(
