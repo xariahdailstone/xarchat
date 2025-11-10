@@ -30,3 +30,4 @@
   the top of the user list).
 * Added preliminary MacOS Build
 * Added an option to show private messages on the top of the left bar instead of the bottom.
+* Added an option to make the display of channels/PMs more dense.
