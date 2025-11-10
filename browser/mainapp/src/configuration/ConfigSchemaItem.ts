@@ -788,19 +788,6 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     configBlockKey: "friendsTabLocation"
                 },              
                 {
-                    id: "leftBar.sectionOrdering",
-                    scope: getScopeArray(["global"]),
-                    title: "Left Bar Section Ordering",
-                    description: "What order should sections be shown in the left bar channel/PM list?",
-                    type: "select",
-                    selectOptions: [
-                        { value: "cp", displayValue: "Channels, Private Messages" },
-                        { value: "pc", displayValue: "Private Messages, Channels" }
-                    ],
-                    defaultValue: "cp",
-                    configBlockKey: "leftBar.sectionOrdering"
-                } ,
-                {
                     id: "messageDisplayStyle",
                     scope: getScopeArray(["global", "char", "chan", "convo"]),
                     title: "Message Display Style",
@@ -883,6 +870,39 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     type: "boolean",
                     defaultValue: false,
                     configBlockKey: "chat.textbox.statusBarShown"
+                },
+                {
+                    scope: getScopeArray(["global"]),
+                    sectionTitle: "Left Bar",
+                    description: "",
+                    items: [
+                        {
+                            id: "leftBar.sectionOrdering",
+                            scope: getScopeArray(["global"]),
+                            title: "Chats List Section Ordering",
+                            description: "What order should sections be shown in the left bar channel/PM list?",
+                            type: "select",
+                            selectOptions: [
+                                { value: "cp", displayValue: "Channels, Private Messages" },
+                                { value: "pc", displayValue: "Private Messages, Channels" }
+                            ],
+                            defaultValue: "cp",
+                            configBlockKey: "leftBar.sectionOrdering"
+                        },
+                        {
+                            id: "leftBar.density",
+                            scope: getScopeArray(["global"]),
+                            title: "Chats List Item Density",
+                            description: "How dense should items be packed in the left bar channel/PM list?",
+                            type: "select",
+                            selectOptions: [
+                                { value: "normal", displayValue: "Normal" },
+                                { value: "dense", displayValue: "Dense" }
+                            ],
+                            defaultValue: "normal",
+                            configBlockKey: "leftBar.density"
+                        }
+                    ]
                 },
                 {
                     scope: getScopeArray(["global", "char", "chan"]),
