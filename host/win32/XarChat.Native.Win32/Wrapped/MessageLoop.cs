@@ -57,7 +57,7 @@ namespace XarChat.Native.Win32.Wrapped
 
         static MessageLoop()
         {
-            WM_RUNTASK = PInvoke.RegisterWindowMessage("WM_RUNTASK");
+            WM_RUNTASK = User32.RegisterWindowMessage("WM_RUNTASK");
         }
 
         private readonly Thread _uiThread;

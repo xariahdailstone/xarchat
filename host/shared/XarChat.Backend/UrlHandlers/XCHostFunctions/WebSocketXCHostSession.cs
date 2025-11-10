@@ -103,7 +103,7 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions
             {
                 try { _disposeCTS.Cancel(); }
                 catch { }
-                SetNotificationBadge(NotificationBadgeType.None);
+                SetNotificationBadge(0, 0);
 
                 foreach (var disp in _sessionDisposables.Values)
                 {
@@ -601,10 +601,10 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions
 			}
         }
 
-        private void SetNotificationBadge(NotificationBadgeType type)
+        private void SetNotificationBadge(int pingCount, int unseenCount)
         {
             var mgr = _sp.GetRequiredService<INotificationBadgeManager>();
-            mgr.SetNotificationBadge(type);
+            mgr.SetNotificationBadge(0, 0);
         }
 
         private string _lastWrittenWindowState = "";
@@ -670,10 +670,16 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions
         public class UpdateAppBadgeArgs
         {
             [JsonPropertyName("hasPings")]
-            public bool HasPings { get; set; }
+            public bool? HasPings { get; set; }
+
+            [JsonPropertyName("pingCount")]
+            public int? PingCount { get; set; }
 
             [JsonPropertyName("hasUnseen")]
-            public bool HasUnseen { get; set; }
+            public bool? HasUnseen { get; set; }
+
+            [JsonPropertyName("unseenCount")]
+            public int? UnseenCount { get; set; }
         }
 
         public class LogPMConvoMessageArgs

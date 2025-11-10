@@ -6,7 +6,7 @@ import { RawSavedWindowLocation } from "../settings/RawAppSettings.js";
 import { ChannelName } from "../shared/ChannelName.js";
 import { CharacterName } from "../shared/CharacterName.js";
 import { ConfigBlock } from "../util/ConfigBlock.js";
-import { IDisposable } from "../util/Disposable.js";
+import { IDisposable, tryDispose } from "../util/Disposable.js";
 import { HostInterop, HostWindowState } from "../util/hostinterop/HostInterop.js";
 import { IdleDetection, IdleDetectionScreenState, IdleDetectionUserState } from "../util/IdleDetection.js";
 import { Observable, ObservableValue, PropertyChangeEvent } from "../util/Observable.js";
@@ -49,20 +49,26 @@ export class AppViewModel extends ObservableBase {
         //this.flistApi = new FListApiImpl();
         this.flistApi = new HostInteropApi();
 
-        const loginPingUnseenChange = (ev: PropertyChangeEvent) => {
-            if (ev.propertyName == "hasPings" || ev.propertyName == "hasUnseenMessages") {
-                this.refreshPingMentionCount();
-            }
-        };
         this.logins.addCollectionObserver(entries => {
             for (let entry of entries) {
                 switch (entry.changeType) {
                     case StdObservableCollectionChangeType.ITEM_ADDED:
-                        entry.item.addEventListener("propertychange", loginPingUnseenChange);
-                        this.refreshPingMentionCount();
+                        {
+                            const oe = new ObservableExpression(() => [entry.item.pingCount, entry.item.unseenCount], (counts) => {
+                                this.refreshPingMentionCount();
+                            });
+                            (entry.item as any)[this.SYM_LOGIN_PINGUNSEEN_OE] = oe;
+                            this.refreshPingMentionCount();
+                        }
                         break;
                     case StdObservableCollectionChangeType.ITEM_REMOVED:
-                        entry.item.removeEventListener("propertychange", loginPingUnseenChange);
+                        {
+                            const oe = (entry.item as any)[this.SYM_LOGIN_PINGUNSEEN_OE] as any;
+                            if (oe) {
+                                delete (entry.item as any)[this.SYM_LOGIN_PINGUNSEEN_OE];
+                                tryDispose(oe);
+                            }
+                        }
                         this.refreshPingMentionCount();
                         if (entry.item == this.currentlySelectedSession) {
                             this.currentlySelectedSession = this.logins[0] ?? null;
@@ -80,16 +86,25 @@ export class AppViewModel extends ObservableBase {
             }
         });
 
-        this.addEventListener("propertychange", (ev) => {
-            if (ev.propertyName == "hasPings" || ev.propertyName == "hasUnseenMessages") {
-                HostInterop.updateAppBadge(this.hasPings, this.hasUnseenMessages);
-            }
-            else if (ev.propertyName == "userState" || ev.propertyName == "screenState") {
-                for (let login of this.logins.iterateValues()) {
-                    login.idleStateChanged();
-                }
+        const badgeOE = new ObservableExpression(() => [this.pingCount, this.unseenCount], (counts) => {
+            HostInterop.updateAppBadge(this.pingCount, this.unseenCount);
+        });
+        const idleStateOE = new ObservableExpression(() => [this.userState, this.screenState], (states) => {
+            for (let login of this.logins.iterateValues()) {
+                login.idleStateChanged();
             }
         });
+
+        // this.addEventListener("propertychange", (ev) => {
+        //     if (ev.propertyName == "hasPings" || ev.propertyName == "hasUnseenMessages") {
+        //         HostInterop.updateAppBadge(this.hasPings, this.hasUnseenMessages);
+        //     }
+        //     else if (ev.propertyName == "userState" || ev.propertyName == "screenState") {
+        //         for (let login of this.logins.iterateValues()) {
+        //             login.idleStateChanged();
+        //         }
+        //     }
+        // });
         this.configBlock.observe("global.autoIdle", v => {
             this.updateAutoIdleSettings();
         });
@@ -114,6 +129,8 @@ export class AppViewModel extends ObservableBase {
 
         this.setupLocaleMonitoring();
     }
+
+    private readonly SYM_LOGIN_PINGUNSEEN_OE = Symbol();
 
     isInStartup: boolean = true;
 
@@ -316,21 +333,24 @@ export class AppViewModel extends ObservableBase {
     collapseAds: boolean = true;
     collapseHeight: number = 40;
 
-    @observableProperty
-    hasPings: boolean = false;
+    private readonly _unseenCount: ObservableValue<number> = new ObservableValue(0);
+    private readonly _pingCount: ObservableValue<number> = new ObservableValue(0);
 
-    @observableProperty
-    hasUnseenMessages: boolean = false;
+    get unseenCount() { return this._unseenCount.value; }
+    get hasUnseenMessages() { return Observable.calculate("AppViewModel.hasUnseenMessages", () => this._unseenCount.value > 0); }
+
+    get pingCount() { return this._pingCount.value; }
+    get hasPings() { return Observable.calculate("AppViewModel.hasPings", () => this._pingCount.value > 0); }
 
     private refreshPingMentionCount() {
-        let newPings = false;
-        let newUnseen = false;
+        let unseenTotal = 0;
+        let pingTotal = 0;
         for (let login of this.logins) {
-            newPings = newPings || login.hasPings;
-            newUnseen = newUnseen || login.hasUnseenMessages;
+            unseenTotal += login.unseenCount;
+            pingTotal += login.pingCount;
         }
-        this.hasPings = newPings;
-        this.hasUnseenMessages = newUnseen;
+        this._unseenCount.value = unseenTotal;
+        this._pingCount.value = pingTotal;
     }
 
     flashTooltipAsync(message: string, contextElement: HTMLElement, clientX: number, clientY: number) {

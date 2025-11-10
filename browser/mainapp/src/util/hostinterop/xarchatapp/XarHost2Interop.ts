@@ -760,13 +760,16 @@ export class XarHost2Interop implements IXarHost2HostInterop {
         });
     }
 
-    private _lastAppBadgeAssign: { hasPings: boolean; hasUnseen: boolean; } = { hasPings: false, hasUnseen: false };
+    private _lastAppBadgeAssign: { hasPings: boolean; pingCount: number, hasUnseen: boolean; unseenCount: number } 
+        = { hasPings: false, pingCount: 0, hasUnseen: false, unseenCount: 0 };
     get lastAppBadgeAssign() { return this._lastAppBadgeAssign; }
 
-    updateAppBadge(hasPings: boolean, hasUnseen: boolean): void {
+    updateAppBadge(pingCount: number, unseenCount: number): void {
         this._lastAppBadgeAssign = {
-            hasPings: hasPings,
-            hasUnseen: hasUnseen
+            hasPings: pingCount > 0,
+            pingCount: pingCount,
+            hasUnseen: unseenCount > 0,
+            unseenCount: unseenCount
         };
         this.logger.logDebug("updateAppBadge", this._lastAppBadgeAssign);
         this.writeToXCHostSocket("updateAppBadge " + JSON.stringify(this._lastAppBadgeAssign));

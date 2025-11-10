@@ -338,7 +338,8 @@ export class PMConvoChannelViewModel extends ChannelViewModel {
             if (message.type == ChannelMessageType.CHAT ||
                 message.type == ChannelMessageType.ROLL) {
 
-                this.hasPing = true;
+                //this.hasPing = true;
+                this.addPingMessage();
                 this.playPingSound();
             }
         }

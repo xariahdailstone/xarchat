@@ -746,7 +746,8 @@ export abstract class ChannelViewModel extends ObservableBase implements IDispos
         }
 
         this.unseenMessageCount = 0;
-        this.hasPing = false;
+        this.clearPings();
+        //this.hasPing = false;
         this.recalculateMessagesToShow();
     }
 
@@ -767,7 +768,8 @@ export abstract class ChannelViewModel extends ObservableBase implements IDispos
 
     protected onIsTabActiveChanged() { 
         if (this.isTabActive) {
-            this.hasPing = false;
+            this.clearPings();
+            //this.hasPing = false;
             this.unseenMessageCount = 0;
             this.ensureSelectableFilterSelected();
         }
@@ -778,7 +780,8 @@ export abstract class ChannelViewModel extends ObservableBase implements IDispos
 
     protected pingIfNecessary(message: ChannelMessageViewModel) {
         if (message.containsPing && !this.isTabActive && message.characterStatus.characterName != this.parent.characterName) {
-            this.hasPing = true;
+            //this.hasPing = true;
+            this.addPingMessage();
             this.logger.logInfo("pinging due to message", this, message);
         }
     }
@@ -789,23 +792,25 @@ export abstract class ChannelViewModel extends ObservableBase implements IDispos
         }
     }
 
-    private readonly _hasPings: ObservableValue<boolean> = new ObservableValue(false);
+    private readonly _pingMessagesCount: ObservableValue<number> = new ObservableValue(0).withName("ChannelViewModel._pingMessagesCount");
     private readonly _unseenMessagesCount: ObservableValue<number> = new ObservableValue(0).withName("ChannelViewModel._unseenMessagesCount");
 
-    @observableProperty
-    get hasPing(): boolean {
+    get pingMessagesCount() { 
         if (this.getConfigSettingById("allowPings")) {
-            return this._hasPings.value
+            return this._pingMessagesCount.value; 
         }
         else {
-            return false;
+            return 0;
         }
     }
-    set hasPing(value: boolean) {
-        this._hasPings.value = value;
+
+    addPingMessage() { this._pingMessagesCount.value = this._pingMessagesCount.value + 1; }
+    protected clearPings() { this._pingMessagesCount.value = 0; }
+
+    get hasPing(): boolean {
+        return Observable.calculate("ChannelViewModel.hasPing", () => this._pingMessagesCount.value > 0);
     }
 
-    //@observableProperty
     get hasUnseenMessages() {
         return Observable.calculate("ChannelViewModel.hasUnseenMessages", () => this.unseenMessageCount > 0);
     }
