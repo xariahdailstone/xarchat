@@ -1188,6 +1188,17 @@ namespace MinimalWin32Test.UI
             catch { }
             return Task.CompletedTask;
         }
+
+        public IDisposable AddWindowMessageHandler(PossibleWindowMessageHandlerFunc handler)
+        {
+            IDisposable result = null!;
+            InvokeInApplication(() =>
+            {
+                if (_browserWindow != null) { result = _browserWindow.AddWindowMessageHandler(handler); }
+                else { result = new ActionDisposable(() => { }); }
+            });
+            return result;
+        }
     }
 
     //public class OversizeBrowserManager
