@@ -1,8 +1,8 @@
 import { CharacterName } from "../shared/CharacterName";
 import { CancellationTokenSource } from "../util/CancellationTokenSource";
 import { KeyValuePair } from "../util/collections/KeyValuePair";
-import { HostInterop } from "../util/HostInterop";
-import { DateAnchor, LogSearchKind, LogSearchResult } from "../util/HostInteropLogSearch";
+import { HostInterop } from "../util/hostinterop/HostInterop";
+import { DateAnchor, LogSearchKind, LogSearchResult } from "../util/hostinterop/HostInteropLogSearch";
 import { Mutex } from "../util/Mutex";
 import { ObservableValue } from "../util/Observable";
 import { ObservableBase, observableProperty } from "../util/ObservableBase";

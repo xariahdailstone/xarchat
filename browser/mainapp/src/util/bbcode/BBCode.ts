@@ -13,7 +13,7 @@ import { EL } from "../EL";
 import { EventListenerUtil } from "../EventListenerUtil";
 import { getRoot } from "../GetRoot";
 import { HTMLUtils } from "../HTMLUtils";
-import { HostInterop } from "../HostInterop";
+import { HostInterop } from "../hostinterop/HostInterop";
 import { ObjectUniqueId } from "../ObjectUniqueId";
 import { ObservableValue } from "../Observable";
 import { BBCodeTag } from "./BBCodeTag";

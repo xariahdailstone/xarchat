@@ -2,7 +2,7 @@ import { CharacterName } from "../shared/CharacterName.js";
 import { IDisposable } from "../util/Disposable.js";
 import { FocusMagnet } from "../util/FocusMagnet.js";
 import { HTMLUtils } from "../util/HTMLUtils.js";
-import { HostInterop } from "../util/HostInterop.js";
+import { HostInterop } from "../util/hostinterop/HostInterop.js";
 import { TransitionUtils } from "../util/TransitionUtils.js";
 import { AppViewModel } from "../viewmodel/AppViewModel.js";
 import { DialogViewModel } from "../viewmodel/dialogs/DialogViewModel.js";

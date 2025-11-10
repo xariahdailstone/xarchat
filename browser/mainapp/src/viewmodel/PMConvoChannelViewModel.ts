@@ -3,7 +3,7 @@ import { AddMessageOptions, ChannelMessageType, ChannelMessageViewModel, Channel
 import { ActiveLoginViewModel } from "./ActiveLoginViewModel.js";
 import { CharacterSet } from "../shared/CharacterSet.js";
 import { observableProperty } from "../util/ObservableBase.js";
-import { HostInterop, LogMessageType, LogPMConvoMessage } from "../util/HostInterop.js";
+import { HostInterop, LogMessageType, LogPMConvoMessage } from "../util/hostinterop/HostInterop.js";
 import { CharacterDetailPopupViewModel } from "./popups/CharacterDetailPopupViewModel.js";
 import { SendQueue } from "../util/SendQueue.js";
 import { TaskUtils } from "../util/TaskUtils.js";
@@ -12,7 +12,7 @@ import { CharacterGender } from "../shared/CharacterGender.js";
 import { OnlineStatus } from "../shared/OnlineStatus.js";
 import { TypingStatus } from "../shared/TypingStatus.js";
 import { SavedChatStatePMConvo } from "../settings/AppSettings.js";
-import { DateAnchor } from "../util/HostInteropLogSearch.js";
+import { DateAnchor } from "../util/hostinterop/HostInteropLogSearch.js";
 import { IDisposable } from "../util/Disposable.js";
 import { IterableUtils } from "../util/IterableUtils.js";
 import { ChannelFiltersViewModel } from "./ChannelFiltersViewModel.js";

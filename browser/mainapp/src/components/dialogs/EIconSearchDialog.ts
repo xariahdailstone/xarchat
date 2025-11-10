@@ -7,7 +7,7 @@ import { KeyCodes } from "../../util/KeyCodes";
 import { setupTooltipHandling } from "../../viewmodel/popups/TooltipPopupViewModel";
 import { SnapshottableSet } from "../../util/collections/SnapshottableSet";
 import { HTMLUtils } from "../../util/HTMLUtils";
-import { HostInterop } from "../../util/HostInterop";
+import { HostInterop } from "../../util/hostinterop/HostInterop";
 import { EIconUtils } from "../../util/EIconUtils";
 import { EventListenerUtil } from "../../util/EventListenerUtil";
 import { asDisposable, IDisposable } from "../../util/Disposable";

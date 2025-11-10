@@ -1,4 +1,4 @@
-import { HostInterop } from "./HostInterop";
+import { HostInterop } from "./hostinterop/HostInterop";
 import { IDisposable } from "./Disposable";
 
 export type UpdateCheckerClientCallback = (state: UpdateCheckerState) => void;

@@ -1,4 +1,4 @@
-import { HostInterop } from "./HostInterop";
+import { HostInterop } from "./hostinterop/HostInterop";
 import { URLUtils } from "./URLUtils";
 
 export class EIconUtils {

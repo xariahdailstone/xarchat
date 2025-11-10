@@ -1,8 +1,8 @@
 import { ChannelName } from "../shared/ChannelName";
 import { CharacterName } from "../shared/CharacterName";
 import { CancellationToken, CancellationTokenSource } from "../util/CancellationTokenSource";
-import { HostInterop } from "../util/HostInterop";
-import { DateAnchor, LogSearchKind, LogSearchResult } from "../util/HostInteropLogSearch";
+import { HostInterop } from "../util/hostinterop/HostInterop";
+import { DateAnchor, LogSearchKind, LogSearchResult } from "../util/hostinterop/HostInteropLogSearch";
 import { ObservableValue } from "../util/Observable";
 import { ObservableBase, observableProperty } from "../util/ObservableBase";
 import { Collection } from "../util/ObservableCollection";
