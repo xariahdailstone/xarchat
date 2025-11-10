@@ -5,7 +5,7 @@ import { RenderingComponentBase } from "./RenderingComponentBase";
 import { Fragment, jsx, VNode } from "../snabbdom/index.js";
 import { IDisposable, asDisposable } from "../util/Disposable.js";
 import { RenderingStageViewComponent, stageViewFor } from "./Stage";
-import { DateAnchor, LogSearchKind } from "../util/HostInteropLogSearch";
+import { DateAnchor, LogSearchKind } from "../util/hostinterop/HostInteropLogSearch";
 import { CollectionViewLightweight } from "./CollectionViewLightweight";
 import { EL } from "../util/EL";
 import { ChannelMessageCollectionView, DefaultStreamScrollManager } from "./ChannelStream";

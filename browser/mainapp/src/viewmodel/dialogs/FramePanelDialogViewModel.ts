@@ -1,4 +1,4 @@
-import { HostInterop } from "../../util/HostInterop";
+import { HostInterop } from "../../util/hostinterop/HostInterop";
 import { observableProperty } from "../../util/ObservableBase";
 import { AppViewModel } from "../AppViewModel";
 import { DialogCaptionButtonViewModel, DialogViewModel } from "./DialogViewModel";

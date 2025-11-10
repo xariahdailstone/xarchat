@@ -1,7 +1,7 @@
 import { StyleLoader } from "./components/ComponentBase.js";
 import { MainInterface } from "./components/MainInterface.js";
 import { HostInteropConfigBlock } from "./util/ConfigBlock.js";
-import { HostInterop } from "./util/HostInterop.js";
+import { HostInterop } from "./util/hostinterop/HostInterop.js";
 import { KeyCodes } from "./util/KeyCodes.js";
 import { hookRequestAnimationFrame } from "./util/RequestAnimationFrameHook.js";
 import { polyfillRequestIdleCallback } from "./util/RequestIdleCallbackPolyfill.js";

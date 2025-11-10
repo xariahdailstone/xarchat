@@ -1,7 +1,7 @@
 import { CharacterName } from "../../shared/CharacterName";
 import { CancellationToken, CancellationTokenSource } from "../../util/CancellationTokenSource";
-import { HostInterop } from "../../util/HostInterop";
-import { LogSearchKind } from "../../util/HostInteropLogSearch";
+import { HostInterop } from "../../util/hostinterop/HostInterop";
+import { LogSearchKind } from "../../util/hostinterop/HostInteropLogSearch";
 import { IterableUtils } from "../../util/IterableUtils";
 import { ObservableBase, observableProperty } from "../../util/ObservableBase";
 import { OperationCancelledError } from "../../util/PromiseSource";

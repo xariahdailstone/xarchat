@@ -1,4 +1,4 @@
-import { HostInterop } from "../../util/HostInterop";
+import { HostInterop } from "../../util/hostinterop/HostInterop";
 import { HTMLUtils } from "../../util/HTMLUtils";
 import { StringUtils } from "../../util/StringUtils";
 import { FramePanelDialogViewModel } from "../../viewmodel/dialogs/FramePanelDialogViewModel";

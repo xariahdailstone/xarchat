@@ -7,7 +7,7 @@ import { ChannelName } from "../shared/ChannelName.js";
 import { CharacterName } from "../shared/CharacterName.js";
 import { ConfigBlock } from "../util/ConfigBlock.js";
 import { IDisposable } from "../util/Disposable.js";
-import { HostInterop, HostWindowState } from "../util/HostInterop.js";
+import { HostInterop, HostWindowState } from "../util/hostinterop/HostInterop.js";
 import { IdleDetection, IdleDetectionScreenState, IdleDetectionUserState } from "../util/IdleDetection.js";
 import { Observable, ObservableValue, PropertyChangeEvent } from "../util/Observable.js";
 import { ObservableBase, observableProperty } from "../util/ObservableBase.js";
@@ -35,6 +35,7 @@ import { ContextMenuPopupViewModel } from "./popups/ContextMenuPopupViewModel.js
 import { PopupViewModel } from "./popups/PopupViewModel.js";
 import { TooltipPopupViewModel } from "./popups/TooltipPopupViewModel.js";
 import { UIZoomNotifyPopupViewModel } from "./popups/UIZoomNotifyPopupViewModel.js";
+import { PlatformUtils } from "../util/PlatformUtils.js";
 
 export class AppViewModel extends ObservableBase {
     constructor(configBlock: ConfigBlock) {
@@ -262,10 +263,10 @@ export class AppViewModel extends ObservableBase {
     @observableProperty
     get showTitlebar(): boolean {
         const sp = new URLSearchParams(document.location.search);
-        if (sp.get("ClientPlatform") == "linux-x64" || sp.get("ClientPlatform") == "macos-arm64") {
-            return false;
+        if (PlatformUtils.isWindows) {
+            return true;
         }
-        return true;
+        return false;
     }
 
     @observableProperty

@@ -1,4 +1,4 @@
-import { HostInterop, HostWindowState } from "../util/HostInterop.js";
+import { HostInterop, HostWindowState } from "../util/hostinterop/HostInterop.js";
 import { HTMLUtils } from "../util/HTMLUtils.js";
 import { UpdateCheckerState } from "../util/UpdateCheckerClient.js";
 import { AppViewModel } from "../viewmodel/AppViewModel.js";

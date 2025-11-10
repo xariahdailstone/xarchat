@@ -1,7 +1,7 @@
 import { ChannelName } from "../shared/ChannelName";
 import { CharacterName } from "../shared/CharacterName";
 import { CancellationToken } from "../util/CancellationTokenSource";
-import { HostInterop } from "../util/HostInterop";
+import { HostInterop } from "../util/hostinterop/HostInterop";
 import { IterableUtils } from "../util/IterableUtils";
 import { PlatformUtils } from "../util/PlatformUtils";
 import { AppViewModel } from "../viewmodel/AppViewModel";

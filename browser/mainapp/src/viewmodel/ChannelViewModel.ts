@@ -14,7 +14,7 @@ import { StdObservableConcatCollectionView } from "../util/collections/StdObserv
 import { StdObservableList } from "../util/collections/StdObservableView.js";
 import { asDisposable, tryDispose as maybeDispose, IDisposable, isDisposable } from "../util/Disposable.js";
 import { HeldCacheManager } from "../util/HeldCacheManager.js";
-import { LoggedMessage, LogMessageType } from "../util/HostInterop.js";
+import { LoggedMessage, LogMessageType } from "../util/hostinterop/HostInterop.js";
 import { IterableUtils } from "../util/IterableUtils.js";
 import { Logging } from "../util/Logger.js";
 import { ObjectUniqueId } from "../util/ObjectUniqueId.js";
