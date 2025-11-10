@@ -444,12 +444,14 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
 
         const sectionOrdering = vm.getConfigSettingById("leftBar.sectionOrdering") as string;
 
+        const density = vm.getConfigSettingById("leftBar.density");
+
         this._chatSubrenderingManagerPMs?.mark();
         //this._chatSubrenderingManagerChans?.mark();
         try {
             if (sectionOrdering == "pc")
             {
-                return <div key={`scroller-${vm.characterName.canonicalValue}`} id="scroller">
+                return <div key={`scroller-${vm.characterName.canonicalValue}`} id="scroller" classList={[ `density-${density}` ]}>
                     {this.renderPrivateMessagesSection(vm, unseenDotStyle, charStatusSubSet, nicknameSubSet)}
                     {this.renderPinnedChannelsSection(vm, unseenDotStyle)}
                     {this.renderUnpinnedChannelsSection(vm, unseenDotStyle)}
@@ -457,7 +459,7 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
             }
             else
             {
-                return <div key={`scroller-${vm.characterName.canonicalValue}`} id="scroller">
+                return <div key={`scroller-${vm.characterName.canonicalValue}`} id="scroller" classList={[ `density-${density}` ]}>
                     {this.renderPinnedChannelsSection(vm, unseenDotStyle)}
                     {this.renderUnpinnedChannelsSection(vm, unseenDotStyle)}
                     {this.renderPrivateMessagesSection(vm, unseenDotStyle, charStatusSubSet, nicknameSubSet)}
