@@ -30,12 +30,12 @@ export class InAppToastsView extends RenderingComponentBase<InAppToastsViewModel
             const closeNode = (t.canClose ?? true)
                 ? <button classList={[ "toasts-toast-close" ]} on={{ "click": (e) => { 
                     vm.removeToast(t, ToastCloseReason.CloseButtonClicked); e.stopPropagation(); 
-                } }}>X</button>
+                } }}><x-iconimage classList={[ "toasts-toast-close-icon" ]} src="assets/ui/iconify-window-close.svg"></x-iconimage></button>
                 : null;
 
             const buttonNodes: VNode[] = [];
             for (let btn of t.buttons ?? []) {
-                buttonNodes.push(<button classList={[ "toasts-toast-button" ]} on={{ "click": (e) => { btn.onClick(t); e.stopPropagation(); } }}>{btn.title}</button>);
+                buttonNodes.unshift(<button classList={[ "toasts-toast-button" ]} on={{ "click": (e) => { btn.onClick(t); e.stopPropagation(); } }}>{btn.title}</button>);
             }
             const buttonNodesContainer = buttonNodes.length > 0
                 ? <div classList={[ "toasts-toast-buttons" ]}>{buttonNodes}</div>

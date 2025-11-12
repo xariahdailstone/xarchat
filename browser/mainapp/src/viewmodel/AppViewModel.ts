@@ -36,7 +36,8 @@ import { PopupViewModel } from "./popups/PopupViewModel.js";
 import { TooltipPopupViewModel } from "./popups/TooltipPopupViewModel.js";
 import { UIZoomNotifyPopupViewModel } from "./popups/UIZoomNotifyPopupViewModel.js";
 import { PlatformUtils } from "../util/PlatformUtils.js";
-import { InAppToastsViewModel } from "./InAppToastsViewModel.js";
+import { InAppToastsViewModel, ToastInfo } from "./InAppToastsViewModel.js";
+import { Scheduler } from "../util/Scheduler.js";
 
 export class AppViewModel extends ObservableBase {
     constructor(configBlock: ConfigBlock) {
@@ -125,8 +126,11 @@ export class AppViewModel extends ObservableBase {
         });
 
         (async () => {
+            let previousState = UpdateCheckerState.Unknown;
             this._updateCheckerClient = await UpdateCheckerClient.createAsync(state => {
                 this.updateCheckerState = state;
+                this.updateCheckerStateChanged(previousState, state);
+                previousState = state;
             });
         })();
 
@@ -147,6 +151,49 @@ export class AppViewModel extends ObservableBase {
 
     @observableProperty
     updateCheckerState: UpdateCheckerState = UpdateCheckerState.Unknown;
+
+    private _updateToastAlreadyShown: boolean = false;
+
+    private updateCheckerStateChanged(oldState: UpdateCheckerState, newState: UpdateCheckerState) {
+        const oldStateIsUpdate = oldState == UpdateCheckerState.UpdateAvailable || oldState == UpdateCheckerState.UpdateAvailableRequired;
+        const newStateIsUpdate = newState == UpdateCheckerState.UpdateAvailable || newState == UpdateCheckerState.UpdateAvailableRequired;
+        if (!oldStateIsUpdate && newStateIsUpdate) {
+            if (!this._updateToastAlreadyShown) {
+                this._updateToastAlreadyShown = true;
+                this.showUpdateAvailableToast();
+            }
+        }
+    }
+
+    private showUpdateAvailableToast() {
+        const updateToastInfo: ToastInfo = {
+            priority: 1,
+            color: "black",
+            backgroundColor: "yellow",
+            canClose: true,
+            title: "XarChat Update Available",
+            description: "An update for XarChat is available.",
+            buttons: [
+                {
+                    title: "Remind Me Later",
+                    onClick: () => {
+                        Scheduler.scheduleCallback(1000 * 60 * 60, () => {
+                            this.showUpdateAvailableToast();
+                        });
+                        this.toasts.removeToast(updateToastInfo);
+                    }
+                },
+                {
+                    title: "Show",
+                    onClick: () => {
+                        this.launchUpdateUrlAsync();
+                        this.toasts.removeToast(updateToastInfo);
+                    }
+                }
+            ]
+        };
+        this.toasts.addNewToast(updateToastInfo);
+    }
 
     async relaunchToApplyUpdateAsync() {
         await HostInterop.relaunchToApplyUpdateAsync();
