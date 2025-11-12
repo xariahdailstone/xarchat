@@ -14,7 +14,6 @@ export class TitleBar extends ComponentBase<AppViewModel> {
             <div class="topsizer"></div>
             <div id="elTitle" class="title"></div>
             <div id="elBrandTag" class="brandtag"></div>
-            <div id="elUpdateNotice" class="update-notice">Update Available</div>
             <div id="elStatusMessage" class="status-message"></div>
             <button id="elMinimize" class="titlebarbutton" tabindex="-1"><x-iconimage src="assets/ui/iconify-window-minimize.svg"></x-iconimage></button>
             <button id="elMaximize" class="titlebarbutton" tabindex="-1"><x-iconimage id="elMaximizeIcon" src="assets/ui/iconify-window-maximize.svg"></x-iconimage></button>
@@ -26,7 +25,6 @@ export class TitleBar extends ComponentBase<AppViewModel> {
 
         const elTitle = this.$("elTitle") as HTMLDivElement;
         const elBrandTag = this.$("elBrandTag") as HTMLDivElement;
-        const elUpdateNotice = this.$("elUpdateNotice") as HTMLDivElement;
         const elStatusMessage = this.$("elStatusMessage") as HTMLDivElement;
         const elMinimize = this.$("elMinimize") as HTMLButtonElement;
         const elMaximize = this.$("elMaximize") as HTMLButtonElement;
@@ -44,10 +42,6 @@ export class TitleBar extends ComponentBase<AppViewModel> {
                 elMaximizeIcon.src = buttonSrcMaximize;
             }
         });
-        this.watchExpr(vm => vm.updateCheckerState, ucs => {
-            const hasUpdate = (ucs == UpdateCheckerState.UpdateAvailable || ucs == UpdateCheckerState.UpdateAvailableRequired);
-            elUpdateNotice.classList.toggle("shown", hasUpdate);
-        });
         this.watchExpr(vm => vm.statusMessage, sm => {
             if (sm != null) {
                 this.elMain.classList.add("status-message-shown");
@@ -62,10 +56,6 @@ export class TitleBar extends ComponentBase<AppViewModel> {
             elBrandTag.classList.add("devmode");
             elBrandTag.innerText = "DEV";
         }
-
-        elUpdateNotice.addEventListener("click", () => {
-            this.viewModel?.launchUpdateUrlAsync();
-        });
 
         elMinimize.addEventListener("click", () => HostInterop.minimizeWindow());
         elMinimize.addEventListener("contextmenu", (ev) => {
