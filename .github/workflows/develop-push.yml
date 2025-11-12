@@ -166,10 +166,6 @@ jobs:
       with:
         dotnet-version: 10.0.x
 
-    - id: setup_msbuild
-      name: "Setup MSBuild"
-      uses: microsoft/setup-msbuild@v2
-
     - id: restore_npm_deps
       name: "Restore NPM Packages"
       shell: bash
