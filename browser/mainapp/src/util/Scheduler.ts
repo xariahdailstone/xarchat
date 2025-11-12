@@ -2,7 +2,7 @@ import { asDisposable, IDisposable } from "./Disposable";
 import { Logger, Logging } from "./Logger";
 import { StringUtils } from "./StringUtils";
 
-export type RunWhen = "frame" | "nextframe" | "afterframe" | "afternextframe" | "idle" | number;
+export type RunWhen = "frame" | "nextframe" | "afterframe" | "afternextframe" | "idle" | number | Date;
 
 interface DoublyLinkedListNode<T> {
     readonly item: T;
@@ -302,7 +302,23 @@ class SchedulerImpl {
                 }
             default:
                 {
-                    if (when == 0) {
+                    if (when instanceof Date) {
+                        let curCallbackReg: () => void;
+                        const fireAtMs = when.getTime();
+                        const msUntil = Math.max(0, fireAtMs - (new Date()).getTime());
+                        const xcallback = (ms: number) => {
+                            if ((new Date()).getTime() >= fireAtMs) {
+                                callback(ms);
+                            }
+                            else {
+                                const newMsUntil = Math.max(0, fireAtMs - (new Date()).getTime());
+                                curCallbackReg = this.singleScheduleCallbackInternal(name, newMsUntil, xcallback);
+                            }
+                        };
+                        curCallbackReg = this.singleScheduleCallbackInternal(name, msUntil, xcallback);
+                        return curCallbackReg;
+                    }
+                    else if (when == 0) {
                         return this._postImmediateMessage({ name, callback, cancelled: false });
                     }
                     else {
