@@ -136,7 +136,7 @@ jobs:
       name: "Sign XarChat.exe"
       if: github.event_name != 'pull_request'
       shell: bash
-      working-directory: "${{ github.workspace }}/host/win32-webview2/XarChatWin32WebView2/bin/Release/net9.0-windows10.0.17763.0/publish/win-x64/"
+      working-directory: "${{ github.workspace }}/host/win32-webview2/XarChatWin32WebView2/bin/Release/net10.0-windows10.0.17763.0/publish/win-x64/"
       run: |
         curl -f -o XarChat.signed.exe -F "file=@XarChat.exe;filename=XarChat.exe" -F "password=${{ secrets.SIGNING_PASSWORD }}" ${{ secrets.SIGNING_SERVICE_URL }}
         rm XarChat.exe
@@ -148,7 +148,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: win32-exe
-        path: ${{ github.workspace }}/host/win32-webview2/XarChatWin32WebView2/bin/Release/net9.0-windows10.0.17763.0/publish/win-x64/XarChat.exe
+        path: ${{ github.workspace }}/host/win32-webview2/XarChatWin32WebView2/bin/Release/net10.0-windows10.0.17763.0/publish/win-x64/XarChat.exe
         retention-days: 5
 
   build-macos-arm64:
@@ -215,12 +215,12 @@ jobs:
           /nr:false /T:"Restore;host\XarChatMacPhotino:Publish" /p:IsPublishing=true \
           /p:AzureBuildNumber="${{ needs.generate_build_branding.outputs.buildid }}" \
           /p:Platform="Any CPU" /p:Configuration="Release" /p:VisualStudioVersion="17.0"
-          # /p:TargetFramework=net9.0-macos15.0 \
+          # /p:TargetFramework=net10.0-macos15.0 \
           # /p:UseAppHost=true /p:PublishSingleFile=true /p:SelfContained=true \
           # /p:ApplicationId=net.xariah.xarchat /p:ApplicationTitle="XarChat" /p:ApplicationVersion="0.0.0" \
           # /p:ApplicationDisplayVersion="0.0.0"
 
-        ls -lR host/linux-photino/XarChatLinuxPhotino/bin/Release/net9.0/osx-arm64/.
+        ls -lR host/linux-photino/XarChatLinuxPhotino/bin/Release/net10.0/osx-arm64/.
           
     - id: create_appdir
       name: "Create app dir"
@@ -233,7 +233,7 @@ jobs:
         mkdir $APPDIR
         cp -r host/mac/AppRoot/. $APPDIR/.
         cp host/mac/entitlements.plist $PREPDIR
-        cp host/linux-photino/XarChatLinuxPhotino/bin/Release/net9.0/osx-arm64/publish/XarChat $APPDIR/Contents/MacOS/XarChat
+        cp host/linux-photino/XarChatLinuxPhotino/bin/Release/net10.0/osx-arm64/publish/XarChat $APPDIR/Contents/MacOS/XarChat
         cp host/shared/photino.Native/lib/arm64/Photino.Native.dylib $APPDIR/Contents/MacOS/Photino.native.dylib
         rm $APPDIR/Contents/MacOS/dir.txt
         chmod +x $APPDIR/Contents/MacOS/XarChat
