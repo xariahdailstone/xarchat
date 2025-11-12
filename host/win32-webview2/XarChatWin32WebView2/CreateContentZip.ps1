@@ -10,7 +10,9 @@ $filesFullPath = $files | Where-Object -Property Attributes -CContains Archive |
 
 #create zip file
 $zipFileName = 'content.zip'
-del $zipFileName
+if ([System.IO.File]::Exists($zipFileName)) {
+    del $zipFileName
+}
 $zip = [System.IO.Compression.ZipFile]::Open((Join-Path -Path $(Resolve-Path -Path ".") -ChildPath $zipFileName), [System.IO.Compression.ZipArchiveMode]::Create)
 
 #write entries with relative paths as names

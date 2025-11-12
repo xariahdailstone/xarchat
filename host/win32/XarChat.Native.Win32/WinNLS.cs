@@ -38,29 +38,32 @@ namespace XarChat.Native.Win32
             return result;
         }
 
-        public static string GetLocaleInfoEx(string localeName, LocaleInfoType infoType)
+        public unsafe static string GetLocaleInfoEx(string localeName, LocaleInfoType infoType)
         {
-            var dataLength = Windows.Win32.PInvoke.GetLocaleInfoEx(
-                lpLocaleName: localeName,
+            fixed (char* localeNameStrPtr = localeName)
+            {
+                var dataLength = Windows.Win32.PInvoke.GetLocaleInfoEx(
+                lpLocaleName: localeNameStrPtr,
                 LCType: (uint)infoType,
                 lpLCData: null,
                 cchData: 0);
 
-            unsafe
-            {
-                fixed (char* resultChars = new char[dataLength])
+                unsafe
                 {
-                    if (Windows.Win32.PInvoke.GetLocaleInfoEx(
-                        lpLocaleName: localeName,
-                        LCType: (uint)infoType,
-                        lpLCData: resultChars,
-                        cchData: dataLength) == 0)
+                    fixed (char* resultChars = new char[dataLength])
                     {
-                        return "Unknown";
-                    }
+                        if (Windows.Win32.PInvoke.GetLocaleInfoEx(
+                            lpLocaleName: localeNameStrPtr,
+                            LCType: (uint)infoType,
+                            lpLCData: resultChars,
+                            cchData: dataLength) == 0)
+                        {
+                            return "Unknown";
+                        }
 
-                    var result = new String(resultChars);
-                    return result;
+                        var result = new String(resultChars);
+                        return result;
+                    }
                 }
             }
         }
