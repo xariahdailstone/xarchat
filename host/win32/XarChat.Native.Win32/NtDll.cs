@@ -52,7 +52,7 @@ namespace XarChat.Native.Win32
         {
             var phandle = Windows.Win32.PInvoke.OpenProcess(Windows.Win32.System.Threading.PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_INFORMATION,
                 false, (uint)processId);
-            if (phandle.Value != 0)
+            if (new IntPtr(phandle.Value) != 0)
             {
                 try
                 {
@@ -62,7 +62,7 @@ namespace XarChat.Native.Win32
                     try
                     {
                         var res = Windows.Wdk.PInvoke.NtQueryInformationProcess(
-                            new Windows.Win32.Foundation.HANDLE(phandle),
+                            new Windows.Win32.Foundation.HANDLE(phandle.Value),
                             Windows.Wdk.System.Threading.PROCESSINFOCLASS.ProcessBasicInformation,
                             (void*)ptrPbi,
                             currentAllocLen,

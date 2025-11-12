@@ -261,10 +261,10 @@ namespace XarChat.Native.Win32
             return PInvoke.GetDpiForWindow(new Windows.Win32.Foundation.HWND(hWnd));
         }
 
-        public static nint FindWindow(string? className, string? windowName)
+        public unsafe static nint FindWindow(string? className, string? windowName)
         {
             var hwnd = PInvoke.FindWindow(className, windowName);
-            return hwnd.Value;
+            return new IntPtr(hwnd.Value);
         }
 
         public static bool SetForegroundWindow(nint hwnd)

@@ -82,7 +82,7 @@ namespace XarChat.Native.Win32.Wrapped
                     new HINSTANCE(instance?.Handle ?? PInvoke.GetModuleHandle((string?)null).DangerousGetHandle()),
                     lpParam != null ? lpParam.Value.ToPointer() : IntPtr.Zero.ToPointer()
                 );
-                if (xhwnd.Value ==  IntPtr.Zero)
+                if (new IntPtr(xhwnd.Value) == 0)
                 {
                     var errorCode = Marshal.GetLastWin32Error();
                     throw new ApplicationException(errorCode.ToString());
@@ -140,7 +140,7 @@ namespace XarChat.Native.Win32.Wrapped
             }
         }
 
-        public nint Handle => _hwnd.Value;
+        public unsafe nint Handle => new IntPtr(_hwnd.Value);
 
         private nint UserPointer
         {
@@ -202,7 +202,7 @@ namespace XarChat.Native.Win32.Wrapped
                 {
                     length = (uint)Marshal.SizeOf<WINDOWPLACEMENT>()
                 };
-                Windows.Win32.PInvoke.GetWindowPlacement(new Windows.Win32.Foundation.HWND(_hwnd), ref wp);
+                Windows.Win32.PInvoke.GetWindowPlacement(_hwnd, ref wp);
                 //return wp.showCmd;
 
                 //User32.WINDOWPLACEMENT wp = new User32.WINDOWPLACEMENT() { Length = Marshal.SizeOf<User32.WINDOWPLACEMENT>() };

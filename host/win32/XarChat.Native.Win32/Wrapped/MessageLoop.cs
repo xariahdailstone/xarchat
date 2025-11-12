@@ -30,9 +30,10 @@ namespace XarChat.Native.Win32.Wrapped
                 fixed (char* classNameStrPtr  = classNameStr)
                 {
                     _windowClass = WindowClass.Register(classNameStr, WndProc2);
+                    var moduleHandle = PInvoke.GetModuleHandle((PCWSTR)null);
                     _hwnd = PInvoke.CreateWindowEx((WINDOW_EX_STYLE)0, new PCWSTR((char*)((IntPtr)_windowClass.Atom).ToPointer()), 
                         new PCWSTR(classNameStrPtr), (WINDOW_STYLE)0,
-                        0, 0, 0, 0, new HWND(HWND_MESSAGE), HMENU.Null, new HINSTANCE(PInvoke.GetModuleHandle((PCWSTR)null)));
+                        0, 0, 0, 0, new HWND(HWND_MESSAGE), HMENU.Null, new HINSTANCE(moduleHandle.Value));
                 }
             }
 
