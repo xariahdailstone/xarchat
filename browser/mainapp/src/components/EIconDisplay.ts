@@ -6,7 +6,9 @@ import { EIconLoadManager } from "../util/EIconLoadManager";
 import { EventListenerUtil } from "../util/EventListenerUtil";
 import { HTMLUtils } from "../util/HTMLUtils";
 import { Logging } from "../util/Logger";
+import { ObjectUniqueId } from "../util/ObjectUniqueId";
 import { ObservableExpression } from "../util/ObservableExpression";
+import { Scheduler } from "../util/Scheduler";
 import { setStylesheetAdoption } from "../util/StyleSheetPolyfill";
 import { URLUtils } from "../util/URLUtils";
 import { WhenChangeManager } from "../util/WhenChange";
@@ -23,7 +25,7 @@ const io = new IntersectionObserver((entries) => {
 });
 
 class EIconSyncManager {
-    private readonly _logger = Logging.createLogger("EIconSyncManager");
+    private readonly _logger = Logging.createLogger(`EIconSyncManager#${ObjectUniqueId.get(this)}`);
 
     private _syncGroups: Map<string, Set<EIconDisplay>> = new Map();
     private _eiconsToSyncGroup: Map<EIconDisplay, string> = new Map();
@@ -93,9 +95,11 @@ export class EIconDisplay extends HTMLElement {
         // this._sroot.addEventListener("copy", (e: ClipboardEvent) => {
         //     BBCodeParser.performCopy(e);
         // });
+
+        //this._logger.logInfo("Created EIconDisplay");
     }
 
-    private readonly _logger = Logging.createLogger("EIconDisplay");
+    private readonly _logger = Logging.createLogger(`EIconDisplay#${ObjectUniqueId.get(this)}`);
 
     //private readonly _styleLoader: StyleLoader;
 
@@ -121,10 +125,12 @@ export class EIconDisplay extends HTMLElement {
     }
 
     private connectedCallback() {
+        //this._logger.logInfo("connected to DOM");
         this.updateState();
     }
 
     private disconnectedCallback() {
+        //this._logger.logInfo("disconnected from DOM");
         this.updateState();
     }
 
@@ -207,7 +213,18 @@ export class EIconDisplay extends HTMLElement {
 
     private _eiconBlockWCM: WhenChangeManager = new WhenChangeManager();
 
+    private _updateStateScheduledEvent: (IDisposable | null) = null;
+
     updateState() {
+        if (this._updateStateScheduledEvent) { return; }
+
+        this._updateStateScheduledEvent = Scheduler.scheduleCallback("frame", () => {
+            this._updateStateScheduledEvent = null;
+            this.updateStateInternal();
+        });
+    }
+
+    private updateStateInternal() {
         const lastEIconName = this._lastStateEIconName;
         const lastIsConnected = this._lastStateIsConnected;
         const lastSyncGroup = this._lastStateSyncGroup;
@@ -216,6 +233,9 @@ export class EIconDisplay extends HTMLElement {
         const eiconName = this.eiconName;
         const syncGroup = isConnected ? this.syncGroup : null;
         const charName = this.charName ? CharacterName.create(this.charName) : null;
+
+        if (lastEIconName == eiconName && lastIsConnected == isConnected && lastSyncGroup == syncGroup) { return; }
+        //this._logger.logInfo(`updateState lastEIconName=${lastEIconName}, lastIsConnected=${lastIsConnected}, lastSyncGroup=${lastSyncGroup}, eiconName=${eiconName}, isConnected=${isConnected}, syncGroup=${syncGroup}`);
 
         this._lastStateEIconName = eiconName;
         this._lastStateIsConnected = isConnected;
