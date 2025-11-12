@@ -36,6 +36,7 @@ import { PopupViewModel } from "./popups/PopupViewModel.js";
 import { TooltipPopupViewModel } from "./popups/TooltipPopupViewModel.js";
 import { UIZoomNotifyPopupViewModel } from "./popups/UIZoomNotifyPopupViewModel.js";
 import { PlatformUtils } from "../util/PlatformUtils.js";
+import { InAppToastsViewModel } from "./InAppToastsViewModel.js";
 
 export class AppViewModel extends ObservableBase {
     constructor(configBlock: ConfigBlock) {
@@ -45,6 +46,8 @@ export class AppViewModel extends ObservableBase {
         this.colorTheme = new ColorThemeViewModel(this);
 
         this.bbcodeParseSink = new AppViewModelBBCodeSink(this);
+
+        this.toasts = new InAppToastsViewModel(this);
 
         //this.flistApi = new FListApiImpl();
         this.flistApi = new HostInteropApi();
@@ -139,6 +142,8 @@ export class AppViewModel extends ObservableBase {
     readonly bbcodeParseSink: BBCodeParseSink;
 
     private _updateCheckerClient: UpdateCheckerClient | null = null;
+
+    readonly toasts: InAppToastsViewModel;
 
     @observableProperty
     updateCheckerState: UpdateCheckerState = UpdateCheckerState.Unknown;

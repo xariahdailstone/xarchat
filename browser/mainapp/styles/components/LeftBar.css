@@ -32,7 +32,9 @@
     width: 100%;
 }
 
-x-sidebartabcontainer { grid-area: main; }
+x-sidebartabcontainer { grid-area: main; z-index: 1; }
+
+.main-inapptoastsview { grid-area: main; z-index: 2; }
 
 #elCharPanel {
     grid-area: characterpanel;

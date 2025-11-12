@@ -15,4 +15,8 @@ export class DateUtils {
             DateTimeFormats.ChatTimestampToday.format(d) :
             DateTimeFormats.ChatTimestampNotToday.format(d);
     }
+
+    static add(a: Date, ms: number) {
+        return new Date(a.getTime() + ms);
+    }
 }
