@@ -212,15 +212,6 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     configBlockKey: "autoUrlPaste"
                 },
                 {
-                    id: "eiconSearch.enabled",
-                    scope: getScopeArray(["global"]),
-                    title: "EIcon Search",
-                    description: `Use ${shortcutKeyCombiningPrefixString}E to open the eicon search instead of just inserting [eicon][/eicon] tags. (When disabled, ${shortcutKeyCombiningPrefixString}Alt+E opens eicon search instead.)`,
-                    type: "boolean",
-                    defaultValue: true,
-                    configBlockKey: "eiconSearch.enabled"
-                },
-                {
                     id: "openPmTabForIncomingTyping",
                     scope: getScopeArray(["global"]),
                     title: "Open a PM Tab on Typing",
@@ -729,6 +720,31 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                                     return false;
                                 }
                             }
+                        }
+                    ]
+                },
+                {
+                    scope: getScopeArray(["global"]),
+                    sectionTitle: "EIcons",
+                    description: "",
+                    items: [
+                        {
+                            id: "eiconSearch.enabled",
+                            scope: getScopeArray(["global"]),
+                            title: "EIcon Search",
+                            description: `Use ${shortcutKeyCombiningPrefixString}E to open the eicon search instead of just inserting [eicon][/eicon] tags. (When disabled, ${shortcutKeyCombiningPrefixString}Alt+E opens eicon search instead.)`,
+                            type: "boolean",
+                            defaultValue: true,
+                            configBlockKey: "eiconSearch.enabled"
+                        },
+                        {
+                            id: "dataSharing.eicons",
+                            scope: getScopeArray(["global"]),
+                            title: "Share Seen EIcons With Xariah.net",
+                            description: "Share information about eicons seen in chat with xariah.net, for improving the EIcon Search.",
+                            type: "boolean",
+                            defaultValue: null,
+                            configBlockKey: "dataSharing.eicons"
                         }
                     ]
                 }
