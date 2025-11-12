@@ -35,7 +35,7 @@ export class InAppToastsView extends RenderingComponentBase<InAppToastsViewModel
 
             const buttonNodes: VNode[] = [];
             for (let btn of t.buttons ?? []) {
-                buttonNodes.push(<button classList={[ "toasts-toast-button" ]} on={{ "click": (e) => { btn.onClick(t); e.stopPropagation(); } }}>{btn.title}</button>);
+                buttonNodes.unshift(<button classList={[ "toasts-toast-button" ]} on={{ "click": (e) => { btn.onClick(t); e.stopPropagation(); } }}>{btn.title}</button>);
             }
             const buttonNodesContainer = buttonNodes.length > 0
                 ? <div classList={[ "toasts-toast-buttons" ]}>{buttonNodes}</div>

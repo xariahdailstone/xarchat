@@ -65,6 +65,10 @@
     border: none;
     background: transparent;
 }
+.toasts-toast-close:hover {
+    background-color: rgba(255, 255, 255, 0.25);
+}
+
 .toasts-toast-title {
     font-weight: bold;
     margin-bottom: 2px;
@@ -75,7 +79,8 @@
 .toasts-toast-buttons {
     display: flex;
     flex-direction: row-reverse;
-    margin-top: 2px;
+    margin-top: 7px;
+    gap: 3px;
 }
 .toasts-toast-button {
     clear: both;
@@ -86,4 +91,7 @@
     color: inherit;
     background-color: transparent;
     cursor: pointer;
+}
+.toasts-toast-button:hover {
+    background-color: rgba(255, 255, 255, 0.25);   
 }
