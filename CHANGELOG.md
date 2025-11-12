@@ -31,3 +31,5 @@
 * Added preliminary MacOS Build
 * Added an option to show private messages on the top of the left bar instead of the bottom.
 * Added an option to make the display of channels/PMs more dense.
+* Moved new XarChat version notification from titlebar to an in-app toast message in the left bar.
+* Fixed an issue where eicon animations would restart whenever a new message was received in a channel.
