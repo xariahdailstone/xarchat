@@ -2,7 +2,7 @@ import { CallbackSet } from './CallbackSet';
 import { KeyValuePair } from './collections/KeyValuePair';
 import { SnapshottableMap } from './collections/SnapshottableMap';
 import { IDisposable } from './Disposable';
-import { HostInterop } from './HostInterop';
+import { HostInterop } from './hostinterop/HostInterop';
 import { Logger, Logging } from './Logger';
 import { Observable } from './Observable';
 import { ObservableExpression } from './ObservableExpression';

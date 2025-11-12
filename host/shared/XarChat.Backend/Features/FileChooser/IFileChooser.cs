@@ -10,8 +10,10 @@ namespace XarChat.Backend.Features.FileChooser
     {
         Task<string?> SelectLocalFileAsync(
             string? initialFile = null,
-            IReadOnlyList<KeyValuePair<string, string>>? filter = null,
+            IReadOnlyList<SelectLocalFileFilterEntry>? filters = null,
             string? dialogTitle = null,
             CancellationToken cancellationToken = default);
     }
+
+    public record struct SelectLocalFileFilterEntry(string Name, IEnumerable<string> Extensions);
 }

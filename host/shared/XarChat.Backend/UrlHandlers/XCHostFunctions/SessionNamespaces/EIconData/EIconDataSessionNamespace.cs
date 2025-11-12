@@ -55,22 +55,22 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions.SessionNamespaces.EIconDat
     public class GetEIconDataArgs : StreamCommandMessage
     {
         [JsonPropertyName("name")]
-        public string EIconName { get; set; }
+        public required string EIconName { get; set; }
     }
 
     public class GetEIconDataResult : StreamCommandMessage
     {
         [JsonPropertyName("data")]
-        public byte[] EIconData { get; set; }
+        public required byte[] EIconData { get; set; }
 
         [JsonPropertyName("contentType")]
-        public string ContentType { get; set; }
+        public required string ContentType { get; set; }
 
         [JsonPropertyName("statusCode")]
         public int StatusCode { get; set; }
 
         [JsonPropertyName("headers")]
-        public List<KeyValuePair<string, string>> Headers { get; set; }
+        public required List<KeyValuePair<string, string>> Headers { get; set; }
     }
 
     [JsonSerializable(typeof(GetEIconDataArgs))]

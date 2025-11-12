@@ -5,7 +5,7 @@ import { CharacterName } from "../shared/CharacterName.js";
 import { CharacterSet } from "../shared/CharacterSet.js";
 import { BBCodeClickContext, BBCodeParseSink, ChatBBCodeParser } from "../util/bbcode/BBCode.js";
 import { tryDispose, IDisposable, addOnDispose, ConvertibleToDisposable, asDisposable } from "../util/Disposable.js";
-import { HostInterop } from "../util/HostInterop.js";
+import { HostInterop } from "../util/hostinterop/HostInterop.js";
 import { Observable, ObservableValue, PropertyChangeEvent } from "../util/Observable.js";
 import { ObservableBase, observableProperty, observablePropertyExt } from "../util/ObservableBase.js";
 import { Collection, CollectionChangeEvent, CollectionChangeType, ObservableCollection } from "../util/ObservableCollection.js";
@@ -26,7 +26,7 @@ import { StdObservableCollectionChangeType } from "../util/collections/ReadOnlyS
 import { LoginUtils } from "../util/LoginUtils.js";
 import { OperationCancelledError } from "../util/PromiseSource.js";
 import { IterableUtils } from "../util/IterableUtils.js";
-import { AppSettings, SavedChatState, SavedChatStateJoinedChannel } from "../settings/AppSettings.js";
+import { SavedChatState } from "../settings/AppSettings.js";
 import { CharacterStatusEditorPopupViewModel } from "./popups/CharacterStatusEditorPopupViewModel.js";
 import { OnlineStatus } from "../shared/OnlineStatus.js";
 import { Logger, Logging } from "../util/Logger.js";
@@ -34,7 +34,7 @@ import { CatchUtils } from "../util/CatchUtils.js";
 import { ContextMenuPopupItemViewModel, ContextMenuPopupViewModel } from "./popups/ContextMenuPopupViewModel.js";
 import { MiscTabViewModel } from "./MiscTabViewModel.js";
 import { LogSearchViewModel } from "./LogSearchViewModel.js";
-import { DateAnchor } from "../util/HostInteropLogSearch.js";
+import { DateAnchor } from "../util/hostinterop/HostInteropLogSearch.js";
 import { URLUtils } from "../util/URLUtils.js";
 import { SlashCommandViewModel } from "./SlashCommandViewModel.js";
 import { IdleDetection } from "../util/IdleDetection.js";
@@ -451,24 +451,23 @@ export class ActiveLoginViewModel extends ObservableBase implements IDisposable 
 
     get pingWords() { return this.savedChatState.pingWords; };
 
-    @observableProperty
-    hasUnseenMessages: boolean = false;
+    private readonly _unseenCount: ObservableValue<number> = new ObservableValue(0);
+    private readonly _pingCount: ObservableValue<number> = new ObservableValue(0);
 
-    @observableProperty
-    hasPings: boolean = false;
+    get unseenCount() { return this._unseenCount.value; }
+    get pingCount() { return this._pingCount.value; }
+    get hasUnseenMessages() { return Observable.calculate("ActiveLoginViewModel.hasUnseenMessages", () => this._unseenCount.value > 0); }
+    get hasPings() { return Observable.calculate("ActiveLoginViewModel.hasPings", () => this._pingCount.value > 0); }
 
     private refreshPingMentionCount() {
-        let newUnseen = false;
-        let newPings = false;
+        let unseenTotal = 0;
+        let pingTotal = 0;
         for (let ch of IterableUtils.combine<ChannelViewModel>(this.openChannels, this._pmConversations2)) {
-            newPings = newPings || ch.hasPing;
-            newUnseen = newUnseen || (ch.unseenMessageCount > 0);
-            if (newPings && newUnseen) {
-                break;
-            }
+            pingTotal += ch.pingMessagesCount;
+            unseenTotal += ch.unseenMessageCount;
         }
-        this.hasUnseenMessages = newUnseen;
-        this.hasPings = newPings;
+        this._unseenCount.value = unseenTotal;
+        this._pingCount.value = pingTotal;
     }
 
     private readonly _pinnedChannels2: Collection<ChatChannelViewModel> = new Collection<ChatChannelViewModel>();

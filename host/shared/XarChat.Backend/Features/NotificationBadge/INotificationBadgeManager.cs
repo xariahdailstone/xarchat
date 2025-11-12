@@ -8,6 +8,6 @@ namespace XarChat.Backend.Features.NotificationBadge
 {
     public interface INotificationBadgeManager
     {
-        void SetNotificationBadge(NotificationBadgeType notificationBadgeType);
+        void SetNotificationBadge(int pingCount, int unseenCount);
     }
 }

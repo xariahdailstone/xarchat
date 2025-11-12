@@ -64,13 +64,13 @@ namespace XarChat.Backend.Features.ChatLogging
         public long Timestamp { get; set; }
 
         [JsonPropertyName("speakerName")]
-        public string SpeakerName { get; set; }
+        public required string SpeakerName { get; set; }
 
         [JsonPropertyName("messageType")]
         public int MessageType { get; set; }
 
         [JsonPropertyName("messageText")]
-        public string MessageText { get; set; }
+        public required string MessageText { get; set; }
 
         [JsonPropertyName("gender")]
         public int CharacterGender { get; set; }
@@ -82,18 +82,18 @@ namespace XarChat.Backend.Features.ChatLogging
     public class LoggedChannelMessageInfo : LoggedMessageInfo
     {
         [JsonPropertyName("channelName")]
-        public string ChannelName { get; set; }
+        public required string ChannelName { get; set; }
 
         [JsonPropertyName("channelTitle")]
-        public string ChannelTitle { get; set; }
+        public required string ChannelTitle { get; set; }
     }
 
     public class LoggedPMConvoMessageInfo : LoggedMessageInfo
     {
         [JsonPropertyName("myCharacterName")]
-        public string MyCharacterName { get; set; }
+        public required string MyCharacterName { get; set; }
 
         [JsonPropertyName("interlocutorName")]
-        public string InterlocutorName { get; set; }
+        public required string InterlocutorName { get; set; }
     }
 }

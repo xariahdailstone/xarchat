@@ -4,7 +4,7 @@ import { CharacterStatus } from "../shared/CharacterSet";
 import { OnlineStatus } from "../shared/OnlineStatus";
 import { CancellationToken } from "../util/CancellationTokenSource";
 import { CatchUtils } from "../util/CatchUtils";
-import { HostInterop } from "../util/HostInterop";
+import { HostInterop } from "../util/hostinterop/HostInterop";
 import { ObservableBase, observableProperty } from "../util/ObservableBase";
 import { Collection } from "../util/ObservableCollection";
 import { ActiveLoginViewModel } from "./ActiveLoginViewModel";

@@ -53,7 +53,7 @@
 
   <ItemGroup>
     <TrimmerRootAssembly Include="Microsoft.Web.WebView2.Core" />
-    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2903.40">
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3595.46">
       <IsTrimmable>false</IsTrimmable>
     </PackageReference>
     <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.10" />
@@ -113,6 +113,14 @@
   <Target Name="AddGeneratedClasses" AfterTargets="PreBuildEvent" BeforeTargets="BeforeCompile;CoreCompile">
     <ItemGroup>
       <Compile Include="Properties\AssemblyVersionInfo.gcs" />
+    </ItemGroup>
+  </Target>
+
+  <Target Name="RemoveUnnecessaryWebView2References" AfterTargets="ResolvePackageDependenciesForBuild">
+    <ItemGroup>
+      <ReferenceToBeRemoved Include="@(Reference)" Condition="'%(Reference.FileName)' == 'Microsoft.Web.WebView2.WinForms' And '$(UseWindowsForms)' != 'true'"/>
+      <ReferenceToBeRemoved Include="@(Reference)" Condition="'%(Reference.FileName)' == 'Microsoft.Web.WebView2.Wpf' And '$(UseWpf)' != 'true'"/>
+      <Reference Remove="@(ReferenceToBeRemoved)"/>
     </ItemGroup>
   </Target>
 

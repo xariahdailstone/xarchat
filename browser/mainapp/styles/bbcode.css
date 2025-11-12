@@ -1,6 +1,7 @@
 
 .bbcode-status {
     pointer-events: none;
+    -webkit-user-select: none;
     user-select: none;
 }
 
@@ -273,6 +274,7 @@ body, .bbcode-eicons-normal {
 }
 .bbcode-collapse-title {
     flex-grow: 1;
+    -webkit-user-select: none;
     user-select: none;
     cursor: pointer;
 
@@ -333,6 +335,7 @@ body, .bbcode-eicons-normal {
 }
 
 .bbcode-quote-header {
+    -webkit-user-select: none;
     user-select: none;
     font-weight: bold;
     margin-bottom: 5px;

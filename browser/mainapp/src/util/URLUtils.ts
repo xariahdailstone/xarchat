@@ -2,7 +2,7 @@ import { ImageInfo, InlineInfo } from "../fchat/api/FListApi";
 import { CharacterName } from "../shared/CharacterName";
 import { CancellationToken } from "./CancellationTokenSource";
 import { IDisposable } from "./Disposable";
-import { HostInterop } from "./HostInterop";
+import { HostInterop } from "./hostinterop/HostInterop";
 import { Logging } from "./Logger";
 
 export class URLUtils {

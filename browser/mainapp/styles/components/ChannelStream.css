@@ -38,6 +38,7 @@
     justify-content: flex-end;
 
     height: 100%;
+    -webkit-user-select: text;
     user-select: text;
     overflow: hidden;
 
@@ -61,7 +62,7 @@
 
 
 
-.typingstatusindicator { user-select: none; }
+.typingstatusindicator { -webkit-user-select: none; user-select: none; }
 .messageitem.typingstatusindicator {
     padding: 3px 0px; 
     border-bottom: 1px solid transparent;

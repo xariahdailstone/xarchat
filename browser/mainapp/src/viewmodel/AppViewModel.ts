@@ -6,8 +6,8 @@ import { RawSavedWindowLocation } from "../settings/RawAppSettings.js";
 import { ChannelName } from "../shared/ChannelName.js";
 import { CharacterName } from "../shared/CharacterName.js";
 import { ConfigBlock } from "../util/ConfigBlock.js";
-import { IDisposable } from "../util/Disposable.js";
-import { HostInterop, HostWindowState } from "../util/HostInterop.js";
+import { IDisposable, tryDispose } from "../util/Disposable.js";
+import { HostInterop, HostWindowState } from "../util/hostinterop/HostInterop.js";
 import { IdleDetection, IdleDetectionScreenState, IdleDetectionUserState } from "../util/IdleDetection.js";
 import { Observable, ObservableValue, PropertyChangeEvent } from "../util/Observable.js";
 import { ObservableBase, observableProperty } from "../util/ObservableBase.js";
@@ -35,6 +35,9 @@ import { ContextMenuPopupViewModel } from "./popups/ContextMenuPopupViewModel.js
 import { PopupViewModel } from "./popups/PopupViewModel.js";
 import { TooltipPopupViewModel } from "./popups/TooltipPopupViewModel.js";
 import { UIZoomNotifyPopupViewModel } from "./popups/UIZoomNotifyPopupViewModel.js";
+import { PlatformUtils } from "../util/PlatformUtils.js";
+import { InAppToastsViewModel, ToastInfo } from "./InAppToastsViewModel.js";
+import { Scheduler } from "../util/Scheduler.js";
 
 export class AppViewModel extends ObservableBase {
     constructor(configBlock: ConfigBlock) {
@@ -45,23 +48,31 @@ export class AppViewModel extends ObservableBase {
 
         this.bbcodeParseSink = new AppViewModelBBCodeSink(this);
 
+        this.toasts = new InAppToastsViewModel(this);
+
         //this.flistApi = new FListApiImpl();
         this.flistApi = new HostInteropApi();
 
-        const loginPingUnseenChange = (ev: PropertyChangeEvent) => {
-            if (ev.propertyName == "hasPings" || ev.propertyName == "hasUnseenMessages") {
-                this.refreshPingMentionCount();
-            }
-        };
         this.logins.addCollectionObserver(entries => {
             for (let entry of entries) {
                 switch (entry.changeType) {
                     case StdObservableCollectionChangeType.ITEM_ADDED:
-                        entry.item.addEventListener("propertychange", loginPingUnseenChange);
-                        this.refreshPingMentionCount();
+                        {
+                            const oe = new ObservableExpression(() => [entry.item.pingCount, entry.item.unseenCount], (counts) => {
+                                this.refreshPingMentionCount();
+                            });
+                            (entry.item as any)[this.SYM_LOGIN_PINGUNSEEN_OE] = oe;
+                            this.refreshPingMentionCount();
+                        }
                         break;
                     case StdObservableCollectionChangeType.ITEM_REMOVED:
-                        entry.item.removeEventListener("propertychange", loginPingUnseenChange);
+                        {
+                            const oe = (entry.item as any)[this.SYM_LOGIN_PINGUNSEEN_OE] as any;
+                            if (oe) {
+                                delete (entry.item as any)[this.SYM_LOGIN_PINGUNSEEN_OE];
+                                tryDispose(oe);
+                            }
+                        }
                         this.refreshPingMentionCount();
                         if (entry.item == this.currentlySelectedSession) {
                             this.currentlySelectedSession = this.logins[0] ?? null;
@@ -79,16 +90,25 @@ export class AppViewModel extends ObservableBase {
             }
         });
 
-        this.addEventListener("propertychange", (ev) => {
-            if (ev.propertyName == "hasPings" || ev.propertyName == "hasUnseenMessages") {
-                HostInterop.updateAppBadge(this.hasPings, this.hasUnseenMessages);
-            }
-            else if (ev.propertyName == "userState" || ev.propertyName == "screenState") {
-                for (let login of this.logins.iterateValues()) {
-                    login.idleStateChanged();
-                }
+        const badgeOE = new ObservableExpression(() => [this.pingCount, this.unseenCount], (counts) => {
+            HostInterop.updateAppBadge(this.pingCount, this.unseenCount);
+        });
+        const idleStateOE = new ObservableExpression(() => [this.userState, this.screenState], (states) => {
+            for (let login of this.logins.iterateValues()) {
+                login.idleStateChanged();
             }
         });
+
+        // this.addEventListener("propertychange", (ev) => {
+        //     if (ev.propertyName == "hasPings" || ev.propertyName == "hasUnseenMessages") {
+        //         HostInterop.updateAppBadge(this.hasPings, this.hasUnseenMessages);
+        //     }
+        //     else if (ev.propertyName == "userState" || ev.propertyName == "screenState") {
+        //         for (let login of this.logins.iterateValues()) {
+        //             login.idleStateChanged();
+        //         }
+        //     }
+        // });
         this.configBlock.observe("global.autoIdle", v => {
             this.updateAutoIdleSettings();
         });
@@ -106,13 +126,18 @@ export class AppViewModel extends ObservableBase {
         });
 
         (async () => {
+            let previousState = UpdateCheckerState.Unknown;
             this._updateCheckerClient = await UpdateCheckerClient.createAsync(state => {
                 this.updateCheckerState = state;
+                this.updateCheckerStateChanged(previousState, state);
+                previousState = state;
             });
         })();
 
         this.setupLocaleMonitoring();
     }
+
+    private readonly SYM_LOGIN_PINGUNSEEN_OE = Symbol();
 
     isInStartup: boolean = true;
 
@@ -122,8 +147,53 @@ export class AppViewModel extends ObservableBase {
 
     private _updateCheckerClient: UpdateCheckerClient | null = null;
 
+    readonly toasts: InAppToastsViewModel;
+
     @observableProperty
     updateCheckerState: UpdateCheckerState = UpdateCheckerState.Unknown;
+
+    private _updateToastAlreadyShown: boolean = false;
+
+    private updateCheckerStateChanged(oldState: UpdateCheckerState, newState: UpdateCheckerState) {
+        const oldStateIsUpdate = oldState == UpdateCheckerState.UpdateAvailable || oldState == UpdateCheckerState.UpdateAvailableRequired;
+        const newStateIsUpdate = newState == UpdateCheckerState.UpdateAvailable || newState == UpdateCheckerState.UpdateAvailableRequired;
+        if (!oldStateIsUpdate && newStateIsUpdate) {
+            if (!this._updateToastAlreadyShown) {
+                this._updateToastAlreadyShown = true;
+                this.showUpdateAvailableToast();
+            }
+        }
+    }
+
+    private showUpdateAvailableToast() {
+        const updateToastInfo: ToastInfo = {
+            priority: 1,
+            color: "black",
+            backgroundColor: "yellow",
+            canClose: true,
+            title: "XarChat Update Available",
+            description: "An update for XarChat is available.",
+            buttons: [
+                {
+                    title: "Remind Me Later",
+                    onClick: () => {
+                        Scheduler.scheduleCallback(1000 * 60 * 60, () => {
+                            this.showUpdateAvailableToast();
+                        });
+                        this.toasts.removeToast(updateToastInfo);
+                    }
+                },
+                {
+                    title: "Show",
+                    onClick: () => {
+                        this.launchUpdateUrlAsync();
+                        this.toasts.removeToast(updateToastInfo);
+                    }
+                }
+            ]
+        };
+        this.toasts.addNewToast(updateToastInfo);
+    }
 
     async relaunchToApplyUpdateAsync() {
         await HostInterop.relaunchToApplyUpdateAsync();
@@ -262,10 +332,10 @@ export class AppViewModel extends ObservableBase {
     @observableProperty
     get showTitlebar(): boolean {
         const sp = new URLSearchParams(document.location.search);
-        if (sp.get("ClientPlatform") == "linux-x64") {
-            return false;
+        if (PlatformUtils.isWindows) {
+            return true;
         }
-        return true;
+        return false;
     }
 
     @observableProperty
@@ -315,21 +385,24 @@ export class AppViewModel extends ObservableBase {
     collapseAds: boolean = true;
     collapseHeight: number = 40;
 
-    @observableProperty
-    hasPings: boolean = false;
+    private readonly _unseenCount: ObservableValue<number> = new ObservableValue(0);
+    private readonly _pingCount: ObservableValue<number> = new ObservableValue(0);
 
-    @observableProperty
-    hasUnseenMessages: boolean = false;
+    get unseenCount() { return this._unseenCount.value; }
+    get hasUnseenMessages() { return Observable.calculate("AppViewModel.hasUnseenMessages", () => this._unseenCount.value > 0); }
+
+    get pingCount() { return this._pingCount.value; }
+    get hasPings() { return Observable.calculate("AppViewModel.hasPings", () => this._pingCount.value > 0); }
 
     private refreshPingMentionCount() {
-        let newPings = false;
-        let newUnseen = false;
+        let unseenTotal = 0;
+        let pingTotal = 0;
         for (let login of this.logins) {
-            newPings = newPings || login.hasPings;
-            newUnseen = newUnseen || login.hasUnseenMessages;
+            unseenTotal += login.unseenCount;
+            pingTotal += login.pingCount;
         }
-        this.hasPings = newPings;
-        this.hasUnseenMessages = newUnseen;
+        this._unseenCount.value = unseenTotal;
+        this._pingCount.value = pingTotal;
     }
 
     flashTooltipAsync(message: string, contextElement: HTMLElement, clientX: number, clientY: number) {

@@ -2,9 +2,11 @@ import { TypingStatus } from "../shared/TypingStatus.js";
 import { BBCodeUtils } from "../util/BBCodeUtils.js";
 import { asDisposable } from "../util/Disposable.js";
 import { EL } from "../util/EL.js";
-import { FocusMagnet } from "../util/FocusMagnet.js";
+import { EventListenerUtil } from "../util/EventListenerUtil.js";
+import { FocusMagnet, FocusUtil } from "../util/FocusMagnet.js";
 import { HTMLUtils } from "../util/HTMLUtils.js";
 import { KeyCodes } from "../util/KeyCodes.js";
+import { PlatformUtils } from "../util/PlatformUtils.js";
 import { Scheduler } from "../util/Scheduler.js";
 import { TextEditShortcutsHelper } from "../util/TextEditShortcutsHelper.js";
 import { WhenChangeManager } from "../util/WhenChange.js";
@@ -22,47 +24,48 @@ export class ChannelTextBox extends ComponentBase<ChannelViewModel> {
     constructor() {
         super();
 
+        const shortcutKeyString = PlatformUtils.shortcutKeyCombiningPrefixString;
         HTMLUtils.assignStaticHTMLFragment(this.elMain, `
             <div id="elControls">
                 <div id="elTextboxContainer" class="textbox-container no-toolbar">
                     <div class="textbox-toolbar">
                         <div class="textbox-toolbar-expandedcontainer">
-                            <div class="textbox-toolbar-button" data-buttoncommand="bold" title="Bold (Ctrl+B)">
+                            <div class="textbox-toolbar-button" data-buttoncommand="bold" title="Bold (${shortcutKeyString}B)">
                                 <x-iconimage src="assets/ui/textbox-toolbar/bold.svg"></x-iconimage>
                             </div>
-                            <div class="textbox-toolbar-button" data-buttoncommand="italic" title="Italic (Ctrl+I)">
+                            <div class="textbox-toolbar-button" data-buttoncommand="italic" title="Italic (${shortcutKeyString}I)">
                                 <x-iconimage src="assets/ui/textbox-toolbar/italic.svg"></x-iconimage>
                             </div>
-                            <div class="textbox-toolbar-button" data-buttoncommand="underline" title="Underline (Ctrl+U)">
+                            <div class="textbox-toolbar-button" data-buttoncommand="underline" title="Underline (${shortcutKeyString}U)">
                                 <x-iconimage src="assets/ui/textbox-toolbar/underline.svg"></x-iconimage>
                             </div>
-                            <div class="textbox-toolbar-button" data-buttoncommand="strikethrough" title="Strikethrough (Ctrl+S)">
+                            <div class="textbox-toolbar-button" data-buttoncommand="strikethrough" title="Strikethrough (${shortcutKeyString}S)">
                                 <x-iconimage src="assets/ui/textbox-toolbar/strikethrough.svg"></x-iconimage>
                             </div>
                             <div class="textbox-toolbar-separator"></div>
-                            <div class="textbox-toolbar-button" data-buttoncommand="subscript" title="Subscript (Ctrl+Down or Ctrl+H)">
+                            <div class="textbox-toolbar-button" data-buttoncommand="subscript" title="Subscript (${shortcutKeyString}Down or ${shortcutKeyString}H)">
                                 <x-iconimage src="assets/ui/textbox-toolbar/subscript.svg"></x-iconimage>
                             </div>
-                            <div class="textbox-toolbar-button" data-buttoncommand="superscript" title="Superscript (Ctrl+Up or Ctrl+Y)">
+                            <div class="textbox-toolbar-button" data-buttoncommand="superscript" title="Superscript (${shortcutKeyString}Up or ${shortcutKeyString}Y)">
                                 <x-iconimage src="assets/ui/textbox-toolbar/superscript.svg"></x-iconimage>
                             </div>
                             <div class="textbox-toolbar-separator"></div>
-                            <div class="textbox-toolbar-button" data-buttoncommand="spoiler" title="Spoiler (Ctrl+K)">
+                            <div class="textbox-toolbar-button" data-buttoncommand="spoiler" title="Spoiler (${shortcutKeyString}K)">
                                 <x-iconimage src="assets/ui/textbox-toolbar/spoiler.svg"></x-iconimage>
                             </div>
                             <div class="textbox-toolbar-separator"></div>
-                            <div class="textbox-toolbar-button" data-buttoncommand="user" title="User Link (Ctrl+R)">
+                            <div class="textbox-toolbar-button" data-buttoncommand="user" title="User Link (${shortcutKeyString}R)">
                                 <x-iconimage src="assets/ui/textbox-toolbar/user.svg"></x-iconimage>
                             </div>
-                            <div class="textbox-toolbar-button" data-buttoncommand="icon" title="User Icon (Ctrl+O)">
+                            <div class="textbox-toolbar-button" data-buttoncommand="icon" title="User Icon (${shortcutKeyString}O)">
                                 <x-iconimage src="assets/ui/textbox-toolbar/icon.svg"></x-iconimage>
                             </div>
                             <div class="textbox-toolbar-separator"></div>
-                            <div class="textbox-toolbar-button" data-buttoncommand="eicon" title="EIcon (Ctrl+E)">
+                            <div class="textbox-toolbar-button" data-buttoncommand="eicon" title="EIcon (${shortcutKeyString}E)">
                                 <x-iconimage src="assets/ui/textbox-toolbar/eicon.svg"></x-iconimage>
                             </div>
                             <div class="textbox-toolbar-separator"></div>
-                            <div class="textbox-toolbar-button" data-buttoncommand="noparse" title="No Parse (Ctrl+N)">
+                            <div class="textbox-toolbar-button" data-buttoncommand="noparse" title="No Parse (${shortcutKeyString}N)">
                                 <x-iconimage src="assets/ui/textbox-toolbar/noparse.svg"></x-iconimage>
                             </div>
                         </div>
@@ -274,12 +277,12 @@ export class ChannelTextBox extends ComponentBase<ChannelViewModel> {
                             break;
                     }
                 }
-                else if (ev.ctrlKey && ev.keyCode == KeyCodes.KEY_T && this.viewModel) {
+                else if (PlatformUtils.isShortcutKey(ev) && ev.keyCode == KeyCodes.KEY_T && this.viewModel) {
                     const avm = this.viewModel.activeLoginViewModel.appViewModel;
                     avm.setConfigSettingById("showChatTextboxToolbar", !avm.getConfigSettingById("showChatTextboxToolbar"));
                     ev.preventDefault();
                 }
-                else if (ev.ctrlKey && ev.keyCode == KeyCodes.KEY_W && this.viewModel) {
+                else if (PlatformUtils.isShortcutKey(ev) && ev.keyCode == KeyCodes.KEY_W && this.viewModel) {
                     const avm = this.viewModel.activeLoginViewModel.appViewModel;
                     avm.setConfigSettingById("showChatTextboxStatusBar", !avm.getConfigSettingById("showChatTextboxStatusBar"));
                     ev.preventDefault();
@@ -300,6 +303,32 @@ export class ChannelTextBox extends ComponentBase<ChannelViewModel> {
             },
             onTextChanged: (value) => { this.viewModel!.textBoxContent = value; }
         });
+
+        this.whenConnected(() => {
+            const disposables = [];
+            let mouseIsDown = false;
+
+            disposables.push(EventListenerUtil.addDisposableEventListener(document, "mousedown", () => {
+                mouseIsDown = true;
+            }));
+            disposables.push(EventListenerUtil.addDisposableEventListener(document, "mouseup", () => {
+                mouseIsDown = false;
+                this.focusTextBox(false);
+            }));
+            disposables.push(EventListenerUtil.addDisposableEventListener(document, "focusin", (e: Event) => {
+                if (!mouseIsDown) {
+                    this.logger.logInfo("focusin on document", e.target);
+                    this.focusTextBox(false);
+                }
+            }));
+            return asDisposable(...disposables);
+        });
+
+        // elTextbox.addEventListener("blur", () => {
+        //     if (this.isConnected) {
+        //         this.focusTextBox(true);
+        //     }
+        // });
 
         elSendChat.addEventListener("click", () => this.sendChat());
         elSendAd.addEventListener("click", () => this.sendAd());
@@ -340,21 +369,35 @@ export class ChannelTextBox extends ComponentBase<ChannelViewModel> {
         });
     }
 
-    focusTextBox() {
-        Scheduler.scheduleNamedCallback("ChannelTextBox.focusTextBox", ["nextframe", 250], () => {
+    canHaveFocusAwayFromTextBox(el: Element | null) {
+        const sel = (document as Document).getSelection();
+        //console.log("sel.type", sel?.type);
+        if (sel?.type == "Range") return true;
 
-        //window.requestAnimationFrame(() => {
+        return (el?.hasAttribute("data-canhavefocus") ?? false);
+    }
+
+    focusTextBox(delay: boolean) {
+        if (delay) {
             // Workaround: when focusTextBox is called during viewActivated, the first RAF will have the view rendering
             // being done, which will invalidate layout/styles.  To avoid a forced reflow due to focus(), we'll wait
             // for the *next* animation frame.
-            //window.requestAnimationFrame(() => {
-                this.logger.logDebug("focusTextBox");
+            Scheduler.scheduleNamedCallback("ChannelTextBox.focusTextBox", ["nextframe", 250], () => {
+                this.focusTextBox(false);
+            });
+        }
+        else {
+            if (this.isConnected) {
+                this.logger.logInfo("focusTextBox");
                 const elTextbox = this.$("elTextbox")! as HTMLTextAreaElement;
-                if (FocusMagnet.instance.ultimateFocus != elTextbox) {
+                //if (FocusMagnet.instance.ultimateFocus != elTextbox) {
+                if (FocusUtil.instance.ultimateFocus != elTextbox &&
+                    !this.canHaveFocusAwayFromTextBox(FocusUtil.instance.ultimateFocus)) {
+
                     elTextbox.focus();
                 }
-            //});
-        });
+            }
+        }
     }
 
     private tryHandleButtonCommand(cmd: string) {

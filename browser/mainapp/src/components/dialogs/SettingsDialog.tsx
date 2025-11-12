@@ -9,7 +9,7 @@ import { HTMLUtils } from "../../util/HTMLUtils";
 import { ConfigSchemaItemDefinitionItem, EnableIfOptions, PingLineItemDefinition, PingLineItemMatchStyle, PingLineItemMatchStyleConvert } from "../../configuration/ConfigSchemaItem";
 import { ColorHSSelectPopup } from "../popups/ColorHSSelectPopup";
 import { ColorHSSelectPopupViewModel } from "../../viewmodel/popups/ColorHSSelectPopupViewModel";
-import { HostInterop } from "../../util/HostInterop";
+import { HostInterop } from "../../util/hostinterop/HostInterop";
 import { NotificationRouting, NotificationRoutingTargetSetting } from "../../configuration/NotificationRouting";
 import { ColorRGBSelectPopupViewModel } from "../../viewmodel/popups/ColorRGBSelectPopupViewModel";
 import { ThemeToggle } from "../ThemeToggle";
@@ -518,8 +518,7 @@ export class SettingsDialog extends DialogComponentBase<SettingsDialogViewModel>
                                 title: `Choose Audio File`,
                                 file: curFileName,
                                 filters: [
-                                    { name: "MP3 Files (*.mp3)", pattern: "*.mp3" },
-                                    { name: "All Files (*.*)", pattern: "*.*" },
+                                    { name: "MP3 Files", extensions: [ "mp3" ] }
                                 ]
                             });
                             if (fn) {

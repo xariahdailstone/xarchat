@@ -452,7 +452,7 @@ namespace XarChat.Backend.Features.ChatLogging.Sqlite.Search
                         var count = Convert.ToInt32(await cmd.ExecuteScalarAsync(cancellationToken));
                         return count > 0;
                     }
-                    catch (Exception ex)
+                    catch (Exception)
                     {
                         return false;
                     }
@@ -483,7 +483,7 @@ namespace XarChat.Backend.Features.ChatLogging.Sqlite.Search
                         var count = Convert.ToInt32(await cmd.ExecuteScalarAsync(cancellationToken));
                         return count > 0;
                     }
-                    catch (Exception ex)
+                    catch (Exception)
                     {
                         return false;
                     }
@@ -532,7 +532,7 @@ namespace XarChat.Backend.Features.ChatLogging.Sqlite.Search
 
                         return result;
                     }
-                    catch (Exception ex)
+                    catch (Exception)
                     {
                         return new List<RecentConversationInfo>();
                     }

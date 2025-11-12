@@ -11,32 +11,71 @@ using XarChat.Backend.Features.WindowControl;
 
 namespace XarChat.Backend.Win32.NotificationBadge
 {
-    public class Win32NotificationBadgeManager : INotificationBadgeManager
+    public class Win32NotificationBadgeManager : INotificationBadgeManager, IDisposable
     {
-        private readonly IWindowControl _windowControl;
+        private readonly IWin32WindowControl _win32WindowControl;
 
         private Icon? _previousIcon = null;
 
         public Win32NotificationBadgeManager(
-            IWindowControl windowControl)
+            IWin32WindowControl win32WindowControl)
         {
-            _windowControl = windowControl;
+            _win32WindowControl = win32WindowControl;
+
+            _taskbarButtonCreatedHandler = TaskbarManager.Instance.AddTaskbarButtonCreatedHandler(_win32WindowControl, () =>
+            {
+                _lastShown = LastShownKind.Unknown;
+                SetNotificationBadge(_lastShownPingCount, _lastShownUnseenCount);
+            });
         }
 
-        public void SetNotificationBadge(NotificationBadgeType notificationBadgeType)
+        private readonly IDisposable _taskbarButtonCreatedHandler;
+
+        public void Dispose()
         {
-            Console.WriteLine("Win32NotificationBadgeManager.SetNotificationBadge");
+            _taskbarButtonCreatedHandler.Dispose();
+        }
+
+        private enum LastShownKind
+        {
+            Unknown,
+            None,
+            Unseen,
+            Ping
+        }
+
+        private int _lastShownPingCount = 0;
+        private int _lastShownUnseenCount = 0;
+        private LastShownKind _lastShown = LastShownKind.None;
+
+        public void SetNotificationBadge(int pingCount, int unseenCount)
+        {
+            System.Diagnostics.Debug.WriteLine($"Win32NotificationBadgeManager.SetNotificationBadge [{pingCount}, {unseenCount}]");
             var tbm = TaskbarManager.Instance;
-            tbm.OwnerHandle = ((IWin32WindowControl)_windowControl).WindowHandle;
+            tbm.OwnerHandle = _win32WindowControl.WindowHandle;
+
+            _lastShownPingCount = pingCount;
+            _lastShownUnseenCount = unseenCount;
 
             Icon? ico;
-            if (notificationBadgeType.Kind != NotificationBadgeTypeKind.None)
+            if (pingCount > 0 || unseenCount > 0)
             {
+                var tShownKind = (pingCount > 0) ? LastShownKind.Ping
+                    : (unseenCount > 0) ? LastShownKind.Unseen
+                    : LastShownKind.None;
+
+                if (tShownKind == _lastShown)
+                {
+                    return;
+                }
+
+                _lastShown = tShownKind;
+
                 var bmp = new Bitmap(256, 256, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
                 using (var g = Graphics.FromImage(bmp))
                 {
                     g.FillEllipse(
-                        notificationBadgeType.Kind == NotificationBadgeTypeKind.Pings ? Brushes.Red : Brushes.White, 32, 32, 256 - 64, 256 - 64);
+                        (pingCount > 0) ? Brushes.Red : Brushes.White, 32, 32, 256 - 64, 256 - 64);
                 }
 
                 using var ms = new MemoryStream();
@@ -50,6 +89,13 @@ namespace XarChat.Backend.Win32.NotificationBadge
             }
             else
             {
+                if (_lastShown == LastShownKind.None)
+                {
+                    return;
+                }
+
+                _lastShown = LastShownKind.None;
+
                 ico = null;
                 Console.WriteLine("Win32NotificationBadgeManager.SetNotificationBadge SetOverlayIcon nulls");
                 tbm.SetOverlayIcon(null, null);

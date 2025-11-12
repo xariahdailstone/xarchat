@@ -256,7 +256,6 @@ namespace XarChat.Backend.Features.AppSettings.AppDataFile
         private readonly IAppSettingsDataProtectionManager _dataProtectionManager;
 
         private SemaphoreSlim _writeLock = new SemaphoreSlim(1);
-        private int _lastWriteId = 0;
 
         private readonly RateLimiter _rateLimiter;
 
