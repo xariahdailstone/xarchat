@@ -317,7 +317,7 @@ export class ChannelTextBox extends ComponentBase<ChannelViewModel> {
             }));
             disposables.push(EventListenerUtil.addDisposableEventListener(document, "focusin", (e: Event) => {
                 if (!mouseIsDown) {
-                    this.logger.logInfo("focusin on document", e.target);
+                    this.logger.logDebug("focusin on document", e.target);
                     this.focusTextBox(false);
                 }
             }));
@@ -388,7 +388,7 @@ export class ChannelTextBox extends ComponentBase<ChannelViewModel> {
         }
         else {
             if (this.isConnected) {
-                this.logger.logInfo("focusTextBox");
+                this.logger.logDebug("focusTextBox");
                 const elTextbox = this.$("elTextbox")! as HTMLTextAreaElement;
                 //if (FocusMagnet.instance.ultimateFocus != elTextbox) {
                 if (FocusUtil.instance.ultimateFocus != elTextbox &&

@@ -71,7 +71,7 @@ export class SidebarTabContainerView extends RenderingComponentBase<SidebarTabCo
             const ss = await StyleLoader.loadAsync(cssFile)
             newAdopted.add(ss);
         }
-        this.logger.logInfo("setStylesheetAdoption", newAdopted);
+        this.logger.logDebug("setStylesheetAdoption", newAdopted);
         setStylesheetAdoption(this._sroot, [...newAdopted]);
     }
 

@@ -30,7 +30,7 @@ import { AlertOptions, AlertViewModel } from "./dialogs/AlertViewModel.js";
 import { AppInitializeViewModel } from "./dialogs/AppInitializeViewModel.js";
 import { DialogViewModel } from "./dialogs/DialogViewModel.js";
 import { PromptForStringOptions, PromptForStringViewModel, PromptOptions, PromptViewModel } from "./dialogs/PromptViewModel.js";
-import { SettingsDialogViewModel } from "./dialogs/SettingsDialogViewModel.js";
+import { SettingsDialogViewModel, SettingsLevel } from "./dialogs/SettingsDialogViewModel.js";
 import { ContextMenuPopupViewModel } from "./popups/ContextMenuPopupViewModel.js";
 import { PopupViewModel } from "./popups/PopupViewModel.js";
 import { TooltipPopupViewModel } from "./popups/TooltipPopupViewModel.js";
@@ -90,14 +90,14 @@ export class AppViewModel extends ObservableBase {
             }
         });
 
-        const badgeOE = new ObservableExpression(() => [this.pingCount, this.unseenCount], (counts) => {
+        this._heldOEs.push(new ObservableExpression(() => [this.pingCount, this.unseenCount], (counts) => {
             HostInterop.updateAppBadge(this.pingCount, this.unseenCount);
-        });
-        const idleStateOE = new ObservableExpression(() => [this.userState, this.screenState], (states) => {
+        }));
+        this._heldOEs.push(new ObservableExpression(() => [this.userState, this.screenState], (states) => {
             for (let login of this.logins.iterateValues()) {
                 login.idleStateChanged();
             }
-        });
+        }));
 
         // this.addEventListener("propertychange", (ev) => {
         //     if (ev.propertyName == "hasPings" || ev.propertyName == "hasUnseenMessages") {
@@ -109,15 +109,15 @@ export class AppViewModel extends ObservableBase {
         //         }
         //     }
         // });
-        this.configBlock.observe("global.autoIdle", v => {
+        this._heldOEs.push(this.configBlock.observe("global.autoIdle", v => {
             this.updateAutoIdleSettings();
-        });
-        this.configBlock.observe("global.autoAway", v => {
+        }));
+        this._heldOEs.push(this.configBlock.observe("global.autoAway", v => {
             this.updateAutoIdleSettings();
-        });
-        this.configBlock.observe("global.idleAfterMinutes", v => {
+        }));
+        this._heldOEs.push(this.configBlock.observe("global.idleAfterMinutes", v => {
             this.updateAutoIdleSettings();
-        });
+        }));
         this.updateAutoIdleSettings();
 
         this.appWindowState = HostInterop.windowState;
@@ -134,8 +134,10 @@ export class AppViewModel extends ObservableBase {
             });
         })();
 
-        this.setupLocaleMonitoring();
+        this._heldOEs.push(this.setupLocaleMonitoring());
     }
+
+    private readonly _heldOEs: IDisposable[] = [];
 
     private readonly SYM_LOGIN_PINGUNSEEN_OE = Symbol();
 
@@ -536,14 +538,48 @@ export class AppViewModel extends ObservableBase {
         this.idleAfterSec = autoIdleSec;
     }
 
-    async showSettingsDialogAsync(activeLoginViewModel?: ActiveLoginViewModel, interlocutor?: CharacterName) {
-        const dlg = new SettingsDialogViewModel(this, activeLoginViewModel, undefined, interlocutor);
+    async showSettingsDialogAtLevelAsync(
+        activeLoginViewModel: ActiveLoginViewModel | null | undefined, 
+        channel: ChannelViewModel | null | undefined, 
+        interlocutor: CharacterName | null | undefined,
+        level: SettingsLevel | null | undefined) {
+
+        if (!level) {
+            level =
+                (!!interlocutor) ? SettingsLevel.PMCONVO
+                : (!!channel) ? SettingsLevel.CHANNEL
+                : (!!activeLoginViewModel) ? SettingsLevel.SESSION
+                : SettingsLevel.GLOBAL;
+        }
+
+        if (!activeLoginViewModel) {
+            activeLoginViewModel = this.currentlySelectedSession;
+        }
+
+        if (activeLoginViewModel && !channel && !interlocutor) {
+            const selChannel = activeLoginViewModel.selectedChannel;
+            if (!channel && selChannel instanceof ChatChannelViewModel) {
+                channel = selChannel;
+            }
+            else if (!interlocutor && selChannel instanceof PMConvoChannelViewModel) {
+                interlocutor = selChannel.character;
+            }
+        }
+
+        const dlg = new SettingsDialogViewModel(this, activeLoginViewModel ?? undefined, channel ?? undefined, interlocutor ?? undefined);
+        dlg.selectLevel(level);
         await this.showDialogAsync(dlg);
     }
 
+    async showSettingsDialogAsync(activeLoginViewModel?: ActiveLoginViewModel, interlocutor?: CharacterName) {
+        return this.showSettingsDialogAtLevelAsync(activeLoginViewModel, undefined, interlocutor, 
+            ((!!interlocutor) ? SettingsLevel.PMCONVO
+                : (!!activeLoginViewModel) ? SettingsLevel.SESSION
+                : SettingsLevel.GLOBAL));
+    }
+
     async showSettingsDialogForChannelAsync(activeLoginViewModel: ActiveLoginViewModel, channel: ChannelViewModel) {
-        const dlg = new SettingsDialogViewModel(this, activeLoginViewModel, channel);
-        await this.showDialogAsync(dlg);
+        return this.showSettingsDialogAtLevelAsync(activeLoginViewModel, channel, undefined, SettingsLevel.CHANNEL);
     }
 
     async showAboutDialogAsync() {
@@ -555,9 +591,18 @@ export class AppViewModel extends ObservableBase {
         ctxVm.addMenuItem("About XarChat...", () => {
             this.showAboutDialogAsync();
         });
-        ctxVm.addMenuItem("Settings...", () => {
-            this.showSettingsDialogAsync(activeLoginViewModel);
+
+        ctxVm.addSeparator();
+
+        ctxVm.addMenuItem("Global Settings...", () => {
+            this.showSettingsDialogAsync();
         });
+        if (this.currentlySelectedSession) {
+            ctxVm.addMenuItem(`Settings for ${this.currentlySelectedSession.characterName.value}...`, () => {
+                this.showSettingsDialogAsync(activeLoginViewModel);
+            }); 
+        }
+
         ctxVm.addSeparator();
     }
 
@@ -774,3 +819,4 @@ export class AppViewModelBBCodeSink implements BBCodeParseSink {
     async sessionClick(target: string, titleHint: string, context: BBCodeClickContext) {
     }
 }
+
