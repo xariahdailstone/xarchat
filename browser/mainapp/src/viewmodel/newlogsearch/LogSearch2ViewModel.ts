@@ -3,6 +3,8 @@ import { CancellationToken, CancellationTokenSource } from "../../util/Cancellat
 import { HostInterop } from "../../util/hostinterop/HostInterop";
 import { LogSearchKind } from "../../util/hostinterop/HostInteropLogSearch";
 import { IterableUtils } from "../../util/IterableUtils";
+import { Logging } from "../../util/Logger";
+import { ObjectUniqueId } from "../../util/ObjectUniqueId";
 import { ObservableBase, observableProperty } from "../../util/ObservableBase";
 import { OperationCancelledError } from "../../util/PromiseSource";
 import { TaskUtils } from "../../util/TaskUtils";
@@ -83,6 +85,8 @@ class LogSearch2DynamicResultSet {
         public readonly totalCount: number) {
     }
 
+    private readonly logger = Logging.createLogger(`LogSearch2DynamicResultSet#${ObjectUniqueId.get(this)}`);
+
     private _cachedItems: Map<number, LogSearch2ResultItemViewModel> = new Map();
 
     async getItemsAsync(index: number, count: number, cancellationToken: CancellationToken): Promise<CurrentDisplayItems<LogSearch2ResultItemViewModel>> {
@@ -122,7 +126,7 @@ class LogSearch2DynamicResultSet {
 
         // actual
         // TODO: get from host via interop
-        console.log("actual range read", actualStartAt, actualCount);
+        this.logger.logDebug("actual range read", actualStartAt, actualCount);
         for (let i = actualStartAt; i < actualStartAt + actualCount; i++) {
             const text = `this is a test message ${i}`;
             buildingResults.set(i, new LogSearch2ResultItemViewModel(
@@ -179,11 +183,11 @@ export class VirtualScrollViewModel<TItem> extends ObservableBase {
 
     private async performItemLoadAsync(index: number, count: number, cancellationToken: CancellationToken) {
         this.loadingItems = true;
-        console.log("performItemLoadAsync", index, count);
+        this.logger.logDebug("performItemLoadAsync", index, count);
         try {
             const resp = await this.getItemsAsync(index, count, cancellationToken);
             if (!cancellationToken.isCancellationRequested) {
-                console.log("got currentDisplayItems", resp);
+                this.logger.logDebug("got currentDisplayItems", resp);
                 this.currentDisplayItems = resp;
             }  
         }
@@ -192,7 +196,7 @@ export class VirtualScrollViewModel<TItem> extends ObservableBase {
             else { throw e; }
         }
         finally {
-            console.log("end performItemLoadAsync", index, count);
+            this.logger.logDebug("end performItemLoadAsync", index, count);
             this.loadingItems = false;
         }
     }

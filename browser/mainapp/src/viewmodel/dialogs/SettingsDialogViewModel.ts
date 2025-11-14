@@ -34,6 +34,14 @@ interface InitializationGroupOptions {
     settings?: (InitializationSettingOptions | InitializationGroupOptions | null)[];
 }
 
+export enum SettingsLevel {
+    GLOBAL = "global",
+    SESSION = "session",
+    CATEGORY = "category",
+    CHANNEL = "channel",
+    PMCONVO = "pmconvo"
+}
+
 export class SettingsDialogViewModel extends DialogViewModel<number> {
     constructor(parent: AppViewModel, 
         private readonly session?: ActiveLoginViewModel, 
@@ -50,26 +58,42 @@ export class SettingsDialogViewModel extends DialogViewModel<number> {
 
     readonly schemaDefinition: ConfigSchemaDefinition;
 
+    private _tabsByLevel: Map<SettingsLevel, SettingsDialogTabViewModel> = new Map();
+
     private initializeTabs() {
-        this.tabs.push(new GlobalSettingsDialogTabViewModel(this));
+        const pushTab = (tab: SettingsDialogTabViewModel, level?: SettingsLevel) => {
+            this.tabs.push(tab);
+            if (level) {
+                this._tabsByLevel.set(level, tab);
+            }
+        };
+
+        pushTab(new GlobalSettingsDialogTabViewModel(this), SettingsLevel.GLOBAL);
         if (this.session) {
-            this.tabs.push(new SessionSettingsDialogTabViewModel(this, this.session));
+            pushTab(new SessionSettingsDialogTabViewModel(this, this.session), SettingsLevel.SESSION);
 
             if (this.channel || this.interlocutorName) {
                 if (this.channel instanceof ChatChannelViewModel) {
-                    this.tabs.push(new ChannelCategorySettingsDialogTabViewModel(this, this.channel.activeLoginViewModel.characterName, this.channel.channelCategory));
-                    this.tabs.push(new ChannelSettingsDialogTabViewModel(this, this.channel));
+                    pushTab(new ChannelCategorySettingsDialogTabViewModel(this, this.channel.activeLoginViewModel.characterName, this.channel.channelCategory), SettingsLevel.CATEGORY);
+                    pushTab(new ChannelSettingsDialogTabViewModel(this, this.channel), SettingsLevel.CHANNEL);
                 }
                 else if (this.channel instanceof PMConvoChannelViewModel) {
-                    this.tabs.push(PMConvoSettingsDialogTabViewModel.createForChannel(this, this.channel));
+                    pushTab(PMConvoSettingsDialogTabViewModel.createForChannel(this, this.channel), SettingsLevel.PMCONVO);
                 }
                 else if (this.interlocutorName instanceof CharacterName) {
-                    this.tabs.push(PMConvoSettingsDialogTabViewModel.createForCharacter(this, this.session?.characterName, this.interlocutorName));
+                    pushTab(PMConvoSettingsDialogTabViewModel.createForCharacter(this, this.session?.characterName, this.interlocutorName), SettingsLevel.PMCONVO);
                 }
             }
         }
 
         this.selectedTab = IterableUtils.asQueryable(this.tabs).last();
+    }
+
+    selectLevel(level: SettingsLevel) {
+        const tab = this._tabsByLevel.get(level);
+        if (tab) {
+            this.selectedTab = tab;
+        }
     }
 
     @observableProperty

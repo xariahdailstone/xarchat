@@ -45,7 +45,7 @@ export class ChannelView extends StageViewComponent<ChannelViewModel> {
 
     render(rargs: RenderArguments): (VNode | [VNode, IDisposable]) {
         try {
-            this.logger.logInfo("ChannelView rendering");
+            this.logger.logDebug("ChannelView rendering");
             
             const vm = this.viewModel;
             if (!vm) { return <></>; }
