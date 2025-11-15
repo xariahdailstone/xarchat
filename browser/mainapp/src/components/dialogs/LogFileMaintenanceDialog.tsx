@@ -25,8 +25,7 @@ export class LogFileMaintenanceDialog extends DialogComponentBase<LogFileMainten
 
         const vacuumButtonAttrs: Attrs = {};
         const vacuumButtonOn: On = {};
-
-        if (vm.isVacuuming) {
+        if (vm.isVacuuming || vm.isClearing) {
             vacuumButtonAttrs["disabled"] = "disabled";
         }
         else {
@@ -34,7 +33,6 @@ export class LogFileMaintenanceDialog extends DialogComponentBase<LogFileMainten
                 vm.vacuumAsync(CancellationToken.NONE);
             };
         }
-
         const vacuumButtonText = vm.isVacuuming
             ? <div classList={["vacuum-button-content"]}><x-iconimage classList={[ "vacuum-icon" ]} attr-src="assets/ui/loading-anim.svg"></x-iconimage> Compaction In Progress...</div>
             : <>Compact Log File</>;
@@ -42,6 +40,25 @@ export class LogFileMaintenanceDialog extends DialogComponentBase<LogFileMainten
                         "group-vacuum-button": true, 
                         "themed": true
                     }} attrs={vacuumButtonAttrs} on={vacuumButtonOn}>{vacuumButtonText}</button>
+
+        const clearButtonAttrs: Attrs = {};
+        const clearButtonOn: On = {};
+        if (vm.isVacuuming || vm.isClearing) {
+            clearButtonAttrs["disabled"] = "disabled";
+        }
+        else {
+            clearButtonOn["click"] = (e: MouseEvent) => {
+                vm.clearDatabaseAsync(CancellationToken.NONE);
+            };
+        }
+        const clearButtonText = vm.isClearing
+            ? <div classList={["cleardatabase-button-content"]}><x-iconimage classList={[ "cleardatabase-icon" ]} attr-src="assets/ui/loading-anim.svg"></x-iconimage> Clearing Log File...</div>
+            : <>Clear Log File</>;
+
+        const clearButton = <button class={{
+                "group-cleardatabase-button": true,
+                "themed": true
+            }} attrs={clearButtonAttrs} on={clearButtonOn}>{clearButtonText}</button>;
 
         return <>
             <div classList={["groupbox", "group-logfilesize" ]}>
@@ -68,6 +85,18 @@ export class LogFileMaintenanceDialog extends DialogComponentBase<LogFileMainten
                     {vacuumButton}
                 </div>
             </div>
+
+            <div classList={["groupbox", "group-cleardatabase" ]}>
+                <div classList={["groupbox-title"]}>Clear Log File</div>
+                <div classList={["groupbox-content"]}>
+                    
+                    <div classList={[ "group-cleardatabase-description" ]}>
+                        You can clear your log file. <b>This will delete all of your chat logs!</b>
+                    </div>
+                    
+                    {clearButton}
+                </div>
+            </div>            
         </>;
     }
 }

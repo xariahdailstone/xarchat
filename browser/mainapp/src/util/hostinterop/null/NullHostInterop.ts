@@ -232,10 +232,16 @@ class NullHostInteropLogFileMaintenance implements HostInteropLogFileMaintenance
         return -1;
     }
 
+    async clearDatabaseAsync(cancellationToken: CancellationToken): Promise<number> {
+        return -1;
+    }
+
     async refreshLogFileSizeAsync(cancellationToken: CancellationToken): Promise<void> {
     }
 
     readonly isVacuuming: boolean = false;
+
+    readonly isClearing: boolean = false;
 
     readonly logFileSize: number = -1;
 }

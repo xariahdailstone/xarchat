@@ -41,7 +41,7 @@ namespace XarChat.Backend.Common
             throw lastException;
         }
 
-        public static async Task DeleteAsync(string filename, int? retryCount = null, TimeSpan? retryDelay = null)
+        public static async Task DeleteAsync(string filename, int? retryCount = null, TimeSpan? retryDelay = null, bool collectGCOnRetry = false)
         {
             int myRetryCount = retryCount ?? 5;
             TimeSpan myRetryDelay = retryDelay ?? TimeSpan.FromMilliseconds(250);
@@ -64,7 +64,17 @@ namespace XarChat.Backend.Common
                     if (myRetryCount > 0)
                     {
                         await Task.Delay(myRetryDelay);
+                        if (collectGCOnRetry)
+                        {
+                            GC.Collect();
+                            GC.WaitForPendingFinalizers();
+                            GC.Collect();
+                        }
                     }
+                }
+                else
+                {
+                    return;
                 }
             }
             throw lastException;

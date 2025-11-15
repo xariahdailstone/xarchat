@@ -58,3 +58,37 @@
         }
     }
 }
+
+.group-cleardatabase {
+    .groupbox-content {
+        display: grid;
+        grid-template-rows: auto auto;
+        grid-template-columns: 1fr auto;
+        grid-template-areas:
+            "description description"
+            ". button";
+
+        .group-cleardatabase-description { grid-area: description; font-size: 90%; }
+        .group-cleardatabase-button { 
+            grid-area: button; 
+            margin-top: 8px; 
+
+            &:not(:disabled) {
+                background-color: red;
+                color: white;
+            }
+
+            .cleardatabase-button-content {
+                display: flex;
+                flex-direction: row;
+                align-items: center;
+
+                .cleardatabase-icon {
+                    width: 16px;
+                    height: 16px;
+                    margin-right: 6px;
+                }
+            }
+        }
+    }
+}
