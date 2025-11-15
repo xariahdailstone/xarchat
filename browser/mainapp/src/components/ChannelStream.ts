@@ -555,7 +555,7 @@ export class DefaultStreamScrollManager implements StreamScrollManager {
 
     setNextUpdateIsSmooth() {
         this._nextUpdateIsSmooth = true;
-        window.setTimeout(() => this._nextUpdateIsSmooth = false, 100);
+        Scheduler.scheduleNamedCallback("ChannelStream.setNextUpdateIsSmooth", 100, () => this._nextUpdateIsSmooth = false);
     }
 
     resetScroll(smooth?: boolean, immediate?: boolean) {

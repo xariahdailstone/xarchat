@@ -18,6 +18,7 @@ import { IterableUtils } from "../util/IterableUtils.js";
 import { ChannelFiltersViewModel } from "./ChannelFiltersViewModel.js";
 import { ObservableExpression } from "../util/ObservableExpression.js";
 import { CatchUtils } from "../util/CatchUtils.js";
+import { Scheduler } from "../util/Scheduler.js";
 
 
 export class PMConvoChannelViewModelSortKey { 
@@ -197,7 +198,7 @@ export class PMConvoChannelViewModel extends ChannelViewModel {
 
     private readonly TYPING_IDLE_TIMEOUT_MS = 5000;
 
-    private _typingStatusIdleTimeoutHandle: number | null = null;
+    private _typingStatusIdleTimeoutHandle: IDisposable | null = null;
     protected override onTextBoxContentUpdated() {
         if (!(this.activeLoginViewModel.pmConversations.contains(this) || this.activeLoginViewModel.selectedTab == this)) {
             this.myTypingStatus = TypingStatus.NONE;
@@ -209,21 +210,23 @@ export class PMConvoChannelViewModel extends ChannelViewModel {
             else {
                 this.myTypingStatus = TypingStatus.TYPING;
                 if (this._typingStatusIdleTimeoutHandle) {
-                    window.clearTimeout(this._typingStatusIdleTimeoutHandle);
+                    this._typingStatusIdleTimeoutHandle.dispose();
+                    this._typingStatusIdleTimeoutHandle = null;
                 }
-                this._typingStatusIdleTimeoutHandle = window.setTimeout(() => {
-                    if (!(this.activeLoginViewModel.pmConversations.contains(this) || this.activeLoginViewModel.selectedTab == this)) {
-                        this.myTypingStatus = TypingStatus.NONE;
-                    }
-                    else {
-                        if (this.textBoxContent == "") {
+                this._typingStatusIdleTimeoutHandle = Scheduler.scheduleNamedCallback("PMConvoChannelViewModel.onTextBoxContentUpdated", this.TYPING_IDLE_TIMEOUT_MS,
+                    () => {
+                        if (!(this.activeLoginViewModel.pmConversations.contains(this) || this.activeLoginViewModel.selectedTab == this)) {
                             this.myTypingStatus = TypingStatus.NONE;
                         }
                         else {
-                            this.myTypingStatus = TypingStatus.IDLE;
+                            if (this.textBoxContent == "") {
+                                this.myTypingStatus = TypingStatus.NONE;
+                            }
+                            else {
+                                this.myTypingStatus = TypingStatus.IDLE;
+                            }
                         }
-                    }
-                }, this.TYPING_IDLE_TIMEOUT_MS);
+                    });
             }
         }
     }

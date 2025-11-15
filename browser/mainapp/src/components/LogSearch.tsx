@@ -199,18 +199,12 @@ class LogSearchResultItemCollectionView extends CollectionViewLightweight<LogSea
                 if (containerElement != null && ssp != null) {
                     switch (sat) {
                         case ScrollAnchorTo.BOTTOM:
-                            // const scrollHandler = (e: Event) => { 
-                                this.logger.logDebug("restoring scroll (ssp)...", ssp);
-                                this.logger.logDebug("restoring scrolltop scrollTop...", containerElement.scrollTop);
-                                this.logger.logDebug("restoring scrolltop scrollheight...", containerElement.scrollHeight);
-                                const newScrollTop = containerElement.scrollHeight - ssp;
-                                this.logger.logDebug("restoring scrolltop newScrollTop...", newScrollTop);
-                                containerElement.scroll(0, newScrollTop);
-                            // };
-                            // containerElement.addEventListener("scroll", scrollHandler);
-                            // window.setTimeout(() => { 
-                            //     containerElement.removeEventListener("scroll", scrollHandler);
-                            // }, 100);
+                            this.logger.logDebug("restoring scroll (ssp)...", ssp);
+                            this.logger.logDebug("restoring scrolltop scrollTop...", containerElement.scrollTop);
+                            this.logger.logDebug("restoring scrolltop scrollheight...", containerElement.scrollHeight);
+                            const newScrollTop = containerElement.scrollHeight - ssp;
+                            this.logger.logDebug("restoring scrolltop newScrollTop...", newScrollTop);
+                            containerElement.scroll(0, newScrollTop);
                             break;
                         case ScrollAnchorTo.TOP:
                         default:

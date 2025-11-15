@@ -1,5 +1,6 @@
 import { IDisposable } from "./Disposable";
 import { Logging } from "./Logger";
+import { Scheduler } from "./Scheduler";
 
 const logger = Logging.createLogger("requestAnimationFrameHook");
 
@@ -13,7 +14,7 @@ export function hookRequestAnimationFrame() {
     let _waitingCallbacks: Map<number, FrameRequestCallback> = new Map();
 
     let _currentRAFHandle: number | null = null;
-    let _currentTimeoutHandle: number | null = null;
+    let _currentTimeoutHandle: IDisposable | null = null;
 
     const originalRAF: (callback: FrameRequestCallback) => number = (window as any).requestAnimationFrame;
     const originalCAF: (handle: number) => any = (window as any).cancelAnimationFrame;
@@ -24,7 +25,7 @@ export function hookRequestAnimationFrame() {
             _currentRAFHandle = null;
         }
         if (_currentTimeoutHandle != null) {
-            window.clearTimeout(_currentTimeoutHandle);
+            _currentTimeoutHandle.dispose();
             _currentTimeoutHandle = null;
         }
     }
@@ -57,10 +58,10 @@ export function hookRequestAnimationFrame() {
             });
         }
         if (_currentTimeoutHandle == null) {
-            _currentTimeoutHandle = window.setTimeout(() => {
+            _currentTimeoutHandle = Scheduler.scheduleNamedCallback("requestAnimationFrame fallback", 250, () => {
                 _currentTimeoutHandle = null;
                 processRAFEvents(window.performance.now());
-            }, 250);
+            });
         }
         return myNumber;
     };

@@ -8,6 +8,7 @@ import { ObservableValue } from "../../util/Observable";
 import { ObservableBase, observableProperty, observablePropertyExt } from "../../util/ObservableBase";
 import { Collection } from "../../util/ObservableCollection";
 import { ObservableExpression } from "../../util/ObservableExpression";
+import { Scheduler } from "../../util/Scheduler";
 import { ActiveLoginViewModel } from "../ActiveLoginViewModel";
 import { AppViewModel } from "../AppViewModel";
 import { ChannelViewModel } from "../ChannelViewModel";
@@ -556,7 +557,7 @@ export class SettingsDialogItemViewModel extends SettingsDialogSettingViewModel 
     override revertToInherited() {
         this.logger.logDebug("revertToInherited start");
         this._reverted = true;
-        window.setTimeout(() => this._reverted = false, 50);
+        Scheduler.scheduleNamedCallback("SettingsDialogViewModel.revertedToInherited", 50, () => this._reverted = false);
         this.useInheritedValue = true;
         this.logger.logDebug("revertToInherited end");
     }

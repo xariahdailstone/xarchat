@@ -36,6 +36,7 @@ import { SidebarTabContainerViewModel, SidebarTabViewModel } from "./sidebartabs
 import { ChannelUserListTabViewModel } from "./sidebartabs/ChannelUserListTabViewModel.js";
 import { FriendsListTabViewModel } from "./sidebartabs/FriendsListTabViewModel.js";
 import { IHasRightBarTabs } from "./sidebartabs/RightSidebarTabContainerViewModel.js";
+import { Scheduler } from "../util/Scheduler.js";
 
 export class ChatChannelUserViewModel extends ObservableBase implements IDisposable {
     constructor(
@@ -1181,11 +1182,11 @@ export class ChatChannelViewModel extends ChannelViewModel implements IHasRightB
                     const timeRemaining = Math.floor(Math.max(0, canSendAgainAt - (new Date()).getTime()) / 1000);
                     this.adSendWaitRemainingSec = timeRemaining;
                 }, 1000);
-                window.setTimeout(() => {
+                Scheduler.scheduleNamedCallback("ChatChannelViewModel.clearAdWaitRemaining", 1000 * 60 * 10, () => {
                     window.clearInterval(tick);
                     this.adSendWaitRemainingSec = null;
                     this._cantSendAsAdReasons.value = this._cantSendAsAdReasons.value.filter(r => r != CantSendAsAdReasons.WaitingOnAdThrottle);
-                }, 1000 * 60 * 10);
+                });
             },
             onSuccessAsync: async () => {
                 if (!isAutoAd) {

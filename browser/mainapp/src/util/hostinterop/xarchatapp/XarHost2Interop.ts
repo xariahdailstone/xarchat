@@ -119,19 +119,19 @@ export class XarHost2Interop implements IXarHost2HostInterop {
                     break;
                 case "Interrupted":
                     appViewModel.statusMessage = "Download failed.";
-                    window.setTimeout(() => {
+                    Scheduler.scheduleNamedCallback("XarHost2Interop.doDownloadStatusUpdate", 6000, () => {
                         if (appViewModel.statusMessage == "Download failed.") {
                             appViewModel.statusMessage = null;
                         }
-                    }, 6000);
+                    });
                     break;
                 case "Completed":
                     appViewModel.statusMessage = "Download complete.";
-                    window.setTimeout(() => {
+                    Scheduler.scheduleNamedCallback("XarHost2Interop.doDownloadStatusUpdate", 2000, () => {
                         if (appViewModel.statusMessage == "Download complete.") {
                             appViewModel.statusMessage = null;
                         }
-                    }, 2000);
+                    });
                     break;
             }
         }
