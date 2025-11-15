@@ -30,6 +30,8 @@ import { IXarHost2HostInterop } from "./IXarHost2HostInterop";
 import { ChatWebSocket } from "../IHostInterop";
 import { IObservable, Observable, ObservableValue } from "../../Observable";
 import { DateUtils } from "../../DateTimeUtils";
+import { HostInteropLogFileMaintenance } from "../HostInteropLogFileMaintenance";
+import { XarHost2InteropLogFileMaintenance } from "./XarHost2InteropLogFileMaintenance";
 
 
 
@@ -70,6 +72,8 @@ export class XarHost2Interop implements IXarHost2HostInterop {
         // TODO:
         this.logSearch2 = new XarHost2HostInteropLogSearch2Impl();
 
+        this.logFileMaintenance = new XarHost2InteropLogFileMaintenance();
+        
         this.doClientResize(window.innerWidth, window.innerHeight, true);
 
         this._windowCommandSession = new XarHost2InteropWindowCommand();
@@ -77,7 +81,8 @@ export class XarHost2Interop implements IXarHost2HostInterop {
 
         this.sessions = [
             this._windowCommandSession,
-            this._hostInteropEIconLoader
+            this._hostInteropEIconLoader,
+            this.logFileMaintenance
         ];
         for (let sess of this.sessions) {
             sess.writeMessage = (msg) => this.writeToXCHostSocket(sess.prefix + msg);
@@ -167,6 +172,7 @@ export class XarHost2Interop implements IXarHost2HostInterop {
 
     readonly logSearch: XarHost2InteropLogSearch;
     readonly logSearch2: HostInteropLogSearch2;
+    readonly logFileMaintenance: XarHost2InteropLogFileMaintenance;
 
     readonly sessions: XarHost2InteropSession[];
     private _windowCommandSession: XarHost2InteropWindowCommand;
@@ -363,10 +369,6 @@ export class XarHost2Interop implements IXarHost2HostInterop {
             const msgid = argo.msgid;
             const data = argo.data;
             this.returnConfigData(msgid, data);
-        }
-        else if (cmd == "log.gotlogsize") {
-            const logSize = +arg;
-            this.chatLogFileSize.value = logSize;
         }
         else if (cmd == "configchange") {
             const argo = JSON.parse(arg);
@@ -1014,16 +1016,6 @@ export class XarHost2Interop implements IXarHost2HostInterop {
             ps.tryResolve(data);
         }
     }
-
-    private _lastChatLogFileSizeRefresh: number = 0;
-    refreshChatLogFileSize(): void {
-        const now = new Date().getTime();
-        if (now - this._lastChatLogFileSizeRefresh > 2000) {
-            this._lastChatLogFileSizeRefresh = now;
-            this.writeToXCHostSocket("log.GetLogSize");
-        }
-    }
-    readonly chatLogFileSize: ObservableValue<number> = new ObservableValue<number>(-1);
 
     setConfigValue(key: string, value: (unknown | null)): void {
         this.writeToXCHostSocket("setconfig " + JSON.stringify({

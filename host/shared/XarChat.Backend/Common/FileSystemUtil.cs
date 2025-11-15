@@ -33,6 +33,10 @@ namespace XarChat.Backend.Common
                         Thread.Sleep(myRetryDelay);
                     }
                 }
+                else
+                {
+                    return;
+                }
             }
             throw lastException;
         }

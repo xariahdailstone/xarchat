@@ -34,6 +34,7 @@ using XarChat.Backend.UrlHandlers.XCHostFunctions.SessionAdapters;
 using XarChat.Backend.UrlHandlers.XCHostFunctions.SessionAdapters.OldNewAppSettings;
 using XarChat.Backend.UrlHandlers.XCHostFunctions.SessionNamespaces;
 using XarChat.Backend.UrlHandlers.XCHostFunctions.SessionNamespaces.EIconData;
+using XarChat.Backend.UrlHandlers.XCHostFunctions.SessionNamespaces.LogFileMaintenance;
 using XarChat.Backend.UrlHandlers.XCHostFunctions.SessionNamespaces.LogSearch;
 using XarChat.Backend.UrlHandlers.XCHostFunctions.SessionNamespaces.WindowCommand;
 using SplitWriteFunc = System.Func<string, string?, System.Threading.CancellationToken, System.Threading.Tasks.Task>;
@@ -94,6 +95,10 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions
             {
                 var el = sp.GetRequiredService<IEIconLoader>();
                 return new EIconDataSessionNamespace(el, w);
+            });
+            this.AddSessionNamespace("logfilemaintenance", w =>
+            {
+                return ActivatorUtilities.CreateInstance<LogFileMaintenanceSessionNamespace>(sp, w);
             });
         }
 

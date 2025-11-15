@@ -12,6 +12,7 @@ import { IdleDetectionUserState, IdleDetectionScreenState } from "../IdleDetecti
 import { UpdateCheckerState } from "../UpdateCheckerClient";
 import { LogMessageType, LogChannelMessage, LogPMConvoMessage, HostWindowState, EIconSearchResults, ConfigKeyValue, ChooseLocalFileOptions, HostLocaleInfo } from "./HostInterop";
 import { IObservable, ObservableValue } from "../Observable";
+import { HostInteropLogFileMaintenance } from "./HostInteropLogFileMaintenance";
 
 
 export interface IHostInterop {
@@ -73,6 +74,8 @@ export interface IHostInterop {
     readonly logSearch: HostInteropLogSearch;
     readonly logSearch2: HostInteropLogSearch2;
 
+    readonly logFileMaintenance: HostInteropLogFileMaintenance;
+
     chooseLocalFileAsync(options?: ChooseLocalFileOptions): Promise<string | null>;
     getLocalFileUrl(fn: string): string;
 
@@ -91,9 +94,6 @@ export interface IHostInterop {
     flashWindow(): void;
 
     createChatWebSocket(): ChatWebSocket;
-
-    refreshChatLogFileSize(): void;
-    readonly chatLogFileSize: ObservableValue<number>;
 }
 
 export interface ChatWebSocket {

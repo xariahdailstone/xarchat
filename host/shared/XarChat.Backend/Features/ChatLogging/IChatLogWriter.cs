@@ -27,6 +27,8 @@ namespace XarChat.Backend.Features.ChatLogging
             int messageType, string messageText,
             CancellationToken cancellationToken);
 
+        Task VacuumAsync(CancellationToken cancellationToken);
+
         Task<List<LoggedChannelMessageInfo>> GetChannelMessagesAsync(
             string channelName, 
             DateAnchor dateAnchor, DateTime date,

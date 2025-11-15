@@ -282,6 +282,26 @@ namespace XarChat.Backend.Features.ChatLogging.Sqlite
             return false;
         }
 
+        public async Task VacuumAsync(CancellationToken cancellationToken)
+        {
+            var result = await WithSemaphore(
+                cancellationToken: cancellationToken,
+                func: async (connection, cancellationToken) =>
+                {
+                    //using var xa = connection.BeginTransaction();
+
+                    using (var vacuumCmd = connection.CreateCommand())
+                    {
+                        //vacuumCmd.Transaction = xa;
+                        vacuumCmd.CommandText = "vacuum";
+                        await vacuumCmd.ExecuteNonQueryAsync(cancellationToken);
+                    }
+
+                    //await xa.CommitAsync(cancellationToken);
+                    return 0;
+                });
+        }
+
         public async Task<long> GetLogFileSizeAsync(CancellationToken cancellationToken)
         {
             var fn = GetChatLogDbFilename();

@@ -1,7 +1,6 @@
 import { CancellationToken } from "../../CancellationTokenSource";
 import { XarHost2InteropSession } from "./XarHost2InteropSession";
 
-
 export class XarHost2InteropWindowCommand extends XarHost2InteropSession {
     constructor() {
         super();

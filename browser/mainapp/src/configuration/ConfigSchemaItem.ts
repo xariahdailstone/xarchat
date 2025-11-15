@@ -6,6 +6,7 @@ import { IterableUtils } from "../util/IterableUtils";
 import { PlatformUtils } from "../util/PlatformUtils";
 import { StringUtils } from "../util/StringUtils";
 import { AppViewModel } from "../viewmodel/AppViewModel";
+import { LogFileMaintenanceDialogViewModel } from "../viewmodel/dialogs/LogFileMaintenanceDialogViewModel";
 
 export interface ConfigSchemaDefinition {
     settings: ConfigSchemaItemDefinition[];
@@ -1330,13 +1331,20 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     defaultValue: "",
                     configBlockKey: "logFileSize",
                     initializeDisplay: () => {
-                        //console.log("initializing chat log size item");
-                        HostInterop.refreshChatLogFileSize();
+                        HostInterop.logFileMaintenance.refreshLogFileSizeAsync(CancellationToken.NONE);
                     },
                     calculateValue: (cvo) => {
-                        //console.log("reading chat log size item");
-                        return StringUtils.numberToApproximateFileSize(HostInterop.chatLogFileSize.value);
-                    }
+                        return StringUtils.numberToApproximateFileSize(HostInterop.logFileMaintenance.logFileSize);
+                    },
+                    actionButtons: [
+                        { 
+                            title: "Log File Maintenance...", 
+                            onClick: async (args) => {
+                                const dlg = new LogFileMaintenanceDialogViewModel(args.appViewModel);
+                                await args.appViewModel.showDialogAsync(dlg);
+                            }
+                        }
+                    ]
                 },
                 {
                     id: "retentionPeriod.chan",
