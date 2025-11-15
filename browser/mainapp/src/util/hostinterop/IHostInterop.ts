@@ -11,6 +11,7 @@ import { HostInteropLogSearch2 } from "./HostInteropLogSearch2";
 import { IdleDetectionUserState, IdleDetectionScreenState } from "../IdleDetection";
 import { UpdateCheckerState } from "../UpdateCheckerClient";
 import { LogMessageType, LogChannelMessage, LogPMConvoMessage, HostWindowState, EIconSearchResults, ConfigKeyValue, ChooseLocalFileOptions, HostLocaleInfo } from "./HostInterop";
+import { IObservable, ObservableValue } from "../Observable";
 
 
 export interface IHostInterop {
@@ -90,6 +91,9 @@ export interface IHostInterop {
     flashWindow(): void;
 
     createChatWebSocket(): ChatWebSocket;
+
+    refreshChatLogFileSize(): void;
+    readonly chatLogFileSize: ObservableValue<number>;
 }
 
 export interface ChatWebSocket {

@@ -28,6 +28,8 @@ import { HostInteropLogSearch2 } from "../HostInteropLogSearch2";
 import { XarHost2HostInteropLogSearch2Impl } from "./XarHost2HostInteropLogSearch2Impl";
 import { IXarHost2HostInterop } from "./IXarHost2HostInterop";
 import { ChatWebSocket } from "../IHostInterop";
+import { IObservable, Observable, ObservableValue } from "../../Observable";
+import { DateUtils } from "../../DateTimeUtils";
 
 
 
@@ -361,6 +363,10 @@ export class XarHost2Interop implements IXarHost2HostInterop {
             const msgid = argo.msgid;
             const data = argo.data;
             this.returnConfigData(msgid, data);
+        }
+        else if (cmd == "log.gotlogsize") {
+            const logSize = +arg;
+            this.chatLogFileSize.value = logSize;
         }
         else if (cmd == "configchange") {
             const argo = JSON.parse(arg);
@@ -1008,6 +1014,16 @@ export class XarHost2Interop implements IXarHost2HostInterop {
             ps.tryResolve(data);
         }
     }
+
+    private _lastChatLogFileSizeRefresh: number = 0;
+    refreshChatLogFileSize(): void {
+        const now = new Date().getTime();
+        if (now - this._lastChatLogFileSizeRefresh > 2000) {
+            this._lastChatLogFileSizeRefresh = now;
+            this.writeToXCHostSocket("log.GetLogSize");
+        }
+    }
+    readonly chatLogFileSize: ObservableValue<number> = new ObservableValue<number>(-1);
 
     setConfigValue(key: string, value: (unknown | null)): void {
         this.writeToXCHostSocket("setconfig " + JSON.stringify({

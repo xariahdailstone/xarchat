@@ -9,6 +9,8 @@ namespace XarChat.Backend.Features.ChatLogging
 {
     public interface IChatLogWriter
     {
+        Task<long> GetLogFileSizeAsync(CancellationToken cancellationToken);
+
         void EndLogSource(string myCharacterName);
 
         Task LogChannelMessageAsync(

@@ -7,6 +7,7 @@ import { AppViewModel } from "../../../viewmodel/AppViewModel";
 import { CancellationToken } from "../../CancellationTokenSource";
 import { asDisposable, EmptyDisposable, IDisposable } from "../../Disposable";
 import { IdleDetectionUserState, IdleDetectionScreenState } from "../../IdleDetection";
+import { IObservable, ObservableValue } from "../../Observable";
 import { UpdateCheckerState } from "../../UpdateCheckerClient";
 import { LogMessageType, LogChannelMessage, LogPMConvoMessage, HostWindowState, EIconSearchResults, ConfigKeyValue, ChooseLocalFileOptions, HostLocaleInfo } from "../HostInterop";
 import { DateAnchor, HostInteropLogSearch, LogSearchKind, LogSearchResult, RecentConversationResult } from "../HostInteropLogSearch";
@@ -200,6 +201,11 @@ export class NullHostInterop extends HostInteropBase implements IHostInterop {
     createChatWebSocket(): ChatWebSocket {
         throw new Error("Method not implemented."); 
     }
+
+    refreshChatLogFileSize(): void {
+    }
+
+    readonly chatLogFileSize: ObservableValue<number> = new ObservableValue(0);
 }
 
 class NullHostInteropLogSearch implements HostInteropLogSearch {

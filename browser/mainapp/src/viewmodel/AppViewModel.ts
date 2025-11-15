@@ -7,7 +7,7 @@ import { ChannelName } from "../shared/ChannelName.js";
 import { CharacterName } from "../shared/CharacterName.js";
 import { ConfigBlock } from "../util/ConfigBlock.js";
 import { IDisposable, tryDispose } from "../util/Disposable.js";
-import { HostInterop, HostWindowState } from "../util/hostinterop/HostInterop.js";
+import { HostInterop, HostWindowState, LogMessageType } from "../util/hostinterop/HostInterop.js";
 import { IdleDetection, IdleDetectionScreenState, IdleDetectionUserState } from "../util/IdleDetection.js";
 import { Observable, ObservableValue, PropertyChangeEvent } from "../util/Observable.js";
 import { ObservableBase, observableProperty } from "../util/ObservableBase.js";
@@ -38,6 +38,8 @@ import { UIZoomNotifyPopupViewModel } from "./popups/UIZoomNotifyPopupViewModel.
 import { PlatformUtils } from "../util/PlatformUtils.js";
 import { InAppToastsViewModel, ToastInfo } from "./InAppToastsViewModel.js";
 import { Scheduler } from "../util/Scheduler.js";
+import { CharacterGender } from "../shared/CharacterGender.js";
+import { OnlineStatus } from "../shared/OnlineStatus.js";
 
 export class AppViewModel extends ObservableBase {
     constructor(configBlock: ConfigBlock) {
@@ -566,7 +568,7 @@ export class AppViewModel extends ObservableBase {
             }
         }
 
-        const dlg = new SettingsDialogViewModel(this, activeLoginViewModel ?? undefined, channel ?? undefined, interlocutor ?? undefined);
+        using dlg = new SettingsDialogViewModel(this, activeLoginViewModel ?? undefined, channel ?? undefined, interlocutor ?? undefined);
         dlg.selectLevel(level);
         await this.showDialogAsync(dlg);
     }

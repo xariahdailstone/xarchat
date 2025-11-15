@@ -5,7 +5,7 @@ import { CharacterName } from "../shared/CharacterName.js";
 import { CharacterSet } from "../shared/CharacterSet.js";
 import { BBCodeClickContext, BBCodeParseSink, ChatBBCodeParser } from "../util/bbcode/BBCode.js";
 import { tryDispose, IDisposable, addOnDispose, ConvertibleToDisposable, asDisposable } from "../util/Disposable.js";
-import { HostInterop } from "../util/hostinterop/HostInterop.js";
+import { HostInterop, LogMessageType } from "../util/hostinterop/HostInterop.js";
 import { Observable, ObservableValue, PropertyChangeEvent } from "../util/Observable.js";
 import { ObservableBase, observableProperty, observablePropertyExt } from "../util/ObservableBase.js";
 import { Collection, CollectionChangeEvent, CollectionChangeType, ObservableCollection } from "../util/ObservableCollection.js";
@@ -50,6 +50,7 @@ import { EIconFavoriteBlockViewModel } from "./EIconFavoriteBlockViewModel.js";
 import { LeftSidebarTabContainerViewModel } from "./sidebartabs/LeftSidebarTabContainerViewModel.js";
 import { RightSidebarTabContainerViewModel } from "./sidebartabs/RightSidebarTabContainerViewModel.js";
 import { RecentConversationsViewModel } from "./RecentConversationsViewModel.js";
+import { CharacterGender } from "../shared/CharacterGender.js";
 
 declare const XCHost: any;
 
@@ -688,16 +689,20 @@ export class ActiveLoginViewModel extends ObservableBase implements IDisposable 
     }
 
     private async populatePmConvoFromLogs(convovm: PMConvoChannelViewModel, interlocutor: CharacterName): Promise<void> {
-        const messages = await HostInterop.getRecentLoggedPMConvoMessagesAsync(this.characterName, interlocutor, 200);  // TODO: come from config
-        if (!convovm.populatedFromReplay) {
-            convovm.restoreFromLoggedMessages(messages);
+        if (this.getConfigSettingById("loggingEnabled", convovm)) {
+            const messages = await HostInterop.getRecentLoggedPMConvoMessagesAsync(this.characterName, interlocutor, 200);  // TODO: come from config
+            if (!convovm.populatedFromReplay) {
+                convovm.restoreFromLoggedMessages(messages);
+            }
         }
     }
 
     private async populateChannelFromLogs(chanvm: ChatChannelViewModel, channelName: ChannelName) {
-        const messages = await HostInterop.getRecentLoggedChannelMessagesAsync(channelName, 200);  // TODO: come from config
-        if (!chanvm.populatedFromReplay) {
-            chanvm.restoreFromLoggedMessages(messages);
+        if (this.getConfigSettingById("loggingEnabled", chanvm)) {
+            const messages = await HostInterop.getRecentLoggedChannelMessagesAsync(channelName, 200);  // TODO: come from config
+            if (!chanvm.populatedFromReplay) {
+                chanvm.restoreFromLoggedMessages(messages);
+            }
         }
     }
 
@@ -1209,6 +1214,24 @@ export class ActiveLoginViewModel extends ObservableBase implements IDisposable 
             .map(k => { return { key: k, value: mostUsedList[k] }; })
             .sort((a, b) => b.value.count - a.value.count)
             .map(e => e.key)];
+    }
+
+    logChannelMessage(channel: ChatChannelViewModel,
+            speakingCharacter: CharacterName, speakingCharacterGender: CharacterGender, speakingCharacterOnlineStatus: OnlineStatus,
+            messageType: LogMessageType, messageText: string): void {
+        if (this.getConfigSettingById("loggingEnabled", channel)) {
+            HostInterop.logChannelMessage(this.characterName, channel.name, channel.title, speakingCharacter, speakingCharacterGender,
+                speakingCharacterOnlineStatus, messageType, messageText);
+        }
+    }
+
+    logPMConvoMessage(pmConvo: PMConvoChannelViewModel,
+            speakingCharacter: CharacterName, speakingCharacterGender: CharacterGender, speakingCharacterOnlineStatus: OnlineStatus,
+            messageType: LogMessageType, messageText: string): void {
+        if (this.getConfigSettingById("loggingEnabled", pmConvo)) {
+            HostInterop.logPMConvoMessage(this.characterName, pmConvo.character, speakingCharacter, speakingCharacterGender,
+                speakingCharacterOnlineStatus, messageType, messageText);
+        }
     }
 }
 

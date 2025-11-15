@@ -47,8 +47,7 @@ export class PMConvoChannelViewModel extends ChannelViewModel {
         this.canClose = true;
         this.canPin = false;
 
-        this.prefixMessages.add(
-            ChannelMessageViewModel.createLogNavMessage(this, "Click here to see earlier messages in the Log Viewer", () => {
+        const logViewPromptMsg = ChannelMessageViewModel.createLogNavMessage(this, "Click here to see earlier messages in the Log Viewer", () => {
                 let minMsg: ChannelMessageViewModel | null = null;
                 for (let m of this.mainMessages.iterateValues()) {
                     minMsg = m.value;
@@ -62,7 +61,22 @@ export class PMConvoChannelViewModel extends ChannelViewModel {
                         this.character
                     );
                 }
-            }));
+            });
+        const logViewPromptOE = new ObservableExpression(
+            () => this.getConfigSettingById("loggingEnabled"),
+            (loggingEnabled) => {
+                if (loggingEnabled) {
+                    if (!this.prefixMessages.hasValue(logViewPromptMsg)) {
+                        this.prefixMessages.add(logViewPromptMsg);
+                    }
+                }
+                else {
+                    this.prefixMessages.deleteByValue(logViewPromptMsg);
+                }
+            },
+            (err) => { }
+        );
+        this.ownedDisposables.add(logViewPromptOE);            
 
         this.channelFilters = new ChannelFiltersViewModel(this);
         this.channelFilters.addCategory("chattext", "Chat (Text)", "Normal chat messages.");
@@ -311,7 +325,7 @@ export class PMConvoChannelViewModel extends ChannelViewModel {
                 break;
         }
         if (logMessageType != null && !(options?.fromReplay ?? false)) {
-            HostInterop.logPMConvoMessage(this.activeLoginViewModel.characterName, this.character, 
+            this.activeLoginViewModel.logPMConvoMessage(this, 
                 message.characterStatus.characterName, message.characterStatus.gender, message.characterStatus.status,
                 logMessageType, message.text);
         }

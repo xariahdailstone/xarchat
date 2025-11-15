@@ -1,5 +1,5 @@
 import { AppViewModel, GetConfigSettingChannelViewModel } from "../../viewmodel/AppViewModel";
-import { SettingsDialogSectionViewModel, SettingsDialogItemViewModel, SettingsDialogSettingViewModel, SettingsDialogTabViewModel, SettingsDialogViewModel } from "../../viewmodel/dialogs/SettingsDialogViewModel";
+import { SettingsDialogSectionViewModel, SettingsDialogItemViewModel, SettingsDialogSettingViewModel, SettingsDialogTabViewModel, SettingsDialogViewModel, ISettingsDialogItemViewModel, ISettingsDialogSettingViewModel } from "../../viewmodel/dialogs/SettingsDialogViewModel";
 import { componentArea, componentElement } from "../ComponentBase";
 import { makeRenderingComponent, RenderingComponentBase } from "../RenderingComponentBase";
 import { DialogBorderType, DialogComponentBase, dialogViewFor } from "./DialogFrame";
@@ -54,11 +54,11 @@ export class SettingsDialog extends DialogComponentBase<SettingsDialogViewModel>
         }
     }
 
-    private renderTreeViewPane(settings: Collection<SettingsDialogSettingViewModel>): VNode {
+    private renderTreeViewPane(settings: Collection<ISettingsDialogSettingViewModel>): VNode {
         const items: VNode[] = [];
 
         for (let settingsItem of settings) {
-            if (settingsItem instanceof SettingsDialogSectionViewModel) {
+            if (!settingsItem.isItem) {
                 items.push(<div classList={[ "treeview-item", "treeview-item-group" ]}>
                     <div classList={[ "treeview-item-group-title"]} on={{
                         "click": () => {
@@ -95,7 +95,7 @@ export class SettingsDialog extends DialogComponentBase<SettingsDialogViewModel>
         </div>;
     }
 
-    private renderSetting(vm: SettingsDialogViewModel, setting: SettingsDialogSettingViewModel): VNode {
+    private renderSetting(vm: SettingsDialogViewModel, setting: ISettingsDialogSettingViewModel): VNode {
         let inner: VNode;
         let actionButtonsNode: VNode | null = null;
         let settingClasses: string[] = ["setting"];
@@ -104,53 +104,60 @@ export class SettingsDialog extends DialogComponentBase<SettingsDialogViewModel>
             settingClasses.push("setting-group");
             inner = <div classList={["setting-group-container"]}>{IterableUtils.asQueryable(setting.settings).select(x => this.renderSetting(vm, x)).toArray()}</div>;
         }
-        else if (setting instanceof SettingsDialogItemViewModel) {
+        else if (setting.isItem) {
+            const itemSetting = setting as unknown as ISettingsDialogItemViewModel;
             settingClasses.push("setting-item");
-            switch (setting.schema.type) {
+            if (itemSetting.isReadOnly) {
+                settingClasses.push("setting-item-readonly");
+            }
+            switch (itemSetting.schema.type) {
                 case "text":
-                    inner = this.renderSettingText(setting);
+                    inner = this.renderSettingText(itemSetting);
                     break;
                 case "boolean":
-                    inner = this.renderSettingBoolean(setting);
+                    inner = this.renderSettingBoolean(itemSetting);
                     break;
                 case "integer":
-                    inner = this.renderSettingInteger(setting);
+                    inner = this.renderSettingInteger(itemSetting);
                     break;
                 case "number":
-                    inner = this.renderSettingNumber(setting);
+                    inner = this.renderSettingNumber(itemSetting);
                     break;
                 case "color":
-                    inner = this.renderSettingColor(setting);
+                    inner = this.renderSettingColor(itemSetting);
                     break;
                 case "bgcolorcontrol":
-                    inner = this.renderSettingBgColorControl(setting);
+                    inner = this.renderSettingBgColorControl(itemSetting);
                     break;
                 case "color-hs":
-                    inner = this.renderSettingColorHS(setting);
+                    inner = this.renderSettingColorHS(itemSetting);
                     break;
                 case "radio":
-                    inner = this.renderSettingRadio(setting);
+                    inner = this.renderSettingRadio(itemSetting);
                     break;
                 case "text[]":
-                    inner = this.renderSettingTextList(setting);
+                    inner = this.renderSettingTextList(itemSetting);
                     break;
                 case "pinglist":
-                    inner = this.renderSettingPingList(setting);
+                    inner = this.renderSettingPingList(itemSetting);
                     break;
                 case "timespan":
-                    inner = this.renderSettingTimespan(setting.schema);
+                    inner = this.renderSettingTimespan(itemSetting.schema);
                     break;
                 case "notifroutes":
-                    inner = this.renderSettingNotifRoute(setting);
+                    inner = this.renderSettingNotifRoute(itemSetting);
                     break;
                 case "select":
-                    inner = this.renderSettingSelect(setting);
+                    inner = this.renderSettingSelect(itemSetting);
+                    break;
+                case "displaytext":
+                    inner = this.renderSettingDisplayText(itemSetting);
                     break;
             }
 
-            if (setting.schema.actionButtons && setting.schema.actionButtons.length > 0) {
+            if (itemSetting.schema.actionButtons && itemSetting.schema.actionButtons.length > 0) {
                 const buttonNodes: VNode[] = [];
-                for (let ab of setting.schema.actionButtons) {
+                for (let ab of itemSetting.schema.actionButtons) {
                     const buttonNode = <button classList={[ "setting-actionbuttons-button", "themed" ]} on={{
                         "click": () => {
                             ab.onClick({
@@ -177,7 +184,7 @@ export class SettingsDialog extends DialogComponentBase<SettingsDialogViewModel>
             const eiOpts: EnableIfOptions = {
                 myCharacterName: setting.scope.myCharacter,
                 channelCategory: setting.scope.categoryName,
-                channelName: setting.scope.targetChannel ? ChannelName.create(setting.scope.targetChannel) : undefined,
+                channelName: setting.scope.targetChannel ?? undefined,
                 interlocutorName: setting.scope.pmConvoCharacter,
                 getConfigEntryById: (id: string) => {
                     let xx: GetConfigSettingChannelViewModel | undefined;
@@ -209,7 +216,7 @@ export class SettingsDialog extends DialogComponentBase<SettingsDialogViewModel>
         </div>;
     }
 
-    private getInheritedInfoVNode(setting: SettingsDialogSettingViewModel): VNode {
+    private getInheritedInfoVNode(setting: ISettingsDialogSettingViewModel): VNode {
         if (setting.showInheritedInfo) {
             if (setting.useInheritedValue) {
                 return <div classList={["setting-inheritprompt", "setting-using-inherited"]}>{setting.inheritedFromText}</div>
@@ -235,7 +242,11 @@ export class SettingsDialog extends DialogComponentBase<SettingsDialogViewModel>
         }
     }
 
-    private renderSettingText(setting: SettingsDialogItemViewModel): VNode {
+    private renderSettingDisplayText(setting: ISettingsDialogItemViewModel): VNode {
+        return <div classList={["setting-entry", "setting-entry-displaytext"]}>{setting.value}</div>;
+    }
+
+    private renderSettingText(setting: ISettingsDialogItemViewModel): VNode {
 
         const hooks: Hooks = {
             postpatch: (o, n) => {
@@ -273,7 +284,7 @@ export class SettingsDialog extends DialogComponentBase<SettingsDialogViewModel>
             }}></input>
     }
 
-    private renderSettingBoolean(setting: SettingsDialogItemViewModel): VNode {
+    private renderSettingBoolean(setting: ISettingsDialogItemViewModel): VNode {
         const schema = setting.schema;
 
         const hooks: Hooks = {
@@ -323,7 +334,7 @@ export class SettingsDialog extends DialogComponentBase<SettingsDialogViewModel>
         elNode.data.on = { ...(elNode.data?.on ?? {}), ...evts };
     }
 
-    private renderSettingInteger(setting: SettingsDialogItemViewModel): VNode {
+    private renderSettingInteger(setting: ISettingsDialogItemViewModel): VNode {
         let min: number | undefined = setting.schema.min;
         let max: number | undefined = setting.schema.max;
         const attrs: Attrs = {
@@ -367,7 +378,7 @@ export class SettingsDialog extends DialogComponentBase<SettingsDialogViewModel>
         return <input classList={["setting-entry", "setting-entry-integer", "themed"]} attrs={attrs} on={evts} props={{ "value": setting.value?.toString() ?? "" }}></input>
     }
 
-    private renderSettingNumber(setting: SettingsDialogItemViewModel): VNode {
+    private renderSettingNumber(setting: ISettingsDialogItemViewModel): VNode {
         let min: number | undefined = setting.schema.min;
         let max: number | undefined = setting.schema.max;
         const attrs: Attrs = {
@@ -402,7 +413,7 @@ export class SettingsDialog extends DialogComponentBase<SettingsDialogViewModel>
         return resNode;
     }
 
-    private renderSettingColor(setting: SettingsDialogItemViewModel): VNode {
+    private renderSettingColor(setting: ISettingsDialogItemViewModel): VNode {
         return <div classList={["setting-entry", "setting-entry-color"]}>
             <div classList={[ "setting-entry-color-swatch" ]} style={{ "fontWeight": "bold", "backgroundColor": setting.value }}
                 on={{ "click": (e) => { this.showColorRGBPicker(setting, e.target as HTMLElement); } }}></div>
@@ -410,7 +421,7 @@ export class SettingsDialog extends DialogComponentBase<SettingsDialogViewModel>
                 on={{ "click": () => { setting.value = null; } }}>Default</button>
         </div>
     }
-    private showColorRGBPicker(setting: SettingsDialogItemViewModel, el: HTMLElement) {
+    private showColorRGBPicker(setting: ISettingsDialogItemViewModel, el: HTMLElement) {
         if (this.viewModel){
             const vm = new ColorRGBSelectPopupViewModel(this.viewModel.parent, el);
             vm.rgbString = setting.value;
@@ -421,7 +432,7 @@ export class SettingsDialog extends DialogComponentBase<SettingsDialogViewModel>
         }
     }
 
-    private renderSettingBgColorControl(setting: SettingsDialogItemViewModel): VNode {
+    private renderSettingBgColorControl(setting: ISettingsDialogItemViewModel): VNode {
         const vparts = (setting.value as string).split(';');
         if (vparts.length == 2) {
             vparts.push("1");
@@ -436,7 +447,7 @@ export class SettingsDialog extends DialogComponentBase<SettingsDialogViewModel>
         </div>
     }
 
-    private renderSettingColorHS(setting: SettingsDialogItemViewModel): VNode {
+    private renderSettingColorHS(setting: ISettingsDialogItemViewModel): VNode {
         const vparts = (setting.value as string).split(';');
         const cssValue = `hsl(${+vparts[0]}, ${+vparts[1]}%, 50%)`;
         return <div classList={["setting-entry", "setting-entry-color"]}>
@@ -446,7 +457,7 @@ export class SettingsDialog extends DialogComponentBase<SettingsDialogViewModel>
                 on={{ "click": () => { setting.value = null; } }}>Default</button>
         </div>
     }
-    private showColorHSPicker(setting: SettingsDialogItemViewModel, includeBrightnessFactor: boolean, el: HTMLElement) {
+    private showColorHSPicker(setting: ISettingsDialogItemViewModel, includeBrightnessFactor: boolean, el: HTMLElement) {
         if (this.viewModel){
             const vparts = (setting.value as string).split(';');
             const vm = new ColorHSSelectPopupViewModel(this.viewModel.parent, el, includeBrightnessFactor);
@@ -470,7 +481,7 @@ export class SettingsDialog extends DialogComponentBase<SettingsDialogViewModel>
         }
     }
 
-    private renderSettingRadio(setting: SettingsDialogItemViewModel): VNode {
+    private renderSettingRadio(setting: ISettingsDialogItemViewModel): VNode {
         const schema = setting.schema;
         const settingId = schema.id ?? this.getOrCreateSettingId(schema);
         const radioName = `el${schema.id}radio`;
@@ -566,7 +577,7 @@ export class SettingsDialog extends DialogComponentBase<SettingsDialogViewModel>
         return id;
     }
 
-    private renderSettingPingList(setting: SettingsDialogItemViewModel): VNode {
+    private renderSettingPingList(setting: ISettingsDialogItemViewModel): VNode {
         const rawv = setting.value as (string | PingLineItemDefinition)[];
         const v: PingLineItemDefinition[] = [];
         for (let item of rawv) {
@@ -640,7 +651,7 @@ export class SettingsDialog extends DialogComponentBase<SettingsDialogViewModel>
         </div>;
     }
 
-    private renderSettingTextList(setting: SettingsDialogItemViewModel): VNode {
+    private renderSettingTextList(setting: ISettingsDialogItemViewModel): VNode {
         const v = setting.value as string[];
         return <div classList={["setting-entry", "setting-entry-textlist"]}>
             {
@@ -673,7 +684,7 @@ export class SettingsDialog extends DialogComponentBase<SettingsDialogViewModel>
         return <></>;
     }
 
-    private renderSettingNotifRoute(setting: SettingsDialogItemViewModel): VNode {
+    private renderSettingNotifRoute(setting: ISettingsDialogItemViewModel): VNode {
         const settingId = this.getOrCreateSettingId(setting.schema);
         const nr = new NotificationRouting(setting.value as string);
 
@@ -715,7 +726,7 @@ export class SettingsDialog extends DialogComponentBase<SettingsDialogViewModel>
         </div>
     }
 
-    private renderSettingSelect(setting: SettingsDialogItemViewModel): VNode {
+    private renderSettingSelect(setting: ISettingsDialogItemViewModel): VNode {
         const optionNodes: VNode[] = [];
 
         const valueMap = new Map<number, any>();

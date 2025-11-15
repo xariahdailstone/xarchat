@@ -4,6 +4,7 @@ import { CancellationToken } from "../util/CancellationTokenSource";
 import { HostInterop } from "../util/hostinterop/HostInterop";
 import { IterableUtils } from "../util/IterableUtils";
 import { PlatformUtils } from "../util/PlatformUtils";
+import { StringUtils } from "../util/StringUtils";
 import { AppViewModel } from "../viewmodel/AppViewModel";
 
 export interface ConfigSchemaDefinition {
@@ -30,7 +31,9 @@ export interface ConfigSchemaItemDefinitionItem {
     notYetImplemented?: boolean;
     notifRouteOptions?: ConfigSchemaNotifRouteItemOptions;
     actionButtons?: ActionButtonDefinition[];
+    initializeDisplay?: () => any;
     enableIf?: (options: EnableIfOptions) => boolean;
+    calculateValue?: (options: CalculateValueOptions) => any;
 }
 
 export interface ActionButtonDefinition {
@@ -47,11 +50,19 @@ export interface ConfigSchemaNotifRouteItemOptions {
     hasCharacterContext?: boolean;
 }
 
+export interface CalculateValueOptions {
+    myCharacterName?: CharacterName;
+    interlocutorName?: CharacterName;
+    channelCategory?: string;
+    channelName?: string;
+    getConfigEntryById: (id: string) => unknown;
+}
+
 export interface EnableIfOptions {
     myCharacterName?: CharacterName;
     interlocutorName?: CharacterName;
     channelCategory?: string;
-    channelName?: ChannelName;
+    channelName?: string;
     getConfigEntryById: (id: string) => unknown;
 }
 
@@ -101,7 +112,7 @@ export interface PingLineItemDefinition {
 export type ConfigSchemaItemDefinition = (ConfigSchemaItemDefinitionItem | ConfigSchemaItemDefinitionSection);
 
 export type ConfigSchemaItemType = "text" | "boolean" | "integer" | "number" | "text[]" | "pinglist" | 
-    "radio" | "timespan" | "color" | "color-hs" | "bgcolorcontrol" | "notifroutes" | "select";
+    "radio" | "timespan" | "color" | "color-hs" | "bgcolorcontrol" | "notifroutes" | "select" | "displaytext";
 export type ConfigSchemaOptionItemType = "string" | "file";
 export type ConfigSchemaScopeType = "global" | "char" | "char.chancategory" | "char.chan" | "char.convo";
 export type ConfigSchemaScopeTypeSimple = "global" | "char" | "chan" | "convo";
@@ -155,6 +166,10 @@ const spellCheckLanguageItem: ConfigSchemaItemDefinitionItem = {
     defaultValue: 0,
     configBlockKey: "spellCheckLanguage"
 };
+
+const chanRetentionPeriodNote = "(If you log in with more than one character, note that channel logs are shared among all " +
+    "characters.  For any specific channel, the longest configured retention period that applies to that channel across all " +
+    "your characters will be used.)";
 
 const shortcutKeyCombiningPrefixString = PlatformUtils.shortcutKeyCombiningPrefixString;
 export const ConfigSchema: ConfigSchemaDefinition = {
@@ -1294,17 +1309,47 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     id: "loggingEnabled",
                     scope: getScopeArray(["global", "char", "chan", "convo"]),
                     title: "Enable Logging",
-                    description: "Log chat to a local file.",
+                    description: "",
+                    descriptionByScope: {
+                        "global": "Log all channels and PM conversations to a local file.",
+                        "char": "Log all channels and PM conversations to a local file for \"$MYCHAR$\".",
+                        "char.chancategory": "Log all channels in the \"$CHANCATEGORY$\" category to a local file.",
+                        "char.chan": "Log this channel to a local file.",
+                        "char.convo": "Log PM conversations with \"$CONVOCHAR$\" to a local file."
+                    },
                     type: "boolean",
                     defaultValue: true,
-                    configBlockKey: "loggingEnabled",
-                    notYetImplemented: true
+                    configBlockKey: "loggingEnabled"
+                },
+                {
+                    id: "logFileSize",
+                    scope: getScopeArray(["global", "char", "chan", "convo"]),
+                    title: "Total Log Size",
+                    description: "The current total size of your entire chat log file, including all channels and PM conversations.",
+                    type: "displaytext",
+                    defaultValue: "",
+                    configBlockKey: "logFileSize",
+                    initializeDisplay: () => {
+                        //console.log("initializing chat log size item");
+                        HostInterop.refreshChatLogFileSize();
+                    },
+                    calculateValue: (cvo) => {
+                        //console.log("reading chat log size item");
+                        return StringUtils.numberToApproximateFileSize(HostInterop.chatLogFileSize.value);
+                    }
                 },
                 {
                     id: "retentionPeriod.chan",
                     scope: getScopeArray(["global", "char", "chan"]),
                     title: "Channel Message Log Retention",
-                    description: "How long to keep channel messages in the log file.",
+                    description: "",
+                    descriptionByScope: {
+                        "global": "How long to keep chat channel messages in the log file. " + chanRetentionPeriodNote,
+                        "char": "How long to keep chat channel messages in the log file. " + chanRetentionPeriodNote,
+                        "char.chancategory": "How long to keep messages for channels in the \"$CHANCATEGORY$\" category in the log file. " + chanRetentionPeriodNote,
+                        "char.chan": "How long to keep messages for this channel in the log file. " + chanRetentionPeriodNote,
+                        "char.convo": "Invalid setting."
+                    },
                     type: "timespan",
                     defaultValue: 2160,  // 90 days * 24 hours
                     configBlockKey: "loggingRetentionChannel",
@@ -1314,7 +1359,14 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     id: "retentionPeriod.convo",
                     scope: getScopeArray(["global", "char", "convo"]),
                     title: "Private Message Log Retention",
-                    description: "How long to keep private messages in the log file.",
+                    description: "",
+                    descriptionByScope: {
+                        "global": "How long to keep private messages in the log file.",
+                        "char": "How long to keep private messages in the log file.",
+                        "char.chancategory": "Invalid setting.",
+                        "char.chan": "Invalid setting.",
+                        "char.convo": "How long to keep private messages from \"$CONVOCHAR$\" in the log file."
+                    },
                     type: "timespan",
                     defaultValue: 120000,  // 5000 days * 24 hours
                     configBlockKey: "loggingRetentionConvo",

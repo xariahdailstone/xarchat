@@ -363,6 +363,7 @@ namespace XarChat.Backend
             services.AddXCHostCommandHandler<WinCloseCommandHandler>("win.close");
             services.AddXCHostCommandHandler<LogChannelMessageCommandHandler>("log.ChannelMessage");
             services.AddXCHostCommandHandler<LogPMConvoMessageCommandHandler>("log.PMConvoMessage");
+            services.AddXCHostCommandHandler<GetChatLogSizeCommandHandler>("log.GetLogSize");
             services.AddXCHostCommandHandler<EndCharacterSessionCommandHandler>("endCharacterSession");
             services.AddXCHostCommandHandler<UpdateAppBadgeCommandHandler>("updateAppBadge");
             services.AddXCHostCommandHandler<AddIdleMonitorRegistrationCommandHandler>("addIdleMonitorRegistration");

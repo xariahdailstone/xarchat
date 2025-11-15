@@ -4,6 +4,8 @@ namespace XarChat.Backend.Features.ChatLogging
 {
     public interface IChatLogSearch
     {
+        Task<long> GetLogFileSizeAsync(CancellationToken cancellationToken);
+
         Task<int> GetSearchResultCountAsync(SearchCriteria criteria, CancellationToken cancellationToken);
 
         Task<IReadOnlyList<long>> GetSearchResultIdsAsync(

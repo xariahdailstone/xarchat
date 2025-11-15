@@ -191,6 +191,11 @@ namespace XarChat.Backend.Features.ChatLogging.Sqlite.Search
             return (sb.ToString(), parameters);
         }
 
+        public Task<long> GetLogFileSizeAsync(CancellationToken cancellationToken)
+        {
+            return _logWriter.GetLogFileSizeAsync(cancellationToken);
+        }
+
         public async Task<int> GetSearchResultCountAsync(SearchCriteria criteria, CancellationToken cancellationToken)
         {
             var result = await RunWithDisposeCancellation(

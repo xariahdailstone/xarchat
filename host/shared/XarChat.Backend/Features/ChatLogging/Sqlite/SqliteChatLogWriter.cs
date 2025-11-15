@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection.Metadata;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text;
@@ -17,6 +18,7 @@ namespace XarChat.Backend.Features.ChatLogging.Sqlite
     public class SqliteChatLogWriter : IChatLogWriter, IDisposable
     {
         private readonly IAppConfiguration _appConfiguration;
+        private readonly IAppDataFolder _appDataFolder;
 
         private readonly SemaphoreSlim _sem = new SemaphoreSlim(1);
         private Microsoft.Data.Sqlite.SqliteConnection? _cnn;
@@ -28,11 +30,18 @@ namespace XarChat.Backend.Features.ChatLogging.Sqlite
             IAppDataFolder appDataFolder,
             IAppConfiguration appConfiguration)
         {
+            _appDataFolder = appDataFolder;
             _appConfiguration = appConfiguration;
 
-            var adf = appDataFolder.GetAppDataFolder();
-            var fn = Path.Combine(adf, "chatlog.db");
+            var fn = GetChatLogDbFilename();
             VerifySchema(fn);
+        }
+
+        private string GetChatLogDbFilename()
+        {
+            var adf = _appDataFolder.GetAppDataFolder();
+            var fn = Path.Combine(adf, "chatlog.db");
+            return fn;
         }
 
         private void VerifySchema(string fn)
@@ -272,7 +281,14 @@ namespace XarChat.Backend.Features.ChatLogging.Sqlite
             }
             return false;
         }
-        
+
+        public async Task<long> GetLogFileSizeAsync(CancellationToken cancellationToken)
+        {
+            var fn = GetChatLogDbFilename();
+            var fi = new FileInfo(fn);
+            return fi.Length;
+        }
+
         public async Task<List<string>> GetChannelHintsFromPartialNameAsync(string partialChannelName,
             CancellationToken cancellationToken)
         {
