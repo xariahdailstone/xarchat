@@ -48,8 +48,6 @@ namespace XarChat.Backend.Photino
 
         protected IServiceProvider ServiceProvider => _serviceProvider;
 
-        public IAutoUpdateManager AutoUpdateManager => _autoUpdateManager;
-
         public virtual IFileChooser FileChooser 
             => ActivatorUtilities.CreateInstance<PhotinoFileChooser>(_serviceProvider);
 
