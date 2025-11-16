@@ -1,8 +1,11 @@
 import { CancellationToken } from "../../CancellationTokenSource";
+import { Logger, Logging } from "../../Logger";
 import { PromiseSource } from "../../PromiseSource";
 
 
 export abstract class XarHost2InteropSession {
+    protected logger: Logger = Logging.createLogger(`${this.constructor.name}`);
+
     abstract readonly prefix: string;
 
     receiveMessage(cmd: string, data: object) {

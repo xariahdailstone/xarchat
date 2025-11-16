@@ -2,10 +2,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection.Metadata;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
+using XarChat.Backend.Common;
 using XarChat.Backend.Common.DbSchema;
 using XarChat.Backend.Features.AppConfiguration;
 using XarChat.Backend.Features.AppDataFolder;
@@ -17,6 +19,7 @@ namespace XarChat.Backend.Features.ChatLogging.Sqlite
     public class SqliteChatLogWriter : IChatLogWriter, IDisposable
     {
         private readonly IAppConfiguration _appConfiguration;
+        private readonly IAppDataFolder _appDataFolder;
 
         private readonly SemaphoreSlim _sem = new SemaphoreSlim(1);
         private Microsoft.Data.Sqlite.SqliteConnection? _cnn;
@@ -28,11 +31,18 @@ namespace XarChat.Backend.Features.ChatLogging.Sqlite
             IAppDataFolder appDataFolder,
             IAppConfiguration appConfiguration)
         {
+            _appDataFolder = appDataFolder;
             _appConfiguration = appConfiguration;
 
-            var adf = appDataFolder.GetAppDataFolder();
-            var fn = Path.Combine(adf, "chatlog.db");
+            var fn = GetChatLogDbFilename();
             VerifySchema(fn);
+        }
+
+        private string GetChatLogDbFilename()
+        {
+            var adf = _appDataFolder.GetAppDataFolder();
+            var fn = Path.Combine(adf, "chatlog.db");
+            return fn;
         }
 
         private void VerifySchema(string fn)
@@ -42,32 +52,42 @@ namespace XarChat.Backend.Features.ChatLogging.Sqlite
             {
                 try
                 {
-                    StartupTask.UpdateStatus(false, "Migrating chat log format...", null);
-
-                    _cnn = await DbSchemaManager.VerifySchemaAsync(fn, false,
-                        [
-                            new Migration01Initial(),
-                            new Migration02AddSchemaVersionTable(),
-                            new Migration03AddGenderStatusToMessageLog(),
-                            new Migration04AddGenderStatusToPMLog(),
-                            new Migration05MovePMConvosToChannels(),
-                        ],
-                        _disposeCTS.Token);
-
-                    StartupTask.UpdateStatus(true, "Chat log is ready.", null);
-                }
-                catch (Exception ex)
-                {
-                    StartupTask.UpdateStatus(false, "Chat log migration failed.", ex);
-
-                    try { _cnn?.Close(); }
-                    catch { }
+                    await VerifySchemaInternalAsync(fn,
+                        (isComplete, currentStatus, failureException) => StartupTask.UpdateStatus(isComplete, currentStatus, failureException));
                 }
                 finally
                 {
                     _sem.Release();
                 }
             });
+        }
+
+        private async Task VerifySchemaInternalAsync(string fn,
+            Action<bool, string, Exception?> startupTaskUpdateStatus)
+        {
+            try
+            {
+                startupTaskUpdateStatus(false, "Migrating chat log format...", null);
+
+                _cnn = await DbSchemaManager.VerifySchemaAsync(fn, false,
+                    [
+                        new Migration01Initial(),
+                            new Migration02AddSchemaVersionTable(),
+                            new Migration03AddGenderStatusToMessageLog(),
+                            new Migration04AddGenderStatusToPMLog(),
+                            new Migration05MovePMConvosToChannels(),
+                        ],
+                    _disposeCTS.Token);
+
+                startupTaskUpdateStatus(true, "Chat log is ready.", null);
+            }
+            catch (Exception ex)
+            {
+                startupTaskUpdateStatus(false, "Chat log migration failed.", ex);
+
+                try { _cnn?.Close(); }
+                catch { }
+            }
         }
 
         public void Dispose()
@@ -272,7 +292,85 @@ namespace XarChat.Backend.Features.ChatLogging.Sqlite
             }
             return false;
         }
-        
+
+        public async Task VacuumAsync(CancellationToken cancellationToken)
+        {
+            var result = await WithSemaphore(
+                cancellationToken: cancellationToken,
+                func: async (connection, cancellationToken) =>
+                {
+                    //using var xa = connection.BeginTransaction();
+
+                    using (var vacuumCmd = connection.CreateCommand())
+                    {
+                        //vacuumCmd.Transaction = xa;
+                        vacuumCmd.CommandText = "vacuum";
+                        await vacuumCmd.ExecuteNonQueryAsync(cancellationToken);
+                    }
+
+                    //await xa.CommitAsync(cancellationToken);
+                    return 0;
+                });
+        }
+
+        public async Task ClearDatabaseAsync(CancellationToken cancellationToken)
+        {
+            var result = await WithSemaphore(
+                cancellationToken: cancellationToken,
+                func: async (connection, cancellationToken) =>
+                {
+                    connection.Close();
+                    await connection.DisposeAsync();
+                    _cnn = null;
+
+                    GC.Collect();
+                    GC.WaitForPendingFinalizers();
+                    GC.Collect();
+
+                    SqliteConnection.ClearAllPools();
+
+                    GC.WaitForPendingFinalizers();
+                    GC.Collect();
+                    GC.WaitForPendingFinalizers();
+                    GC.Collect();
+
+                    var fn = GetChatLogDbFilename();
+
+                    try
+                    {
+                        // Delete the existing database file
+                        await FileSystemUtil.DeleteAsync(fn, retryCount: 40, retryDelay: TimeSpan.FromMilliseconds(250),
+                            collectGCOnRetry: true);
+                    }
+                    finally
+                    {
+                        // Initialize a new database file
+                        Exception? savedFailureException = null;
+                        await VerifySchemaInternalAsync(fn,
+                            (isCompleted, currentStatus, failureException) =>
+                            {
+                                if (failureException is not null)
+                                {
+                                    savedFailureException = failureException;
+                                }
+                            });
+
+                        if (savedFailureException is not null)
+                        {
+                            throw new ApplicationException("ClearDatabase failed: " + savedFailureException.Message, savedFailureException);
+                        }
+                    }
+                    return 0;
+                });
+        }
+
+        public async Task<long> GetLogFileSizeAsync(CancellationToken cancellationToken)
+        {
+            var fn = GetChatLogDbFilename();
+            var fi = new FileInfo(fn);
+            return fi.Length;
+        }
+
         public async Task<List<string>> GetChannelHintsFromPartialNameAsync(string partialChannelName,
             CancellationToken cancellationToken)
         {

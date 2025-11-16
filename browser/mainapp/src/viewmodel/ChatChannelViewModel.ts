@@ -36,6 +36,7 @@ import { SidebarTabContainerViewModel, SidebarTabViewModel } from "./sidebartabs
 import { ChannelUserListTabViewModel } from "./sidebartabs/ChannelUserListTabViewModel.js";
 import { FriendsListTabViewModel } from "./sidebartabs/FriendsListTabViewModel.js";
 import { IHasRightBarTabs } from "./sidebartabs/RightSidebarTabContainerViewModel.js";
+import { Scheduler } from "../util/Scheduler.js";
 
 export class ChatChannelUserViewModel extends ObservableBase implements IDisposable {
     constructor(
@@ -99,8 +100,7 @@ export class ChatChannelViewModel extends ChannelViewModel implements IHasRightB
 
         this.filterMode = ChatChannelMessageMode.BOTH;
 
-        this.prefixMessages.add(
-            ChannelMessageViewModel.createLogNavMessage(this, "Click here to see earlier messages in the Log Viewer", () => {
+        const logViewPromptMsg = ChannelMessageViewModel.createLogNavMessage(this, "Click here to see earlier messages in the Log Viewer", () => {
                 let minMsg: ChannelMessageViewModel | null = null;
                 for (let m of this.mainMessages.iterateValues()) {
                     minMsg = m.value;
@@ -122,7 +122,22 @@ export class ChatChannelViewModel extends ChannelViewModel implements IHasRightB
                         this.name
                     );
                 }
-            }));
+            });
+        const logViewPromptOE = new ObservableExpression(
+            () => this.getConfigSettingById("loggingEnabled"),
+            (loggingEnabled) => {
+                if (loggingEnabled) {
+                    if (!this.prefixMessages.hasValue(logViewPromptMsg)) {
+                        this.prefixMessages.add(logViewPromptMsg);
+                    }
+                }
+                else {
+                    this.prefixMessages.deleteByValue(logViewPromptMsg);
+                }
+            },
+            (err) => { }
+        );
+        this.ownedDisposables.add(logViewPromptOE);
 
         this.channelFilters = new ChannelFiltersViewModel(this);
         this.channelFilters.addCategory("chattext", "Chat (Text)", "Normal chat messages.");
@@ -1014,7 +1029,7 @@ export class ChatChannelViewModel extends ChannelViewModel implements IHasRightB
         super.addMessage(message, options);
 
         if (logMessageType != null && !(options?.fromReplay ?? false)) {
-            HostInterop.logChannelMessage(this.activeLoginViewModel.characterName, this.name, this.title, 
+            this.activeLoginViewModel.logChannelMessage(this, 
                 message.characterStatus.characterName, message.characterStatus.gender, message.characterStatus.status,
                 logMessageType, message.text);
         }
@@ -1167,11 +1182,11 @@ export class ChatChannelViewModel extends ChannelViewModel implements IHasRightB
                     const timeRemaining = Math.floor(Math.max(0, canSendAgainAt - (new Date()).getTime()) / 1000);
                     this.adSendWaitRemainingSec = timeRemaining;
                 }, 1000);
-                window.setTimeout(() => {
+                Scheduler.scheduleNamedCallback("ChatChannelViewModel.clearAdWaitRemaining", 1000 * 60 * 10, () => {
                     window.clearInterval(tick);
                     this.adSendWaitRemainingSec = null;
                     this._cantSendAsAdReasons.value = this._cantSendAsAdReasons.value.filter(r => r != CantSendAsAdReasons.WaitingOnAdThrottle);
-                }, 1000 * 60 * 10);
+                });
             },
             onSuccessAsync: async () => {
                 if (!isAutoAd) {

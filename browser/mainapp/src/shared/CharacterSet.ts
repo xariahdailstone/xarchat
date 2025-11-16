@@ -6,6 +6,7 @@ import { asDisposable, IDisposable, ObjectDisposedError } from "../util/Disposab
 import { Observable, ObservableValue, PropertyChangeEvent, PropertyChangeEventListener, ValueSubscription } from "../util/Observable.js";
 import { observableProperty, setupValueSubscription } from "../util/ObservableBase.js";
 import { DictionaryChangeType } from "../util/ObservableKeyedLinkedList.js";
+import { Scheduler } from "../util/Scheduler.js";
 import { CharacterNameSet } from "../viewmodel/CharacterNameSet.js";
 import { CharacterGender } from "./CharacterGender.js";
 import { CharacterName } from "./CharacterName.js";
@@ -314,7 +315,7 @@ class LingeringGenderSet {
 
     private readonly _lingeringGenders: SnapshottableMap<CharacterName, LingeringCharacterGender> = new SnapshottableMap();
     private _nextExpireAt: number | null = null;
-    private _nextExpireTimeoutHandle: number | null = null;
+    private _nextExpireTimeoutHandle: IDisposable | null = null;
 
     tryGet(name: CharacterName): LingeringCharacterGender | null {
         const res = this._lingeringGenders.get(name);
@@ -341,13 +342,12 @@ class LingeringGenderSet {
 
     private rescheduleNextExpire() {
         if (this._nextExpireTimeoutHandle) {
-            window.clearTimeout(this._nextExpireTimeoutHandle);
+            this._nextExpireTimeoutHandle.dispose();
+            this._nextExpireTimeoutHandle = null;
         }
         if (this._nextExpireAt != null) {
             const tickIn = Math.max(1, this._nextExpireAt - (new Date()).getTime());
-            this._nextExpireTimeoutHandle = window.setTimeout(
-                () => { this.runExpiration() },
-                tickIn);
+            this._nextExpireTimeoutHandle = Scheduler.scheduleNamedCallback("CharacterSet.nextExpireAt", tickIn, () => { this.runExpiration() });
         }
     }
 

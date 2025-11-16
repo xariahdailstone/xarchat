@@ -95,6 +95,9 @@ class SchedulerImpl {
     private _animationFrameTick(ms: number) {
         this._currentRAFHandle = null;
 
+        let executedTaskCount = 0;
+        let hasAfterFrameWork = false;
+        let hasNextFrameWork = false;
         const handledMessageNames = new Map<string, number>();
         try {
             this._thisAnimationTickQueue = this._nextAnimationTickQueue;
@@ -121,29 +124,37 @@ class SchedulerImpl {
                         continue;
                     }
 
+                    executedTaskCount++;
                     try { item.callback(ms); }
                     catch { }
                 }
             }
             if (this._thisAfterAnimationTickQueue.any()) {
                 //console.log("need to do afterframe work");
+                hasAfterFrameWork = true;
                 this._afterFrameChannel.port2.postMessage("");
             }
             else {
                 this._thisAfterAnimationTickQueue = null;
             }
             if (this._nextAnimationTickQueue.any() || this._nextAfterAnimationTickQueue.any()) {
+                hasNextFrameWork = true;
                 if (!this._currentRAFHandle) {
                     this._currentRAFHandle = window.requestAnimationFrame((ms) => this._animationFrameTick(ms));
                 }
             }
         }
         finally {
+            this._logger.logDebug("RAF executed tasks", executedTaskCount, 
+                hasAfterFrameWork ? "has after frame work" : "no after frame work",
+                hasNextFrameWork ? "has next frame work" : "no next frame work");
             this._thisAnimationTickQueue = null;
         }
     }
 
     private _afterAnimationFrameTick() {
+        let executedTaskCount = 0;
+        let hasNextFrameWork = false;
         try {
             // this._thisAfterAnimationTickQueue = this._nextAfterAnimationTickQueue;
             // this._nextAfterAnimationTickQueue = new DoublyLinkedList();
@@ -155,6 +166,7 @@ class SchedulerImpl {
                 while (this._thisAfterAnimationTickQueue.any()) {
                     const item = this._thisAfterAnimationTickQueue.shift();
                     if (item) {
+                        executedTaskCount++;
                         try { item.callback(now); }
                         catch { }
                     }
@@ -162,12 +174,16 @@ class SchedulerImpl {
             }
 
             if (this._nextAnimationTickQueue.any() || this._nextAfterAnimationTickQueue.any()) {
+                hasNextFrameWork = true;
                 if (!this._currentRAFHandle) {
                     this._currentRAFHandle = window.requestAnimationFrame((ms) => this._animationFrameTick(ms));
                 }
             }
         }
         finally {
+            this._logger.logDebug("after RAF executed tasks", executedTaskCount,
+                hasNextFrameWork ? "has next frame work" : "no next frame work"
+            );
             this._thisAfterAnimationTickQueue = null;
         }
     }

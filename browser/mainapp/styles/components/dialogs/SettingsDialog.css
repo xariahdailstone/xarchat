@@ -351,6 +351,22 @@
     }
 }
 
+.setting-item:has(.setting-entry-displaytext) {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-rows: auto auto auto 8px auto;
+    grid-template-areas:
+        "title input"
+        "description input"
+        "inheritprompt input"
+        ". ."
+        "actionbuttons actionbuttons";
+
+    .setting-entry-displaytext {
+        margin-top: 7px;
+    }
+}
+
 .setting-entry-integer,
 .setting-entry-number {
     background: var(--bg-main-textbox-btn);

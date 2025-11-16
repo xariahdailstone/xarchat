@@ -11,6 +11,8 @@ import { HostInteropLogSearch2 } from "./HostInteropLogSearch2";
 import { IdleDetectionUserState, IdleDetectionScreenState } from "../IdleDetection";
 import { UpdateCheckerState } from "../UpdateCheckerClient";
 import { LogMessageType, LogChannelMessage, LogPMConvoMessage, HostWindowState, EIconSearchResults, ConfigKeyValue, ChooseLocalFileOptions, HostLocaleInfo } from "./HostInterop";
+import { IObservable, ObservableValue } from "../Observable";
+import { HostInteropLogFileMaintenance } from "./HostInteropLogFileMaintenance";
 
 
 export interface IHostInterop {
@@ -71,6 +73,8 @@ export interface IHostInterop {
 
     readonly logSearch: HostInteropLogSearch;
     readonly logSearch2: HostInteropLogSearch2;
+
+    readonly logFileMaintenance: HostInteropLogFileMaintenance;
 
     chooseLocalFileAsync(options?: ChooseLocalFileOptions): Promise<string | null>;
     getLocalFileUrl(fn: string): string;

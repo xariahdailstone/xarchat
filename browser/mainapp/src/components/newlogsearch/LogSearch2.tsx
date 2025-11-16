@@ -3,6 +3,7 @@ import { VNodeDateTimeInputBinding, VNodeTextInputBinding } from "../../util/bin
 import { asDisposable, IDisposable, isDisposable, maybeDispose } from "../../util/Disposable";
 import { HTMLUtils } from "../../util/HTMLUtils";
 import { observableProperty } from "../../util/ObservableBase";
+import { Scheduler } from "../../util/Scheduler";
 import { LogSearch2ViewModel, VirtualScrollViewModel, VirtualScrollBarViewModel, CurrentDisplayItems } from "../../viewmodel/newlogsearch/LogSearch2ViewModel";
 import { SearchStreamSpecChannelViewModel, SearchStreamSpecPMConvoViewModel } from "../../viewmodel/newlogsearch/SearchCriteriaViewModel";
 import { componentArea, ComponentBase, componentElement } from "../ComponentBase";
@@ -441,18 +442,19 @@ export class VirtualScrollBar extends ComponentBase<VirtualScrollBarViewModel> {
             }
         });
 
-        let scrollRepeatTimerHandle: number | null = null;
+        let scrollRepeatTimerHandle: IDisposable | null = null;
         const stopScrollRepeat = () => {
             if (scrollRepeatTimerHandle != null) {
-                window.clearTimeout(scrollRepeatTimerHandle);
+                scrollRepeatTimerHandle.dispose();
+                scrollRepeatTimerHandle = null;
             }
         }
         const setScrollRepeat = (callback: () => void, msInitial: number, msRepeat: number) => {
             stopScrollRepeat();
-            scrollRepeatTimerHandle = window.setTimeout(() => {
+            scrollRepeatTimerHandle = Scheduler.scheduleNamedCallback("LogSearch2.scrollRepeatTimer", msInitial, () => {
                 callback();
                 setScrollRepeat(callback, msRepeat, msRepeat);
-            }, msInitial);
+            });
         }
 
         elScrollUpRegion.addEventListener("pointerdown", (e: PointerEvent) => {

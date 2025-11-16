@@ -7,8 +7,10 @@ import { AppViewModel } from "../../../viewmodel/AppViewModel";
 import { CancellationToken } from "../../CancellationTokenSource";
 import { asDisposable, EmptyDisposable, IDisposable } from "../../Disposable";
 import { IdleDetectionUserState, IdleDetectionScreenState } from "../../IdleDetection";
+import { IObservable, ObservableValue } from "../../Observable";
 import { UpdateCheckerState } from "../../UpdateCheckerClient";
 import { LogMessageType, LogChannelMessage, LogPMConvoMessage, HostWindowState, EIconSearchResults, ConfigKeyValue, ChooseLocalFileOptions, HostLocaleInfo } from "../HostInterop";
+import { HostInteropLogFileMaintenance } from "../HostInteropLogFileMaintenance";
 import { DateAnchor, HostInteropLogSearch, LogSearchKind, LogSearchResult, RecentConversationResult } from "../HostInteropLogSearch";
 import { HostInteropLogSearch2, LogSearch2Results, PerformSearchOptions } from "../HostInteropLogSearch2";
 import { ChatWebSocket, HostInteropBase, IHostInterop } from "../IHostInterop";
@@ -162,6 +164,8 @@ export class NullHostInterop extends HostInteropBase implements IHostInterop {
 
     logSearch2: HostInteropLogSearch2 = new NullHostInteropLogSearch2();
 
+    logFileMaintenance: HostInteropLogFileMaintenance = new NullHostInteropLogFileMaintenance();
+
     async chooseLocalFileAsync(options?: ChooseLocalFileOptions): Promise<string | null> {
         return null;
     }
@@ -221,4 +225,23 @@ class NullHostInteropLogSearch2 implements HostInteropLogSearch2 {
     async performSearchAsync(searchOptions: PerformSearchOptions, cancellationToken: CancellationToken): Promise<LogSearch2Results> {
         return { resultCount: 0 };
     }
+}
+
+class NullHostInteropLogFileMaintenance implements HostInteropLogFileMaintenance {
+    async vacuumDatabaseAsync(cancellationToken: CancellationToken): Promise<number> {
+        return -1;
+    }
+
+    async clearDatabaseAsync(cancellationToken: CancellationToken): Promise<number> {
+        return -1;
+    }
+
+    async refreshLogFileSizeAsync(cancellationToken: CancellationToken): Promise<void> {
+    }
+
+    readonly isVacuuming: boolean = false;
+
+    readonly isClearing: boolean = false;
+
+    readonly logFileSize: number = -1;
 }

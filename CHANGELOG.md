@@ -35,3 +35,4 @@
 * Fixed an issue where eicon animations would restart whenever a new message was received in a channel.
 * Added "Global Settings" option to main menu to make it more clear there are more options there.
 * Fixed an issue where changes to auto idle/away config settings might not apply immediately.
+* Added options to disable the local chat log file, to compact the log file, and to erase the log file.

@@ -347,10 +347,10 @@ export class EIconSetView extends ComponentBase<EIconResultSet> implements Keybo
     private get shouldUpdateFast(): boolean { return this.getAttribute("updatefast") == "true"; }
 
     private _recalcRequested = false;
-    private _delayedRecalcTimer: number | null = null;
+    private _delayedRecalcTimer: IDisposable | null = null;
     private recalculateDisplay(immediately: boolean) {
         if (this._delayedRecalcTimer != null) {
-            window.clearTimeout(this._delayedRecalcTimer);
+            this._delayedRecalcTimer.dispose();
             this._delayedRecalcTimer = null;
         }
 
@@ -375,10 +375,10 @@ export class EIconSetView extends ComponentBase<EIconResultSet> implements Keybo
                 this.recalculateDisplay(true); 
             }
             else {
-                this._delayedRecalcTimer = window.setTimeout(() => { 
+                this._delayedRecalcTimer = Scheduler.scheduleNamedCallback("EIconSearchDialog.delayedRecalcTimer", 500, () => { 
                     this._delayedRecalcTimer = null;
                     this.recalculateDisplay(true); 
-                }, 500);
+                });
             }
         }
     }
