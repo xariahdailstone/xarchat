@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using XarChat.AutoUpdate;
 using XarChat.Backend.Features.AppDataFolder;
 using XarChat.Backend.Features.AppSettings;
 using XarChat.Backend.Features.CrashLogWriter;
@@ -17,8 +18,9 @@ namespace XarChat.Backend.Photino
     public abstract class PhotinoBackendServiceSetup : IBackendServiceSetup
     {
         private readonly IPhotinoWindowControl _windowControl;
-
-        public PhotinoBackendServiceSetup(IPhotinoWindowControl windowControl)
+        
+        public PhotinoBackendServiceSetup(
+            IPhotinoWindowControl windowControl)
         {
             _windowControl = windowControl;
         }
@@ -45,6 +47,8 @@ namespace XarChat.Backend.Photino
         public IWindowControl WindowControl => _photinoWindowControl;
 
         protected IServiceProvider ServiceProvider => _serviceProvider;
+
+        public IAutoUpdateManager AutoUpdateManager => _autoUpdateManager;
 
         public virtual IFileChooser FileChooser 
             => ActivatorUtilities.CreateInstance<PhotinoFileChooser>(_serviceProvider);

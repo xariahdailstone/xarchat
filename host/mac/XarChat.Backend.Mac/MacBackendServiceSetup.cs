@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using XarChat.AutoUpdate;
 using XarChat.Backend.Features.AppDataFolder;
 using XarChat.Backend.Features.AppSettings;
 using XarChat.Backend.Features.CrashLogWriter;
@@ -18,7 +19,8 @@ namespace XarChat.Backend.Mac
 {
     public class MacBackendServiceSetup : PhotinoBackendServiceSetup
     {
-        public MacBackendServiceSetup(IPhotinoWindowControl windowControl)
+        public MacBackendServiceSetup(
+            IPhotinoWindowControl windowControl)
             : base(windowControl)
         {
         }

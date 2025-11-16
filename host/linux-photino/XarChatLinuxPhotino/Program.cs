@@ -5,7 +5,9 @@ using System;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO.Pipes;
+using System.Reflection;
 using System.Web;
+using XarChat.AutoUpdate;
 using XarChat.AutoUpdate.Impl.Disabled;
 using XarChat.Backend;
 using XarChat.Backend.Features.CommandLine.Impl;
@@ -29,8 +31,7 @@ namespace XarChatLinuxPhotino
         static int Main(string[] args)
         {
             var clArgs = new ArrayCommandLineOptions(args);
-            var autoUpdater = new DisabledAutoUpdateManager();
-
+            
             var profilePath = FindProfilePath(clArgs);
             var sim = new ProfileLockFileSingleInstanceManager(profilePath);
             if (!sim.TryBecomeSingleInstance(out var acquiredInstanceDisposable))
@@ -45,12 +46,21 @@ namespace XarChatLinuxPhotino
 
             var window = new PhotinoWindow();
             var wc = new PhotinoWindowControl(window);
-            #if LINUX
+#if LINUX
             var backend = new XarChatBackend(new LinuxBackendServiceSetup(wc), clArgs, autoUpdater);
-            #endif
-            #if MAC
+#endif
+#if MAC
+
+            var autoUpdater = AutoUpdateManagerFactory.Create(
+                    new FileInfo("asdf"),
+                    args,
+                    new DirectoryInfo(profilePath),
+                    new Version(AssemblyVersionInfo.XarChatVersion),
+                    "macos-arm64",
+                    AssemblyVersionInfo.XarChatBranch);
+
             var backend = new XarChatBackend(new MacBackendServiceSetup(wc), clArgs, autoUpdater);
-            #endif
+#endif
             var backendRunTask = Task.Run(async () => {
                 try
                 {
