@@ -59,6 +59,11 @@ namespace XarChatLinuxPhotino
                     "macos-arm64",
                     AssemblyVersionInfo.XarChatBranch);
 
+            ThreadPool.QueueUserWorkItem(delegate
+            {
+                autoUpdater.StartUpdateChecks();
+            });
+
             var backend = new XarChatBackend(new MacBackendServiceSetup(wc), clArgs, autoUpdater);
 #endif
             var backendRunTask = Task.Run(async () => {
