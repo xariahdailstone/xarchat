@@ -36,3 +36,14 @@
 * Added "Global Settings" option to main menu to make it more clear there are more options there.
 * Fixed an issue where changes to auto idle/away config settings might not apply immediately.
 * Added options to disable the local chat log file, to compact the log file, and to erase the log file.
+  * Clearing/disabling the log file will impact what backlog is shown when a new channel or PM tab
+	is opened, the "Recent Conversations" tab, and the "Click here to view earlier messages" prompt.
+* Added the ability to show character online/offline/status events as in-app toast messages
+  * This is enabled by default for friends and bookmarks, for channel invitations, and for
+	new notes received on F-List.
+  * Online/offline/status events show as a brief toast; channel invitations and new note notifications
+	remain until dismissed.
+  * Options to control what types of events display as toasts are in the settings.
+* Added a "Recent Notifications" tab under the "..." options on the left bar.
+  * The types of events that display in this tab are configurable; by default all the same events
+	that are enabled for in-app toasts show up here.
