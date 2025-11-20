@@ -1,9 +1,7 @@
 import { AppSettings } from "../../settings/AppSettings";
-import { CharacterName } from "../../shared/CharacterName";
-import { CancellationToken, CancellationTokenSource } from "../../util/CancellationTokenSource";
+import { CancellationTokenSource } from "../../util/CancellationTokenSource";
 import { CatchUtils } from "../../util/CatchUtils";
-import { HostInteropConfigBlock } from "../../util/ConfigBlock";
-import { HostInterop } from "../../util/HostInterop";
+import { HostInterop } from "../../util/hostinterop/HostInterop";
 import { LoginUtils } from "../../util/LoginUtils";
 import { observableProperty } from "../../util/ObservableBase";
 import { AwaitableObservableExpression } from "../../util/ObservableExpression";

@@ -1,7 +1,7 @@
 import { CancellationToken } from "../util/CancellationTokenSource.js";
 import { IDisposable } from "../util/Disposable.js";
 import { EL } from "../util/EL.js";
-import { HostInterop } from "../util/HostInterop.js";
+import { HostInterop } from "../util/hostinterop/HostInterop.js";
 import { HTMLUtils } from "../util/HTMLUtils.js";
 import { createStylesheet, setStylesheetAdoption } from "../util/StyleSheetPolyfill.js";
 import { ComponentBase, componentElement, StyleLoader } from "./ComponentBase.js";

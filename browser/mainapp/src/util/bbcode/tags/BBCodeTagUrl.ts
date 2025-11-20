@@ -3,7 +3,7 @@ import { LinkHintPopupViewModel } from "../../../viewmodel/popups/LinkHintPopupV
 import { TweetPreviewPopupViewModel } from "../../../viewmodel/popups/TweetPreviewPopupViewModel";
 import { CancellationToken } from "../../CancellationTokenSource";
 import { EL } from "../../EL";
-import { HostInterop } from "../../HostInterop";
+import { HostInterop } from "../../hostinterop/HostInterop";
 import { LinkPreviewData, LinkPreviewImageData, LinkPreviewProvider, LinkPreviewVideoData } from "../../linkpreviews/LinkPreviewProvider";
 import { URLUtils } from "../../URLUtils";
 import { BBCodeParseContext, BBCodeParser, getContentText } from "../BBCode";

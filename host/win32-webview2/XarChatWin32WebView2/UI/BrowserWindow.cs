@@ -143,8 +143,8 @@ namespace MinimalWin32Test.UI
             return _windowClass!;
         }
 
-        private bool _pendingWebViewResize = false;
-        private bool _alreadySized = false;
+        //private bool _pendingWebViewResize = false;
+        //private bool _alreadySized = false;
 
         //private OversizeBrowserManager? _obm;
 
@@ -239,7 +239,6 @@ namespace MinimalWin32Test.UI
                             }
                             return 0;
                         }
-                        break;
                     case User32.StandardWindowMessages.WM_SHOWWINDOW:
                         {
                             MaybeUpdateWindowState();
@@ -366,13 +365,13 @@ namespace MinimalWin32Test.UI
         public class WindowBoundsChangeMessageJson
         {
             [JsonPropertyName("type")]
-            public string Type { get; set; }
+            public required string Type { get; set; }
 
             [JsonPropertyName("desktopMetrics")]
-            public string DesktopMetrics { get; set; }
+            public required string DesktopMetrics { get; set; }
 
             [JsonPropertyName("windowBounds")]
-            public List<int> WindowBounds { get; set; }
+            public required List<int> WindowBounds { get; set; }
         }
 
         private string GetDesktopMetricsString()
@@ -459,7 +458,7 @@ namespace MinimalWin32Test.UI
         private CoreWebView2Controller? _webViewController = null;
         private CoreWebView2? _webView = null;
 
-        private WebViewMemoryUsageManager _webViewMemManager = null;
+        private WebViewMemoryUsageManager? _webViewMemManager = null;
 
         protected override void OnHandleCreating()
         {
@@ -1188,6 +1187,17 @@ namespace MinimalWin32Test.UI
             }
             catch { }
             return Task.CompletedTask;
+        }
+
+        public IDisposable AddWindowMessageHandler(PossibleWindowMessageHandlerFunc handler)
+        {
+            IDisposable result = null!;
+            InvokeInApplication(() =>
+            {
+                if (_browserWindow != null) { result = _browserWindow.AddWindowMessageHandler(handler); }
+                else { result = new ActionDisposable(() => { }); }
+            });
+            return result;
         }
     }
 

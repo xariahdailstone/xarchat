@@ -218,6 +218,28 @@ export class StringUtils {
 
         return result.join("");
     }
+
+    public static numberToApproximateFileSize(num: number): string {
+        if (num < 1024) {
+            return (num == 1) ? "1 byte" : `${num.toLocaleString()} bytes`;
+        }
+        else if (num < 1024 * 1024) {
+            const unit = (num / 1024).toLocaleString(undefined, { maximumFractionDigits: 2 });
+            return (unit == "1") ? "1 KiB" : `${unit} KiB`;
+        }
+        else if (num < 1024 * 1024 * 1024) {
+            const unit = (num / (1024 * 1024)).toLocaleString(undefined, { maximumFractionDigits: 2 });
+            return (unit == "1") ? "1 MiB" : `${unit} MiB`;
+        }
+        else if (num < 1024 * 1024 * 1024 * 1024) {
+            const unit = (num / (1024 * 1024 * 1024)).toLocaleString(undefined, { maximumFractionDigits: 2 });
+            return (unit == "1") ? "1 GiB" : `${unit} GiB`;
+        }
+        else {
+            const unit = (num / (1024 * 1024 * 1024 * 1024)).toLocaleString(undefined, { maximumFractionDigits: 2 });
+            return (unit == "1") ? "1 TiB" : `${unit} TiB`;
+        }
+    }
 }
 
 (async function () {

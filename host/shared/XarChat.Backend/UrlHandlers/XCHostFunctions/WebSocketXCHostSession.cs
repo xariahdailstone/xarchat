@@ -34,6 +34,7 @@ using XarChat.Backend.UrlHandlers.XCHostFunctions.SessionAdapters;
 using XarChat.Backend.UrlHandlers.XCHostFunctions.SessionAdapters.OldNewAppSettings;
 using XarChat.Backend.UrlHandlers.XCHostFunctions.SessionNamespaces;
 using XarChat.Backend.UrlHandlers.XCHostFunctions.SessionNamespaces.EIconData;
+using XarChat.Backend.UrlHandlers.XCHostFunctions.SessionNamespaces.LogFileMaintenance;
 using XarChat.Backend.UrlHandlers.XCHostFunctions.SessionNamespaces.LogSearch;
 using XarChat.Backend.UrlHandlers.XCHostFunctions.SessionNamespaces.WindowCommand;
 using SplitWriteFunc = System.Func<string, string?, System.Threading.CancellationToken, System.Threading.Tasks.Task>;
@@ -95,6 +96,10 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions
                 var el = sp.GetRequiredService<IEIconLoader>();
                 return new EIconDataSessionNamespace(el, w);
             });
+            this.AddSessionNamespace("logfilemaintenance", w =>
+            {
+                return ActivatorUtilities.CreateInstance<LogFileMaintenanceSessionNamespace>(sp, w);
+            });
         }
 
         public override void Dispose()
@@ -103,7 +108,7 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions
             {
                 try { _disposeCTS.Cancel(); }
                 catch { }
-                SetNotificationBadge(NotificationBadgeType.None);
+                SetNotificationBadge(0, 0);
 
                 foreach (var disp in _sessionDisposables.Values)
                 {
@@ -588,7 +593,7 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions
 				await WriteAsync("eiconsearchresult " +
 					JsonUtilities.Serialize<EIconSearchResult>(res, SourceGenerationContext.Default.EIconSearchResult));
 			}
-			catch (Exception ex)
+			catch (Exception)
             {
 				var res = new EIconSearchResult()
 				{
@@ -601,10 +606,10 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions
 			}
         }
 
-        private void SetNotificationBadge(NotificationBadgeType type)
+        private void SetNotificationBadge(int pingCount, int unseenCount)
         {
             var mgr = _sp.GetRequiredService<INotificationBadgeManager>();
-            mgr.SetNotificationBadge(type);
+            mgr.SetNotificationBadge(0, 0);
         }
 
         private string _lastWrittenWindowState = "";
@@ -670,28 +675,34 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions
         public class UpdateAppBadgeArgs
         {
             [JsonPropertyName("hasPings")]
-            public bool HasPings { get; set; }
+            public bool? HasPings { get; set; }
+
+            [JsonPropertyName("pingCount")]
+            public int? PingCount { get; set; }
 
             [JsonPropertyName("hasUnseen")]
-            public bool HasUnseen { get; set; }
+            public bool? HasUnseen { get; set; }
+
+            [JsonPropertyName("unseenCount")]
+            public int? UnseenCount { get; set; }
         }
 
         public class LogPMConvoMessageArgs
         {
             [JsonPropertyName("myCharacterName")]
-            public string MyCharacterName { get; set; }
+            public required string MyCharacterName { get; set; }
 
             [JsonPropertyName("interlocutor")]
-            public string Interlocutor { get; set; }
+            public required string Interlocutor { get; set; }
 
             [JsonPropertyName("speakingCharacter")]
-            public string SpeakingCharacter { get; set; }
+            public required string SpeakingCharacter { get; set; }
 
             [JsonPropertyName("messageType")]
-            public int MessageType { get; set; }
+            public required int MessageType { get; set; }
 
             [JsonPropertyName("messageText")]
-            public string MessageText { get; set; }
+            public required string MessageText { get; set; }
 
             [JsonPropertyName("gender")]
             public int CharacterGender { get; set; }
@@ -703,22 +714,22 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions
         public class LogChannelMessageArgs
         {
             [JsonPropertyName("myCharacterName")]
-            public string MyCharacterName { get; set; }
+            public required string MyCharacterName { get; set; }
 
             [JsonPropertyName("channelName")]
-            public string ChannelName { get; set; }
+            public required string ChannelName { get; set; }
 
             [JsonPropertyName("channelTitle")]
-            public string ChannelTitle { get; set; }
+            public required string ChannelTitle { get; set; }
             
             [JsonPropertyName("speakingCharacter")]
-            public string SpeakingCharacter { get; set; }
+            public required string SpeakingCharacter { get; set; }
 
             [JsonPropertyName("messageType")]
-            public int MessageType { get; set; }
+            public required int MessageType { get; set; }
 
             [JsonPropertyName("messageText")]
-            public string MessageText { get; set; }
+            public required string MessageText { get; set; }
 
             [JsonPropertyName("gender")]
             public int CharacterGender { get; set; }
@@ -730,55 +741,55 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions
         public class AddIdleMonitorRegistrationArgs
         {
             [JsonPropertyName("monitorName")]
-            public string MonitorName { get; set; }
+            public required string MonitorName { get; set; }
 
             [JsonPropertyName("idleAfterMs")]
-            public int IdleAfterMs { get; set; }
+            public required int IdleAfterMs { get; set; }
         }
 
         public class RemoveIdleMonitorRegistrationArgs
         {
             [JsonPropertyName("monitorName")]
-            public string MonitorName { get; set; }
+            public required string MonitorName { get; set; }
         }
 
         public class AddUpdateCheckerMonitorRegistrationArgs
         {
             [JsonPropertyName("monitorName")]
-            public string MonitorName { get; set; }
+            public required string MonitorName { get; set; }
         }
 
         public class RemoveUpdateCheckerMonitorRegistrationArgs
         {
             [JsonPropertyName("monitorName")]
-            public string MonitorName { get; set; }
+            public required string MonitorName { get; set; }
         }
 
         public class EIconSearchArgs
         {
             [JsonPropertyName("search")]
-            public string SearchTerm { get; set; }
+            public required string SearchTerm { get; set; }
 
             [JsonPropertyName("key")]
-            public string Key { get; set; }
+            public required string Key { get; set; }
 
             [JsonPropertyName("start")]
-            public int StartAt { get; set; }
+            public required int StartAt { get; set; }
 
             [JsonPropertyName("length")]
-            public int GetCount { get; set; }
+            public required int GetCount { get; set; }
         }
 
         public class EIconSearchResult
         {
             [JsonPropertyName("key")]
-            public string Key { get; set; }
+            public required string Key { get; set; }
 
             [JsonPropertyName("totalCount")]
-            public int TotalCount { get; set; }
+            public required int TotalCount { get; set; }
 
             [JsonPropertyName("results")]
-            public List<string> Results { get; set; }
+            public required List<string> Results { get; set; }
 
             [JsonPropertyName("timings")]
             public IReadOnlyDictionary<string, long>? Timings { get; set; }
@@ -787,40 +798,40 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions
         public class GetCssDataArgs
         {
             [JsonPropertyName("msgid")]
-            public int MessageId { get; set; }
+            public required int MessageId { get; set; }
 
             [JsonPropertyName("url")]
-            public string Url { get; set; }
+            public required string Url { get; set; }
         }
 
         public class GotCssDataResult
         {
             [JsonPropertyName("msgid")]
-            public int MessageId { get; set; }
+            public required int MessageId { get; set; }
 
             [JsonPropertyName("data")]
-            public string Data { get; set; }
+            public required string Data { get; set; }
         }
 
         public class GetConfigDataArgs
         {
             [JsonPropertyName("msgid")]
-            public int MessageId { get; set; }
+            public required int MessageId { get; set; }
         }
 
         public class GotConfigDataResult
         {
             [JsonPropertyName("msgid")]
-            public int MessageId { get; set; }
+            public required int MessageId { get; set; }
 
             [JsonPropertyName("data")]
-            public List<ConfigKeyValue> Data { get; set; }
+            public required List<ConfigKeyValue> Data { get; set; }
         }
 
         public class ConfigKeyValue
         {
             [JsonPropertyName("key")]
-            public string Key { get; set; }
+            public required string Key { get; set; }
 
             [JsonPropertyName("value")]
             public JsonNode? Value { get; set; }
@@ -829,16 +840,16 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions
         public class GetAllCssArgs
         {
             [JsonPropertyName("msgid")]
-            public int MessageId { get; set; }
+            public required int MessageId { get; set; }
         }
 
         public class GotAllCssResult
         {
             [JsonPropertyName("msgid")]
-            public int MessageId { get; set; }
+            public required int MessageId { get; set; }
 
             [JsonPropertyName("filenames")]
-            public List<string> Filenames { get; set; }
+            public required List<string> Filenames { get; set; }
         }
 
         public class SubmitEIconMetadataArgs

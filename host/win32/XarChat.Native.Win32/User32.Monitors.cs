@@ -30,7 +30,7 @@ namespace XarChat.Native.Win32
                     new Rectangle(rect->left, rect->top, rect->Width, rect->Height) :
                     null;
 
-                var result = enumProc(hm.Value, hdc.Value, r, lParam);
+                var result = enumProc(new IntPtr(hm.Value), new IntPtr(hdc.Value), r, lParam);
                 return new Windows.Win32.Foundation.BOOL(result);
             };
 

@@ -1,5 +1,5 @@
-import { CancellationToken } from "./CancellationTokenSource";
-import { XarHost2InteropSession } from "./HostInteropLogSearch";
+import { CancellationToken } from "../../CancellationTokenSource";
+import { XarHost2InteropSession } from "./XarHost2InteropSession";
 
 export class XarHost2HostInteropEIconLoader extends XarHost2InteropSession {
     

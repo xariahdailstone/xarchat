@@ -1,6 +1,6 @@
 import { CancellationToken, CancellationTokenSource } from "./CancellationTokenSource";
 import { IDisposable } from "./Disposable";
-import { HostInterop } from "./HostInterop";
+import { HostInterop } from "./hostinterop/HostInterop";
 import { Logger, Logging } from "./Logger";
 import { ObjectUniqueId } from "./ObjectUniqueId";
 import { PromiseSource } from "./PromiseSource";
@@ -20,7 +20,7 @@ export interface LoadedEIconUniqueBlob extends IDisposable {
 
 class LoadedEIconUniqueBlobImpl implements LoadedEIconUniqueBlob {
     constructor(
-        public readonly owner: LoadedEIconImpl,
+        public readonly owner: BlobLoadedEIconImpl,
         public readonly url: string,
         public readonly uniqueToken: string) {
 
@@ -51,7 +51,7 @@ class LoadedEIconUniqueBlobImpl implements LoadedEIconUniqueBlob {
 
 const allocatedEIconObjectUrls = new Set<string>();
 
-class LoadedEIconImpl implements LoadedEIcon {
+class BlobLoadedEIconImpl implements LoadedEIcon {
     constructor(private readonly eiconName: string) {
         this._logger = Logging.createLogger(`LoadedEIconImpl[${eiconName}]#${ObjectUniqueId.get(this)}`);
         this._fr = new FinalizationRegistry<string>(uniqueToken => {
@@ -157,6 +157,37 @@ class LoadedEIconImpl implements LoadedEIcon {
     }
 }
 
+class DirectLoadedEIcon implements LoadedEIcon {
+    constructor(private readonly eiconName: string) {
+    }
+
+    async getBlobUrlAsync(uniqueToken: string, cancellationToken: CancellationToken): Promise<LoadedEIconUniqueBlob> {
+        return new DirectLoadedEIconUniqueBlobImpl(this.eiconName, uniqueToken);
+    }
+}
+class DirectLoadedEIconUniqueBlobImpl implements LoadedEIconUniqueBlob {
+    constructor(
+        eiconName: string,
+        uniqueToken: string) {
+
+        this.url = URLUtils.getDirectEIconUrl(eiconName, uniqueToken);
+    }
+
+    readonly url: string;
+
+    _isDisposed: boolean = false;
+    get isDisposed() { return this._isDisposed; }
+
+    dispose(): void {
+        if (!this._isDisposed) {
+            this._isDisposed = true;
+        }
+    }
+    [Symbol.dispose](): void {
+        this.dispose();
+    }
+}
+
 class EIconLoadManagerImpl implements EIconLoadManager {
     constructor() {
         this._fr = new FinalizationRegistry((eiconName) => {
@@ -168,6 +199,19 @@ class EIconLoadManagerImpl implements EIconLoadManager {
     private readonly _loadedEIcons: Map<string, WeakRef<LoadedEIcon>> = new Map();
 
     getEIcon(eiconName: string): LoadedEIcon {
+        if (HostInterop.canGetEIconDataBlobs) {
+            return this.getEIconBlob(eiconName);
+        }
+        else {
+            return this.getEIconDirect(eiconName);
+        }
+    }
+
+    private getEIconDirect(eiconName: string): LoadedEIcon {
+        return new DirectLoadedEIcon(eiconName);
+    }
+
+    private getEIconBlob(eiconName: string): LoadedEIcon {
         const x = this._loadedEIcons.get(eiconName);
         if (x) {
             const xv = x.deref();
@@ -179,7 +223,7 @@ class EIconLoadManagerImpl implements EIconLoadManager {
             }
         }
 
-        const newRes = new LoadedEIconImpl(eiconName);
+        const newRes = new BlobLoadedEIconImpl(eiconName);
         this._loadedEIcons.set(eiconName, new WeakRef(newRes));
         this._fr.register(newRes, eiconName);
         return newRes;

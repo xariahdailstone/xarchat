@@ -8,13 +8,13 @@ import { ObjectUniqueId } from "./ObjectUniqueId.js";
 import { setupValueSubscription, ValueSubscriptionImpl } from "./ObservableBase.js";
 import { ObservableExpression } from "./ObservableExpression.js";
 
-export interface Observable {
+export interface IObservable<T> {
     addEventListener(eventName: "propertychange", handler: PropertyChangeEventListener): IDisposable;
     removeEventListener(eventName: "propertychange", handler: PropertyChangeEventListener): void;
 //    raisePropertyChangeEvent(propertyName: string): void;
     raisePropertyChangeEvent(propertyName: string, propValue: unknown): void;
 
-    addValueSubscription(propertyPath: string, handler: (value: any) => any): ValueSubscription;
+    addValueSubscription(propertyPath: string, handler: (value: T) => any): ValueSubscription;
 }
 
 export function isObservable(obj: any) {
@@ -264,7 +264,7 @@ class DynamicNameObservable implements Observable {
 
 export type ReadMonitorEventListener = (observable: unknown, propertyName: string, gotValue: unknown) => void;
 
-export class ObservableValue<T> implements Observable {
+export class ObservableValue<T> implements IObservable<T> {
     constructor(initialValue: T, debug?: boolean) {
         this._value = initialValue;
         this.debug = debug ?? false;
@@ -336,6 +336,11 @@ export class ObservableValue<T> implements Observable {
             this.raisePropertyChangeEvent("value", value);
         }
     }
+
+    takeReadDependency() {
+        const result = this._value;
+        Observable.publishRead(this, "value", result);
+    }
 }
 
 export interface DependencySet extends IDisposable {
@@ -397,7 +402,7 @@ class DependencySetImpl implements DependencySet {
     }
 
     private attachToObservable(observable: any, propertyName: string): IDisposable {
-        const newListener = (observable as Observable).addEventListener("propertychange", (e) => {
+        const newListener = (observable as IObservable<any>).addEventListener("propertychange", (e) => {
             if (e.propertyName == propertyName) {
                 this.stateHasChanged(observable, propertyName);
             }

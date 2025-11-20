@@ -5,7 +5,7 @@ import { RenderingComponentBase } from "./RenderingComponentBase";
 import { Fragment, jsx, VNode } from "../snabbdom/index.js";
 import { IDisposable, asDisposable } from "../util/Disposable.js";
 import { RenderingStageViewComponent, stageViewFor } from "./Stage";
-import { DateAnchor, LogSearchKind } from "../util/HostInteropLogSearch";
+import { DateAnchor, LogSearchKind } from "../util/hostinterop/HostInteropLogSearch";
 import { CollectionViewLightweight } from "./CollectionViewLightweight";
 import { EL } from "../util/EL";
 import { ChannelMessageCollectionView, DefaultStreamScrollManager } from "./ChannelStream";
@@ -199,18 +199,12 @@ class LogSearchResultItemCollectionView extends CollectionViewLightweight<LogSea
                 if (containerElement != null && ssp != null) {
                     switch (sat) {
                         case ScrollAnchorTo.BOTTOM:
-                            // const scrollHandler = (e: Event) => { 
-                                this.logger.logDebug("restoring scroll (ssp)...", ssp);
-                                this.logger.logDebug("restoring scrolltop scrollTop...", containerElement.scrollTop);
-                                this.logger.logDebug("restoring scrolltop scrollheight...", containerElement.scrollHeight);
-                                const newScrollTop = containerElement.scrollHeight - ssp;
-                                this.logger.logDebug("restoring scrolltop newScrollTop...", newScrollTop);
-                                containerElement.scroll(0, newScrollTop);
-                            // };
-                            // containerElement.addEventListener("scroll", scrollHandler);
-                            // window.setTimeout(() => { 
-                            //     containerElement.removeEventListener("scroll", scrollHandler);
-                            // }, 100);
+                            this.logger.logDebug("restoring scroll (ssp)...", ssp);
+                            this.logger.logDebug("restoring scrolltop scrollTop...", containerElement.scrollTop);
+                            this.logger.logDebug("restoring scrolltop scrollheight...", containerElement.scrollHeight);
+                            const newScrollTop = containerElement.scrollHeight - ssp;
+                            this.logger.logDebug("restoring scrolltop newScrollTop...", newScrollTop);
+                            containerElement.scroll(0, newScrollTop);
                             break;
                         case ScrollAnchorTo.TOP:
                         default:

@@ -2,6 +2,7 @@ import { CallbackSet } from "./CallbackSet";
 import { SnapshottableSet } from "./collections/SnapshottableSet";
 import { EmptyDisposable, IDisposable, asDisposable } from "./Disposable";
 import { OperationCancelledError } from "./PromiseSource";
+import { Scheduler } from "./Scheduler";
 
 class NoneCancellationTokenImpl implements CancellationToken {
     constructor() {
@@ -70,7 +71,7 @@ export class CancellationTokenSource implements IDisposable {
     }
 
     private _disposed: boolean = false;
-    private _cancelAfterHandler: number | null = null;
+    private _cancelAfterHandler: IDisposable | null = null;
 
     get isCancellationRequested(): boolean { return this._token.isCancellationRequested; }
 
@@ -78,7 +79,7 @@ export class CancellationTokenSource implements IDisposable {
         if (!this._disposed) {
             this._disposed = true;
             if (this._cancelAfterHandler) {
-                window.clearTimeout(this._cancelAfterHandler);
+                this._cancelAfterHandler.dispose();
                 this._cancelAfterHandler = null;
             }
         }
@@ -98,9 +99,11 @@ export class CancellationTokenSource implements IDisposable {
     cancelAfter(ms: number) {
         if (!this._disposed) {
             if (this._cancelAfterHandler) {
-                window.clearTimeout(this._cancelAfterHandler);
+                this._cancelAfterHandler.dispose();
+                this._cancelAfterHandler = null;
             }
-            this._cancelAfterHandler = window.setTimeout(() => { this.cancel(); }, ms);
+            this._cancelAfterHandler = Scheduler.scheduleNamedCallback("CancellationTokenSource.cancelAfter", ms, 
+                () => { this.cancel(); });
         }
     }
 

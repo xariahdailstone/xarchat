@@ -1,7 +1,7 @@
 import { CharacterName } from "../../shared/CharacterName";
 import { CancellationToken } from "../../util/CancellationTokenSource";
 import { HTMLUtils } from "../../util/HTMLUtils";
-import { HostInterop } from "../../util/HostInterop";
+import { HostInterop } from "../../util/hostinterop/HostInterop";
 import { KeyCodes } from "../../util/KeyCodes";
 import { ObservableValue } from "../../util/Observable";
 import { ObservableBase, observableProperty } from "../../util/ObservableBase";

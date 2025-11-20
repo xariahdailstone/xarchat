@@ -1,7 +1,7 @@
 import { CharacterName } from "../../../shared/CharacterName";
 import { CancellationTokenSource } from "../../../util/CancellationTokenSource";
 import { CatchUtils } from "../../../util/CatchUtils";
-import { HostInterop } from "../../../util/HostInterop";
+import { HostInterop } from "../../../util/hostinterop/HostInterop";
 import { KeyCodes } from "../../../util/KeyCodes";
 //import { CompatibilityCalculator } from "../../util/CompatibilityCalculator";
 import { observableProperty } from "../../../util/ObservableBase";

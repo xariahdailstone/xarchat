@@ -26,3 +26,24 @@
 * Added the ability to have XarChat write a debug log file.
   * This can be enabled via the command line (e.g. `XarChat.exe --log-to xclog.txt`)
   * You should not use this unless trying to diagnose a problem, the log files can be quite large.
+* Added the ability to search the list of users currently in a channel (hit the magnifying glass at
+  the top of the user list).
+* Added preliminary MacOS Build
+* Added an option to show private messages on the top of the left bar instead of the bottom.
+* Added an option to make the display of channels/PMs more dense.
+* Moved new XarChat version notification from titlebar to an in-app toast message in the left bar.
+* Fixed an issue where eicon animations would restart whenever a new message was received in a channel.
+* Added "Global Settings" option to main menu to make it more clear there are more options there.
+* Fixed an issue where changes to auto idle/away config settings might not apply immediately.
+* Added options to disable the local chat log file, to compact the log file, and to erase the log file.
+  * Clearing/disabling the log file will impact what backlog is shown when a new channel or PM tab
+	is opened, the "Recent Conversations" tab, and the "Click here to view earlier messages" prompt.
+* Added the ability to show character online/offline/status events as in-app toast messages
+  * This is enabled by default for friends and bookmarks, for channel invitations, and for
+	new notes received on F-List.
+  * Online/offline/status events show as a brief toast; channel invitations and new note notifications
+	remain until dismissed.
+  * Options to control what types of events display as toasts are in the settings.
+* Added a "Recent Notifications" tab under the "..." options on the left bar.
+  * The types of events that display in this tab are configurable; by default all the same events
+	that are enabled for in-app toasts show up here.

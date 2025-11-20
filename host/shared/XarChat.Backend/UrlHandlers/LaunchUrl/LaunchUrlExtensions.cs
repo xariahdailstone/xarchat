@@ -84,7 +84,7 @@ namespace XarChat.Backend.UrlHandlers.LaunchUrl
                     }
                     else
                     {
-                        return raw;
+                        return raw ?? "";
                     }
                 }
 

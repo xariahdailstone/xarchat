@@ -3,7 +3,7 @@ import { AddMessageOptions, ChannelMessageType, ChannelMessageViewModel, Channel
 import { ActiveLoginViewModel } from "./ActiveLoginViewModel.js";
 import { CharacterSet } from "../shared/CharacterSet.js";
 import { observableProperty } from "../util/ObservableBase.js";
-import { HostInterop, LogMessageType, LogPMConvoMessage } from "../util/HostInterop.js";
+import { HostInterop, LogMessageType, LogPMConvoMessage } from "../util/hostinterop/HostInterop.js";
 import { CharacterDetailPopupViewModel } from "./popups/CharacterDetailPopupViewModel.js";
 import { SendQueue } from "../util/SendQueue.js";
 import { TaskUtils } from "../util/TaskUtils.js";
@@ -12,12 +12,13 @@ import { CharacterGender } from "../shared/CharacterGender.js";
 import { OnlineStatus } from "../shared/OnlineStatus.js";
 import { TypingStatus } from "../shared/TypingStatus.js";
 import { SavedChatStatePMConvo } from "../settings/AppSettings.js";
-import { DateAnchor } from "../util/HostInteropLogSearch.js";
+import { DateAnchor } from "../util/hostinterop/HostInteropLogSearch.js";
 import { IDisposable } from "../util/Disposable.js";
 import { IterableUtils } from "../util/IterableUtils.js";
 import { ChannelFiltersViewModel } from "./ChannelFiltersViewModel.js";
 import { ObservableExpression } from "../util/ObservableExpression.js";
 import { CatchUtils } from "../util/CatchUtils.js";
+import { Scheduler } from "../util/Scheduler.js";
 
 
 export class PMConvoChannelViewModelSortKey { 
@@ -47,8 +48,7 @@ export class PMConvoChannelViewModel extends ChannelViewModel {
         this.canClose = true;
         this.canPin = false;
 
-        this.prefixMessages.add(
-            ChannelMessageViewModel.createLogNavMessage(this, "Click here to see earlier messages in the Log Viewer", () => {
+        const logViewPromptMsg = ChannelMessageViewModel.createLogNavMessage(this, "Click here to see earlier messages in the Log Viewer", () => {
                 let minMsg: ChannelMessageViewModel | null = null;
                 for (let m of this.mainMessages.iterateValues()) {
                     minMsg = m.value;
@@ -62,7 +62,22 @@ export class PMConvoChannelViewModel extends ChannelViewModel {
                         this.character
                     );
                 }
-            }));
+            });
+        const logViewPromptOE = new ObservableExpression(
+            () => this.getConfigSettingById("loggingEnabled"),
+            (loggingEnabled) => {
+                if (loggingEnabled) {
+                    if (!this.prefixMessages.hasValue(logViewPromptMsg)) {
+                        this.prefixMessages.add(logViewPromptMsg);
+                    }
+                }
+                else {
+                    this.prefixMessages.deleteByValue(logViewPromptMsg);
+                }
+            },
+            (err) => { }
+        );
+        this.ownedDisposables.add(logViewPromptOE);            
 
         this.channelFilters = new ChannelFiltersViewModel(this);
         this.channelFilters.addCategory("chattext", "Chat (Text)", "Normal chat messages.");
@@ -183,7 +198,7 @@ export class PMConvoChannelViewModel extends ChannelViewModel {
 
     private readonly TYPING_IDLE_TIMEOUT_MS = 5000;
 
-    private _typingStatusIdleTimeoutHandle: number | null = null;
+    private _typingStatusIdleTimeoutHandle: IDisposable | null = null;
     protected override onTextBoxContentUpdated() {
         if (!(this.activeLoginViewModel.pmConversations.contains(this) || this.activeLoginViewModel.selectedTab == this)) {
             this.myTypingStatus = TypingStatus.NONE;
@@ -195,21 +210,23 @@ export class PMConvoChannelViewModel extends ChannelViewModel {
             else {
                 this.myTypingStatus = TypingStatus.TYPING;
                 if (this._typingStatusIdleTimeoutHandle) {
-                    window.clearTimeout(this._typingStatusIdleTimeoutHandle);
+                    this._typingStatusIdleTimeoutHandle.dispose();
+                    this._typingStatusIdleTimeoutHandle = null;
                 }
-                this._typingStatusIdleTimeoutHandle = window.setTimeout(() => {
-                    if (!(this.activeLoginViewModel.pmConversations.contains(this) || this.activeLoginViewModel.selectedTab == this)) {
-                        this.myTypingStatus = TypingStatus.NONE;
-                    }
-                    else {
-                        if (this.textBoxContent == "") {
+                this._typingStatusIdleTimeoutHandle = Scheduler.scheduleNamedCallback("PMConvoChannelViewModel.onTextBoxContentUpdated", this.TYPING_IDLE_TIMEOUT_MS,
+                    () => {
+                        if (!(this.activeLoginViewModel.pmConversations.contains(this) || this.activeLoginViewModel.selectedTab == this)) {
                             this.myTypingStatus = TypingStatus.NONE;
                         }
                         else {
-                            this.myTypingStatus = TypingStatus.IDLE;
+                            if (this.textBoxContent == "") {
+                                this.myTypingStatus = TypingStatus.NONE;
+                            }
+                            else {
+                                this.myTypingStatus = TypingStatus.IDLE;
+                            }
                         }
-                    }
-                }, this.TYPING_IDLE_TIMEOUT_MS);
+                    });
             }
         }
     }
@@ -311,7 +328,7 @@ export class PMConvoChannelViewModel extends ChannelViewModel {
                 break;
         }
         if (logMessageType != null && !(options?.fromReplay ?? false)) {
-            HostInterop.logPMConvoMessage(this.activeLoginViewModel.characterName, this.character, 
+            this.activeLoginViewModel.logPMConvoMessage(this, 
                 message.characterStatus.characterName, message.characterStatus.gender, message.characterStatus.status,
                 logMessageType, message.text);
         }
@@ -338,7 +355,8 @@ export class PMConvoChannelViewModel extends ChannelViewModel {
             if (message.type == ChannelMessageType.CHAT ||
                 message.type == ChannelMessageType.ROLL) {
 
-                this.hasPing = true;
+                //this.hasPing = true;
+                this.addPingMessage();
                 this.playPingSound();
             }
         }

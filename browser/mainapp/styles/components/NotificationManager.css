@@ -1,0 +1,139 @@
+
+* { box-sizing: border-box;}
+
+:host { position: relative; }
+
+#elMain {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.main-inner {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    padding-top: 8px;
+    padding-right: 8px;
+    padding-bottom: 8px;
+
+    overflow: clip;
+
+    display: flex;
+    /* grid-template-rows: min-content auto;
+    grid-template-columns: 1fr;
+    grid-template-areas:
+        "persistent"
+        "transient"; */
+    flex-direction: column;
+
+    .notifications-section-persistent { 
+        align-self: start;
+        display: grid;
+        grid-template-columns: auto;
+        grid-template-rows: auto 1fr auto;
+        grid-template-areas:
+            "persistent-title"
+            "persistent-list"
+            "persistent-buttons";
+        grid-area: persistent; 
+        /* overflow: hidden; */
+        height: auto;
+        max-height: 50%;
+        width: 100%;
+
+        .notifications-section-title { grid-area: persistent-title; }
+        .notifications-container-inner { grid-area: persistent-list; }
+        .notifications-container-buttons { grid-area: persistent-buttons; }
+    }
+
+    .notifications-section-transient { 
+        align-self: stretch;
+        flex-grow: 1;
+        display: grid;
+        grid-template-columns: auto;
+        grid-template-rows: auto 1fr auto;
+        grid-template-areas:
+            "transient-title"
+            "transient-list"
+            "transient-buttons";
+        grid-area: persistent; 
+        overflow: hidden;
+
+        .notifications-section-title { grid-area: transient-title; }
+        .notifications-container-inner { grid-area: transient-list; }
+        .notifications-container-buttons { grid-area: transient-buttons; }
+        grid-area: transient; 
+    }
+
+    .notifications-section-title { margin-bottom: 8px; }
+    .notifications-container-button { margin-top: 8px; }
+}
+
+.notifications-section {
+    /* position: relative;
+    top: 0;
+    left: 0;
+    align-self: start;
+    height: auto;
+
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr auto;
+    grid-template-areas:
+        "title"
+        "inner"
+        "buttons";
+    gap: 8px;
+
+    min-height: 0%;
+    max-height: 100%; */
+
+    .notifications-section-title {
+        /* grid-area: title; */
+        font-size: 110%;
+        font-weight: bold;
+    }
+    .notifications-container-inner {
+        /* grid-area: inner; */
+        background-color: var(--bg-level-3);
+        color: var(--fg-level-3);
+        height: auto;
+        min-height: 0%;
+        overflow-y: auto;
+
+        font-family: var(--chat-font-family);
+        font-size: var(--chat-font-size);
+    }
+    .notifications-container-buttons {
+        /* grid-area: buttons; */
+        display: flex;
+        flex-direction: row;
+        justify-content: flex-end;
+    }
+}
+
+.notification-item-inner {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-rows: auto;
+    grid-template-areas: "message buttons";
+    padding: 10px 10px;
+
+    &:hover {
+        background-color: var(--bg-level-3-hover);
+        color: var(--fg-level-3-hover);
+    }
+
+    .notification-item-inner-message { grid-area: message; }
+    .notification-item-button-set {
+        grid-area: buttons; 
+        display: flex;
+        flex-direction: row;
+        gap: 6px;
+    }
+}

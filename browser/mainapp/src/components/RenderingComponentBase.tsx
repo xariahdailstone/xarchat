@@ -182,14 +182,14 @@ export abstract class RenderingComponentBase<TViewModel> extends ComponentBase<T
         super();
         this._rcFuncs = makeRenderingComponent(
             this, {
-                render: () => this.render(),
+                render: (args) => this.render(args),
                 afterRender: () => this.afterRender()
             });
     }
 
     private readonly _rcFuncs: RenderingComponentFunctions;
 
-    protected abstract render(): (VNode | [VNode, IDisposable]);
+    protected abstract render(args: RenderArguments): (VNode | [VNode, IDisposable]);
 
     protected afterRender(): (void | IDisposable | IDisposable[] | Iterable<IDisposable>) { }
 

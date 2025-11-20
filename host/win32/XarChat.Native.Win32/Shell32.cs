@@ -19,7 +19,7 @@ namespace XarChat.Native.Win32
                     new HINSTANCE(InstanceHandle.CurrentInstance.Handle),
                     new PCWSTR(exeFileNamePtr),
                     iconIndex);
-                return hIcon.Value;
+                return new IntPtr(hIcon.Value);
             }
         }
     }

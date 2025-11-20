@@ -1,4 +1,4 @@
-import { EIconSearchResults, HostInterop } from "../../util/HostInterop";
+import { EIconSearchResults, HostInterop } from "../../util/hostinterop/HostInterop";
 import { ObservableBase, observableProperty } from "../../util/ObservableBase";
 import { AppViewModel } from "../AppViewModel";
 import { DialogButtonStyle, DialogButtonViewModel, DialogViewModel } from "./DialogViewModel";

@@ -1,166 +1,38 @@
-import { AppSettings } from "../settings/AppSettings";
-import { RawSavedWindowLocation } from "../settings/RawAppSettings";
-import { NewAppSettings, XarHost2NewAppSettings } from "../settings/NewAppSettings";
-import { ChannelName } from "../shared/ChannelName";
-import { CharacterGender } from "../shared/CharacterGender";
-import { CharacterName } from "../shared/CharacterName";
-import { CharacterStatus } from "../shared/CharacterSet";
-import { OnlineStatus } from "../shared/OnlineStatus";
-import { AppViewModel } from "../viewmodel/AppViewModel";
-import { FramePanelDialogViewModel } from "../viewmodel/dialogs/FramePanelDialogViewModel";
-import { AsyncWebSocket } from "./AsyncWebSocket";
-import { CallbackSet } from "./CallbackSet";
-import { CancellationToken, CancellationTokenSource } from "./CancellationTokenSource";
-import { SnapshottableMap } from "./collections/SnapshottableMap";
-import { SnapshottableSet } from "./collections/SnapshottableSet";
-import { IDisposable, EmptyDisposable, asDisposable } from "./Disposable";
-import { EventListenerUtil } from "./EventListenerUtil";
+import { RawSavedWindowLocation } from "../../../settings/RawAppSettings";
+import { ChannelName } from "../../../shared/ChannelName";
+import { CharacterGender } from "../../../shared/CharacterGender";
+import { CharacterName } from "../../../shared/CharacterName";
+import { OnlineStatus } from "../../../shared/OnlineStatus";
+import { AppViewModel } from "../../../viewmodel/AppViewModel";
+import { FramePanelDialogViewModel } from "../../../viewmodel/dialogs/FramePanelDialogViewModel";
+import { AsyncWebSocket } from "../../AsyncWebSocket";
+import { CallbackSet } from "../../CallbackSet";
+import { CancellationToken } from "../../CancellationTokenSource";
+import { SnapshottableMap } from "../../collections/SnapshottableMap";
+import { IDisposable, asDisposable } from "../../Disposable";
+import { IdleDetectionUserState, IdleDetectionScreenState } from "../../IdleDetection";
+import { Logging, Logger } from "../../Logger";
+import { Mutex } from "../../Mutex";
+import { PromiseSource } from "../../PromiseSource";
+import { Scheduler } from "../../Scheduler";
+import { StringUtils } from "../../StringUtils";
+import { TaskUtils } from "../../TaskUtils";
+import { UpdateCheckerState } from "../../UpdateCheckerClient";
+import { EIconSearchResults, HostWindowState, HostLaunchUrlResponse, LogMessageType, LogChannelMessage, LogPMConvoMessage, NOW, ConfigKeyValue, ChooseLocalFileOptions, HostLocaleInfo } from "../HostInterop";
 import { XarHost2HostInteropEIconLoader } from "./HostInteropEIconLoader";
-import { DateAnchor, HostInteropLogSearch, LogSearchKind, LogSearchResult, LogSearchResultChannelMessage, LogSearchResultPMConvoMessage, XarHost2InteropLogSearch, XarHost2InteropSession, XarHost2InteropWindowCommand } from "./HostInteropLogSearch";
-import { IdleDetectionScreenState, IdleDetectionUserState } from "./IdleDetection";
-import { Logger, Logging } from "./Logger";
-import { PromiseSource } from "./PromiseSource";
-import { StringUtils } from "./StringUtils";
-import { TaskUtils } from "./TaskUtils";
-import { UpdateCheckerState } from "./UpdateCheckerClient";
-import { URLUtils } from "./URLUtils";
-import { Scheduler } from "./Scheduler";
-import { Mutex } from "./Mutex";
-import { HostInteropLogSearch2, XarHost2HostInteropLogSearch2Impl } from "./HostInteropLogSearch2";
-// import { SqliteConnection } from "./sqlite/SqliteConnection";
-// import { XarHost2SqliteConnection } from "./sqlite/xarhost2/XarHost2SqliteConnection";
+import { LogSearchKind, DateAnchor, LogSearchResultChannelMessage, LogSearchResultPMConvoMessage } from "../HostInteropLogSearch";
+import { XarHost2InteropLogSearch } from "./XarHost2InteropLogSearch";
+import { XarHost2InteropWindowCommand } from "./XarHost2InteropWindowCommand";
+import { XarHost2InteropSession } from "./XarHost2InteropSession";
+import { HostInteropLogSearch2 } from "../HostInteropLogSearch2";
+import { XarHost2HostInteropLogSearch2Impl } from "./XarHost2HostInteropLogSearch2Impl";
+import { IXarHost2HostInterop } from "./IXarHost2HostInterop";
+import { ChatWebSocket, UrlLaunchedEventArgs } from "../IHostInterop";
+import { IObservable, Observable, ObservableValue } from "../../Observable";
+import { DateUtils } from "../../DateTimeUtils";
+import { HostInteropLogFileMaintenance } from "../HostInteropLogFileMaintenance";
+import { XarHost2InteropLogFileMaintenance } from "./XarHost2InteropLogFileMaintenance";
 
-declare const XCHost: any;
-
-const freg = new FinalizationRegistry<() => void>(heldValue => {
-    try { heldValue(); }
-    catch { }
-});
-function onFinalize(obj: object, callback: () => void): IDisposable {
-    const unregisterToken = {};
-    freg.register(obj, callback, unregisterToken);
-    return asDisposable(() => freg.unregister(unregisterToken));
-}
-
-export interface IHostInterop {
-    get isInXarChatHost(): boolean;
-    get devMode(): boolean;
-    launchUrl(app: AppViewModel, url: string, forceExternal: boolean): void;
-    launchCharacterReport(app: AppViewModel, name: CharacterName): Promise<void>;
-    getImagePreviewPopupUrlAsync(url: string): Promise<(string | null)>;
-    appReady(): void;
-    minimizeWindow(): void;
-    maximizeWindow(): void;
-    restoreWindow(): void;
-    closeWindow(): void;
-    showDevTools(): void;
-
-    logChannelMessage(myCharacterName: CharacterName, channelName: ChannelName, channelTitle: string, 
-        speakingCharacter: CharacterName, speakingCharacterGender: CharacterGender, speakingCharacterOnlineStatus: OnlineStatus,
-        messageType: LogMessageType, messageText: string): void;
-
-    logPMConvoMessage(myCharacterName: CharacterName, interlocutor: CharacterName, 
-        speakingCharacter: CharacterName, speakingCharacterGender: CharacterGender, speakingCharacterOnlineStatus: OnlineStatus,
-        messageType: LogMessageType, messageText: string): void;
-
-    getRecentLoggedChannelMessagesAsync(channelName: ChannelName, maxEntries: number): Promise<LogChannelMessage[]>;
-    getRecentLoggedPMConvoMessagesAsync(myCharacterName: CharacterName, interlocutor: CharacterName, maxEntries: number): Promise<LogPMConvoMessage[]>;
-
-    convertFromApiChannelLoggedMessage(x: any): LogChannelMessage;
-    convertFromApiPMConvoLoggedMessage(x: any): LogPMConvoMessage;
-
-    endCharacterSession(characterName: CharacterName): void;
-
-    getAppSettings(): Promise<unknown>;
-    updateAppSettings(settings: any): Promise<void>
-    updateAppBadge(hasPings: boolean, hasUnseen: boolean): void;
-
-    getNewAppSettingsAsync(cancellationToken: CancellationToken): Promise<NewAppSettings>;
-
-    registerIdleDetectionAsync(idleAfterMs: number, callback: (userState: IdleDetectionUserState, screenState: IdleDetectionScreenState) => void): IDisposable;
-
-    registerUpdateCheckerRegistrationAsync(callback: (state: UpdateCheckerState) => void): IDisposable;
-    relaunchToApplyUpdateAsync(): Promise<void>;
-    signalLoginSuccessAsync(): Promise<void>;
-
-    get windowState(): HostWindowState;
-    registerWindowStateChangeCallback(callback: (windowState: HostWindowState) => void): IDisposable;
-
-    registerWindowBoundsChangeCallback(callback: (loc: RawSavedWindowLocation) => void): IDisposable;
-
-    searchEIconsAsync(term: string, start: number, length: number): Promise<EIconSearchResults>;
-    clearEIconSearchAsync(): Promise<void>;
-
-    getAllCssFilesAsync(): Promise<string[]>;
-    getCssDataAsync(path: string, cancellationToken: CancellationToken): Promise<string>;
-
-    getSvgDataAsync(path: string, cancellationToken: CancellationToken): Promise<string>;
-
-    getConfigValuesAsync(): Promise<ConfigKeyValue[]>;
-    setConfigValue(key: string, value: (unknown | null)): void;
-    registerConfigChangeCallback(callback: (value: ConfigKeyValue) => void): IDisposable;
-
-    readonly logSearch: HostInteropLogSearch;
-    readonly logSearch2: HostInteropLogSearch2;
-
-    chooseLocalFileAsync(options?: ChooseLocalFileOptions): Promise<string | null>;
-    getLocalFileUrl(fn: string): string;
-
-    performWindowCommandAsync(windowId: number | null, args: object): Promise<object>;
-
-    getEIconDataBlob(name: string, cancellationToken: CancellationToken): Promise<Blob>;
-    submitEIconMetadata(name: string, contentLength: number, etag: string): Promise<void>;
-
-    setZoomLevel(value: number): Promise<void>;
-
-    getMemoAsync(account: string, getForChar: CharacterName, cancellationToken?: CancellationToken): Promise<string | null>;
-
-    getAvailableLocales(cancellationToken?: CancellationToken): Promise<HostLocaleInfo[]>;
-
-    flashWindow(): void;
-}
-
-export interface HostLocaleInfo {
-    code: string;
-    name: string;
-}
-
-export interface IXarHost2HostInterop extends IHostInterop {
-    // closeSqlConnection(connId: string): void;
-    // sendSqlCommandAsync(cmd: any, cancellationToken: CancellationToken): Promise<any>;
-
-    writeAndReadToXCHostSocketAsync(data: any, cancellationToken?: CancellationToken): Promise<any>;
-}
-
-export interface LoggedMessage {
-    speakingCharacter: CharacterName;
-    messageType: LogMessageType;
-    messageText: string;
-    timestamp: Date;
-    speakingCharacterGender: CharacterGender;
-    speakingCharacterOnlineStatus: OnlineStatus;
-}
-
-export interface LogPMConvoMessage extends LoggedMessage {
-    myCharacterName: CharacterName;
-    interlocutor: CharacterName; 
-}
-
-export interface LogChannelMessage extends LoggedMessage {
-    channelName: ChannelName;
-    channelTitle: string;
-}
-
-export interface EIconSearchResults {
-    totalCount: number;
-    results: string[];
-}
-
-export enum HostWindowState {
-    NORMAL,
-    MINIMZED,
-    MAXIMIZED
-}
 
 
 export class XarHost2Interop implements IXarHost2HostInterop {
@@ -200,6 +72,8 @@ export class XarHost2Interop implements IXarHost2HostInterop {
         // TODO:
         this.logSearch2 = new XarHost2HostInteropLogSearch2Impl();
 
+        this.logFileMaintenance = new XarHost2InteropLogFileMaintenance();
+        
         this.doClientResize(window.innerWidth, window.innerHeight, true);
 
         this._windowCommandSession = new XarHost2InteropWindowCommand();
@@ -207,7 +81,8 @@ export class XarHost2Interop implements IXarHost2HostInterop {
 
         this.sessions = [
             this._windowCommandSession,
-            this._hostInteropEIconLoader
+            this._hostInteropEIconLoader,
+            this.logFileMaintenance
         ];
         for (let sess of this.sessions) {
             sess.writeMessage = (msg) => this.writeToXCHostSocket(sess.prefix + msg);
@@ -215,7 +90,7 @@ export class XarHost2Interop implements IXarHost2HostInterop {
 
         window.addEventListener("resize", () => {
             this.doClientResize(window.innerWidth * window.devicePixelRatio, window.innerHeight * window.devicePixelRatio, false);
-        })
+        });
     }
 
     doDownloadStatusUpdate(data: any) {
@@ -229,7 +104,7 @@ export class XarHost2Interop implements IXarHost2HostInterop {
                         const pctComplete = Math.round((data.bytesReceived / data.totalBytesToReceive) * 100);
                         if (data.estimatedSecRemaining != null) {
                             const timeRemaining = this.secondsToTimeDisplay(data.estimatedSecRemaining);
-                            msgBuilder.push(` (${pctComplete}%, ${timeRemaining} remaining)`)
+                            msgBuilder.push(` (${pctComplete}%, ${timeRemaining} remaining)`);
                         }
                         else {
                             msgBuilder.push(` (${pctComplete}%)`);
@@ -244,19 +119,19 @@ export class XarHost2Interop implements IXarHost2HostInterop {
                     break;
                 case "Interrupted":
                     appViewModel.statusMessage = "Download failed.";
-                    window.setTimeout(() => {
+                    Scheduler.scheduleNamedCallback("XarHost2Interop.doDownloadStatusUpdate", 6000, () => {
                         if (appViewModel.statusMessage == "Download failed.") {
                             appViewModel.statusMessage = null;
                         }
-                    }, 6000);
+                    });
                     break;
                 case "Completed":
                     appViewModel.statusMessage = "Download complete.";
-                    window.setTimeout(() => {
+                    Scheduler.scheduleNamedCallback("XarHost2Interop.doDownloadStatusUpdate", 2000, () => {
                         if (appViewModel.statusMessage == "Download complete.") {
                             appViewModel.statusMessage = null;
                         }
-                    }, 2000);
+                    });
                     break;
             }
         }
@@ -276,7 +151,7 @@ export class XarHost2Interop implements IXarHost2HostInterop {
             timeParts.push(`${minRemaining} min`);
         }
         timeParts.push(`${estimatedSecRemaining} sec`);
-        
+
         return timeParts.join(", ");
     }
 
@@ -297,6 +172,7 @@ export class XarHost2Interop implements IXarHost2HostInterop {
 
     readonly logSearch: XarHost2InteropLogSearch;
     readonly logSearch2: HostInteropLogSearch2;
+    readonly logFileMaintenance: XarHost2InteropLogFileMaintenance;
 
     readonly sessions: XarHost2InteropSession[];
     private _windowCommandSession: XarHost2InteropWindowCommand;
@@ -341,7 +217,7 @@ export class XarHost2Interop implements IXarHost2HostInterop {
             }
         }
     }
-    
+
     clearEIconSearchAsync(): Promise<void> {
         this.writeToXCHostSocket("eiconsearchclear");
         const ps = new PromiseSource<void>();
@@ -404,7 +280,7 @@ export class XarHost2Interop implements IXarHost2HostInterop {
                     }
                     catch {
                         //if (readTimeout.isCancellationRequested) {
-                            //this.writeToXCHostSocket("ping");
+                        //this.writeToXCHostSocket("ping");
                         //}
                     }
                 }
@@ -432,10 +308,10 @@ export class XarHost2Interop implements IXarHost2HostInterop {
         else if (cmd == "win.minimized") {
             this.setWindowState(HostWindowState.MINIMZED);
         }
-        else if (cmd== "win.maximized") {
+        else if (cmd == "win.maximized") {
             this.setWindowState(HostWindowState.MAXIMIZED);
         }
-        else if (cmd== "win.restored") {
+        else if (cmd == "win.restored") {
             this.setWindowState(HostWindowState.NORMAL);
         }
         else if (cmd == "idlemonitorupdate") {
@@ -546,6 +422,19 @@ export class XarHost2Interop implements IXarHost2HostInterop {
                             elMain.style.setProperty("--main-interface-width", `${this.neededWidth}px`);
                         }
                         break;
+                    case "macos-arm64":
+                        {
+                            //const pxScaleFactor = window.devicePixelRatio;
+                            //elMain.style.top = "0px";
+                            //elMain.style.width = `${this.neededWidth / pxScaleFactor}px`;
+                            //elMain.style.height = `${this.neededHeight / pxScaleFactor}px`;
+                            //elMain.style.setProperty("--main-interface-width", `${this.neededWidth / pxScaleFactor}px`);
+                            elMain.style.top = "0px";
+                            elMain.style.width = "100vw";
+                            elMain.style.height = "100vh";
+                            elMain.style.setProperty("--main-interface-width", "100vw");
+                        }
+                        break;
                     default:
                         {
                             const w = this.neededWidth / (isInitial ? 1 : window.devicePixelRatio);
@@ -590,7 +479,7 @@ export class XarHost2Interop implements IXarHost2HostInterop {
     }
 
     private _nextMsgId: number = 1;
-    private _responseWaiters: Map<number, { resolve: (data: any) => void, fail: (reason: string) => void, cancel: () => void }> = new Map();
+    private _responseWaiters: Map<number, { resolve: (data: any) => void; fail: (reason: string) => void; cancel: () => void; }> = new Map();
 
     private _allResponseWaiters2: CallbackSet<(cmd: string, data: string) => void> = new CallbackSet("XarHost2Interop-allResponseWaiters");
 
@@ -652,7 +541,7 @@ export class XarHost2Interop implements IXarHost2HostInterop {
         const resp = await ps.promise;
         return resp;
     }
-    
+
     get isInXarChatHost(): boolean { return true; }
 
     get devMode(): boolean {
@@ -665,6 +554,7 @@ export class XarHost2Interop implements IXarHost2HostInterop {
         const resp = await fetch(`/api/launchUrl?url=${encodeURIComponent(url)}&forceExternal=${forceExternal}`);
         try {
             if (resp.status == 200) {
+                this.fireUrlLaunchedHandler({ url: url, forceExternal: forceExternal });
                 const respObj = await resp.json()! as HostLaunchUrlResponse;
                 if (!!respObj.loadInternally && !StringUtils.isNullOrWhiteSpace(respObj.url)) {
                     const ifrUrl = `imageview.html?url=${encodeURIComponent(respObj.url!)}`;
@@ -674,6 +564,19 @@ export class XarHost2Interop implements IXarHost2HostInterop {
             }
         }
         catch (e) { }
+    }
+
+    private readonly _urlLaunchedCallbackSet: CallbackSet<(args: UrlLaunchedEventArgs) => void> = new CallbackSet("XarHost2Interop.urlLaunchedHandler");
+    addUrlLaunchedHandler(callback: (args: UrlLaunchedEventArgs) => void): IDisposable {
+        return this._urlLaunchedCallbackSet.add(callback);
+    }
+
+    removeUrlLaunchedHandler(callback: (args: UrlLaunchedEventArgs) => void): void {
+        this._urlLaunchedCallbackSet.delete(callback);
+    }
+
+    private fireUrlLaunchedHandler(args: UrlLaunchedEventArgs) {
+        this._urlLaunchedCallbackSet.invoke(args);
     }
 
     async launchCharacterReport(app: AppViewModel, name: CharacterName): Promise<void> {
@@ -724,7 +627,7 @@ export class XarHost2Interop implements IXarHost2HostInterop {
         this.writeToXCHostSocket("showDevTools");
     }
 
-    logChannelMessage(myCharacterName: CharacterName, channelName: ChannelName, channelTitle: string, 
+    logChannelMessage(myCharacterName: CharacterName, channelName: ChannelName, channelTitle: string,
         speakingCharacter: CharacterName, speakingCharacterGender: CharacterGender, speakingCharacterOnlineStatus: OnlineStatus,
         messageType: LogMessageType, messageText: string): void {
 
@@ -740,7 +643,7 @@ export class XarHost2Interop implements IXarHost2HostInterop {
         }));
     }
 
-    logPMConvoMessage(myCharacterName: CharacterName, interlocutor: CharacterName, 
+    logPMConvoMessage(myCharacterName: CharacterName, interlocutor: CharacterName,
         speakingCharacter: CharacterName, speakingCharacterGender: CharacterGender, speakingCharacterOnlineStatus: OnlineStatus,
         messageType: LogMessageType, messageText: string): void {
 
@@ -829,7 +732,7 @@ export class XarHost2Interop implements IXarHost2HostInterop {
         try {
             const ps = new PromiseSource<unknown>();
 
-            await this.writeToXCHostSocketAndRead("getAppSettings", 
+            await this.writeToXCHostSocketAndRead("getAppSettings",
                 (cmd, arg) => {
                     if (cmd.toLowerCase() == "gotappsettings") {
                         var argObj = JSON.parse(arg);
@@ -859,7 +762,7 @@ export class XarHost2Interop implements IXarHost2HostInterop {
         await this._updateAppSettingsMutex.executeLatestWhileHeldAsync(async () => {
             const ps = new PromiseSource<void>();
 
-            await this.writeToXCHostSocketAndRead(`setAppSettings ${JSON.stringify(settings)}`, 
+            await this.writeToXCHostSocketAndRead(`setAppSettings ${JSON.stringify(settings)}`,
                 (cmd, arg) => {
                     if (cmd.toLowerCase() == "updatedappsettings") {
                         ps.tryResolve();
@@ -879,13 +782,16 @@ export class XarHost2Interop implements IXarHost2HostInterop {
         });
     }
 
-    private _lastAppBadgeAssign: { hasPings: boolean, hasUnseen: boolean } = { hasPings: false, hasUnseen: false };
+    private _lastAppBadgeAssign: { hasPings: boolean; pingCount: number, hasUnseen: boolean; unseenCount: number } 
+        = { hasPings: false, pingCount: 0, hasUnseen: false, unseenCount: 0 };
     get lastAppBadgeAssign() { return this._lastAppBadgeAssign; }
 
-    updateAppBadge(hasPings: boolean, hasUnseen: boolean): void {
+    updateAppBadge(pingCount: number, unseenCount: number): void {
         this._lastAppBadgeAssign = {
-            hasPings: hasPings,
-            hasUnseen: hasUnseen
+            hasPings: pingCount > 0,
+            pingCount: pingCount,
+            hasUnseen: unseenCount > 0,
+            unseenCount: unseenCount
         };
         this.logger.logDebug("updateAppBadge", this._lastAppBadgeAssign);
         this.writeToXCHostSocket("updateAppBadge " + JSON.stringify(this._lastAppBadgeAssign));
@@ -895,27 +801,22 @@ export class XarHost2Interop implements IXarHost2HostInterop {
     //     const sqld = await this.writeAndReadToXCHostSocketAsync({
     //         cmd: "getNewAppSettingsConnection"
     //     }, cancellationToken);
-
     //     const connectionId = sqld.connectionId as string;
     //     return new XarHost2SqliteConnection(this, connectionId);
     // }
-
     // closeSqlConnection(connId: string): void {
     //     this.writeToXCHostSocket({
     //         cmd: "closeSqlConnection",
     //         connectionId: connId
     //     });
     // }
-
     // async sendSqlCommandAsync(cmd: XarHost2SqliteConnection, cancellationToken: CancellationToken): Promise<any> {
     //     const sqld = await this.writeAndReadToXCHostSocketAsync({
     //         cmd: "doSqlCommand",
     //         connectionId: cmd.connectionId
     //     }, cancellationToken);
-
     //     return sqld;
     // }
-
     private _updateCheckerCallbacks: Map<string, (state: UpdateCheckerState) => void> = new Map();
 
     registerUpdateCheckerRegistrationAsync(callback: (state: UpdateCheckerState) => void): IDisposable {
@@ -988,7 +889,7 @@ export class XarHost2Interop implements IXarHost2HostInterop {
         return this._windowBoundsChangeCallbacks.add(callback);
     }
 
-    private doWindowBoundsChange(desktopMetrics: string, windowBounds: [number, number, number, number] ) {
+    private doWindowBoundsChange(desktopMetrics: string, windowBounds: [number, number, number, number]) {
         this._windowBoundsChangeCallbacks.invoke({
             desktopMetrics: desktopMetrics,
             windowX: windowBounds[0],
@@ -998,14 +899,14 @@ export class XarHost2Interop implements IXarHost2HostInterop {
         });
     }
 
-    private _newAppSettings: NewAppSettings | null = null;
+    // private _newAppSettings: NewAppSettings | null = null;
 
-    getNewAppSettingsAsync(cancellationToken: CancellationToken): Promise<NewAppSettings> {
-        this._newAppSettings = this._newAppSettings ?? new XarHost2NewAppSettings(this);
-        const ps = new PromiseSource<NewAppSettings>();
-        ps.resolve(this._newAppSettings!);
-        return ps.promise;
-    }
+    // getNewAppSettingsAsync(cancellationToken: CancellationToken): Promise<NewAppSettings> {
+    //     this._newAppSettings = this._newAppSettings ?? new XarHost2NewAppSettings(this);
+    //     const ps = new PromiseSource<NewAppSettings>();
+    //     ps.resolve(this._newAppSettings!);
+    //     return ps.promise;
+    // }
 
     private readonly _getAllCssDataReaders: Map<number, PromiseSource<string[]>> = new Map();
 
@@ -1066,7 +967,7 @@ export class XarHost2Interop implements IXarHost2HostInterop {
             msgid: myCssDataReaderId,
             url: url
         }));
-        
+
         return ps.promise;
     }
 
@@ -1090,7 +991,7 @@ export class XarHost2Interop implements IXarHost2HostInterop {
             msgid: mySvgDataReaderId,
             url: url
         }));
-        
+
         return ps.promise;
     }
 
@@ -1162,7 +1063,7 @@ export class XarHost2Interop implements IXarHost2HostInterop {
         return `/api/localFile/getLocalFile?fn=${encodeURIComponent(fn).replaceAll('+', '%20')}`;
     }
 
-    async performWindowCommandAsync(windowId: number | null, args: { cmd: string, [x: string]: any }): Promise<object> {
+    async performWindowCommandAsync(windowId: number | null, args: { cmd: string;[x: string]: any; }): Promise<object> {
         if (windowId == null) {
             const qp = new URLSearchParams(document.location.search);
             windowId = +(qp.get("windowid")!);
@@ -1171,6 +1072,8 @@ export class XarHost2Interop implements IXarHost2HostInterop {
         const respObj = await this._windowCommandSession.performWindowCommand(windowId, args, CancellationToken.NONE);
         return respObj;
     }
+
+    readonly canGetEIconDataBlobs: boolean = true;
 
     async getEIconDataBlob(name: string, cancellationToken: CancellationToken): Promise<Blob> {
         const resp = await this._hostInteropEIconLoader.getEIconAsync(name, cancellationToken);
@@ -1202,7 +1105,6 @@ export class XarHost2Interop implements IXarHost2HostInterop {
     //     const blob = await fetchResp.blob();
     //     return blob;
     // }
-
     async setZoomLevel(value: number): Promise<void> {
         this.writeToXCHostSocket("setZoomLevel " + JSON.stringify({
             value: value
@@ -1214,9 +1116,9 @@ export class XarHost2Interop implements IXarHost2HostInterop {
         const ps = new PromiseSource<string | null>();
 
         await this.writeToXCHostSocketAndRead("getMemo " + JSON.stringify({
-                me: account,
-                char: getForChar.value
-            }), 
+            me: account,
+            char: getForChar.value
+        }),
             (cmd, arg) => {
                 if (cmd.toLowerCase() == "gotmemo") {
                     var argObj = JSON.parse(arg);
@@ -1251,7 +1153,7 @@ export class XarHost2Interop implements IXarHost2HostInterop {
         cancellationToken ??= CancellationToken.NONE;
         const ps = new PromiseSource<HostLocaleInfo[]>();
 
-        await this.writeToXCHostSocketAndRead("getLocales", 
+        await this.writeToXCHostSocketAndRead("getLocales",
             (cmd, arg) => {
                 if (cmd.toLowerCase() == "gotlocales") {
                     var argObj = JSON.parse(arg);
@@ -1279,44 +1181,22 @@ export class XarHost2Interop implements IXarHost2HostInterop {
             });
 
         const result = await ps.promise;
-        return result;        
+        return result;
     }
 
     flashWindow() {
         this.writeToXCHostSocket("flashWindow");
     }
-}
 
-export type ChooseLocalFileOptions = {
-    title?: string | null,
-    file?: string | null,
-    filters?: ({ name: string, pattern: string }[])
-}
-
-export type ConfigKeyValue = { key: string, value: (unknown | null)};
-
-const NOW = () => (new Date()).getTime();
-
-const qp = new URLSearchParams(document.location.search);
-export const HostInterop: IHostInterop = new XarHost2Interop();
-    // (qp.get("XarHostMode") == "2") ? new XarHost2Interop()
-    // : new CefHostInterop();
-
-(window as any)["__hostinterop"] = HostInterop;
-
-export interface HostInteropSocket extends IDisposable {
-    sendAsync(data: string): Promise<void>;
-    receiveAsync(): Promise<string | null>;
-}
-
-export enum LogMessageType {
-    CHAT = 0,
-    AD = 1,
-    ROLL = 2,
-    SPIN = 3
-}
-
-interface HostLaunchUrlResponse {
-    loadInternally?: boolean;
-    url?: string;
+    createChatWebSocket(): ChatWebSocket {
+        let url = new URL(`wss://${document.location.host}/api/chatSocket`);
+        const sp = new URLSearchParams(document.location.search);
+        if (sp.has("wsport")) {
+            if (url.hostname == "localhost") {
+                url.port = sp.get("wsport")!;
+            }
+        }
+        const ws = new WebSocket(url.href);
+        return ws;
+    }
 }

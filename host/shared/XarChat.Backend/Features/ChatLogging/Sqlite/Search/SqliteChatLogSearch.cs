@@ -191,6 +191,11 @@ namespace XarChat.Backend.Features.ChatLogging.Sqlite.Search
             return (sb.ToString(), parameters);
         }
 
+        public Task<long> GetLogFileSizeAsync(CancellationToken cancellationToken)
+        {
+            return _logWriter.GetLogFileSizeAsync(cancellationToken);
+        }
+
         public async Task<int> GetSearchResultCountAsync(SearchCriteria criteria, CancellationToken cancellationToken)
         {
             var result = await RunWithDisposeCancellation(
@@ -452,7 +457,7 @@ namespace XarChat.Backend.Features.ChatLogging.Sqlite.Search
                         var count = Convert.ToInt32(await cmd.ExecuteScalarAsync(cancellationToken));
                         return count > 0;
                     }
-                    catch (Exception ex)
+                    catch (Exception)
                     {
                         return false;
                     }
@@ -483,7 +488,7 @@ namespace XarChat.Backend.Features.ChatLogging.Sqlite.Search
                         var count = Convert.ToInt32(await cmd.ExecuteScalarAsync(cancellationToken));
                         return count > 0;
                     }
-                    catch (Exception ex)
+                    catch (Exception)
                     {
                         return false;
                     }
@@ -532,7 +537,7 @@ namespace XarChat.Backend.Features.ChatLogging.Sqlite.Search
 
                         return result;
                     }
-                    catch (Exception ex)
+                    catch (Exception)
                     {
                         return new List<RecentConversationInfo>();
                     }

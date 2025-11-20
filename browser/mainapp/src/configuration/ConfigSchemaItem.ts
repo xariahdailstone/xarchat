@@ -1,9 +1,15 @@
 import { ChannelName } from "../shared/ChannelName";
 import { CharacterName } from "../shared/CharacterName";
 import { CancellationToken } from "../util/CancellationTokenSource";
-import { HostInterop } from "../util/HostInterop";
+import { HostInterop } from "../util/hostinterop/HostInterop";
 import { IterableUtils } from "../util/IterableUtils";
+import { PlatformUtils } from "../util/PlatformUtils";
+import { StringUtils } from "../util/StringUtils";
 import { AppViewModel } from "../viewmodel/AppViewModel";
+import { LogFileMaintenanceDialogViewModel } from "../viewmodel/dialogs/LogFileMaintenanceDialogViewModel";
+import { addNotifRoutes } from "./ConfigSchemaItem-MigrationFuncs";
+
+export const ConfigSchemaVersion: number = 1;
 
 export interface ConfigSchemaDefinition {
     settings: ConfigSchemaItemDefinition[];
@@ -29,7 +35,10 @@ export interface ConfigSchemaItemDefinitionItem {
     notYetImplemented?: boolean;
     notifRouteOptions?: ConfigSchemaNotifRouteItemOptions;
     actionButtons?: ActionButtonDefinition[];
+    initializeDisplay?: () => any;
     enableIf?: (options: EnableIfOptions) => boolean;
+    calculateValue?: (options: CalculateValueOptions) => any;
+    migrations?: { [version: number]: (previousValue: any) => any };
 }
 
 export interface ActionButtonDefinition {
@@ -44,13 +53,23 @@ export interface ActionButtonClickArgs {
 export interface ConfigSchemaNotifRouteItemOptions {
     hasChannelContext?: boolean;
     hasCharacterContext?: boolean;
+    canToast?: boolean;
+    canGoToNotifications?: boolean;
+}
+
+export interface CalculateValueOptions {
+    myCharacterName?: CharacterName;
+    interlocutorName?: CharacterName;
+    channelCategory?: string;
+    channelName?: string;
+    getConfigEntryById: (id: string) => unknown;
 }
 
 export interface EnableIfOptions {
     myCharacterName?: CharacterName;
     interlocutorName?: CharacterName;
     channelCategory?: string;
-    channelName?: ChannelName;
+    channelName?: string;
     getConfigEntryById: (id: string) => unknown;
 }
 
@@ -100,7 +119,7 @@ export interface PingLineItemDefinition {
 export type ConfigSchemaItemDefinition = (ConfigSchemaItemDefinitionItem | ConfigSchemaItemDefinitionSection);
 
 export type ConfigSchemaItemType = "text" | "boolean" | "integer" | "number" | "text[]" | "pinglist" | 
-    "radio" | "timespan" | "color" | "color-hs" | "bgcolorcontrol" | "notifroutes" | "select";
+    "radio" | "timespan" | "color" | "color-hs" | "bgcolorcontrol" | "notifroutes" | "select" | "displaytext";
 export type ConfigSchemaOptionItemType = "string" | "file";
 export type ConfigSchemaScopeType = "global" | "char" | "char.chancategory" | "char.chan" | "char.convo";
 export type ConfigSchemaScopeTypeSimple = "global" | "char" | "chan" | "convo";
@@ -155,6 +174,11 @@ const spellCheckLanguageItem: ConfigSchemaItemDefinitionItem = {
     configBlockKey: "spellCheckLanguage"
 };
 
+const chanRetentionPeriodNote = "(If you log in with more than one character, note that channel logs are shared among all " +
+    "characters.  For any specific channel, the longest configured retention period that applies to that channel across all " +
+    "your characters will be used.)";
+
+const shortcutKeyCombiningPrefixString = PlatformUtils.shortcutKeyCombiningPrefixString;
 export const ConfigSchema: ConfigSchemaDefinition = {
     settings: [
         {
@@ -213,7 +237,7 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     id: "eiconSearch.enabled",
                     scope: getScopeArray(["global"]),
                     title: "EIcon Search",
-                    description: "Use Ctrl+E to open the eicon search instead of just inserting [eicon][/eicon] tags. (When disabled, Ctrl+Alt+E opens eicon search instead.)",
+                    description: `Use ${shortcutKeyCombiningPrefixString}E to open the eicon search instead of just inserting [eicon][/eicon] tags. (When disabled, ${shortcutKeyCombiningPrefixString}Alt+E opens eicon search instead.)`,
                     type: "boolean",
                     defaultValue: true,
                     configBlockKey: "eiconSearch.enabled"
@@ -390,9 +414,15 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                             title: "Error Messages",
                             description: "Error messages sent by F-Chat.",
                             type: "notifroutes",
-                            defaultValue: "console,*currenttab",
+                            notifRouteOptions: { canToast: true, canGoToNotifications: true },
+                            defaultValue: "console,*currenttab,notification,toast,notification",
                             configBlockKey: getFullRoutedNotificationConfigName("errorGet"),
-                            notYetImplemented: true
+                            notYetImplemented: true,
+                            migrations: {
+                                1: (v) => { 
+                                    return addNotifRoutes(v, [ "toast", "notification" ]);
+                                }
+                            }
                         },
                         {
                             scope: getScopeArray(["global", "char"]),
@@ -400,9 +430,15 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                             title: "Admin Broadcasts",
                             description: "Broadcasts sent by chat administrators to all online characters.",
                             type: "notifroutes",
-                            defaultValue: "*everywhere",
+                            notifRouteOptions: { canToast: true, canGoToNotifications: true },
+                            defaultValue: "*everywhere,toast,notification",
                             configBlockKey: getFullRoutedNotificationConfigName("broadcastGet"),
-                            notYetImplemented: true
+                            notYetImplemented: true,
+                            migrations: {
+                                1: (v) => { 
+                                    return addNotifRoutes(v, [ "toast", "notification" ]);
+                                }
+                            }
                         },
                         {
                             scope: getScopeArray(["global", "char"]),
@@ -410,9 +446,15 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                             title: "System Message",
                             description: "Uncategorized messages sent by the F-Chat system.",
                             type: "notifroutes",
-                            defaultValue: "console,currenttab,targetchannel",
+                            notifRouteOptions: { canToast: true, canGoToNotifications: true },
+                            defaultValue: "console,currenttab,targetchannel,toast,notification",
                             configBlockKey: getFullRoutedNotificationConfigName("systemMessageGet"),
-                            notYetImplemented: true
+                            notYetImplemented: true,
+                            migrations: {
+                                1: (v) => { 
+                                    return addNotifRoutes(v, [ "toast", "notification" ]);
+                                }
+                            }
                         },
                         {
                             scope: getScopeArray(["global", "char"]),
@@ -420,10 +462,17 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                             title: "Friend Added/Removed",
                             description: "A character was added or removed from your friends list.",
                             type: "notifroutes",
-                            defaultValue: "console,currenttab,pmconvo",
+                            defaultValue: "console,currenttab,pmconvo,toast,notification",
                             configBlockKey: getFullRoutedNotificationConfigName("friendAddRemove"),
                             notifRouteOptions: {
-                                hasCharacterContext: true
+                                hasCharacterContext: true,
+                                canToast: true,
+                                canGoToNotifications: true
+                            },
+                            migrations: {
+                                1: (v) => { 
+                                    return addNotifRoutes(v, [ "toast", "notification" ]);
+                                }
                             }
                         },
                         {
@@ -432,10 +481,17 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                             title: "Friend Request",
                             description: "A character requested to be your friend.",
                             type: "notifroutes",
-                            defaultValue: "console,currenttab,pmconvo",
+                            defaultValue: "console,currenttab,pmconvo,toast,notification",
                             configBlockKey: getFullRoutedNotificationConfigName("friendRequest"),
                             notifRouteOptions: {
-                                hasCharacterContext: true
+                                hasCharacterContext: true,
+                                canToast: true,
+                                canGoToNotifications: true
+                            },
+                            migrations: {
+                                1: (v) => { 
+                                    return addNotifRoutes(v, [ "toast", "notification" ]);
+                                }
                             }
                         },
                         {
@@ -444,10 +500,17 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                             title: "Bookmark Added/Removed",
                             description: "A character was added or removed from your bookmarks list.",
                             type: "notifroutes",
-                            defaultValue: "console,currenttab,pmconvo",
+                            defaultValue: "console,currenttab,pmconvo,toast,notification",
                             configBlockKey: getFullRoutedNotificationConfigName("bookmarkAddRemove"),
                             notifRouteOptions: {
-                                hasCharacterContext: true
+                                hasCharacterContext: true,
+                                canToast: true,
+                                canGoToNotifications: true
+                            },
+                            migrations: {
+                                1: (v) => { 
+                                    return addNotifRoutes(v, [ "toast", "notification" ]);
+                                }
                             }
                         },
                         {
@@ -456,10 +519,17 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                             title: "Interest Added/Removed",
                             description: "A character was added or removed from your interests list.",
                             type: "notifroutes",
-                            defaultValue: "console,currenttab,pmconvo",
+                            defaultValue: "console,currenttab,pmconvo,toast,notification",
                             configBlockKey: getFullRoutedNotificationConfigName("interestAddRemove"),
                             notifRouteOptions: {
-                                hasCharacterContext: true
+                                hasCharacterContext: true,
+                                canToast: true,
+                                canGoToNotifications: true
+                            },
+                            migrations: {
+                                1: (v) => { 
+                                    return addNotifRoutes(v, [ "toast", "notification" ]);
+                                }
                             }
                         },
                         {
@@ -468,10 +538,17 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                             title: "Ignore Added/Removed",
                             description: "A character was added or removed from your ignore list.",
                             type: "notifroutes",
-                            defaultValue: "console,currenttab,pmconvo",
+                            defaultValue: "console,currenttab,pmconvo,toast,notification",
                             configBlockKey: getFullRoutedNotificationConfigName("ignoreAddRemove"),
                             notifRouteOptions: {
-                                hasCharacterContext: true
+                                hasCharacterContext: true,
+                                canToast: true,
+                                canGoToNotifications: true
+                            },
+                            migrations: {
+                                1: (v) => { 
+                                    return addNotifRoutes(v, [ "toast", "notification" ]);
+                                }
                             }
                         },
                         {
@@ -480,10 +557,17 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                             title: "Server Operator Added/Removed",
                             description: "A character was promoted or demoted to/from F-Chat server operator status by the chat administrators.",
                             type: "notifroutes",
-                            defaultValue: "console,*currenttab,pmconvo",
+                            defaultValue: "console,*currenttab,pmconvo,notification",
                             configBlockKey: getFullRoutedNotificationConfigName("serverOpAddRemove"),
                             notifRouteOptions: {
-                                hasCharacterContext: true
+                                hasCharacterContext: true,
+                                canToast: true,
+                                canGoToNotifications: true
+                            },
+                            migrations: {
+                                1: (v) => { 
+                                    return addNotifRoutes(v, [ "notification" ]);
+                                }
                             }
                         },
                         {
@@ -492,8 +576,14 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                             title: "Your Character Status Updated",
                             description: "Your character status was updated.",
                             type: "notifroutes",
-                            defaultValue: "console,currenttab",
-                            configBlockKey: getFullRoutedNotificationConfigName("meStatusUpdate")
+                            notifRouteOptions: { canToast: true, canGoToNotifications: true },
+                            defaultValue: "console,currenttab,toast,notification",
+                            configBlockKey: getFullRoutedNotificationConfigName("meStatusUpdate"),
+                            migrations: {
+                                1: (v) => { 
+                                    return addNotifRoutes(v, [ "toast","notification" ]);
+                                }
+                            }
                         },
                         {
                             scope: getScopeArray(["global", "char"]),
@@ -501,10 +591,17 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                             title: "Friend Character Status Updated",
                             description: "A friend updated their character status.",
                             type: "notifroutes",
-                            defaultValue: "console,currenttab,pmconvo",
+                            defaultValue: "console,currenttab,pmconvo,toast,notification",
                             configBlockKey: getFullRoutedNotificationConfigName("friendStatusUpdate"),
                             notifRouteOptions: {
-                                hasCharacterContext: true
+                                hasCharacterContext: true,
+                                canToast: true,
+                                canGoToNotifications: true
+                            },
+                            migrations: {
+                                1: (v) => { 
+                                    return addNotifRoutes(v, [ "toast","notification" ]);
+                                }
                             }
                         },
                         {
@@ -513,10 +610,17 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                             title: "Bookmark Character Status Updated",
                             description: "A bookmark updated their character status.",
                             type: "notifroutes",
-                            defaultValue: "console,currenttab,pmconvo",
+                            defaultValue: "console,currenttab,pmconvo,toast,notification",
                             configBlockKey: getFullRoutedNotificationConfigName("bookmarkStatusUpdate"),
                             notifRouteOptions: {
-                                hasCharacterContext: true
+                                hasCharacterContext: true,
+                                canToast: true,
+                                canGoToNotifications: true
+                            },
+                            migrations: {
+                                1: (v) => { 
+                                    return addNotifRoutes(v, [ "toast","notification" ]);
+                                }
                             }
                         },
                         {
@@ -525,10 +629,17 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                             title: "Interest Character Status Updated",
                             description: "An interest updated their character status.",
                             type: "notifroutes",
-                            defaultValue: "console,currenttab,pmconvo",
+                            defaultValue: "console,currenttab,pmconvo,toast,notification",
                             configBlockKey: getFullRoutedNotificationConfigName("interestStatusUpdate"),
                             notifRouteOptions: {
-                                hasCharacterContext: true
+                                hasCharacterContext: true,
+                                canToast: true,
+                                canGoToNotifications: true
+                            },
+                            migrations: {
+                                1: (v) => { 
+                                    return addNotifRoutes(v, [ "toast","notification" ]);
+                                }
                             }
                         },
                         {
@@ -540,7 +651,9 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                             defaultValue: "pmconvo",
                             configBlockKey: getFullRoutedNotificationConfigName("otherStatusUpdate"),
                             notifRouteOptions: {
-                                hasCharacterContext: true
+                                hasCharacterContext: true,
+                                canToast: true,
+                                canGoToNotifications: true
                             }
                         },
                         {
@@ -549,10 +662,17 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                             title: "Friend Online/Offline",
                             description: "A friend came online or went offline.",
                             type: "notifroutes",
-                            defaultValue: "console,currenttab,pmconvo",
+                            defaultValue: "console,currenttab,pmconvo,toast,notification",
                             configBlockKey: getFullRoutedNotificationConfigName("friendOnlineChange"),
                             notifRouteOptions: {
-                                hasCharacterContext: true
+                                hasCharacterContext: true,
+                                canToast: true,
+                                canGoToNotifications: true
+                            },
+                            migrations: {
+                                1: (v) => { 
+                                    return addNotifRoutes(v, [ "toast","notification" ]);
+                                }
                             }
                         },
                         {
@@ -561,10 +681,17 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                             title: "Bookmark Online/Offline",
                             description: "A bookmark came online or went offline.",
                             type: "notifroutes",
-                            defaultValue: "console,currenttab,pmconvo",
+                            defaultValue: "console,currenttab,pmconvo,toast,notification",
                             configBlockKey: getFullRoutedNotificationConfigName("bookmarkOnlineChange"),
                             notifRouteOptions: {
-                                hasCharacterContext: true
+                                hasCharacterContext: true,
+                                canToast: true,
+                                canGoToNotifications: true
+                            },
+                            migrations: {
+                                1: (v) => { 
+                                    return addNotifRoutes(v, [ "toast","notification" ]);
+                                }
                             }
                         },
                         {
@@ -573,10 +700,17 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                             title: "Interest Online/Offline",
                             description: "An interest came online or went offline.",
                             type: "notifroutes",
-                            defaultValue: "console,currenttab,pmconvo",
+                            defaultValue: "console,currenttab,pmconvo,toast,notification",
                             configBlockKey: getFullRoutedNotificationConfigName("interestOnlineChange"),
                             notifRouteOptions: {
-                                hasCharacterContext: true
+                                hasCharacterContext: true,
+                                canToast: true,
+                                canGoToNotifications: true
+                            },
+                            migrations: {
+                                1: (v) => { 
+                                    return addNotifRoutes(v, [ "toast","notification" ]);
+                                }
                             }
                         },
                         {
@@ -588,7 +722,9 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                             defaultValue: "pmconvo",
                             configBlockKey: getFullRoutedNotificationConfigName("otherOnlineChange"),
                             notifRouteOptions: {
-                                hasCharacterContext: true
+                                hasCharacterContext: true,
+                                canToast: true,
+                                canGoToNotifications: true
                             }
                         },
                         {
@@ -597,10 +733,17 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                             title: "You Kicked/Banned From Channel",
                             description: "You were kicked, banned, or timed out from a channel.",
                             type: "notifroutes",
-                            defaultValue: "*console,*currenttab,*targetchannel",
+                            defaultValue: "*console,*currenttab,*targetchannel,toast,notification",
                             configBlockKey: getFullRoutedNotificationConfigName("meKicked"),
                             notifRouteOptions: {
-                                hasChannelContext: true
+                                hasChannelContext: true,
+                                canToast: true,
+                                canGoToNotifications: true
+                            },
+                            migrations: {
+                                1: (v) => { 
+                                    return addNotifRoutes(v, [ "toast","notification" ]);
+                                }
                             }
                         },
                         {
@@ -613,7 +756,9 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                             configBlockKey: getFullRoutedNotificationConfigName("otherKicked"),
                             notifRouteOptions: {
                                 hasCharacterContext: true,
-                                hasChannelContext: true
+                                hasChannelContext: true,
+                                canToast: true,
+                                canGoToNotifications: true
                             }
                         },
                         {
@@ -626,7 +771,9 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                             configBlockKey: getFullRoutedNotificationConfigName("chanOpChange"),
                             notifRouteOptions: {
                                 hasChannelContext: true,
-                                hasCharacterContext: true
+                                hasCharacterContext: true,
+                                canToast: true,
+                                canGoToNotifications: true
                             }
                         },
                         {
@@ -635,11 +782,18 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                             title: "Channel Invite Received",
                             description: "An invitation to join a channel was received.",
                             type: "notifroutes",
-                            defaultValue: "console,currenttab,pmconvo",
+                            defaultValue: "console,currenttab,pmconvo,toast,notification",
                             configBlockKey: getFullRoutedNotificationConfigName("chanInvited"),
                             notifRouteOptions: {
                                 hasChannelContext: false, // can't see an invite when you're already in the channel!
-                                hasCharacterContext: true
+                                hasCharacterContext: true,
+                                canToast: true,
+                                canGoToNotifications: true
+                            },
+                            migrations: {
+                                1: (v) => { 
+                                    return addNotifRoutes(v, [ "toast","notification" ]);
+                                }
                             }
                         },
                         {
@@ -648,10 +802,17 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                             title: "Note Received",
                             description: "A new note on F-List was received.",
                             type: "notifroutes",
-                            defaultValue: "console,pmconvo,currenttab",
+                            defaultValue: "console,pmconvo,currenttab,toast,notification",
                             configBlockKey: getFullRoutedNotificationConfigName("noteGet"),
                             notifRouteOptions: {
-                                hasCharacterContext: true
+                                hasCharacterContext: true,
+                                canToast: true,
+                                canGoToNotifications: true
+                            },
+                            migrations: {
+                                1: (v) => { 
+                                    return addNotifRoutes(v, [ "toast","notification" ]);
+                                }
                             }
                         },
                         {
@@ -714,10 +875,11 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                                 "char.convo": "Use these routing settings for status change notifications for \"$CONVOCHAR$\""
                             },
                             type: "notifroutes",
-                            defaultValue: "console,currenttab,pmconvo",
+                            defaultValue: "console,currenttab,pmconvo,toast,notification",
                             configBlockKey: "perCharMessageRouting.statusUpdate.routing",
                             notifRouteOptions: {
-                                hasCharacterContext: true
+                                hasCharacterContext: true,
+                                canToast: true
                             },
                             enableIf: (opts) => {
                                 if (opts.getConfigEntryById("perCharMessageRouting.enabled") == "override") {
@@ -725,6 +887,11 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                                 }
                                 else {
                                     return false;
+                                }
+                            },
+                            migrations: {
+                                1: (v) => { 
+                                    return addNotifRoutes(v, [ "toast","notification" ]);
                                 }
                             }
                         }
@@ -784,7 +951,7 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     ],
                     defaultValue: "left",
                     configBlockKey: "friendsTabLocation"
-                },                
+                },              
                 {
                     id: "messageDisplayStyle",
                     scope: getScopeArray(["global", "char", "chan", "convo"]),
@@ -804,11 +971,11 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     title: "Chat Font Size",
                     description: "",
                     descriptionByScope: {
-                        "global": "Change the size of the font in the chat message stream for channels and PM conversations. (You can change the size of everything with Ctrl+ScrollWheel.)",
-                        "char": "Change the size of the font in the chat message stream for channels and PM conversations. (You can change the size of everything with Ctrl+ScrollWheel.)",
-                        "char.chancategory": "Change the size of the font in the chat message stream for channels in this category. (You can change the size of everything with Ctrl+ScrollWheel.)",
-                        "char.chan": "Change the size of the font in the chat message stream for this channel. (You can change the size of everything with Ctrl+ScrollWheel.)",
-                        "char.convo": "Change the size of the font in the chat message stream for PM conversations with \"$CONVOCHAR$\". (You can change the size of everything with Ctrl+ScrollWheel.)"
+                        "global": `Change the size of the font in the chat message stream for channels and PM conversations. (You can change the size of everything with ${shortcutKeyCombiningPrefixString}ScrollWheel.)`,
+                        "char": `Change the size of the font in the chat message stream for channels and PM conversations. (You can change the size of everything with ${shortcutKeyCombiningPrefixString}ScrollWheel.)`,
+                        "char.chancategory": `Change the size of the font in the chat message stream for channels in this category. (You can change the size of everything with ${shortcutKeyCombiningPrefixString}ScrollWheel.)`,
+                        "char.chan": `Change the size of the font in the chat message stream for this channel. (You can change the size of everything with ${shortcutKeyCombiningPrefixString}ScrollWheel.)`,
+                        "char.convo": `Change the size of the font in the chat message stream for PM conversations with \"$CONVOCHAR$\". (You can change the size of everything with ${shortcutKeyCombiningPrefixString}ScrollWheel.)`
                     },
                     type: "select",
                     selectOptions: [
@@ -868,6 +1035,39 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     type: "boolean",
                     defaultValue: false,
                     configBlockKey: "chat.textbox.statusBarShown"
+                },
+                {
+                    scope: getScopeArray(["global"]),
+                    sectionTitle: "Left Bar",
+                    description: "",
+                    items: [
+                        {
+                            id: "leftBar.sectionOrdering",
+                            scope: getScopeArray(["global"]),
+                            title: "Chats List Section Ordering",
+                            description: "What order should sections be shown in the left bar channel/PM list?",
+                            type: "select",
+                            selectOptions: [
+                                { value: "cp", displayValue: "Channels, Private Messages" },
+                                { value: "pc", displayValue: "Private Messages, Channels" }
+                            ],
+                            defaultValue: "cp",
+                            configBlockKey: "leftBar.sectionOrdering"
+                        },
+                        {
+                            id: "leftBar.density",
+                            scope: getScopeArray(["global"]),
+                            title: "Chats List Item Density",
+                            description: "How dense should items be packed in the left bar channel/PM list?",
+                            type: "select",
+                            selectOptions: [
+                                { value: "normal", displayValue: "Normal" },
+                                { value: "dense", displayValue: "Dense" }
+                            ],
+                            defaultValue: "normal",
+                            configBlockKey: "leftBar.density"
+                        }
+                    ]
                 },
                 {
                     scope: getScopeArray(["global", "char", "chan"]),
@@ -1259,17 +1459,54 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     id: "loggingEnabled",
                     scope: getScopeArray(["global", "char", "chan", "convo"]),
                     title: "Enable Logging",
-                    description: "Log chat to a local file.",
+                    description: "",
+                    descriptionByScope: {
+                        "global": "Log all channels and PM conversations to a local file.",
+                        "char": "Log all channels and PM conversations to a local file for \"$MYCHAR$\".",
+                        "char.chancategory": "Log all channels in the \"$CHANCATEGORY$\" category to a local file.",
+                        "char.chan": "Log this channel to a local file.",
+                        "char.convo": "Log PM conversations with \"$CONVOCHAR$\" to a local file."
+                    },
                     type: "boolean",
                     defaultValue: true,
-                    configBlockKey: "loggingEnabled",
-                    notYetImplemented: true
+                    configBlockKey: "loggingEnabled"
+                },
+                {
+                    id: "logFileSize",
+                    scope: getScopeArray(["global", "char", "chan", "convo"]),
+                    title: "Total Log Size",
+                    description: "The current total size of your entire chat log file, including all channels and PM conversations.",
+                    type: "displaytext",
+                    defaultValue: "",
+                    configBlockKey: "logFileSize",
+                    initializeDisplay: () => {
+                        HostInterop.logFileMaintenance.refreshLogFileSizeAsync(CancellationToken.NONE);
+                    },
+                    calculateValue: (cvo) => {
+                        return StringUtils.numberToApproximateFileSize(HostInterop.logFileMaintenance.logFileSize);
+                    },
+                    actionButtons: [
+                        { 
+                            title: "Log File Maintenance...", 
+                            onClick: async (args) => {
+                                const dlg = new LogFileMaintenanceDialogViewModel(args.appViewModel);
+                                await args.appViewModel.showDialogAsync(dlg);
+                            }
+                        }
+                    ]
                 },
                 {
                     id: "retentionPeriod.chan",
                     scope: getScopeArray(["global", "char", "chan"]),
                     title: "Channel Message Log Retention",
-                    description: "How long to keep channel messages in the log file.",
+                    description: "",
+                    descriptionByScope: {
+                        "global": "How long to keep chat channel messages in the log file. " + chanRetentionPeriodNote,
+                        "char": "How long to keep chat channel messages in the log file. " + chanRetentionPeriodNote,
+                        "char.chancategory": "How long to keep messages for channels in the \"$CHANCATEGORY$\" category in the log file. " + chanRetentionPeriodNote,
+                        "char.chan": "How long to keep messages for this channel in the log file. " + chanRetentionPeriodNote,
+                        "char.convo": "Invalid setting."
+                    },
                     type: "timespan",
                     defaultValue: 2160,  // 90 days * 24 hours
                     configBlockKey: "loggingRetentionChannel",
@@ -1279,7 +1516,14 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     id: "retentionPeriod.convo",
                     scope: getScopeArray(["global", "char", "convo"]),
                     title: "Private Message Log Retention",
-                    description: "How long to keep private messages in the log file.",
+                    description: "",
+                    descriptionByScope: {
+                        "global": "How long to keep private messages in the log file.",
+                        "char": "How long to keep private messages in the log file.",
+                        "char.chancategory": "Invalid setting.",
+                        "char.chan": "Invalid setting.",
+                        "char.convo": "How long to keep private messages from \"$CONVOCHAR$\" in the log file."
+                    },
                     type: "timespan",
                     defaultValue: 120000,  // 5000 days * 24 hours
                     configBlockKey: "loggingRetentionConvo",

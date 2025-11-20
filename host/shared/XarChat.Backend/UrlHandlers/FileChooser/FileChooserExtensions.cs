@@ -39,7 +39,7 @@ namespace XarChat.Backend.UrlHandlers.FileChooser
 
             var result = await fileChooser.SelectLocalFileAsync(
                 initialFile: args?.SelectedFile,
-                filter: args?.SelectionFilters?.Select(x => new KeyValuePair<string, string>(x.Name, x.Pattern)).ToList(),
+                filters: args?.SelectionFilters?.Select(x => new SelectLocalFileFilterEntry(x.Name, x.Extensions)).ToList(),
                 dialogTitle: args?.DialogTitle,
                 cancellationToken: cancellationToken);
 
@@ -72,7 +72,7 @@ namespace XarChat.Backend.UrlHandlers.FileChooser
         [JsonPropertyName("name")]
         public string Name { get; set; } = "";
 
-        [JsonPropertyName("pattern")]
-        public string Pattern { get; set; } = "";
+        [JsonPropertyName("extensions")]
+        public List<string> Extensions { get; set; } = [];
     }
 }

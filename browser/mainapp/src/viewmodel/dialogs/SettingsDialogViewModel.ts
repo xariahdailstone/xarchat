@@ -1,10 +1,14 @@
 import { ConfigSchema, ConfigSchemaDefinition, ConfigSchemaItemDefinition, ConfigSchemaItemDefinitionItem, ConfigSchemaItemDefinitionSection, ConfigSchemaItemType, ConfigSchemaScopeType, PingLineItemDefinition } from "../../configuration/ConfigSchemaItem";
 import { ChannelName } from "../../shared/ChannelName";
 import { CharacterName } from "../../shared/CharacterName";
+import { asDisposable, ConvertibleToDisposable, IDisposable, tryDispose } from "../../util/Disposable";
 import { IterableUtils } from "../../util/IterableUtils";
+import { Logger, Logging } from "../../util/Logger";
 import { ObservableValue } from "../../util/Observable";
 import { ObservableBase, observableProperty, observablePropertyExt } from "../../util/ObservableBase";
 import { Collection } from "../../util/ObservableCollection";
+import { ObservableExpression } from "../../util/ObservableExpression";
+import { Scheduler } from "../../util/Scheduler";
 import { ActiveLoginViewModel } from "../ActiveLoginViewModel";
 import { AppViewModel } from "../AppViewModel";
 import { ChannelViewModel } from "../ChannelViewModel";
@@ -34,7 +38,15 @@ interface InitializationGroupOptions {
     settings?: (InitializationSettingOptions | InitializationGroupOptions | null)[];
 }
 
-export class SettingsDialogViewModel extends DialogViewModel<number> {
+export enum SettingsLevel {
+    GLOBAL = "global",
+    SESSION = "session",
+    CATEGORY = "category",
+    CHANNEL = "channel",
+    PMCONVO = "pmconvo"
+}
+
+export class SettingsDialogViewModel extends DialogViewModel<number> implements IDisposable {
     constructor(parent: AppViewModel, 
         private readonly session?: ActiveLoginViewModel, 
         private readonly channel?: ChannelViewModel,
@@ -48,28 +60,57 @@ export class SettingsDialogViewModel extends DialogViewModel<number> {
         this.initializeTabs();
     }
 
+    private _isDisposed: boolean = false;
+    get isDisposed() { return this._isDisposed; }
+
+    dispose() {
+        if (!this._isDisposed) {
+            this._isDisposed = true;
+            for (let t of this.tabs) {
+                t.dispose();
+            }
+        }
+    }
+    [Symbol.dispose]() { this.dispose(); }
+
     readonly schemaDefinition: ConfigSchemaDefinition;
 
+    private _tabsByLevel: Map<SettingsLevel, SettingsDialogTabViewModel> = new Map();
+
     private initializeTabs() {
-        this.tabs.push(new GlobalSettingsDialogTabViewModel(this));
+        const pushTab = (tab: SettingsDialogTabViewModel, level?: SettingsLevel) => {
+            this.tabs.push(tab);
+            if (level) {
+                this._tabsByLevel.set(level, tab);
+            }
+        };
+
+        pushTab(new GlobalSettingsDialogTabViewModel(this), SettingsLevel.GLOBAL);
         if (this.session) {
-            this.tabs.push(new SessionSettingsDialogTabViewModel(this, this.session));
+            pushTab(new SessionSettingsDialogTabViewModel(this, this.session), SettingsLevel.SESSION);
 
             if (this.channel || this.interlocutorName) {
                 if (this.channel instanceof ChatChannelViewModel) {
-                    this.tabs.push(new ChannelCategorySettingsDialogTabViewModel(this, this.channel.activeLoginViewModel.characterName, this.channel.channelCategory));
-                    this.tabs.push(new ChannelSettingsDialogTabViewModel(this, this.channel));
+                    pushTab(new ChannelCategorySettingsDialogTabViewModel(this, this.channel.activeLoginViewModel.characterName, this.channel.channelCategory), SettingsLevel.CATEGORY);
+                    pushTab(new ChannelSettingsDialogTabViewModel(this, this.channel), SettingsLevel.CHANNEL);
                 }
                 else if (this.channel instanceof PMConvoChannelViewModel) {
-                    this.tabs.push(PMConvoSettingsDialogTabViewModel.createForChannel(this, this.channel));
+                    pushTab(PMConvoSettingsDialogTabViewModel.createForChannel(this, this.channel), SettingsLevel.PMCONVO);
                 }
                 else if (this.interlocutorName instanceof CharacterName) {
-                    this.tabs.push(PMConvoSettingsDialogTabViewModel.createForCharacter(this, this.session?.characterName, this.interlocutorName));
+                    pushTab(PMConvoSettingsDialogTabViewModel.createForCharacter(this, this.session?.characterName, this.interlocutorName), SettingsLevel.PMCONVO);
                 }
             }
         }
 
         this.selectedTab = IterableUtils.asQueryable(this.tabs).last();
+    }
+
+    selectLevel(level: SettingsLevel) {
+        const tab = this._tabsByLevel.get(level);
+        if (tab) {
+            this.selectedTab = tab;
+        }
     }
 
     @observableProperty
@@ -79,7 +120,7 @@ export class SettingsDialogViewModel extends DialogViewModel<number> {
     selectedTab: (SettingsDialogTabViewModel | null) = null;
 }
 
-export abstract class SettingsDialogSettingViewModel extends ObservableBase {
+export abstract class SettingsDialogSettingViewModel extends ObservableBase implements ISettingsDialogSettingViewModel {
     constructor(
         private readonly itemDefinition: ConfigSchemaItemDefinition, 
         public readonly scope: ScopeData) {
@@ -87,6 +128,27 @@ export abstract class SettingsDialogSettingViewModel extends ObservableBase {
         super();
         this.prepareSettings(itemDefinition.items, this.settings);
     }
+
+    protected readonly ownedDisposables: Set<ConvertibleToDisposable> = new Set();
+
+    private _isDisposed: boolean = false;
+    get isDisposed() { return this._isDisposed; }
+
+    dispose() {
+        if (!this._isDisposed) {
+            this._isDisposed = true;
+            for (let x of this.settings) {
+                x.dispose();
+            }
+            if (this.ownedDisposables.size > 0) {
+                asDisposable(...this.ownedDisposables.values()).dispose();
+                this.ownedDisposables.clear();
+            }
+        }
+    }
+    [Symbol.dispose]() { this.dispose(); }
+
+    readonly isItem: boolean = false;
 
     get isDisabled(): boolean {
         return ((this.itemDefinition as any).notYetImplemented != null);
@@ -116,9 +178,9 @@ export abstract class SettingsDialogSettingViewModel extends ObservableBase {
     }
 
     @observableProperty
-    readonly settings: Collection<SettingsDialogSettingViewModel> = new Collection<SettingsDialogSettingViewModel>();
+    readonly settings: Collection<ISettingsDialogSettingViewModel> = new Collection<ISettingsDialogSettingViewModel>();
 
-    protected prepareSettings(source: ConfigSchemaItemDefinition[] | null | undefined, target: Collection<SettingsDialogSettingViewModel>) {
+    protected prepareSettings(source: ConfigSchemaItemDefinition[] | null | undefined, target: Collection<ISettingsDialogSettingViewModel>) {
         if (source) {
             for (let x of source) {
                 if (x.scope && x.scope.includes(this.scope.scopeString)) {
@@ -128,18 +190,22 @@ export abstract class SettingsDialogSettingViewModel extends ObservableBase {
         }
     }
 
-    private includeSetting(sourceItem: ConfigSchemaItemDefinition, target: Collection<SettingsDialogSettingViewModel>): SettingsDialogSettingViewModel {
+    private includeSetting(sourceItem: ConfigSchemaItemDefinition, target: Collection<ISettingsDialogSettingViewModel>): ISettingsDialogSettingViewModel {
         // const subList = new Collection<SettingsDialogSettingViewModel>();
         // if (sourceItem.items) {
         //     this.prepareSettings(sourceItem.items, subList);
         // }
 
-        let vm: SettingsDialogSettingViewModel;
+        let vm: ISettingsDialogSettingViewModel;
         if ((sourceItem as any).sectionTitle) {
             vm = this.createSection(sourceItem as ConfigSchemaItemDefinitionSection);
         }
         else {
-            vm = this.createItem(sourceItem as ConfigSchemaItemDefinitionItem);
+            const idef = sourceItem as ConfigSchemaItemDefinitionItem;
+            vm = this.createItem(idef);
+            if (idef.initializeDisplay) {
+                idef.initializeDisplay();
+            }
         }
         return vm;
     }
@@ -149,9 +215,15 @@ export abstract class SettingsDialogSettingViewModel extends ObservableBase {
         return res;
     }
 
-    private createItem(item: ConfigSchemaItemDefinitionItem): SettingsDialogItemViewModel {
-        const res = new SettingsDialogItemViewModel(item, this.scope);
-        return res;
+    private createItem(item: ConfigSchemaItemDefinitionItem): ISettingsDialogItemViewModel {
+        if (!item.calculateValue) {
+            const res = new SettingsDialogItemViewModel(item, this.scope);
+            return res;
+        }
+        else {
+            const res = new CalculatedSettingsDialogItemViewModel(item, this.scope);
+            return res;
+        }
     }
 }
 
@@ -235,7 +307,94 @@ export class SettingsDialogSectionViewModel extends SettingsDialogSettingViewMod
     readonly schema: ConfigSchemaItemDefinitionSection;
 }
 
-export class SettingsDialogItemViewModel extends SettingsDialogSettingViewModel {
+export interface ISettingsDialogSettingViewModel extends IDisposable {
+    readonly isItem: boolean;
+    readonly scope: ScopeData;
+    readonly isDisabled: boolean;
+    readonly showInheritedInfo: boolean;
+    readonly inheritedFromText: string;
+    readonly revertToText: string;
+    revertToInherited(): void;
+    readonly useInheritedValue: boolean;
+    readonly title: string;
+    readonly description: string | undefined;
+    readonly settings: Collection<ISettingsDialogSettingViewModel>;
+}
+export interface ISettingsDialogItemViewModel extends ISettingsDialogSettingViewModel {
+    readonly isItem: true;
+    readonly isReadOnly: boolean;
+    readonly schema: ConfigSchemaItemDefinitionItem;
+    value: any;
+    scratchValue: any;
+}
+
+export class CalculatedSettingsDialogItemViewModel extends SettingsDialogSettingViewModel implements ISettingsDialogItemViewModel {
+    constructor(
+        item: ConfigSchemaItemDefinitionItem,
+        scope: ScopeData) {
+
+        super(item, scope);
+
+        this._logger = Logging.createLogger(`CalculatedSettingsDialogItemViewModel#${item.id}`);
+        this.schema = item;
+
+        this._valueOE = new ObservableExpression<any>(
+            () => {
+                return item.calculateValue!({ 
+                    myCharacterName: scope.myCharacter,
+                    channelCategory: scope.categoryName,
+                    channelName: scope.targetChannel,
+                    interlocutorName: scope.pmConvoCharacter,
+                    getConfigEntryById: (id: string) => {
+                        if (!scope.myCharacter) {
+                            return scope.appViewModel.getConfigSettingById(id);
+                        }
+                        else {
+                            if (scope.pmConvoCharacter) {
+                                return scope.appViewModel.getConfigSettingById(id, 
+                                    { characterName: scope.myCharacter }, 
+                                    { characterName: scope.pmConvoCharacter });
+                            }
+                            else if (scope.targetChannel) {
+                                return scope.appViewModel.getConfigSettingById(id, 
+                                    { characterName: scope.myCharacter }, 
+                                    { channelTitle: scope.targetChannel!, channelCategory: scope.categoryName! })
+                            }
+                            else {
+                                return scope.appViewModel.getConfigSettingById(id, 
+                                    { characterName: scope.myCharacter });
+                            }
+                        }
+                    }
+                });
+            },
+            (v) => { this._valueObs.value = v; },
+            (err) => { }
+        );
+        this.ownedDisposables.add(this._valueOE);
+    }
+
+    private readonly _logger: Logger;
+
+    readonly isReadOnly: boolean = true;
+
+    readonly isItem = true;
+
+    readonly schema: ConfigSchemaItemDefinitionItem;
+
+    private readonly _valueOE: ObservableExpression<any>;
+    private readonly _valueObs: ObservableValue<any> = new ObservableValue(null);
+
+    get value(): any { return this._valueObs.value; }
+    set value(value: any) {
+        this._logger.logWarn("Attempted to write to read-only config item");
+    }
+    
+    get scratchValue(): any { return undefined; }
+    set scratchValue(value: any) { }
+}
+
+export class SettingsDialogItemViewModel extends SettingsDialogSettingViewModel implements ISettingsDialogItemViewModel {
     constructor(
         item: ConfigSchemaItemDefinitionItem,
         scope: ScopeData) {
@@ -245,6 +404,10 @@ export class SettingsDialogItemViewModel extends SettingsDialogSettingViewModel 
     }
 
     readonly schema: ConfigSchemaItemDefinitionItem;
+
+    readonly isReadOnly: boolean = false;
+
+    readonly isItem = true;
 
     private getAppConfigKey(): string {
         return this.scope.getAppConfigKey(this.schema.configBlockKey);
@@ -394,7 +557,7 @@ export class SettingsDialogItemViewModel extends SettingsDialogSettingViewModel 
     override revertToInherited() {
         this.logger.logDebug("revertToInherited start");
         this._reverted = true;
-        window.setTimeout(() => this._reverted = false, 50);
+        Scheduler.scheduleNamedCallback("SettingsDialogViewModel.revertedToInherited", 50, () => this._reverted = false);
         this.useInheritedValue = true;
         this.logger.logDebug("revertToInherited end");
     }

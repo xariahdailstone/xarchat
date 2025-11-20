@@ -16,14 +16,14 @@ class HeldCacheManagerImpl implements HeldCacheManager {
 
     addReleasableItem(releaseFunc: () => any, releaseAfterMs: number): IDisposable {
         const myKey = {};
-        let myTimeoutHandle: number | null = null;
+        let myTimeoutHandle: IDisposable | null = null;
         const wrappedReleaseFunc = () => {
             this._releasableItems.delete(myKey);
             if (myTimeoutHandle) {
                 const mth = myTimeoutHandle;
                 myTimeoutHandle = null;
                 Scheduler.scheduleNamedCallback("HeldCacheManagerImpl.addReleasableItem", ["idle", 250], () => {
-                    window.clearTimeout(mth);
+                    mth.dispose();
                 })
             }
             try {
@@ -33,12 +33,12 @@ class HeldCacheManagerImpl implements HeldCacheManager {
         };
 
         this._releasableItems.set(myKey, wrappedReleaseFunc);
-        myTimeoutHandle = window.setTimeout(() => {
+        myTimeoutHandle = Scheduler.scheduleNamedCallback("HeldCacheManager.myTimeoutHandle", releaseAfterMs, () => {
             if (myTimeoutHandle != null) {
                 myTimeoutHandle = null;
                 wrappedReleaseFunc();
             }
-        }, releaseAfterMs);
+        });
 
         return asDisposable(() => {
             this._releasableItems.delete(myKey);
@@ -46,7 +46,7 @@ class HeldCacheManagerImpl implements HeldCacheManager {
                 const mth = myTimeoutHandle;
                 myTimeoutHandle = null;
                 Scheduler.scheduleNamedCallback("HeldCacheManagerImpl.addReleasableItem.ret", ["idle", 250], () => {
-                    window.clearTimeout(mth);
+                    mth.dispose();
                 });
             }
         });

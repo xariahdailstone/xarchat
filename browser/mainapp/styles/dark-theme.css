@@ -110,4 +110,12 @@ body {
     --fg-warning-message: hsl(var(--bg-base-hue), var(--fg-base-sat), calc(100% * var(--fg-brightness-scale)));
 
     --titlebar-height: 28px;
+
+
+    --bg-toast: hsl(var(--bg-base-hue), var(--bg-base-sat), calc(29% * var(--bg-brightness-scale))); /* #313338; */
+    --fg-toast: hsl(var(--bg-base-hue), var(--fg-base-sat), calc(92% * var(--fg-brightness-scale))); /* #dbdee1; */
+    --bg-toast-invite: #205020;
+    --fg-toast-invite: #f0f0f0;
+    --bg-toast-note: #505020;
+    --fg-toast-note: #f0f0f0;
 }

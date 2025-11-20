@@ -3,10 +3,13 @@ using System.Drawing;
 using System.Runtime.InteropServices;
 using XarChat.Native.Win32.Wrapped;
 using static XarChat.Native.Win32.User32;
+using XarChat.Backend.Win32;
+using XarChat.Backend.Common;
+using System.Collections.Concurrent;
 
 namespace MinimalWin32Test.UI
 {
-    public abstract class WindowBase : IHasWindowHandle, IDisposable
+    public abstract class WindowBase : IHasWindowHandle, IWindowMessageHandlerSource, IDisposable
     {
         public WindowBase()
         {
@@ -232,9 +235,32 @@ namespace MinimalWin32Test.UI
             }
         }
 
+        nint IWindowMessageHandlerSource.WindowHandle => this.WindowHandle.Handle;
+
         protected virtual nint WndProc(WindowHandle windowHandle, uint msg, nuint wParam, nint lParam)
         {
+            foreach (var h in _messageHandlerFuncs.Values)
+            {
+                var res = h(windowHandle, msg, wParam, lParam);
+                if (res is not null)
+                {
+                    return res.Value;
+                }
+            }
             return User32.DefWindowProc(windowHandle.Handle, msg, wParam, lParam);
+        }
+
+        private readonly ConcurrentDictionary<object, PossibleWindowMessageHandlerFunc> _messageHandlerFuncs
+            = new ConcurrentDictionary<object, PossibleWindowMessageHandlerFunc>();
+
+        public IDisposable AddWindowMessageHandler(PossibleWindowMessageHandlerFunc handler)
+        {
+            var myKey = new object();
+            _messageHandlerFuncs.TryAdd(myKey, handler);
+            return new ActionDisposable(() =>
+            {
+                _messageHandlerFuncs.TryRemove(new (myKey, handler));
+            });
         }
     }
 }

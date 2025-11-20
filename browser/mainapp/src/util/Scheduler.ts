@@ -2,7 +2,7 @@ import { asDisposable, IDisposable } from "./Disposable";
 import { Logger, Logging } from "./Logger";
 import { StringUtils } from "./StringUtils";
 
-export type RunWhen = "frame" | "nextframe" | "afterframe" | "afternextframe" | "idle" | number;
+export type RunWhen = "frame" | "nextframe" | "afterframe" | "afternextframe" | "idle" | number | Date;
 
 interface DoublyLinkedListNode<T> {
     readonly item: T;
@@ -13,6 +13,8 @@ interface DoublyLinkedListNode<T> {
 class DoublyLinkedList<T> {
     private _head: DoublyLinkedListNode<T> | null = null;
     private _tail: DoublyLinkedListNode<T> | null = null;
+
+    any() { return this._head != null; }
 
     peek() { return this._head ? this._head.item : null; }
     shift() {
@@ -67,14 +69,14 @@ interface CancellableTickQueueItem extends TickQueueItem {
 class SchedulerImpl {
     constructor() {
         this._afterFrameChannel = new MessageChannel();
-        this._afterFrameChannel.port1.addEventListener("message", () => { 
+        this._afterFrameChannel.port1.onmessage = () => { 
             this._afterAnimationFrameTick();
-        });
+        };
 
         this._immediateChannel = new MessageChannel();
-        this._immediateChannel.port1.addEventListener("message", ev => {
+        this._immediateChannel.port1.onmessage = ev => {
             this._processImmediateMessage(ev.data);
-        });
+        };
     }
 
     private readonly _logger: Logger = Logging.createLogger("SchedulerImpl");
@@ -93,12 +95,23 @@ class SchedulerImpl {
     private _animationFrameTick(ms: number) {
         this._currentRAFHandle = null;
 
+        let executedTaskCount = 0;
+        let hasAfterFrameWork = false;
+        let hasNextFrameWork = false;
         const handledMessageNames = new Map<string, number>();
         try {
             this._thisAnimationTickQueue = this._nextAnimationTickQueue;
             this._nextAnimationTickQueue = new DoublyLinkedList();
 
-            while (this._thisAnimationTickQueue.peek()) {
+            if (this._thisAfterAnimationTickQueue == null || !this._thisAfterAnimationTickQueue.any()) {
+                this._thisAfterAnimationTickQueue = this._nextAfterAnimationTickQueue;
+                this._nextAfterAnimationTickQueue = new DoublyLinkedList();
+            }
+            else {
+                //console.log("thisafterframe queue not clear!")
+            }
+
+            while (this._thisAnimationTickQueue.any()) {
                 const item = this._thisAnimationTickQueue.shift();
                 if (item) {
                     let curCount = handledMessageNames.get(item.name) ?? 0;
@@ -111,34 +124,66 @@ class SchedulerImpl {
                         continue;
                     }
 
+                    executedTaskCount++;
                     try { item.callback(ms); }
                     catch { }
                 }
             }
-            if (this._nextAfterAnimationTickQueue.peek()) {
-                this._afterFrameChannel.port2.postMessage(1);
+            if (this._thisAfterAnimationTickQueue.any()) {
+                //console.log("need to do afterframe work");
+                hasAfterFrameWork = true;
+                this._afterFrameChannel.port2.postMessage("");
+            }
+            else {
+                this._thisAfterAnimationTickQueue = null;
+            }
+            if (this._nextAnimationTickQueue.any() || this._nextAfterAnimationTickQueue.any()) {
+                hasNextFrameWork = true;
+                if (!this._currentRAFHandle) {
+                    this._currentRAFHandle = window.requestAnimationFrame((ms) => this._animationFrameTick(ms));
+                }
             }
         }
         finally {
+            this._logger.logDebug("RAF executed tasks", executedTaskCount, 
+                hasAfterFrameWork ? "has after frame work" : "no after frame work",
+                hasNextFrameWork ? "has next frame work" : "no next frame work");
             this._thisAnimationTickQueue = null;
         }
     }
 
     private _afterAnimationFrameTick() {
+        let executedTaskCount = 0;
+        let hasNextFrameWork = false;
         try {
-            this._thisAfterAnimationTickQueue = this._nextAfterAnimationTickQueue;
-            this._nextAfterAnimationTickQueue = new DoublyLinkedList();
+            // this._thisAfterAnimationTickQueue = this._nextAfterAnimationTickQueue;
+            // this._nextAfterAnimationTickQueue = new DoublyLinkedList();
 
-            const now = performance.now();
-            while (this._thisAfterAnimationTickQueue.peek()) {
-                const item = this._thisAfterAnimationTickQueue.shift();
-                if (item) {
-                    try { item.callback(now); }
-                    catch { }
+            //console.log("handling afterframe registrations");
+
+            if (this._thisAfterAnimationTickQueue) {
+                const now = performance.now();
+                while (this._thisAfterAnimationTickQueue.any()) {
+                    const item = this._thisAfterAnimationTickQueue.shift();
+                    if (item) {
+                        executedTaskCount++;
+                        try { item.callback(now); }
+                        catch { }
+                    }
+                }
+            }
+
+            if (this._nextAnimationTickQueue.any() || this._nextAfterAnimationTickQueue.any()) {
+                hasNextFrameWork = true;
+                if (!this._currentRAFHandle) {
+                    this._currentRAFHandle = window.requestAnimationFrame((ms) => this._animationFrameTick(ms));
                 }
             }
         }
         finally {
+            this._logger.logDebug("after RAF executed tasks", executedTaskCount,
+                hasNextFrameWork ? "has next frame work" : "no next frame work"
+            );
             this._thisAfterAnimationTickQueue = null;
         }
     }
@@ -260,15 +305,36 @@ class SchedulerImpl {
                 }
             case "idle":
                 {
-                    const h = window.requestIdleCallback(() => {
-                        const now = performance.now();
-                        callback(now);
-                    });
-                    return () => window.cancelIdleCallback(h);
+                    if (window.requestIdleCallback) {
+                        const h = window.requestIdleCallback(() => {
+                            const now = performance.now();
+                            callback(now);
+                        });
+                        return () => window.cancelIdleCallback(h);
+                    }
+                    else {
+                        return this.singleScheduleCallbackInternal(name, 1, callback);
+                    }
                 }
             default:
                 {
-                    if (when == 0) {
+                    if (when instanceof Date) {
+                        let curCallbackReg: () => void;
+                        const fireAtMs = when.getTime();
+                        const msUntil = Math.max(0, fireAtMs - (new Date()).getTime());
+                        const xcallback = (ms: number) => {
+                            if ((new Date()).getTime() >= fireAtMs) {
+                                callback(ms);
+                            }
+                            else {
+                                const newMsUntil = Math.max(0, fireAtMs - (new Date()).getTime());
+                                curCallbackReg = this.singleScheduleCallbackInternal(name, newMsUntil, xcallback);
+                            }
+                        };
+                        curCallbackReg = this.singleScheduleCallbackInternal(name, msUntil, xcallback);
+                        return curCallbackReg;
+                    }
+                    else if (when == 0) {
                         return this._postImmediateMessage({ name, callback, cancelled: false });
                     }
                     else {

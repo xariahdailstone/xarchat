@@ -8,7 +8,7 @@ import { DisposableOwnerField, IDisposable, asDisposable, asNamedDisposable, isD
 import { testEquality } from "../util/Equality.js";
 import { EventListenerUtil } from "../util/EventListenerUtil.js";
 import { FastEventSource } from "../util/FastEventSource.js";
-import { HostInterop } from "../util/HostInterop.js";
+import { HostInterop } from "../util/hostinterop/HostInterop.js";
 import { Logger, Logging, LogLevel } from "../util/Logger.js";
 import { ObjectUniqueId } from "../util/ObjectUniqueId.js";
 import { Observable, ValueSubscription } from "../util/Observable.js";

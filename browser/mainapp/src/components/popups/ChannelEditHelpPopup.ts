@@ -1,4 +1,5 @@
 import { HTMLUtils } from "../../util/HTMLUtils";
+import { PlatformUtils } from "../../util/PlatformUtils";
 import { ChannelEditHelpPopupViewModel } from "../../viewmodel/popups/ChannelEditHelpPopupViewModel";
 import { componentArea, componentElement } from "../ComponentBase";
 import { ContextPopupBase } from "./ContextPopupBase";
@@ -11,19 +12,20 @@ export class ChannelEditHelpPopup extends ContextPopupBase<ChannelEditHelpPopupV
     constructor() {
         super();
 
+        const shortcutKeyString = PlatformUtils.shortcutKeyCombiningPrefixString;
         HTMLUtils.assignStaticHTMLFragment(this.elMain, `
             <div class="title">Shortcut Keys</div>
             <table class="commands">
                 <tr>
-                    <td>Ctrl+T</td>
+                    <td>${shortcutKeyString}T</td>
                     <td>Toggle Editing Toolbar</td>
                 </tr>
                 <tr>
-                    <td>Ctrl+W</td>
+                    <td>${shortcutKeyString}W</td>
                     <td>Toggle Editing Status Bar</td>
                 </tr>
                 <tr>
-                    <td>Ctrl+P</td>
+                    <td>${shortcutKeyString}P</td>
                     <td>Show Message Preview</td>
                 </tr>
                 <tr>
@@ -34,55 +36,55 @@ export class ChannelEditHelpPopup extends ContextPopupBase<ChannelEditHelpPopupV
                     <td class="separator" colspan="2"></td>
                 </tr>
                 <tr>
-                    <td>Ctrl+B</td>
+                    <td>${shortcutKeyString}B</td>
                     <td>Bold</td>
                 </tr>
                 <tr>
-                    <td>Ctrl+I</td>
+                    <td>${shortcutKeyString}I</td>
                     <td>Italic</td>
                 </tr>
                 <tr>
-                    <td>Ctrl+U</td>
+                    <td>${shortcutKeyString}U</td>
                     <td>Underline</td>
                 </tr>
                 <tr>
-                    <td>Ctrl+S</td>
+                    <td>${shortcutKeyString}S</td>
                     <td>Strikethrough</td>
                 </tr>
                 <tr>
-                    <td>Ctrl+&#x25BC;</td>
+                    <td>${shortcutKeyString}&#x25BC;</td>
                     <td>Subscript</td>
                 </tr>
                 <tr>
-                    <td>Ctrl+&#x25B2;</td>
+                    <td>${shortcutKeyString}&#x25B2;</td>
                     <td>Superscript</td>
                 </tr>
                 <tr>
-                    <td>Ctrl+K</td>
+                    <td>${shortcutKeyString}K</td>
                     <td>Spoiler</td>
                 </tr>
                 <tr>
-                    <td>Ctrl+D</td>
+                    <td>${shortcutKeyString}D</td>
                     <td>Color</td>
                 </tr>
                 <tr>
-                    <td>Ctrl+R</td>
+                    <td>${shortcutKeyString}R</td>
                     <td>User Link</td>
                 </tr>
                 <tr>
-                    <td>Ctrl+O</td>
+                    <td>${shortcutKeyString}O</td>
                     <td>User Icon</td>
                 </tr>
                 <tr>
-                    <td>Ctrl+E</td>
+                    <td>${shortcutKeyString}E</td>
                     <td id="elCtrlEDescription">Show EIcon Search</td>
                 </tr>
                 <tr id="elCtrlAltERow">
-                    <td>Ctrl+Alt+E</td>
+                    <td>${shortcutKeyString}Alt+E</td>
                     <td>Show EIcon Search</td>
                 </tr>
                 <tr>
-                    <td>Ctrl+N</td>
+                    <td>${shortcutKeyString}N</td>
                     <td>No Parse</td>
                 </tr>
             </table>    

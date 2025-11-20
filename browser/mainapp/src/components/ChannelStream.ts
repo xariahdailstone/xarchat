@@ -14,6 +14,8 @@ import { EventListenerUtil } from "../util/EventListenerUtil.js";
 import { getRoot } from "../util/GetRoot.js";
 import { HTMLUtils } from "../util/HTMLUtils.js";
 import { IterableUtils } from "../util/IterableUtils.js";
+import { Logger, Logging } from "../util/Logger.js";
+import { ObjectUniqueId } from "../util/ObjectUniqueId.js";
 import { ObservableValue } from "../util/Observable.js";
 import { FirstInAnimationFrameManager } from "../util/RequestAnimationFrameHook.js";
 import { ResizeObserverNice } from "../util/ResizeObserverNice.js";
@@ -28,7 +30,7 @@ import { CollectionViewLightweight } from "./CollectionViewLightweight.js";
 import { ComponentBase, componentElement } from "./ComponentBase.js";
 import { StatusDotLightweight } from "./StatusDot.js";
 
-enum ScrollSuppressionReason {
+export enum ScrollSuppressionReason {
     NotConnectedToDocument = "NotConnectedToDocument",
     CMCVNotReady = "CMCVNotReady",
     CMCVUpdatingElements = "CMCVUpdatingElements",
@@ -375,11 +377,11 @@ export class ChannelMessageCollectionView extends ComponentBase<ReadOnlyStdObser
     private readonly _renderer: ChannelStreamMessageViewRenderer = new ChannelStreamMessageViewRenderer();
 }
 
-interface AnchorElementInfo {
+export interface AnchorElementInfo {
     elementIdentity: any;
     element: HTMLElement;
 }
-interface AnchorElementScrollTo {
+export interface AnchorElementScrollTo {
     elementIdentity: object;
     scrollDepth: number;
 }
@@ -437,6 +439,10 @@ export class DefaultStreamScrollManager implements StreamScrollManager {
                 this._enabledDisposables.push(EventListenerUtil.addDisposableEventListener(this.containerElement, "scroll", (e: Event) => this.containerScrolled()));
                 this._enabledDisposables.push(EventListenerUtil.addDisposableEventListener(window, "resize", (e: Event) => this.resetScroll()));
                 this._enabledDisposables.push(EventListenerUtil.addDisposableEventListener(window, "focus", (e: Event) => this.resetScroll(false, true)));
+
+                const ro = new ResizeObserverNice(() => { this.resetScroll(); });
+                ro.observe(this.containerElement);
+                this._enabledDisposables.push(asDisposable(() => { ro.disconnect(); }));
             }
         }
     }
@@ -555,7 +561,7 @@ export class DefaultStreamScrollManager implements StreamScrollManager {
 
     setNextUpdateIsSmooth() {
         this._nextUpdateIsSmooth = true;
-        window.setTimeout(() => this._nextUpdateIsSmooth = false, 100);
+        Scheduler.scheduleNamedCallback("ChannelStream.setNextUpdateIsSmooth", 100, () => this._nextUpdateIsSmooth = false);
     }
 
     resetScroll(smooth?: boolean, immediate?: boolean) {
@@ -574,8 +580,12 @@ export class DefaultStreamScrollManager implements StreamScrollManager {
         }
     }
 
+    private readonly logger: Logger = Logging.createLogger(`DefaultStreamScrollManager#${ObjectUniqueId.get(this)}`);
+
     private resetScrollInternal() {
         this.suppressScrollRecording(ScrollSuppressionReason.ResettingScrollInternal);
+
+        //this.logger.logDebug("resetScrollInternal", this.scrolledTo);
 
         let isSmoothScroll = this._pendingScrollSmooth;
         let isScrolledToMaximum: boolean;

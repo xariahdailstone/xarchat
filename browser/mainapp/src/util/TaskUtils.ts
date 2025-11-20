@@ -27,13 +27,13 @@ export class TaskUtils {
 
         let timeoutHandle: IDisposable;
         if (ms > 0) {
-            const thNum = window.setTimeout(() => {
+            const thNum = Scheduler.scheduleNamedCallback("TaskUtils.delay", ms, () => {
                 if (!resolved) {
                     resolved = true;
                     ps.tryResolve();
                 }
-            }, ms);
-            timeoutHandle = asDisposable(() => window.clearTimeout(thNum));
+            });
+            timeoutHandle = asDisposable(() => thNum.dispose());
         }
         else {
             timeoutHandle = Scheduler.scheduleNamedCallback("TaskUtils.delay", ["idle", 250], () => {

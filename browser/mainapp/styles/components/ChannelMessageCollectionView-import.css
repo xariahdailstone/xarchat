@@ -2,6 +2,7 @@
     overflow-x: hidden;
     font-size: var(--chat-font-size);
     font-family: var(--chat-font-family);
+    -webkit-user-select: text;
     user-select: text;
 
     /* background: inherit; */
@@ -11,6 +12,7 @@
 }
 
 .messageitem {
+    -webkit-user-select: text;
     user-select: text;
     /* border-bottom: 1px solid var(--bg-level-2); */
     font-size: 100%;
@@ -35,6 +37,7 @@
 
 #elBottomNotifications {
     display: none;
+    -webkit-user-select: none;
     user-select: none;
 }
 #elBottomNotifications:has(.shown) {
@@ -141,6 +144,7 @@
         height: var(--icon-height);
         margin: 0 9px 9px 9px;
         align-self: flex-start;
+        -webkit-user-select: none;
         user-select: none;
     }
     & .dice-icon {
@@ -221,6 +225,7 @@
         height: var(--icon-height);
         margin: 0 9px 9px 9px;
         align-self: flex-start;
+        -webkit-user-select: none;
         user-select: none;
     }
     & .statusdot {
@@ -318,10 +323,12 @@
     & .character-status {
         font-style: normal;
         display: inline;
+        -webkit-user-select: none;
         user-select: none;
     }
 
     & .character-status-spacer {
+        -webkit-user-select: none;
         user-select: none;
     }
 
@@ -336,6 +343,7 @@
 }
 
 .messageitem-lognav {
+    -webkit-user-select: none;
     user-select: none;
     
     & .lognavtext {
@@ -391,6 +399,7 @@
 .collapse-host .collapse-button-container {
     float: right;
     padding: 5px;
+    -webkit-user-select: none;
     user-select: none;
 }
 .collapse-host:not(.is-oversized) .collapse-button-container {
@@ -564,6 +573,7 @@
             width: 42px;
             height: 42px;
             margin-right: 11px;
+            -webkit-user-select: none;
             user-select: none;
             z-index: 2;
         }
@@ -571,6 +581,7 @@
             font-weight: bold;
             align-self: flex-end;
             margin-right: 8px;
+            -webkit-user-select: none;
             user-select: none;
 
             & .statusdot {
@@ -582,9 +593,11 @@
             align-self: flex-end;
             margin-bottom: 0.15em;
             opacity: 0.5;
+            -webkit-user-select: none;
             user-select: none;
         }
         & .dice-icon { 
+            -webkit-user-select: none;
             user-select: none; 
             align-self: center;
             margin-right: 6px;

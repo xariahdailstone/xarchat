@@ -3,7 +3,7 @@ import { CharacterName } from "../shared/CharacterName";
 import { OnlineStatus } from "../shared/OnlineStatus";
 import { TypingStatus } from "../shared/TypingStatus";
 import { EventListenerUtil } from "../util/EventListenerUtil";
-import { HostInterop } from "../util/HostInterop";
+import { HostInterop } from "../util/hostinterop/HostInterop";
 import { IdleDetectionScreenState, IdleDetectionUserState } from "../util/IdleDetection";
 import { PromiseSource } from "../util/PromiseSource";
 import { Scheduler } from "../util/Scheduler";
@@ -12,6 +12,7 @@ import { ChannelBanListInfo, ChannelMetadata, ChannelOpListInfo, ChatConnection,
 import { ChatConnectionImpl } from "./ChatConnectionImpl";
 import { ChatConnectionSink } from "./ChatConnectionSink";
 import { ProfileInfo } from "./api/FListApi";
+import { ChatWebSocket } from "../util/hostinterop/IHostInterop";
 
 const testDisconnectActions = new Map<object, () => void>();
 (window as any).__getSocketCount = () => { return testDisconnectActions.size; };
@@ -23,54 +24,19 @@ const testDisconnectActions = new Map<object, () => void>();
 
 export class ChatConnectionFactoryImpl {
     create(sink: Partial<ChatConnectionSink>): Promise<ChatConnection> {
-        // if (HostInterop.isInXarChatHost) {
-        //     return this.createWithHostInterop(sink);
-        // }
-        // else {
-            return this.createWithWebSocket(sink);
-        // }
+        return this.createWithWebSocket(sink);
     }
 
-    // async createWithHostInterop(sink: Partial<ChatConnectionSink>): Promise<ChatConnection> {
-    //     const x = await HostInterop.openSocketAsync("wss://flprox.evercrest.com/connect");
-    //     const cci = new ChatConnectionImpl(sink, data => { x.sendAsync(data); });
-    //     cci.ondisposed = () => {
-    //         x.dispose();
-    //     };
-        
-    //     (async function() {
-    //         while (true) {
-    //             const recvd = await x.receiveAsync();
-    //             if (recvd != null) {
-    //                 cci.processIncomingData(recvd);
-    //             }
-    //             else {
-    //                 cci.dispose();
-    //                 break;
-    //             }
-    //         }
-    //     })();
-    //     return cci;
-    // }
-
-    readonly _openWebSockets: SnapshottableSet<WebSocket> = new SnapshottableSet();
+    readonly _openWebSockets: SnapshottableSet<ChatWebSocket> = new SnapshottableSet();
 
     createWithWebSocket(sink: Partial<ChatConnectionSink>): Promise<ChatConnection> {
         return new Promise<ChatConnection>((resolve, reject) => {
-            let zws: WebSocket | null = null;
+            let zws: ChatWebSocket | null = null;
             let completed = false;
             let socketSendFailure: (string | null) = "Socket not yet open";
             let zcci: ChatConnectionImpl | null = null;
             try {
-                let url = new URL(`wss://${document.location.host}/api/chatSocket`);
-                const sp = new URLSearchParams(document.location.search);
-                if (sp.has("wsport")) {
-                    if (url.hostname == "localhost") {
-                        url.port = sp.get("wsport")!;
-                    }
-                }
-                //const ws = new WebSocket(`wss://${document.location.host}/api/chatSocket`);
-                const ws = new WebSocket(url.href);
+                const ws = HostInterop.createChatWebSocket();
                 zws = ws;
                 const cci = new ChatConnectionImpl(sink, data => { 
                         if (socketSendFailure == null) {

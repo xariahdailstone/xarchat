@@ -76,7 +76,7 @@ namespace XarChat.Backend.Features.LocalDataCache.Sqlite
             var now = DateTime.UtcNow;
             var since = now - maxAge;
             TaskCompletionSource<string>? tcs = null;
-            CacheEntry ce;
+            CacheEntry? ce;
 
             if (!_memoryCache.TryGetValue(cacheKey, out ce) || ce.UpdatedAt >= since)
             {

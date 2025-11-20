@@ -77,6 +77,12 @@ using XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.GetLocaleList;
 using XarChat.Backend.Logging;
 using XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.AppSettings;
 using XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.FlashWindow;
+using XarChat.Backend.Features.WindowControl;
+using XarChat.Backend.Features.AppDataFolder;
+using XarChat.Backend.Features.IdleDetection;
+using XarChat.Backend.Features.NotificationBadge;
+using XarChat.Backend.Features.FileChooser;
+using XarChat.Backend.Features.LocaleList;
 
 namespace XarChat.Backend
 {
@@ -325,6 +331,14 @@ namespace XarChat.Backend
             services.AddSingleton<ICommandableWindowRegistry, CommandableWindowRegistry>();
 
             _backendServiceSetup.ConfigureServices(services);
+            services.AddSingleton<IWindowControl>(sp => sp.GetRequiredService<IRequiredServicesProvider>().WindowControl);
+            services.AddSingleton<IAppDataFolder>(sp => sp.GetRequiredService<IRequiredServicesProvider>().AppDataFolder);
+            services.AddSingleton<IIdleDetectionManager>(sp => sp.GetRequiredService<IRequiredServicesProvider>().IdleDetectionManager);
+            services.AddSingleton<INotificationBadgeManager>(sp => sp.GetRequiredService<IRequiredServicesProvider>().NotificationBadgeManager);
+            services.AddSingleton<IAppSettingsDataProtectionManager>(sp => sp.GetRequiredService<IRequiredServicesProvider>().AppSettingsDataProtectionManager);
+            services.AddSingleton<IFileChooser>(sp => sp.GetRequiredService<IRequiredServicesProvider>().FileChooser);
+            services.AddSingleton<ICrashLogWriterCallback>(sp => sp.GetRequiredService<IRequiredServicesProvider>().CrashLogWriterCallback);
+            services.AddSingleton<ILocaleList>(sp => sp.GetRequiredService<IRequiredServicesProvider>().LocaleList);
 
             if (!services.Any(sd => sd.ServiceType == typeof(IMemoryHinter)))
             {
@@ -349,6 +363,7 @@ namespace XarChat.Backend
             services.AddXCHostCommandHandler<WinCloseCommandHandler>("win.close");
             services.AddXCHostCommandHandler<LogChannelMessageCommandHandler>("log.ChannelMessage");
             services.AddXCHostCommandHandler<LogPMConvoMessageCommandHandler>("log.PMConvoMessage");
+            services.AddXCHostCommandHandler<GetChatLogSizeCommandHandler>("log.GetLogSize");
             services.AddXCHostCommandHandler<EndCharacterSessionCommandHandler>("endCharacterSession");
             services.AddXCHostCommandHandler<UpdateAppBadgeCommandHandler>("updateAppBadge");
             services.AddXCHostCommandHandler<AddIdleMonitorRegistrationCommandHandler>("addIdleMonitorRegistration");
@@ -371,9 +386,9 @@ namespace XarChat.Backend
             services.AddXCHostCommandHandler<FlashWindowCommandHandler>("flashWindow");
         }
 
-        private object _concurrentCountLock = new object();
-        private int _concurrentRequestCount = 0;
-        private int _concurrentHighwater = 0;
+        //private object _concurrentCountLock = new object();
+        //private int _concurrentRequestCount = 0;
+        //private int _concurrentHighwater = 0;
 
         private void Configure(Action<string> startupLogWriter, WebApplication app)
         {
@@ -439,7 +454,7 @@ namespace XarChat.Backend
                     {
                         var afs = httpContext.RequestServices.GetRequiredService<IAppFileServer>();
                         var result = await afs.HandleRequestAsync(relPath, cancellationToken);
-                        httpContext.Response.Headers.Add("Cache-Control", "no-cache, no-store");
+                        httpContext.Response.Headers.Append("Cache-Control", "no-cache, no-store");
                         return result;
                     }
                     catch (Exception ex)
@@ -500,11 +515,11 @@ namespace XarChat.Backend
                 //certificate.FriendlyName = commonName;
 
                 // Return the PFX exported version that contains the key
-                return new X509Certificate2(
+                
+                return X509CertificateLoader.LoadPkcs12(
                     certificate.Export(X509ContentType.Pfx, password),
                     password,
                     X509KeyStorageFlags.UserKeySet);
-                //X509KeyStorageFlags.MachineKeySet);
             }
         }
     }

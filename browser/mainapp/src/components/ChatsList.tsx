@@ -19,7 +19,8 @@ import { Observable } from "../util/Observable.js";
 import { ObservableExpression } from "../util/ObservableExpression.js";
 import { Optional } from "../util/Optional.js";
 import { StringUtils } from "../util/StringUtils.js";
-import { SubrenderingManager } from "../util/SubrenderingManager.js";
+import { ISubrenderingManager } from "../util/SubrenderingManager.js";
+import { SubrenderingManager2 } from "../util/SubrenderingManager2.js";
 import { WhenChangeManager } from "../util/WhenChange.js";
 import { KeyValuePair } from "../util/collections/KeyValuePair.js";
 import { ActiveLoginViewModel } from "../viewmodel/ActiveLoginViewModel.js";
@@ -58,13 +59,13 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
             this.setupScrollerAlertsNotifications(addDisposable);
             this.setupChannelDragHosts(addDisposable);
 
-            this._chatSubrenderingManagerPMs = new SubrenderingManager("ChatsList");
-            // this._chatSubrenderingManagerChans = new SubrenderingManager("ChatsList");
-             addDisposable(() => {
+            //this._chatSubrenderingManagerPMs = new SubrenderingManager("ChatsList");
+            this._chatSubrenderingManagerPMs = new SubrenderingManager2("ChatsList");
+            //this._chatSubrenderingManagerPMs = new NullSubrenderingManager();
+            
+            addDisposable(() => {
                  this._chatSubrenderingManagerPMs?.dispose();
                  this._chatSubrenderingManagerPMs = null;
-            //     this._chatSubrenderingManagerChans?.dispose();
-            //     this._chatSubrenderingManagerChans = null;
             });
 
             return asDisposable(...disposables);
@@ -399,7 +400,7 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
         return asDisposable(...disposables);
     }
 
-    private _chatSubrenderingManagerPMs: SubrenderingManager | null = null;
+    private _chatSubrenderingManagerPMs: ISubrenderingManager | null = null;
     //private _chatSubrenderingManagerChans: SubrenderingManager | null = null;
 
     protected render(): (VNode | [VNode, IDisposable]) {
@@ -442,14 +443,29 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
         
         const unseenDotStyle = vm.getConfigSettingById("unseenIndicatorStyle") as string;
 
+        const sectionOrdering = vm.getConfigSettingById("leftBar.sectionOrdering") as string;
+
+        const density = vm.getConfigSettingById("leftBar.density");
+
         this._chatSubrenderingManagerPMs?.mark();
         //this._chatSubrenderingManagerChans?.mark();
         try {
-            return <div key={`scroller-${vm.characterName.canonicalValue}`} id="scroller">
-                {this.renderPinnedChannelsSection(vm, unseenDotStyle)}
-                {this.renderUnpinnedChannelsSection(vm, unseenDotStyle)}
-                {this.renderPrivateMessagesSection(vm, unseenDotStyle, charStatusSubSet, nicknameSubSet)}
-            </div>;
+            if (sectionOrdering == "pc")
+            {
+                return <div key={`scroller-${vm.characterName.canonicalValue}`} id="scroller" classList={[ `density-${density}` ]}>
+                    {this.renderPrivateMessagesSection(vm, unseenDotStyle, charStatusSubSet, nicknameSubSet)}
+                    {this.renderPinnedChannelsSection(vm, unseenDotStyle)}
+                    {this.renderUnpinnedChannelsSection(vm, unseenDotStyle)}
+                </div>;
+            }
+            else
+            {
+                return <div key={`scroller-${vm.characterName.canonicalValue}`} id="scroller" classList={[ `density-${density}` ]}>
+                    {this.renderPinnedChannelsSection(vm, unseenDotStyle)}
+                    {this.renderUnpinnedChannelsSection(vm, unseenDotStyle)}
+                    {this.renderPrivateMessagesSection(vm, unseenDotStyle, charStatusSubSet, nicknameSubSet)}
+                </div>;
+            }
         }
         finally {
         //    this._chatSubrenderingManagerChans?.sweep();

@@ -94,7 +94,7 @@ export class TooltipPopup extends ContextPopupBase<TooltipPopupViewModel> {
         this.whenConnectedWithViewModel(vm => {
             if (vm.flashDisplay) {
                 this.elMain.classList.add("flash-display");
-                this.elMain.addEventListener("animationend", (e) => {
+                EventListenerUtil.addAnimationEndOrTimedEvent(this.elMain, () => {
                     vm.dismissed();
                 });
             }

@@ -1,6 +1,6 @@
 import { jsx, VNode, Fragment } from "../snabbdom/index.js";
 import { IDisposable } from "../util/Disposable.js";
-import { FocusMagnet } from "../util/FocusMagnet.js";
+import { FocusMagnet, FocusUtil } from "../util/FocusMagnet.js";
 import { HTMLUtils } from "../util/HTMLUtils.js";
 import { getValueReference } from "../util/ValueReference.js";
 import { ChannelViewModel } from "../viewmodel/ChannelViewModel.js";
@@ -29,11 +29,11 @@ export class ChannelView extends StageViewComponent<ChannelViewModel> {
         });
 
         this.addEventListener("mouseup", () => {
-        const elChannelStream = this.$("elChannelStream") as ChannelStream;
+            const elChannelStream = this.$("elChannelStream") as ChannelStream;
             if (elChannelStream && !elChannelStream.hasTextSelection && FocusMagnet.instance.ultimateFocus == null) {
                 const elTextBox = this.$("elTextBox") as ChannelTextBox;
                 if (elTextBox) {
-                    elTextBox.focusTextBox();
+                    elTextBox.focusTextBox(false);
                 }
             }    
         });
@@ -45,7 +45,7 @@ export class ChannelView extends StageViewComponent<ChannelViewModel> {
 
     render(rargs: RenderArguments): (VNode | [VNode, IDisposable]) {
         try {
-            this.logger.logInfo("ChannelView rendering");
+            this.logger.logDebug("ChannelView rendering");
             
             const vm = this.viewModel;
             if (!vm) { return <></>; }
@@ -109,7 +109,7 @@ export class ChannelView extends StageViewComponent<ChannelViewModel> {
         const elTextBox = this.$("elTextBox") as ChannelTextBox;
         if (elTextBox) {
             this._focusTextBox = false;
-            elTextBox.focusTextBox();
+            elTextBox.focusTextBox(true);
         }
         else {
             this._focusTextBox = true;
@@ -140,8 +140,9 @@ export class OLDChannelView extends StageViewComponent<ChannelViewModel> {
         const elTextBoxSplitter = this.$("elTextBoxSplitter") as SplitterHandle;
 
         this.addEventListener("mouseup", () => {
-            if (!elChannelStream.hasTextSelection && FocusMagnet.instance.ultimateFocus == null) {
-                elTextBox.focusTextBox();
+            //if (!elChannelStream.hasTextSelection && FocusMagnet.instance.ultimateFocus == null) {
+            if (!elChannelStream.hasTextSelection && FocusUtil.instance.ultimateFocus == null) {
+                elTextBox.focusTextBox(false);
             }    
         });
 
@@ -174,7 +175,7 @@ export class OLDChannelView extends StageViewComponent<ChannelViewModel> {
 
     override viewActivated(): void {
         const elTextBox = this.$("elTextBox") as ChannelTextBox;
-        elTextBox.focusTextBox();
+        elTextBox.focusTextBox(true);
     }
 
     protected override viewModelChanged(): void {

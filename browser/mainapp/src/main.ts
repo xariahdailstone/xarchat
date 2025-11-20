@@ -1,7 +1,7 @@
 import { StyleLoader } from "./components/ComponentBase.js";
 import { MainInterface } from "./components/MainInterface.js";
 import { HostInteropConfigBlock } from "./util/ConfigBlock.js";
-import { HostInterop } from "./util/HostInterop.js";
+import { HostInterop } from "./util/hostinterop/HostInterop.js";
 import { KeyCodes } from "./util/KeyCodes.js";
 import { hookRequestAnimationFrame } from "./util/RequestAnimationFrameHook.js";
 import { polyfillRequestIdleCallback } from "./util/RequestIdleCallbackPolyfill.js";
@@ -10,11 +10,14 @@ import { XarChatUtils } from "./util/XarChatUtils.js";
 import { AppViewModel } from "./viewmodel/AppViewModel.js";
 import { AppInitializeViewModel } from "./viewmodel/dialogs/AppInitializeViewModel.js";
 import { registerDebuggingFunctions } from "./util/debugging/DebugUtils.js";
+import { PlatformUtils } from "./util/PlatformUtils.js";
+
+polyfillRequestIdleCallback();
 
 registerDebuggingFunctions();
 
 hookRequestAnimationFrame();
-
+    
 function onReady(func: Function) {
     if (/complete|interactive|loaded/.test(document.readyState)) {
         func();
@@ -42,8 +45,6 @@ onReady(async () => {
     elMain.id = "elMain";
     document.body.insertBefore(elMain, document.body.firstChild);
 
-    polyfillRequestIdleCallback();
-    
     //alert("in main.onReady");
     const cb = await HostInteropConfigBlock.createAsync();
 
@@ -120,19 +121,19 @@ document.body.style.setProperty("--device-pixel-ratio", window.devicePixelRatio.
 
 document.addEventListener("keydown", (e) => {
     if (e.keyCode == KeyCodes.KEY_R) {
-        if (e.ctrlKey) {
+        if (PlatformUtils.isShortcutKey(e)) {
             e.preventDefault();
             e.stopPropagation();
         }
     }
     else if (e.keyCode == KeyCodes.KEY_G) {
-        if (e.ctrlKey && e.shiftKey) {
+        if (PlatformUtils.isShortcutKey(e) && e.shiftKey) {
             HostInterop.performWindowCommandAsync(null, { cmd: "restartgpu" });
             e.preventDefault();
             e.stopPropagation();
         }
     }
-    else if (e.keyCode == KeyCodes.KEY_P && e.ctrlKey) {
+    else if (e.keyCode == KeyCodes.KEY_P && PlatformUtils.isShortcutKey(e)) {
         e.preventDefault();
     }
     else if (e.keyCode == KeyCodes.F11) {

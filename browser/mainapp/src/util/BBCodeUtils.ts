@@ -8,6 +8,7 @@ import { MessagePreviewPopupViewModel } from "../viewmodel/popups/MessagePreview
 import { ChatBBCodeParser } from "./bbcode/BBCode";
 import { EventListenerUtil } from "./EventListenerUtil";
 import { KeyCodes } from "./KeyCodes";
+import { PlatformUtils } from "./PlatformUtils";
 import { TextEditShortcutsHelper } from "./TextEditShortcutsHelper";
 
 const urlPattern = new RegExp(/(.*?)(http(s)?\:\/\/(\S+))/, "ig");
@@ -15,7 +16,7 @@ const urlPattern = new RegExp(/(.*?)(http(s)?\:\/\/(\S+))/, "ig");
 const CUR_POPUP_VM = Symbol();
 
 function tryHandleEditShortcutKey(textarea: HTMLTextAreaElement, ev: KeyboardEvent, options: AddEditingShortcutsOptions) {
-    if (ev.ctrlKey) {
+    if (PlatformUtils.isShortcutKey(ev)) {
         const tesh = new TextEditShortcutsHelper();
         tesh.value = textarea.value;
         tesh.selectionAt = Math.min(textarea.selectionStart, textarea.selectionEnd)

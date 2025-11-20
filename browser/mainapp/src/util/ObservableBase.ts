@@ -3,7 +3,7 @@ import { SnapshottableSet } from "./collections/SnapshottableSet.js";
 import { asDisposable, EmptyDisposable, IDisposable, isDisposable } from "./Disposable.js";
 import { Logger, Logging } from "./Logger.js";
 import { ObjectUniqueId } from "./ObjectUniqueId.js";
-import { Observable, PropertyChangeEvent, PropertyChangeEventListener, ValueSubscription } from "./Observable.js";
+import { IObservable, Observable, PropertyChangeEvent, PropertyChangeEventListener, ValueSubscription } from "./Observable.js";
 import { Collection } from "./ObservableCollection.js";
 import { Scheduler } from "./Scheduler.js";
 
@@ -203,7 +203,7 @@ export class ValueSubscriptionImpl implements ValueSubscription {
     get isDisposed() { return this._disposed; }
 }
 
-export function setupValueSubscription(observable: Observable, propertyPath: string, handler: (value: any) => any): ValueSubscription {
+export function setupValueSubscription(observable: IObservable<any>, propertyPath: string, handler: (value: any) => any): ValueSubscription {
     const ppDotIdx = propertyPath.indexOf('.');
     const thisProp = (ppDotIdx == -1) ? propertyPath : propertyPath.split('.')[0];
     
@@ -246,7 +246,7 @@ export function setupValueSubscription(observable: Observable, propertyPath: str
             if (canAddValueSubscription(curThisValue)) {
                 const subPropertyPath = propertyPath.split('.');
                 subPropertyPath.shift();
-                mySubSubscription = (curThisValue as Observable).addValueSubscription(subPropertyPath.join('.'), (v) => {
+                mySubSubscription = (curThisValue as IObservable<any>).addValueSubscription(subPropertyPath.join('.'), (v) => {
                     setCurValue(v);
                 });
                 setCurValue(mySubSubscription.value);
