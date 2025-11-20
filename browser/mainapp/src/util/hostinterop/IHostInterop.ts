@@ -14,11 +14,20 @@ import { LogMessageType, LogChannelMessage, LogPMConvoMessage, HostWindowState, 
 import { IObservable, ObservableValue } from "../Observable";
 import { HostInteropLogFileMaintenance } from "./HostInteropLogFileMaintenance";
 
+export interface UrlLaunchedEventArgs {
+    url: string;
+    forceExternal: boolean;
+}
 
 export interface IHostInterop {
     get isInXarChatHost(): boolean;
     get devMode(): boolean;
+
     launchUrl(app: AppViewModel, url: string, forceExternal: boolean): void;
+
+    addUrlLaunchedHandler(callback: (args: UrlLaunchedEventArgs) => void): IDisposable;
+    removeUrlLaunchedHandler(callback: (args: UrlLaunchedEventArgs) => void): void;
+
     launchCharacterReport(app: AppViewModel, name: CharacterName): Promise<void>;
     getImagePreviewPopupUrlAsync(url: string): Promise<(string | null)>;
     appReady(): void;

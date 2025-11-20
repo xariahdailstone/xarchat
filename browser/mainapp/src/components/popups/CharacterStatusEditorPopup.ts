@@ -27,7 +27,7 @@ export class CharacterStatusEditorPopup extends ContextPopupBase<CharacterStatus
             <div class="character-name" id="elCharacterName"></div>
             <div class="online-status-container">
                 <div class="online-status-label">Online Status:</div>
-                <select class="online-status-select" id="elOnlineStatusSelect">
+                <select class="online-status-select" id="elOnlineStatusSelect" data-canhavefocus="true">
                     <option>Online</option>
                     <option>Looking</option>
                     <option>Busy</option>

@@ -8,20 +8,32 @@ import { CharacterStatus } from "./shared/CharacterSet";
 import { OnlineStatus, OnlineStatusConvert } from "./shared/OnlineStatus";
 import { TypingStatus } from "./shared/TypingStatus";
 import { SnapshottableMap } from "./util/collections/SnapshottableMap";
+import { DateUtils } from "./util/DateTimeUtils";
+import { IDisposable, tryDispose } from "./util/Disposable";
+import { HostInterop } from "./util/hostinterop/HostInterop";
 import { Logger, Logging } from "./util/Logger";
+import { ObservableExpression } from "./util/ObservableExpression";
+import { Scheduler } from "./util/Scheduler";
 import { StringUtils } from "./util/StringUtils";
 import { URLUtils } from "./util/URLUtils";
 import { ActiveLoginViewModel, ChatConnectionState } from "./viewmodel/ActiveLoginViewModel";
 import { ChannelViewModel } from "./viewmodel/ChannelViewModel";
 import { ChatChannelMessageMode, ChatChannelPresenceState, ChatChannelViewModel } from "./viewmodel/ChatChannelViewModel";
+import { ToastConflictBehavior, ToastInfo } from "./viewmodel/InAppToastsViewModel";
+import { NotificationViewModel } from "./viewmodel/NotificationManagerViewModel";
 
 let nextSinkId = 1;
+
+interface RoutingInfo {
+    channels: { chanVm: ChannelViewModel, isImportant: boolean }[];
+    toast: boolean;
+}
 
 class EventMessagesConfig {
     constructor(private readonly activeLoginViewModel: ActiveLoginViewModel) {
     }
 
-    getRouting(args: GetRoutingArgs): { chanVm: ChannelViewModel, isImportant: boolean }[] {
+    getRouting(args: GetRoutingArgs): RoutingInfo {
         let targetStr: string | null = null;
         let gotTargetStr = false;
         for (let cfgtarget of [ this.activeLoginViewModel.characterName.canonicalValue, 'global' ]) {
@@ -48,6 +60,7 @@ class EventMessagesConfig {
             }
         }
 
+        let sendToast: boolean = false;
         const resultsMap: Map<ChannelViewModel, boolean> = new Map();
         //const results: { chanVm: ChannelViewModel, isImportant: boolean }[] = [];
         for (let target of targetStr.split(',')) {
@@ -94,6 +107,9 @@ class EventMessagesConfig {
                         }
                     }
                     break;
+                case "toast":
+                    sendToast = true;
+                    break;
                 default:
                     break;
             }
@@ -110,7 +126,7 @@ class EventMessagesConfig {
             results.push({ chanVm: tr[0], isImportant: tr[1] });
         }
 
-        return results;
+        return { channels: results, toast: sendToast };
     }
 
     private getSubtargets(args: GetRoutingArgs) {
@@ -168,7 +184,9 @@ export class ChatViewModelSink implements ChatConnectionSink {
             perCharEventName?: string,
             targetChannel?: ChannelName,
             targetCharacter?: CharacterName,
-            suppressPing?: boolean
+            suppressPing?: boolean,
+            createToast: (() => (ToastInfo | null)) | null,
+            createNotification: (() => any) | null
         }
     ) {
         let cfg = this.viewModel.getConfigSettingById(getFullRoutedNotificationConfigName(options.eventName)) as string;
@@ -211,6 +229,19 @@ export class ChatViewModelSink implements ChatConnectionSink {
                 targets.set(this.viewModel.selectedChannel, targets.get(this.viewModel.selectedChannel) || nr.everywhere == "important");
             }
             targets.set(this.viewModel.console, targets.get(this.viewModel.console) || nr.everywhere == "important");
+        }
+        if (nr.toast != "no") {
+            if (options.createToast) {
+                const toastInfo = options.createToast();
+                if (toastInfo) {
+                    this.viewModel.appViewModel.toasts.addNewToast(toastInfo);
+                }
+            }
+        }
+        if (nr.notification != "no") {
+            if (options.createNotification) {
+                options.createNotification();
+            }
         }
         for (let kvp of targets) {
             const chan = kvp[0];
@@ -315,11 +346,325 @@ export class ChatViewModelSink implements ChatConnectionSink {
         vm.characterSet.clear();
     }
 
+    private notifToastDuration: number = 4000;
+
+    private createCharUpdateNotificationToast(char: CharacterName, message: string): ToastInfo {
+        // TODO:
+        return {
+            uniqueKey: `charupdate-${char.canonicalValue}-${message}`,
+            uniqueConflictBehavior: ToastConflictBehavior.Debounce,
+            cssClasses: [ "toast-charupdate" ],
+            description: message,
+            canClose: false,
+            priority: 10,
+            expiresAt: DateUtils.addMilliseconds(new Date(), this.notifToastDuration)
+        };
+    }
+
+    private createCharUpdateNotification(char: CharacterName, message: string) {
+        const notif = new NotificationViewModel(this.viewModel, {
+            message: message,
+            isPersistent: false
+        });
+        this.viewModel.recentNotifications.addNotification(notif);
+    }
+
+    private createKickedNotificationToast(message: string): ToastInfo {
+        // TODO:
+        return {
+            cssClasses: [ "toast-kicked" ],
+            description: message,
+            canClose: false,
+            priority: 10,
+            expiresAt: DateUtils.addMilliseconds(new Date(), this.notifToastDuration)
+        };
+    }
+
+    private createKickedNotification(message: string) {
+        const notif = new NotificationViewModel(this.viewModel, {
+            message: message,
+            isPersistent: false
+        });
+        this.viewModel.recentNotifications.addNotification(notif);
+    }
+
+    private createOtherCharKickedNotificationToast(message: string): ToastInfo {
+        // TODO:
+        return {
+            uniqueKey: `kicked-${message}`,
+            uniqueConflictBehavior: ToastConflictBehavior.DropThis,
+            cssClasses: [ "toast-otherkicked" ],
+            description: message,
+            canClose: false,
+            priority: 10,
+            expiresAt: DateUtils.addMilliseconds(new Date(), this.notifToastDuration)
+        };
+    }
+
+    private createOtherCharKickedNotification(message: string) {
+        const notif = new NotificationViewModel(this.viewModel, {
+            message: message,
+            isPersistent: false
+        });
+        this.viewModel.recentNotifications.addNotification(notif);
+    }
+
+    private createAdminBroadcastToast(data: BroadcastMessageData): ToastInfo | null {
+        // TODO:
+        if (!(data.isHistorical ?? false)) {
+            return {
+                uniqueKey: `broadcast--${data.message}`,
+                uniqueConflictBehavior: ToastConflictBehavior.DropThis,
+                cssClasses: [ "toast-broadcast" ],
+                title: `Broadcast Message`,
+                description: data.message,
+                canClose: false,
+                priority: 10,
+                expiresAt: DateUtils.addMilliseconds(new Date(), this.notifToastDuration)
+            };
+        }
+        else {
+            return null;
+        }
+    }
+
+    private createAdminBroadcastNotification(data: BroadcastMessageData) {
+        if (!(data.isHistorical ?? false)) {
+            const notif = new NotificationViewModel(this.viewModel, {
+                message: data.message,
+                isPersistent: true
+            });
+            this.viewModel.recentNotifications.addNotification(notif);
+        }
+    }
+
+    private createErrorNotificationToast(message: string): ToastInfo {
+        // TODO:
+        return {
+            cssClasses: [ "toast-error" ],
+            title: "Error",
+            description: message,
+            canClose: false,
+            priority: 10,
+            expiresAt: DateUtils.addMilliseconds(new Date(), this.notifToastDuration)
+        };
+    }
+
+    private createErrorNotification(message: string) {
+        // TODO:
+        const notif = new NotificationViewModel(this.viewModel, {
+            message: message,
+            isPersistent: false
+        });
+        this.viewModel.recentNotifications.addNotification(notif);
+    }
+
+    private createInviteNotificationToast(sender: CharacterName, channel: ChannelName, title: string): ToastInfo | null {
+        if (!this.viewModel.getChannel(channel)) {
+            let inviteToast: IDisposable | null = null;
+            let oe: IDisposable | null = null;
+            const removeToast = () => {
+                tryDispose(inviteToast);
+                tryDispose(oe);
+                Scheduler.scheduleCallback(50, () => {
+                    tryDispose(inviteToast);
+                    tryDispose(oe);
+                });
+            };
+            const toastInfo: ToastInfo = {
+                uniqueKey: `invite-${sender.canonicalValue}-${channel.canonicalValue}`,
+                uniqueConflictBehavior: ToastConflictBehavior.DropThis,
+                cssClasses: [ "toast-invite" ],
+                title: `Channel Invitation`,
+                description: `${sender.value} has invited ${this.viewModel.characterName.value} to join ${title}`,
+                priority: 10,
+                canClose: true,
+                buttons: [
+                    {
+                        title: "Join",
+                        onClick: async (ti, vm) => {
+                            const cc = this.viewModel.chatConnectionConnected;
+                            if (cc) {
+                                await cc.joinChannelAsync(channel, title);
+                                const joinedChannelVM = this.viewModel.getChannel(channel);
+                                if (joinedChannelVM) {
+                                    this.viewModel.selectedTab = joinedChannelVM;
+                                }
+                            }
+                            removeToast();
+                        },
+                    },
+                    {
+                        title: "Ignore",
+                        onClick: (ti, vm) => {
+                            removeToast();
+                        }
+                    }
+                ],
+                onClose: (reason) => {
+                    removeToast();
+                }
+            };
+            inviteToast = this.viewModel.appViewModel.toasts.addNewToast(toastInfo);
+            oe = this.viewModel.addChannelJoinLeaveHandler((channelViewModel, isJoin) => {
+                if (channelViewModel instanceof ChatChannelViewModel && channelViewModel.name == channel && isJoin) {
+                    removeToast();
+                }
+            });
+            (toastInfo as any)["__removeOE"] = oe;
+        }
+        return null;
+    }
+
+    private createInviteNotification(sender: CharacterName, channel: ChannelName, title: string) {
+        if (!this.viewModel.getChannel(channel)) {
+            let inviteToast: IDisposable | null = null;
+            let oe: IDisposable | null = null;
+            const closeNotification = () => {
+                tryDispose(inviteToast);
+                tryDispose(oe);
+                Scheduler.scheduleCallback(50, () => {
+                    tryDispose(inviteToast);
+                    tryDispose(oe);
+                });
+            };
+            const notif = new NotificationViewModel(this.viewModel, {
+                uniqueKey: `invite-${sender.canonicalValue}-${channel.canonicalValue}`,
+                uniqueConflictBehavior: ToastConflictBehavior.DropThis,
+                message: `${sender.value} has invited ${this.viewModel.characterName.value} to join ${title}`,
+                isPersistent: true,
+                buttons: [
+                    {
+                        title: "Join",
+                        onClick: async () => {
+                            const cc = this.viewModel.chatConnectionConnected;
+                            if (cc) {
+                                await cc.joinChannelAsync(channel, title);
+                                const joinedChannelVM = this.viewModel.getChannel(channel);
+                                if (joinedChannelVM) {
+                                    this.viewModel.selectedTab = joinedChannelVM;
+                                }
+                            }
+                            closeNotification();
+                        }
+                    },
+                    {
+                        title: "Ignore",
+                        onClick: () => {
+                            closeNotification();
+                        }
+                    }
+                ],
+                onClose: () => {
+                    closeNotification();
+                }
+            });
+
+            inviteToast = this.viewModel.recentNotifications.addNotification(notif);
+            oe = this.viewModel.addChannelJoinLeaveHandler((channelViewModel, isJoin) => {
+                if (channelViewModel instanceof ChatChannelViewModel && channelViewModel.name == channel && isJoin) {
+                    closeNotification();
+                }
+            });
+            (notif as any)["__removeOE"] = oe;
+        }
+    }
+
+    private createNoteNotificationToast(sender: CharacterName, subject: string, noteUrl: string): null {
+        let notif: ToastInfo | null = null;
+        let noteToast: IDisposable | null = null;
+        const closeNotification = () => {
+            tryDispose(noteToast);
+            tryDispose(urlLaunchHandler);
+        };
+
+        notif = {
+            uniqueKey: `newnote-${noteUrl}`,
+            uniqueConflictBehavior: ToastConflictBehavior.DropThis,
+            cssClasses: [ "toast-note" ],
+            title: "New Note Received",
+            description: `New note received from ${sender.value}: ${subject}`,
+            canClose: false,
+            priority: 10,
+            buttons: [
+                {
+                    title: "Open Note",
+                    onClick: () => {
+                        HostInterop.launchUrl(this.viewModel.appViewModel, noteUrl, true);
+                        closeNotification();
+                    }
+                },
+                {
+                    title: "Ignore",
+                    onClick: () => {
+                        closeNotification();
+                    }
+                }
+            ],
+            onClose: () => {
+                closeNotification();
+            }
+        };
+        noteToast = this.viewModel.appViewModel.toasts.addNewToast(notif);
+        const urlLaunchHandler = HostInterop.addUrlLaunchedHandler(args => {
+            if (args.url == noteUrl) {
+                closeNotification();
+            }
+        });
+
+        return null;
+    }
+
+    private createNoteNotification(sender: CharacterName, subject: string, noteUrl: string) {
+        let notif: NotificationViewModel | null = null;
+        let noteToast: IDisposable | null = null;
+        const closeNotification = () => {
+            tryDispose(noteToast);
+            tryDispose(urlLaunchHandler);
+        };
+
+        notif = new NotificationViewModel(this.viewModel, {
+            uniqueKey: `newnote-${noteUrl}`,
+            uniqueConflictBehavior: ToastConflictBehavior.DropThis,
+            isPersistent: true,
+            message: `New note received from ${sender.value}: ${subject}`,
+            buttons: [
+                {
+                    title: "Open Note",
+                    onClick: () => {
+                        HostInterop.launchUrl(this.viewModel.appViewModel, noteUrl, true);
+                        closeNotification();
+                    }
+                },
+                {
+                    title: "Ignore",
+                    onClick: () => {
+                        closeNotification();
+                    }
+                }
+            ],
+            onClose: () => {
+                closeNotification();
+            }
+        });
+        noteToast = this.viewModel.recentNotifications.addNotification(notif);
+        const urlLaunchHandler = HostInterop.addUrlLaunchedHandler(args => {
+            if (args.url == noteUrl) {
+                closeNotification();
+            }
+        });
+
+        return null;
+    }
+
     serverErrorReceived(number: number, message: string): void {
+        const msg = `Error #${number}: ${message}`;
         this.sendRoutedNotification({
-            text: `Error #${number}: ${message}`, 
+            text: msg, 
             eventName: "errorGet",
-            suppressPing: true
+            suppressPing: true,
+            createToast: () => this.createErrorNotificationToast(msg),
+            createNotification: () => this.createErrorNotification(msg)
         });
         // this.sendSystemMessageMultiRouted({
         //     text: `Error #${number}: ${message}`, 
@@ -345,7 +690,9 @@ export class ChatViewModelSink implements ChatConnectionSink {
             this.sendRoutedNotification({
                 text: data.message, 
                 eventName: "broadcastGet",
-                suppressPing: true
+                suppressPing: true,
+                createToast: () => this.createAdminBroadcastToast(data),
+                createNotification: () => this.createAdminBroadcastNotification(data)
             });
             // this.sendSystemMessageMultiRouted({
             //     text: data.message, 
@@ -390,7 +737,9 @@ export class ChatViewModelSink implements ChatConnectionSink {
                     text: msg, 
                     eventName: "bookmarkAddRemove",
                     targetCharacter: char,
-                    suppressPing: true
+                    suppressPing: true,
+                    createToast: () => this.createCharUpdateNotificationToast(char, msg),
+                    createNotification: () => this.createCharUpdateNotification(char, msg)
                 });
                 // this.sendSystemMessageMultiRouted({
                 //     text: msg, 
@@ -417,7 +766,9 @@ export class ChatViewModelSink implements ChatConnectionSink {
             this.sendRoutedNotification({
                 text: msg, 
                 eventName: "bookmarkAddRemove",
-                targetCharacter: char
+                targetCharacter: char,
+                createToast: () => this.createCharUpdateNotificationToast(char, msg),
+                createNotification: () => this.createCharUpdateNotification(char, msg)
             });
             // this.sendSystemMessageMultiRouted({
             //     text: msg, 
@@ -441,10 +792,13 @@ export class ChatViewModelSink implements ChatConnectionSink {
             ns.ignoredChars.add(ch);
 
             if (!isInitial) {
+                const msg = `[user]${ch.value}[/user] was added to your ignore list.`;
                 this.sendRoutedNotification({
-                    text: `[user]${ch.value}[/user] was added to your ignore list.`,
+                    text: msg,
                     eventName: "ignoreAddRemove",
-                    targetCharacter: ch
+                    targetCharacter: ch,
+                    createToast: () => this.createCharUpdateNotificationToast(ch, msg),
+                    createNotification: () => this.createCharUpdateNotification(ch, msg)
                 });
                 // this.sendSystemMessageMultiRouted({
                 //     text: `[user]${ch.value}[/user] was added to your ignore list.`,
@@ -463,10 +817,13 @@ export class ChatViewModelSink implements ChatConnectionSink {
         for (let ch of characters) {
             ns.ignoredChars.delete(ch);
 
+            const msg = `[user]${ch.value}[/user] was removed from your ignore list.`;
             this.sendRoutedNotification({
-                text: `[user]${ch.value}[/user] was removed from your ignore list.`,
+                text: msg,
                 eventName: "ignoreAddRemove",
-                targetCharacter: ch
+                targetCharacter: ch,
+                createToast: () => this.createCharUpdateNotificationToast(ch, msg),
+                createNotification: () => this.createCharUpdateNotification(ch, msg)
             });
             // this.sendSystemMessageMultiRouted({
             //     text: `[user]${ch.value}[/user] was removed from your ignore list.`,
@@ -489,7 +846,9 @@ export class ChatViewModelSink implements ChatConnectionSink {
         this.sendRoutedNotification({
             text: msg,
             eventName: "friendAddRemove",
-            targetCharacter: character
+            targetCharacter: character,
+            createToast: () => this.createCharUpdateNotificationToast(character, msg),
+            createNotification: () => this.createCharUpdateNotification(character, msg)
         });
         // this.sendSystemMessageMultiRouted({
         //     text: msg,
@@ -514,7 +873,9 @@ export class ChatViewModelSink implements ChatConnectionSink {
         this.sendRoutedNotification({
             text: msg,
             eventName: "friendAddRemove",
-            targetCharacter: character
+            targetCharacter: character,
+            createToast: () => this.createCharUpdateNotificationToast(character, msg),
+            createNotification: () => this.createCharUpdateNotification(character, msg)
         });
         // this.sendSystemMessageMultiRouted({
         //     text: msg,
@@ -537,7 +898,9 @@ export class ChatViewModelSink implements ChatConnectionSink {
         this.sendRoutedNotification({
             text: msg,
             eventName: "friendRequest",
-            targetCharacter: character
+            targetCharacter: character,
+            createToast: () => this.createCharUpdateNotificationToast(character, msg),
+            createNotification: () => this.createCharUpdateNotification(character, msg)
         });
         // this.sendSystemMessageMultiRouted({
         //     text: msg,
@@ -559,7 +922,9 @@ export class ChatViewModelSink implements ChatConnectionSink {
         this.sendRoutedNotification({
             text: msg,
             eventName: "interestAddRemove",
-            targetCharacter: character
+            targetCharacter: character,
+            createToast: () => this.createCharUpdateNotificationToast(character, msg),
+            createNotification: () => this.createCharUpdateNotification(character, msg)
         });
         // this.sendSystemMessageMultiRouted({
         //     text: msg,
@@ -584,7 +949,9 @@ export class ChatViewModelSink implements ChatConnectionSink {
         this.sendRoutedNotification({
             text: msg,
             eventName: "interestAddRemove",
-            targetCharacter: character
+            targetCharacter: character,
+            createToast: () => this.createCharUpdateNotificationToast(character, msg),
+            createNotification: () => this.createCharUpdateNotification(character, msg)
         });
         // this.sendSystemMessageMultiRouted({
         //     text: msg,
@@ -607,10 +974,13 @@ export class ChatViewModelSink implements ChatConnectionSink {
         for (let char of characters) {
             ns.serverOps.add(char);
             if (!isInitial) {
+                const msg = `[user]${char.value}[/user] is now a server operator.`;
                 this.sendRoutedNotification({
-                    text: `[user]${char.value}[/user] is now a server operator.`,
+                    text: msg,
                     eventName: "serverOpAddRemove",
-                    targetCharacter: char
+                    targetCharacter: char,
+                    createToast: () => this.createCharUpdateNotificationToast(char, msg),
+                    createNotification: () => this.createCharUpdateNotification(char, msg)
                 });
                 // this.sendSystemMessageMultiRouted({
                 //     text: `[user]${char.value}[/user] is now a server operator.`,
@@ -628,10 +998,13 @@ export class ChatViewModelSink implements ChatConnectionSink {
         const ns = this.viewModel;
         for (let ch of characters) {
             ns.serverOps.delete(ch);
+            const msg = `[user]${ch.value}[/user] is no longer a server operator.`;
             this.sendRoutedNotification({
-                text: `[user]${ch.value}[/user] is no longer a server operator.`,
+                text: msg,
                 eventName: "serverOpAddRemove",
-                targetCharacter: ch
+                targetCharacter: ch,
+                createToast: () => this.createCharUpdateNotificationToast(ch, msg),
+                createNotification: () => this.createCharUpdateNotification(ch, msg)
             });
             // this.sendSystemMessageMultiRouted({
             //     text: `[user]${ch.value}[/user] is no longer a server operator.`,
@@ -696,7 +1069,9 @@ export class ChatViewModelSink implements ChatConnectionSink {
                             text: msgText,
                             eventName: "meStatusUpdate",
                             targetCharacter: ns.characterName,
-                            suppressPing: true
+                            suppressPing: true,
+                            createToast: () => this.createCharUpdateNotificationToast(ns.characterName, msgText),
+                            createNotification: () => this.createCharUpdateNotification(ns.characterName, msgText)
                         });
                         // this.sendSystemMessageMultiRouted({
                         //     text: msgText,
@@ -728,7 +1103,9 @@ export class ChatViewModelSink implements ChatConnectionSink {
                             text: msgText,
                             eventName: eventName,
                             perCharEventName: "statusUpdate",
-                            targetCharacter: s.characterName
+                            targetCharacter: s.characterName,
+                            createToast: () => this.createCharUpdateNotificationToast(s.characterName!, msgText),
+                            createNotification: () => this.createCharUpdateNotification(s.characterName!, msgText)
                         });
                     }
                     // this.sendSystemMessageMultiRouted({
@@ -753,11 +1130,14 @@ export class ChatViewModelSink implements ChatConnectionSink {
             : this.viewModel.interests.has(character) ? "interestOnlineChange"
             : "otherOnlineChange";
         if (eventName) {
+            const msg = `[user]${character.value}[/user] came online.`;
             this.sendRoutedNotification({
-                text: `[user]${character.value}[/user] came online.`, 
+                text: msg, 
                 eventName: eventName,
                 perCharEventName: "onlineChange",
-                targetCharacter: character
+                targetCharacter: character,
+                createToast: () => this.createCharUpdateNotificationToast(character, msg),
+                createNotification: () => this.createCharUpdateNotification(character, msg)
             });
         }
         // this.sendSystemMessageMultiRouted({
@@ -783,11 +1163,14 @@ export class ChatViewModelSink implements ChatConnectionSink {
             : this.viewModel.interests.has(character) ? "interestOnlineChange"
             : "otherOnlineChange";
         if (eventName) {
+            const msg = `[user]${character.value}[/user] went offline.`;
             this.sendRoutedNotification({
-                text: `[user]${character.value}[/user] went offline.`, 
+                text: msg, 
                 eventName: eventName,
                 perCharEventName: "onlineChange",
-                targetCharacter: character
+                targetCharacter: character,
+                createToast: () => this.createCharUpdateNotificationToast(character, msg),
+                createNotification: () => this.createCharUpdateNotification(character, msg)
             });
         }
         // this.sendSystemMessageMultiRouted({
@@ -852,11 +1235,14 @@ export class ChatViewModelSink implements ChatConnectionSink {
             ccvm.presenceState = ChatChannelPresenceState.NOT_IN_CHANNEL;
         }
 
+        const msg = `You were kicked from [session=${ccvm?.title ?? channel.value}]${channel.value}[/session] by [user]${operator}[/user].`;
         this.sendRoutedNotification({
-            text: `You were kicked from [session=${ccvm?.title ?? channel.value}]${channel.value}[/session] by [user]${operator}[/user].`, 
+            text: msg, 
             eventName: "meKicked",
             targetCharacter: ns.characterName,
-            targetChannel: channel
+            targetChannel: channel,
+            createToast: () => this.createKickedNotificationToast(msg),
+            createNotification: () => this.createKickedNotification(msg)
         });
 
         // this.sendSystemMessageMultiRouted({
@@ -881,11 +1267,14 @@ export class ChatViewModelSink implements ChatConnectionSink {
             ccvm.presenceState = ChatChannelPresenceState.NOT_IN_CHANNEL;
         }
 
+        const msg = `You were [b]banned[/b] from [session=${ccvm?.title ?? channel.value}]${channel.value}[/session] by [user]${operator}[/user].`;
         this.sendRoutedNotification({
-            text: `You were [b]banned[/b] from [session=${ccvm?.title ?? channel.value}]${channel.value}[/session] by [user]${operator}[/user].`,
+            text: msg,
             eventName: "meKicked",
             targetCharacter: ns.characterName,
-            targetChannel: channel
+            targetChannel: channel,
+            createToast: () => this.createKickedNotificationToast(msg),
+            createNotification: () => this.createKickedNotification(msg)
         });
         // this.sendSystemMessageMultiRouted({
         //     text: `You were [b]banned[/b] from [session=${ccvm?.title ?? channel.value}]${channel.value}[/session] by [user]${operator}[/user].`,
@@ -909,11 +1298,14 @@ export class ChatViewModelSink implements ChatConnectionSink {
             ccvm.presenceState = ChatChannelPresenceState.NOT_IN_CHANNEL;
         }
 
+        const msg = `You were [b]temporarily banned[/b] from [session=${ccvm?.title ?? channel.value}]${channel.value}[/session] by [user]${operator}[/user] for ${lengthMin} minute(s).`;
         this.sendRoutedNotification({
-            text: `You were [b]temporarily banned[/b] from [session=${ccvm?.title ?? channel.value}]${channel.value}[/session] by [user]${operator}[/user] for ${lengthMin} minute(s).`, 
+            text: msg, 
             eventName: "meKicked",
             targetCharacter: ns.characterName,
-            targetChannel: channel
+            targetChannel: channel,
+            createToast: () => this.createKickedNotificationToast(msg),
+            createNotification: () => this.createKickedNotification(msg)
         });
         // this.sendSystemMessageMultiRouted({
         //     text: `You were [b]temporarily banned[/b] from [session=${ccvm?.title ?? channel.value}]${channel.value}[/session] by [user]${operator}[/user] for ${lengthMin} minute(s).`, 
@@ -944,11 +1336,14 @@ export class ChatViewModelSink implements ChatConnectionSink {
         if (ccvm) {
             ccvm.setOwner(character);
             if (!isInitial) {
+                const msg = `[user]${character?.value}[/user] is now the owner of channel [session=${ccvm.title}]${ccvm.name.value}[/session].`;
                 this.sendRoutedNotification({
-                    text: `[user]${character?.value}[/user] is now the owner of channel [session=${ccvm.title}]${ccvm.name.value}[/session].`, 
+                    text: msg, 
                     eventName: "chanOpChange",
                     targetCharacter: character ?? undefined,
-                    targetChannel: channel
+                    targetChannel: channel,
+                    createToast: () => this.createCharUpdateNotificationToast(character!, msg),
+                    createNotification: () => this.createCharUpdateNotification(character!, msg)
                 });
                 // this.sendSystemMessageMultiRouted({
                 //     text: `[user]${character?.value}[/user] is now the owner of channel [session=${ccvm.title}]${ccvm.name.value}[/session].`, 
@@ -976,11 +1371,14 @@ export class ChatViewModelSink implements ChatConnectionSink {
             }
             if (!isInitial) {
                 for (let char of characters) {
+                    const msg = `[user]${char.value}[/user] is now an operator for channel [session=${ccvm.title}]${ccvm.name.value}[/session].`;
                     this.sendRoutedNotification({
-                        text: `[user]${char.value}[/user] is now an operator for channel [session=${ccvm.title}]${ccvm.name.value}[/session].`, 
+                        text: msg, 
                         eventName: "chanOpChange",
                         targetCharacter: char,
-                        targetChannel: channel
+                        targetChannel: channel,
+                        createToast: () => this.createCharUpdateNotificationToast(char, msg),
+                        createNotification: () => this.createCharUpdateNotification(char, msg)
                     })
                     // this.sendSystemMessageMultiRouted({
                     //     text: `[user]${char.value}[/user] is now an operator for channel [session=${ccvm.title}]${ccvm.name.value}[/session].`, 
@@ -1003,11 +1401,14 @@ export class ChatViewModelSink implements ChatConnectionSink {
         if (ccvm) {
             ccvm.removeChannelOp(character);
 
+            const msg = `[user]${character}[/user] is no longer an operator for channel [session=${ccvm.title}]${ccvm.name.value}[/session].`;
             this.sendRoutedNotification({
-                text: `[user]${character}[/user] is no longer an operator for channel [session=${ccvm.title}]${ccvm.name.value}[/session].`, 
+                text: msg, 
                 eventName: "chanOpChange",
                 targetCharacter: character,
-                targetChannel: channel
+                targetChannel: channel,
+                createToast: () => this.createCharUpdateNotificationToast(character, msg),
+                createNotification: () => this.createCharUpdateNotification(character, msg)
             });
             // this.sendSystemMessageMultiRouted({
             //     text: `[user]${character}[/user] is no longer an operator for channel [session=${ccvm.title}]${ccvm.name.value}[/session].`, 
@@ -1048,12 +1449,15 @@ export class ChatViewModelSink implements ChatConnectionSink {
             ccvm.removeUser(kickedCharacter);
             const suppressPing = (operator.equals(ns.characterName));
 
+            const msg = `[user]${kickedCharacter.value}[/user] was kicked from the channel by [user]${operator.value}[/user].`;
             this.sendRoutedNotification({
-                text: `[user]${kickedCharacter.value}[/user] was kicked from the channel by [user]${operator.value}[/user].`,
+                text: msg,
                 eventName: "otherKicked",
                 targetCharacter: kickedCharacter,
                 targetChannel: channel,
-                suppressPing: suppressPing
+                suppressPing: suppressPing,
+                createToast: () => this.createOtherCharKickedNotificationToast(msg),
+                createNotification: () => this.createOtherCharKickedNotification(msg)
             });
             // this.sendSystemMessageMultiRouted({
             //     text: `[user]${kickedCharacter.value}[/user] was kicked from the channel by [user]${operator.value}[/user].`,
@@ -1075,12 +1479,15 @@ export class ChatViewModelSink implements ChatConnectionSink {
             ccvm.removeUser(bannedCharacter);
             const suppressPing = (operator.equals(ns.characterName));
 
+            const msg = `[user]${bannedCharacter.value}[/user] was [b]banned[/b] from the channel by [user]${operator.value}[/user].`;
             this.sendRoutedNotification({
-                text: `[user]${bannedCharacter.value}[/user] was [b]banned[/b] from the channel by [user]${operator.value}[/user].`,
+                text: msg,
                 eventName: "otherKicked",
                 targetCharacter: bannedCharacter,
                 targetChannel: channel,
-                suppressPing: suppressPing
+                suppressPing: suppressPing,
+                createToast: () => this.createOtherCharKickedNotificationToast(msg),
+                createNotification: () => this.createOtherCharKickedNotification(msg)
             });
             // this.sendSystemMessageMultiRouted({
             //     text: `[user]${bannedCharacter.value}[/user] was [b]banned[/b] from the channel by [user]${operator.value}[/user].`,
@@ -1102,12 +1509,15 @@ export class ChatViewModelSink implements ChatConnectionSink {
             ccvm.removeUser(timedOutCharacter);
             const suppressPing = (operator.equals(ns.characterName));
 
+            const msg = `[user]${timedOutCharacter.value}[/user] was [b]temporarily banned[/b] from the channel by [user]${operator.value}[/user] for ${lengthMin} minute(s).`;
             this.sendRoutedNotification({
-                text: `[user]${timedOutCharacter.value}[/user] was [b]temporarily banned[/b] from the channel by [user]${operator.value}[/user] for ${lengthMin} minute(s).`,
+                text: msg,
                 eventName: "otherKicked",
                 targetCharacter: timedOutCharacter,
                 targetChannel: channel,
-                suppressPing: suppressPing
+                suppressPing: suppressPing,
+                createToast: () => this.createOtherCharKickedNotificationToast(msg),
+                createNotification: () => this.createOtherCharKickedNotification(msg)
             });
             // this.sendSystemMessageMultiRouted({
             //     text: `[user]${timedOutCharacter.value}[/user] was [b]temporarily banned[/b] from the channel by [user]${operator.value}[/user] for ${lengthMin} minute(s).`,
@@ -1169,7 +1579,9 @@ export class ChatViewModelSink implements ChatConnectionSink {
         this.sendRoutedNotification({
             text: msg,
             eventName: "chanInvited",
-            targetCharacter: ns.characterName
+            targetCharacter: ns.characterName,
+            createToast: () => this.createInviteNotificationToast(sender, channel, title),
+            createNotification: () => this.createInviteNotification(sender, channel, title)
         });
         // this.sendSystemMessageMultiRouted({
         //     text: msg,
@@ -1228,10 +1640,13 @@ export class ChatViewModelSink implements ChatConnectionSink {
         const ns = this.viewModel;
         const url = URLUtils.getNoteUrl(noteId); 
 
+        const msg = `New note received from [user]${sender.value}[/user]: [url=${url}]${subject}[/url]`;
         this.sendRoutedNotification({
-            text: `New note received from [user]${sender.value}[/user]: [url=${url}]${subject}[/url]`, 
+            text: msg, 
             eventName: "noteGet",
-            targetCharacter: sender
+            targetCharacter: sender,
+            createToast: () => this.createNoteNotificationToast(sender, subject, url),
+            createNotification: () => this.createNoteNotification(sender, subject, url)
         });
         // this.sendSystemMessageMultiRouted({
         //     text: `New note received from [user]${sender.value}[/user]: [url=${url}]${subject}[/url]`, 
@@ -1254,7 +1669,9 @@ export class ChatViewModelSink implements ChatConnectionSink {
         this.sendRoutedNotification({
             text: message, 
             eventName: "systemMessageGet",
-            targetChannel: channel ?? undefined
+            targetChannel: channel ?? undefined,
+            createToast: null,
+            createNotification: null
         });
         // this.sendSystemMessageMultiRouted({
         //     text: message, 

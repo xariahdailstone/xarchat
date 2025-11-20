@@ -64,6 +64,8 @@
     cursor: pointer;
     border: none;
     background: transparent;
+    color: inherit;
+    padding: 0px 0px;
 }
 .toasts-toast-close:hover {
     background-color: rgba(255, 255, 255, 0.25);
@@ -74,6 +76,7 @@
     height: 15px;
     max-width: 15px;
     max-height: 15px;
+    --fgcolor: currentColor;
 }
 
 .toasts-toast-title {
@@ -82,6 +85,7 @@
 }
 .toasts-toast-description {
     padding: 0px 1px;
+    pointer-events: none;
 }
 .toasts-toast-buttons {
     display: flex;
@@ -101,4 +105,20 @@
 }
 .toasts-toast-button:hover {
     background-color: rgba(255, 255, 255, 0.25);   
+}
+
+
+.toasts-toast {
+    background-color: var(--bg-toast);
+    color: var(--fg-toast);
+
+    &.toast-note {
+        background-color: var(--bg-toast-note);
+        color: var(--fg-toast-note);
+    }
+
+    &.toast-invite {
+        background-color: var(--bg-toast-invite);
+        color: var(--fg-toast-invite);
+    }
 }

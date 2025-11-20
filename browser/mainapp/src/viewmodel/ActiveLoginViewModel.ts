@@ -51,6 +51,8 @@ import { LeftSidebarTabContainerViewModel } from "./sidebartabs/LeftSidebarTabCo
 import { RightSidebarTabContainerViewModel } from "./sidebartabs/RightSidebarTabContainerViewModel.js";
 import { RecentConversationsViewModel } from "./RecentConversationsViewModel.js";
 import { CharacterGender } from "../shared/CharacterGender.js";
+import { NotificationManagerViewModel } from "./NotificationManagerViewModel.js";
+import { CallbackSet } from "../util/CallbackSet.js";
 
 declare const XCHost: any;
 
@@ -80,6 +82,10 @@ export class ActiveLoginViewModel extends ObservableBase implements IDisposable 
         this.console = new ConsoleChannelViewModel(this);
         this.partnerSearch = new PartnerSearchViewModel(this);
         this.recentConversations = new RecentConversationsViewModel(this);
+        
+        this.recentNotifications = new NotificationManagerViewModel(this);
+        this._disposeActions.push(() => this.recentNotifications.dispose());
+
         this.miscTabs.push(new MiscTabViewModel(this, "Console", this.console));
         this._logSearchViewModel = new LogSearchViewModel(this, this.appViewModel, savedChatState.characterName);
         this.miscTabs.push(new MiscTabViewModel(this, "Log Viewer", this._logSearchViewModel));
@@ -88,6 +94,7 @@ export class ActiveLoginViewModel extends ObservableBase implements IDisposable 
         //this.miscTabs.push(new MiscTabViewModel(this, "Log Viewer 2", this._logSearchViewModel2));
         this.miscTabs.push(new MiscTabViewModel(this, "Partner Search", this.partnerSearch));
         this.miscTabs.push(new MiscTabViewModel(this, "Recent Conversations", this.recentConversations));
+        this.miscTabs.push(new MiscTabViewModel(this, "Recent Notifications", this.recentNotifications));
 
         this.leftTabs = new LeftSidebarTabContainerViewModel(this);
         this.rightTabs = new RightSidebarTabContainerViewModel(this);
@@ -132,6 +139,7 @@ export class ActiveLoginViewModel extends ObservableBase implements IDisposable 
                         this.openChannelsByChannelName.set(change.item.name, change.item);
                         change.item.addEventListener("propertychange", openChannelPingMentionChange);
                         this.refreshPingMentionCount();
+                        this.raiseChannelJoinLeaveHandler(change.item, true);
                         break;
                     case StdObservableCollectionChangeType.ITEM_REMOVED:
                         change.item.removeEventListener("propertychange", openChannelPingMentionChange);
@@ -141,6 +149,7 @@ export class ActiveLoginViewModel extends ObservableBase implements IDisposable 
                         this._unpinnedChannels2.remove(change.item);
                         this.openChannelsByChannelName.delete(change.item.name);
                         this.refreshPingMentionCount();
+                        this.raiseChannelJoinLeaveHandler(change.item, false);
                         break;
                     case StdObservableCollectionChangeType.CLEARED:
                         this.logger.logWarn("unhandled clear");
@@ -201,6 +210,17 @@ export class ActiveLoginViewModel extends ObservableBase implements IDisposable 
     }
     [Symbol.dispose](): void {
         this.dispose();
+    }
+
+    private _channelJoinLeaveHandlers: CallbackSet<(channelViewModel: ChannelViewModel, isJoin: boolean) => any> = new CallbackSet("ActiveLoginViewModel.channelJoinLeaveHandlers");
+    addChannelJoinLeaveHandler(callback: (channelViewModel: ChannelViewModel, isJoin: boolean) => any): IDisposable {
+        return this._channelJoinLeaveHandlers.add(callback);
+    }
+    removeChannelJoinLeaveHandler(callback: (channelViewModel: ChannelViewModel, isJoin: boolean) => any) {
+        this._channelJoinLeaveHandlers.delete(callback);
+    }
+    private raiseChannelJoinLeaveHandler(channelViewModel: ChannelViewModel, isJoin: boolean) {
+        this._channelJoinLeaveHandlers.invoke(channelViewModel, isJoin);
     }
 
     private readonly _chanPropChangeSym = Symbol("ActiveLoginViewModel.ChanPropChange");
@@ -449,6 +469,8 @@ export class ActiveLoginViewModel extends ObservableBase implements IDisposable 
     readonly partnerSearch: PartnerSearchViewModel;
 
     readonly recentConversations: RecentConversationsViewModel;
+
+    readonly recentNotifications: NotificationManagerViewModel;
 
     get pingWords() { return this.savedChatState.pingWords; };
 
@@ -1237,7 +1259,7 @@ export class ActiveLoginViewModel extends ObservableBase implements IDisposable 
 
 export type SelectedChannel = ChannelViewModel | AddChannelsViewModel | LogSearchViewModel | LogSearch2ViewModel;
 
-export type SelectableTab = SelectedChannel | PartnerSearchViewModel | RecentConversationsViewModel;
+export type SelectableTab = SelectedChannel | PartnerSearchViewModel | RecentConversationsViewModel | NotificationManagerViewModel;
 
 export type CharactersEventListener = (characters: CharacterName[]) => void;
 
