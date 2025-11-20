@@ -1,3 +1,4 @@
+import { ConsoleCommand } from "../util/debugtools/ConsoleCommand";
 import { URLUtils } from "../util/URLUtils";
 import { ActiveLoginViewModel } from "./ActiveLoginViewModel";
 import { ChannelViewModel } from "./ChannelViewModel";
@@ -31,4 +32,23 @@ export class ConsoleChannelViewModel extends ChannelViewModel {
     }
 
     override close() { }
+
+    async processCommandInternalAsync(command: string): Promise<string> {
+        const cc = ConsoleCommand.tryCreate(command);
+        if (cc) {
+            await cc.command.executeAsync({
+                appViewModel: this.activeLoginViewModel.appViewModel,
+                session: this.activeLoginViewModel,
+                print: (msg: string) => {
+                    this.addSystemMessage(new Date(), msg, false, true);
+                },
+                command: command,
+                patternMatch: cc.patternMatch
+            });
+            return "";
+        }
+        else {
+            return await super.processCommandInternalAsync(command);
+        }
+    }
 }

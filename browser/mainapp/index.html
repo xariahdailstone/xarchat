@@ -130,6 +130,11 @@
                 }
             }
 
+            function shouldProactivelyLoad(moduleName) {
+                return moduleName.startsWith("components/") ||
+                    (moduleName.indexOf("/debugtools/") != -1);
+            }
+
             onReady(async () => {
 
 
@@ -137,7 +142,7 @@
                 const failureMessages = [];
                 let hasFailure = false;
                 for (let x of Object.getOwnPropertyNames(System.registerRegistry)) {
-                    if (x.startsWith("components/")) {
+                    if (shouldProactivelyLoad(x)) {
                         try {
                             //alert(`importing component ${x}`);
                             await System.import(x);
