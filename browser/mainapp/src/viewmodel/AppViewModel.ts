@@ -6,7 +6,7 @@ import { RawSavedWindowLocation } from "../settings/RawAppSettings.js";
 import { ChannelName } from "../shared/ChannelName.js";
 import { CharacterName } from "../shared/CharacterName.js";
 import { ConfigBlock } from "../util/ConfigBlock.js";
-import { IDisposable, tryDispose } from "../util/Disposable.js";
+import { asDisposable, IDisposable, tryDispose } from "../util/Disposable.js";
 import { HostInterop, HostWindowState, LogMessageType } from "../util/hostinterop/HostInterop.js";
 import { IdleDetection, IdleDetectionScreenState, IdleDetectionUserState } from "../util/IdleDetection.js";
 import { Observable, ObservableValue, PropertyChangeEvent } from "../util/Observable.js";
@@ -60,26 +60,35 @@ export class AppViewModel extends ObservableBase {
                 switch (entry.changeType) {
                     case StdObservableCollectionChangeType.ITEM_ADDED:
                         {
-                            const oe = new ObservableExpression(() => [entry.item.pingCount, entry.item.unseenCount], (counts) => {
-                                this.refreshPingMentionCount();
-                            });
-                            (entry.item as any)[this.SYM_LOGIN_PINGUNSEEN_OE] = oe;
+                            const item = entry.item;
+                            const oePingCount = new ObservableExpression(
+                                () => item.pingCount,
+                                () => this.refreshPingMentionCount(),
+                                () => this.refreshPingMentionCount()
+                            );
+                            const oeUnseenCount = new ObservableExpression(
+                                () => item.unseenCount,
+                                () => this.refreshPingMentionCount(),
+                                () => this.refreshPingMentionCount()
+                            );
+                            (item as any)[this.SYM_LOGIN_PINGUNSEEN_OE] = asDisposable(oePingCount, oeUnseenCount);
                             this.refreshPingMentionCount();
                         }
                         break;
                     case StdObservableCollectionChangeType.ITEM_REMOVED:
                         {
-                            const oe = (entry.item as any)[this.SYM_LOGIN_PINGUNSEEN_OE] as any;
-                            if (oe) {
-                                delete (entry.item as any)[this.SYM_LOGIN_PINGUNSEEN_OE];
-                                tryDispose(oe);
+                            const item = entry.item;
+                            const oe = (entry.item as any)[this.SYM_LOGIN_PINGUNSEEN_OE];
+                            delete (entry.item as any)[this.SYM_LOGIN_PINGUNSEEN_OE];
+                            tryDispose(oe);
+
+                            this.refreshPingMentionCount();
+
+                            if (entry.item == this.currentlySelectedSession) {
+                                this.currentlySelectedSession = this.logins[0] ?? null;
                             }
+                            entry.item.dispose();
                         }
-                        this.refreshPingMentionCount();
-                        if (entry.item == this.currentlySelectedSession) {
-                            this.currentlySelectedSession = this.logins[0] ?? null;
-                        }
-                        entry.item.dispose();
                         break;
                     case StdObservableCollectionChangeType.CLEARED:
                         break;
@@ -92,34 +101,23 @@ export class AppViewModel extends ObservableBase {
             }
         });
 
-        this._heldOEs.push(new ObservableExpression(() => [this.pingCount, this.unseenCount], (counts) => {
+        const updateAppBadge = () => {
             HostInterop.updateAppBadge(this.pingCount, this.unseenCount);
-        }));
-        this._heldOEs.push(new ObservableExpression(() => [this.userState, this.screenState], (states) => {
+        }
+        this.watchExpr(() => this.pingCount, () => updateAppBadge());
+        this.watchExpr(() => this.unseenCount, () => updateAppBadge());
+
+        const updateLoginIdleStates = () => {
             for (let login of this.logins.iterateValues()) {
                 login.idleStateChanged();
             }
-        }));
+        };
+        this.watchExpr(() => this.userState, () => updateLoginIdleStates());
+        this.watchExpr(() => this.screenState, () => updateLoginIdleStates());
 
-        // this.addEventListener("propertychange", (ev) => {
-        //     if (ev.propertyName == "hasPings" || ev.propertyName == "hasUnseenMessages") {
-        //         HostInterop.updateAppBadge(this.hasPings, this.hasUnseenMessages);
-        //     }
-        //     else if (ev.propertyName == "userState" || ev.propertyName == "screenState") {
-        //         for (let login of this.logins.iterateValues()) {
-        //             login.idleStateChanged();
-        //         }
-        //     }
-        // });
-        this._heldOEs.push(this.configBlock.observe("global.autoIdle", v => {
-            this.updateAutoIdleSettings();
-        }));
-        this._heldOEs.push(this.configBlock.observe("global.autoAway", v => {
-            this.updateAutoIdleSettings();
-        }));
-        this._heldOEs.push(this.configBlock.observe("global.idleAfterMinutes", v => {
-            this.updateAutoIdleSettings();
-        }));
+        this.watchExpr(() => this.configBlock.get("global.autoIdle"), () => this.updateAutoIdleSettings());
+        this.watchExpr(() => this.configBlock.get("global.autoAway"), () => this.updateAutoIdleSettings());
+        this.watchExpr(() => this.configBlock.get("global.idleAfterMinutes"), () => this.updateAutoIdleSettings());
         this.updateAutoIdleSettings();
 
         this.appWindowState = HostInterop.windowState;
@@ -140,6 +138,22 @@ export class AppViewModel extends ObservableBase {
     }
 
     private readonly _heldOEs: IDisposable[] = [];
+
+    private watchExpr<T>(func: () => T, callback: (value: T | undefined) => void): IDisposable {
+        const oe = new ObservableExpression(
+            func,
+            v => callback(v),
+            () => callback(undefined)
+        );
+        this._heldOEs.push(oe);
+        return asDisposable(() => {
+            tryDispose(oe);
+            const idx = this._heldOEs.indexOf(oe);
+            if (idx != -1) {
+                this._heldOEs.splice(idx, 1);
+            }
+        })
+    }
 
     private readonly SYM_LOGIN_PINGUNSEEN_OE = Symbol();
 

@@ -797,6 +797,10 @@ export class XarHost2Interop implements IXarHost2HostInterop {
         this.writeToXCHostSocket("updateAppBadge " + JSON.stringify(this._lastAppBadgeAssign));
     }
 
+    getLastAppBadge(): { pingCount: number, unseenCount: number } {
+        return { pingCount: this._lastAppBadgeAssign.pingCount, unseenCount: this._lastAppBadgeAssign.unseenCount };
+    }
+
     // async getNewAppSettingsAsync(cancellationToken: CancellationToken): Promise<SqliteConnection> {
     //     const sqld = await this.writeAndReadToXCHostSocketAsync({
     //         cmd: "getNewAppSettingsConnection"
