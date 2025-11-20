@@ -127,29 +127,45 @@ export class ActiveLoginViewModel extends ObservableBase implements IDisposable 
         this.lookingFriends = new FilteredWatchedCharsCharacterNameSet(this, this.friends, cs => cs.status == OnlineStatus.LOOKING);
         this.lookingBookmarks = new FilteredWatchedCharsCharacterNameSet(this, this.bookmarks, cs => cs.status == OnlineStatus.LOOKING);
 
-        const openChannelPingMentionChange = (ev: PropertyChangeEvent) => {
-            if (ev.propertyName == "hasPing" || ev.propertyName == "unseenMessageCount") {
-                this.refreshPingMentionCount();
-            }
-        };
         this.openChannels.addCollectionObserver(changes => {
             for (let change of changes) {
                 switch (change.changeType) {
                     case StdObservableCollectionChangeType.ITEM_ADDED:
-                        this.openChannelsByChannelName.set(change.item.name, change.item);
-                        change.item.addEventListener("propertychange", openChannelPingMentionChange);
-                        this.refreshPingMentionCount();
-                        this.raiseChannelJoinLeaveHandler(change.item, true);
+                        {
+                            this.openChannelsByChannelName.set(change.item.name, change.item);
+
+                            const item = change.item;
+                            const oePing = new ObservableExpression(
+                                () => item.pingMessagesCount,
+                                () => this.refreshPingMentionCount(),
+                                () => this.refreshPingMentionCount()
+                            );
+                            const oeUnread = new ObservableExpression(
+                                () => item.unseenMessageCount,
+                                () => this.refreshPingMentionCount(),
+                                () => this.refreshPingMentionCount()
+                            );
+                            (item as any)[this.SYM_CHAN_DISPOSABLE] = asDisposable(oePing, oeUnread);
+
+                            this.refreshPingMentionCount();
+                            this.raiseChannelJoinLeaveHandler(change.item, true);
+                        }
                         break;
                     case StdObservableCollectionChangeType.ITEM_REMOVED:
-                        change.item.removeEventListener("propertychange", openChannelPingMentionChange);
-                        this._pinnedChannels.delete(change.item.sortKey);
-                        this._pinnedChannels2.remove(change.item);
-                        this._unpinnedChannels.delete(change.item.sortKey);
-                        this._unpinnedChannels2.remove(change.item);
-                        this.openChannelsByChannelName.delete(change.item.name);
-                        this.refreshPingMentionCount();
-                        this.raiseChannelJoinLeaveHandler(change.item, false);
+                        {
+                            const item = change.item;
+                            const itemDisposable = (item as any)[this.SYM_CHAN_DISPOSABLE];
+                            delete (item as any)[this.SYM_CHAN_DISPOSABLE];
+                            tryDispose(itemDisposable);
+
+                            this._pinnedChannels.delete(change.item.sortKey);
+                            this._pinnedChannels2.remove(change.item);
+                            this._unpinnedChannels.delete(change.item.sortKey);
+                            this._unpinnedChannels2.remove(change.item);
+                            this.openChannelsByChannelName.delete(change.item.name);
+                            this.refreshPingMentionCount();
+                            this.raiseChannelJoinLeaveHandler(change.item, false);
+                        }
                         break;
                     case StdObservableCollectionChangeType.CLEARED:
                         this.logger.logWarn("unhandled clear");
@@ -161,26 +177,41 @@ export class ActiveLoginViewModel extends ObservableBase implements IDisposable 
             for (let change of changes) {
                 switch (change.changeType) {
                     case StdObservableCollectionChangeType.ITEM_ADDED:
-                        (change.item as any)[this._chanPropChangeSym] = new NamedObservableExpression(
-                                `${this.characterName.value}-${change.item.collectiveName}`,
-                                () => [ change.item.hasPing, change.item.unseenMessageCount ],
-                                () => { this.refreshPingMentionCount(); },
-                                () => { this.refreshPingMentionCount(); });
-                            // change.item.addEventListener("propertychange", openChannelPingMentionChange);
-                        this.refreshPingMentionCount();
-                        if (change.item instanceof PMConvoChannelViewModel) {
-                            if (!this.savedChatState.pmConvos.contains(change.item.savedChatStatePMConvo)) {
-                                this.savedChatState.pmConvos.push(change.item.savedChatStatePMConvo);
+                        {
+                            const item = change.item;
+                            const oePing = new ObservableExpression(
+                                () => item.pingMessagesCount,
+                                () => this.refreshPingMentionCount(),
+                                () => this.refreshPingMentionCount()
+                            );
+                            const oeUnread = new ObservableExpression(
+                                () => item.unseenMessageCount,
+                                () => this.refreshPingMentionCount(),
+                                () => this.refreshPingMentionCount()
+                            );
+                            (item as any)[this.SYM_CHAN_DISPOSABLE] = asDisposable(oePing, oeUnread);
+
+                            this.refreshPingMentionCount();
+
+                            if (change.item instanceof PMConvoChannelViewModel) {
+                                if (!this.savedChatState.pmConvos.contains(change.item.savedChatStatePMConvo)) {
+                                    this.savedChatState.pmConvos.push(change.item.savedChatStatePMConvo);
+                                }
                             }
                         }
                         break;
                     case StdObservableCollectionChangeType.ITEM_REMOVED:
-                        (change.item as any)[this._chanPropChangeSym].dispose();
-                        delete (change.item as any)[this._chanPropChangeSym];
-                        //change.item.removeEventListener("propertychange", openChannelPingMentionChange);
-                        this.refreshPingMentionCount();
-                        if (change.item instanceof PMConvoChannelViewModel) {
-                            this.savedChatState.pmConvos.removeWhere(x => x.character.equals(change.item.character));
+                        {
+                            const item = change.item;
+                            const itemDisposable = (item as any)[this.SYM_CHAN_DISPOSABLE]
+                            delete (item as any)[this.SYM_CHAN_DISPOSABLE];
+                            tryDispose(itemDisposable);
+
+                            this.refreshPingMentionCount();
+
+                            if (change.item instanceof PMConvoChannelViewModel) {
+                                this.savedChatState.pmConvos.removeWhere(x => x.character.equals(change.item.character));
+                            }
                         }
                         break;
                     case StdObservableCollectionChangeType.CLEARED:
@@ -195,6 +226,8 @@ export class ActiveLoginViewModel extends ObservableBase implements IDisposable 
 
         this.getMyFriendsListInfo(CancellationToken.NONE);
     }
+
+    private readonly SYM_CHAN_DISPOSABLE = Symbol();
 
     private _isDisposed: boolean = false;
     get isDisposed(): boolean { return this._isDisposed; }
@@ -485,7 +518,11 @@ export class ActiveLoginViewModel extends ObservableBase implements IDisposable 
     private refreshPingMentionCount() {
         let unseenTotal = 0;
         let pingTotal = 0;
-        for (let ch of IterableUtils.combine<ChannelViewModel>(this.openChannels, this._pmConversations2)) {
+        for (let ch of this.openChannels.iterateValues()) {
+            pingTotal += ch.pingMessagesCount;
+            unseenTotal += ch.unseenMessageCount;
+        }
+        for (let ch of this._pmConversations2.iterateValues()) {
             pingTotal += ch.pingMessagesCount;
             unseenTotal += ch.unseenMessageCount;
         }

@@ -17,6 +17,8 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.UpdateAppB
             _notificationBadgeManager = notificationBadgeManager;
         }
 
+        protected override bool RunInSerial => true;
+
         protected override Task HandleCommandAsync(UpdateAppBadgeArgs args, CancellationToken cancellationToken)
         {
             var pingCount = args.PingCount ?? ((args.HasPings ?? false) ? 1 : 0);

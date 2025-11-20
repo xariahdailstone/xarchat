@@ -84,6 +84,10 @@ export class NullHostInterop extends HostInteropBase implements IHostInterop {
     updateAppBadge(pingCount: number, unseenCount: number): void {
     }
 
+    getLastAppBadge(): { pingCount: number, unseenCount: number } {
+        return { pingCount: 0, unseenCount: 0 };
+    }
+
     registerIdleDetectionAsync(idleAfterMs: number, callback: (userState: IdleDetectionUserState, screenState: IdleDetectionScreenState) => void): IDisposable {
         return EmptyDisposable;
     }
