@@ -13,7 +13,7 @@ import { LogMessageType, LogChannelMessage, LogPMConvoMessage, HostWindowState, 
 import { HostInteropLogFileMaintenance } from "../HostInteropLogFileMaintenance";
 import { DateAnchor, HostInteropLogSearch, LogSearchKind, LogSearchResult, RecentConversationResult } from "../HostInteropLogSearch";
 import { HostInteropLogSearch2, LogSearch2Results, PerformSearchOptions } from "../HostInteropLogSearch2";
-import { ChatWebSocket, HostInteropBase, IHostInterop } from "../IHostInterop";
+import { ChatWebSocket, HostInteropBase, IHostInterop, UrlLaunchedEventArgs } from "../IHostInterop";
 
 export class NullHostInterop extends HostInteropBase implements IHostInterop {
     get isInXarChatHost(): boolean { return false; }
@@ -22,6 +22,13 @@ export class NullHostInterop extends HostInteropBase implements IHostInterop {
 
     launchUrl(app: AppViewModel, url: string, forceExternal: boolean): void {
         window.open(url, "_blank");
+    }
+
+    addUrlLaunchedHandler(callback: (args: UrlLaunchedEventArgs) => void): IDisposable {
+        return EmptyDisposable;
+    }
+
+    removeUrlLaunchedHandler(callback: (args: UrlLaunchedEventArgs) => void): void {
     }
 
     async getImagePreviewPopupUrlAsync(url: string): Promise<(string | null)> {

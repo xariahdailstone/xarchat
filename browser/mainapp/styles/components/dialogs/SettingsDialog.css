@@ -294,15 +294,64 @@
 .setting-entry-notifroute {
     font-size: 80%;
     margin-top: 5px;
-    display: grid;
-    width: 80%;
-    grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
+    width: 95%;
+    display: flex;
+    flex-direction: column;
     gap: 12px;
+
+    .setting-entry-notifroute-group {
+        background-color: rgba(0, 0, 0, 0.1);
+        padding: 4px 4px;
+        border-radius: 4px;
+        display: flex;
+        flex-direction: column;
+
+        .setting-entry-notifroute-group-title {
+            font-weight: bold;
+            font-size: 110%;
+            margin-bottom: 5px;
+            margin-top: 5px;
+        }
+    }
+
+    .notifroute-button-container {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        grid-template-rows: 1fr minmax(50%, auto);
+        grid-template-areas:
+            "title button"
+            "description button";
+        width: 90%;
+        margin-left: auto;
+        margin-right: auto;
+        margin-top: 2px;
+        margin-bottom: 2px;
+
+        background: var(--bg-main-textbox-btn);
+        border-radius: 6px;
+        padding: 3px 9px;
+
+        .notifroute-button-container-title { 
+            grid-area: title; 
+            text-align: left;
+            font-weight: bold;
+            align-self: flex-end;
+        }
+        .notifroute-button-container-description { 
+            grid-area: description; 
+            text-align: left;
+            align-self: flex-start;
+        }
+        .notifroute-button { 
+            grid-area: button; 
+            align-self: center;
+            width: 150px;
+            background-color: var(--bg-level-4);
+            color: var(--fg-level-4);
+        }
+    }
 }
-.setting-entry-notifroute .notifroute-button-container {
-    background: var(--bg-main-textbox-btn);
-    border-radius: 6px;
-    padding: 3px 9px;
+/* .setting-entry-notifroute .notifroute-button-container {
     text-align: center;
 }
 .setting-entry-notifroute .notifroute-button-container:has(.notifroute-button) {
@@ -333,7 +382,7 @@
 .setting-entry-notifroute .notifroute-button-important .notifroute-button-text {
     color: white;
     background: red;
-}
+} */
 
 .setting-item:has(.setting-entry-text) {
     display: grid;

@@ -27,7 +27,7 @@ import { XarHost2InteropSession } from "./XarHost2InteropSession";
 import { HostInteropLogSearch2 } from "../HostInteropLogSearch2";
 import { XarHost2HostInteropLogSearch2Impl } from "./XarHost2HostInteropLogSearch2Impl";
 import { IXarHost2HostInterop } from "./IXarHost2HostInterop";
-import { ChatWebSocket } from "../IHostInterop";
+import { ChatWebSocket, UrlLaunchedEventArgs } from "../IHostInterop";
 import { IObservable, Observable, ObservableValue } from "../../Observable";
 import { DateUtils } from "../../DateTimeUtils";
 import { HostInteropLogFileMaintenance } from "../HostInteropLogFileMaintenance";
@@ -554,6 +554,7 @@ export class XarHost2Interop implements IXarHost2HostInterop {
         const resp = await fetch(`/api/launchUrl?url=${encodeURIComponent(url)}&forceExternal=${forceExternal}`);
         try {
             if (resp.status == 200) {
+                this.fireUrlLaunchedHandler({ url: url, forceExternal: forceExternal });
                 const respObj = await resp.json()! as HostLaunchUrlResponse;
                 if (!!respObj.loadInternally && !StringUtils.isNullOrWhiteSpace(respObj.url)) {
                     const ifrUrl = `imageview.html?url=${encodeURIComponent(respObj.url!)}`;
@@ -563,6 +564,19 @@ export class XarHost2Interop implements IXarHost2HostInterop {
             }
         }
         catch (e) { }
+    }
+
+    private readonly _urlLaunchedCallbackSet: CallbackSet<(args: UrlLaunchedEventArgs) => void> = new CallbackSet("XarHost2Interop.urlLaunchedHandler");
+    addUrlLaunchedHandler(callback: (args: UrlLaunchedEventArgs) => void): IDisposable {
+        return this._urlLaunchedCallbackSet.add(callback);
+    }
+
+    removeUrlLaunchedHandler(callback: (args: UrlLaunchedEventArgs) => void): void {
+        this._urlLaunchedCallbackSet.delete(callback);
+    }
+
+    private fireUrlLaunchedHandler(args: UrlLaunchedEventArgs) {
+        this._urlLaunchedCallbackSet.invoke(args);
     }
 
     async launchCharacterReport(app: AppViewModel, name: CharacterName): Promise<void> {

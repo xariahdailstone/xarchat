@@ -2,7 +2,8 @@ import { VNode, jsx, Fragment, On, Classes, VNodeStyle, Hooks } from "../snabbdo
 import { asDisposable, ConvertibleToDisposable, IDisposable } from "../util/Disposable";
 import { EventListenerUtil } from "../util/EventListenerUtil";
 import { ObjectUniqueId } from "../util/ObjectUniqueId";
-import { InAppToastsViewModel, ToastCloseReason } from "../viewmodel/InAppToastsViewModel";
+import { StringUtils } from "../util/StringUtils";
+import { InAppToastsViewModel, InternalToastInfo, ToastCloseReason } from "../viewmodel/InAppToastsViewModel";
 import { ComponentBase, componentElement } from "./ComponentBase";
 import { RenderingComponentBase } from "./RenderingComponentBase";
 
@@ -35,7 +36,7 @@ export class InAppToastsView extends RenderingComponentBase<InAppToastsViewModel
 
             const buttonNodes: VNode[] = [];
             for (let btn of t.buttons ?? []) {
-                buttonNodes.unshift(<button classList={[ "toasts-toast-button" ]} on={{ "click": (e) => { btn.onClick(t); e.stopPropagation(); } }}>{btn.title}</button>);
+                buttonNodes.unshift(<button classList={[ "toasts-toast-button" ]} on={{ "click": (e) => { btn.onClick(t, vm); e.stopPropagation(); } }}>{btn.title}</button>);
             }
             const buttonNodesContainer = buttonNodes.length > 0
                 ? <div classList={[ "toasts-toast-buttons" ]}>{buttonNodes}</div>
@@ -58,7 +59,7 @@ export class InAppToastsView extends RenderingComponentBase<InAppToastsViewModel
 
             const toastOn: On = {};
             if (t.onClick) {
-                toastOn["click"] = (e) => { t.onClick!(t); e.stopPropagation(); };
+                toastOn["click"] = (e) => { t.onClick!(t, vm); e.stopPropagation(); };
                 toastClasses["clickable"] = true;
             }
 
@@ -74,7 +75,7 @@ export class InAppToastsView extends RenderingComponentBase<InAppToastsViewModel
                 "insert": (vnode) => {
                     if (!nodeAlreadyShown) {
                         const elm = (vnode.elm! as HTMLElement);    
-                        const elistener = EventListenerUtil.addDisposableEventListener(elm, "animationend", () => {
+                        const elistener = EventListenerUtil.addAnimationEndOrTimedEvent(elm, () => {
                             (t as any)[this.SYM_ALREADYSHOWN] = true;
                             elistener.dispose();
                             this.refreshDOM();
@@ -83,7 +84,7 @@ export class InAppToastsView extends RenderingComponentBase<InAppToastsViewModel
                 },
                 "remove": (vnode, callback) => {
                     const elm = (vnode.elm! as HTMLElement);
-                    const elistener = EventListenerUtil.addDisposableEventListener(elm, "animationend", () => {
+                    const elistener = EventListenerUtil.addAnimationEndOrTimedEvent(elm, () => {
                         callback();
                         elistener.dispose();
                     });
@@ -91,11 +92,20 @@ export class InAppToastsView extends RenderingComponentBase<InAppToastsViewModel
                 }
             };
 
+            const titleNode = !StringUtils.isNullOrWhiteSpace(t.title)
+                ? <div classList={[ "toasts-toast-title" ]}>{t.title}</div>
+                : null;
+
+            const it: InternalToastInfo = t;
+            const descriptionNode = (it.descriptionBBCode || it.description)
+                ? <div classList={[ "toasts-toast-description" ]}>{it.descriptionBBCode ? it.descriptionBBCode.asVNode() : it.description}</div>
+                : null;
+
             toastNodes.unshift(<div class={toastClasses} style={toastStyles} on={toastOn} hook={toastHooks}
                     key={`toast-${ObjectUniqueId.get(t)}`}>
                 {closeNode}
-                <div classList={[ "toasts-toast-title" ]}>{t.title}</div>
-                <div classList={[ "toasts-toast-description" ]}>{t.description}</div>
+                {titleNode}
+                {descriptionNode}
                 {buttonNodesContainer}
             </div>);
         }

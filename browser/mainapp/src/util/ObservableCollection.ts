@@ -124,6 +124,14 @@ export class Collection<T> implements ObservableCollection<T>, Observable {
     private readonly _itemsEnumerated: ObservableValue<object> = new ObservableValue<object>({});
 
     private readonly _itemsLength: ObservableValue<number> = new ObservableValue<number>(0);
+    private readonly _itemsVersion: ObservableValue<number> = new ObservableValue<number>(0);
+
+    private incrementVersion() {
+        this._itemsVersion.value = this._itemsVersion.value + 1;
+    }
+    private dependOnVersion() {
+        this._itemsVersion.takeReadDependency();
+    }
 
     get length(): number { return this._itemsLength.value; }
 
@@ -144,6 +152,8 @@ export class Collection<T> implements ObservableCollection<T>, Observable {
         else {
             this._items.splice(index, 0, item);
             this.raiseCollectionChangeEvent(CollectionChangeType.ITEM_INSERTED, index, 1);
+            this.raisePropertyChangeEvent("length", this._items.length);
+            this.incrementVersion();
             return item;
         }
     }
@@ -159,6 +169,7 @@ export class Collection<T> implements ObservableCollection<T>, Observable {
             const result = _items.push(...items);
             this.raiseCollectionChangeEvent(CollectionChangeType.ITEMS_PUSHED, _items.length - addedItemsLength, addedItemsLength);
             this.raisePropertyChangeEvent("length", this._items.length);
+            this.incrementVersion();
             return result;
         }
     }
@@ -180,6 +191,7 @@ export class Collection<T> implements ObservableCollection<T>, Observable {
             }
         }
         this.raisePropertyChangeEvent("length", this._items.length);
+        this.incrementVersion();
         return items.length;
     }
 
@@ -220,6 +232,7 @@ export class Collection<T> implements ObservableCollection<T>, Observable {
             const result = this._items.pop();
             this.raiseCollectionChangeEvent(CollectionChangeType.ITEM_POPPED, undefined, undefined, result);
             this.raisePropertyChangeEvent("length", this._items.length);
+            this.incrementVersion();
             return result;
         }
         else {
@@ -232,6 +245,7 @@ export class Collection<T> implements ObservableCollection<T>, Observable {
             const result = this._items.shift();
             this.raiseCollectionChangeEvent(CollectionChangeType.ITEM_SHIFTED, undefined, undefined, result);
             this.raisePropertyChangeEvent("length", this._items.length);
+            this.incrementVersion();
             return result;
         }
         else {
@@ -243,6 +257,7 @@ export class Collection<T> implements ObservableCollection<T>, Observable {
         const result = this._items.unshift(...items);
         this.raiseCollectionChangeEvent(CollectionChangeType.ITEMS_UNSHIFTED, 0, items.length);
         this.raisePropertyChangeEvent("length", this._items.length);
+        this.incrementVersion();
         return result;
     }
 
@@ -261,6 +276,7 @@ export class Collection<T> implements ObservableCollection<T>, Observable {
             const removedItems = this._items.splice(index, 1);
             this.raiseCollectionChangeEvent(CollectionChangeType.ITEM_REMOVED, index, 1, removedItems[0]);
             this.raisePropertyChangeEvent("length", this._items.length);
+            this.incrementVersion();
         }
     }
 
@@ -275,10 +291,12 @@ export class Collection<T> implements ObservableCollection<T>, Observable {
     }
 
     filter(predicate: Predicate<T>): T[] {
+        this.dependOnVersion();
         return this._items.filter(predicate);
     }
 
     map<U>(func: (item: T) => U) {
+        this.dependOnVersion();
         const results: U[] = [];
         for (let item of this._items) {
             results.push(func(item));
@@ -287,11 +305,13 @@ export class Collection<T> implements ObservableCollection<T>, Observable {
     }
 
     indexOf(value: T): number {
+        this.dependOnVersion();
         const idx = this._items.indexOf(value);
         return idx;
     }
 
     contains(value: any): boolean {
+        this.dependOnVersion();
         const idx = this._items.indexOf(value);
         return (idx != -1);
     }
@@ -316,6 +336,7 @@ export class Collection<T> implements ObservableCollection<T>, Observable {
 
     *[Symbol.iterator](): Iterator<T> {
         const x = this._itemsEnumerated.value;
+        this.dependOnVersion();
         for (let item of this._items) {
             yield item;
         }
@@ -332,6 +353,7 @@ export class Collection<T> implements ObservableCollection<T>, Observable {
             const removedItem = this._items[index];
             this._items[index] = value;
             this.raiseCollectionChangeEvent(CollectionChangeType.ITEM_CHANGED, index, 1, removedItem);
+            this.incrementVersion();
         }
     }
 
@@ -514,6 +536,7 @@ export class Collection<T> implements ObservableCollection<T>, Observable {
 
     *iterateValues(): Iterable<T> {
         const x = this._itemsEnumerated.value;
+        this.dependOnVersion();
         for (let item of this._items) {
             yield item;
         }

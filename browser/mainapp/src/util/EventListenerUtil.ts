@@ -1,4 +1,5 @@
 import { asDisposable, IDisposable } from "./Disposable";
+import { Scheduler } from "./Scheduler";
 
 interface EventListenable<TEvent, TCallback> {
     addEventListener(name: TEvent, callback: TCallback, isCapture?: boolean): void;
@@ -13,6 +14,30 @@ export class EventListenerUtil {
 
         return asDisposable(() => {
             target.removeEventListener(name, handler, isCapture);
+        });
+    }
+
+    static addAnimationEndOrTimedEvent(
+        target: EventListenable<"animationend", (e: Event) => void>,
+        handler: () => void,
+        ms?: number): IDisposable {
+
+        const triggerCallback = () => {
+            animationEndHandler.dispose();
+            timerHandler.dispose();
+            handler();
+        };
+
+        const animationEndHandler = EventListenerUtil.addDisposableEventListener(target, "animationend", () => {
+            triggerCallback();
+        });
+        const timerHandler = Scheduler.scheduleCallback(ms ?? 5000, () => {
+            triggerCallback();
+        });
+
+        return asDisposable(() => {
+            animationEndHandler.dispose();
+            timerHandler.dispose();
         });
     }
 }

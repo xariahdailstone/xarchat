@@ -1,3 +1,4 @@
+import { ConfigSchema, ConfigSchemaItemDefinition, ConfigSchemaItemDefinitionItem, ConfigSchemaItemDefinitionSection, ConfigSchemaVersion } from '../configuration/ConfigSchemaItem';
 import { CallbackSet } from './CallbackSet';
 import { KeyValuePair } from './collections/KeyValuePair';
 import { SnapshottableMap } from './collections/SnapshottableMap';
@@ -29,6 +30,8 @@ export class HostInteropConfigBlock implements ConfigBlock {
         HostInterop.registerConfigChangeCallback(kvp => {
             result.hostAssign(kvp.key, kvp.value);
         });
+        //debugger;
+        result.performMigration(ConfigSchemaVersion);
         return result;
     }
 
@@ -71,7 +74,7 @@ export class HostInteropConfigBlock implements ConfigBlock {
         return this.getFirst(keys) ?? defaultValue;
     }
 
-    set(key: string, value: string | null): void {
+    set(key: string, value: unknown | null): void {
         const v = this._values.get(key) ?? null;
         if (value != v) {
             if (value != null) {
@@ -129,5 +132,64 @@ export class HostInteropConfigBlock implements ConfigBlock {
 
     private logDebugChange(key: string, value: (unknown | null)) {
         this._logger.logDebug("configchange", key, value);
+    }
+
+    private performMigration(targetVersion: number) {
+        const rawCurrentVersion = +(this.get("configVersion") ?? 0);
+        const currentVersion = (isNaN(rawCurrentVersion) || !isFinite(rawCurrentVersion)) ? 0 : rawCurrentVersion;
+
+        for (let thisVer = currentVersion + 1; thisVer <= targetVersion; thisVer++) {
+            this.performSpecificVersionMigration(thisVer);
+            this.set("configVersion", thisVer);
+        }
+    }
+
+    private performSpecificVersionMigration(version: number) {
+        this._values.forEachEntrySnapshotted(kvp => {
+            const key = kvp[0];
+            const existingValue = kvp[1];
+            const configSchemaItem = this.findConfigSchemaItemForKey(key, ConfigSchema.settings);
+            if (configSchemaItem) {
+                const newValue = this.performSpecificVersionMigrationForItem(version, existingValue, configSchemaItem);
+                this.set(key, newValue);
+            }
+        });
+    }
+
+    performSpecificVersionMigrationForItem(version: number, existingValue: unknown, configSchemaItem: ConfigSchemaItemDefinitionItem) {
+        if (configSchemaItem.migrations && configSchemaItem.migrations[version]) {
+            try {
+                const migrationFunc = configSchemaItem.migrations[version];
+                const newValue = migrationFunc(existingValue);
+                return newValue;
+            }
+            catch { }
+        }
+        return existingValue;
+    }
+
+    private findConfigSchemaItemForKey(key: string, section: ConfigSchemaItemDefinition[]): (ConfigSchemaItemDefinitionItem | null) {
+
+        for (let k of section) {
+            if (k.items) {
+                const tk = k as ConfigSchemaItemDefinitionSection;
+                const subCheck = this.findConfigSchemaItemForKey(key, tk.items);
+                if (subCheck != null) {
+                    return subCheck;
+                }
+            }
+            else {
+                const tk = k as ConfigSchemaItemDefinitionItem;
+                if (this.isKeyMatchForConfigItem(key, tk)) {
+                    return tk;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    isKeyMatchForConfigItem(key: string, tk: ConfigSchemaItemDefinitionItem): boolean {
+        return key.endsWith("." + tk.configBlockKey);
     }
 }

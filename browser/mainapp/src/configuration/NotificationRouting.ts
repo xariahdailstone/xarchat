@@ -22,6 +22,12 @@ export class NotificationRouting {
                 case "everywhere":
                     this.everywhere = targetValue;
                     break;
+                case "toast":
+                    this.toast = targetValue;
+                    break;
+                case "notification":
+                    this.notification = targetValue;
+                    break;
             }
         }
     }
@@ -44,6 +50,8 @@ export class NotificationRouting {
         parts.push(gpart("pmconvo", this.pmConvo));
         parts.push(gpart("targetchannel", this.targetChannel));
         parts.push(gpart("everywhere", this.everywhere));
+        parts.push(gpart("toast", this.toast));
+        parts.push(gpart("notification", this.notification));
 
         const filteredParts = parts.filter(x => x != null);
         return filteredParts.join(",");
@@ -54,6 +62,8 @@ export class NotificationRouting {
     pmConvo: NotificationRoutingTargetSetting = "no";
     targetChannel: NotificationRoutingTargetSetting = "no";
     everywhere: NotificationRoutingTargetSetting = "no";
+    toast: NotificationRoutingTargetSetting = "no";
+    notification: NotificationRoutingTargetSetting = "no";
 }
 
 export type NotificationRoutingTargetSetting = "no" | "yes" | "important";

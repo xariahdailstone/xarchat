@@ -336,6 +336,11 @@ export class ObservableValue<T> implements IObservable<T> {
             this.raisePropertyChangeEvent("value", value);
         }
     }
+
+    takeReadDependency() {
+        const result = this._value;
+        Observable.publishRead(this, "value", result);
+    }
 }
 
 export interface DependencySet extends IDisposable {
