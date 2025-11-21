@@ -286,17 +286,23 @@ namespace XarChat.Backend.UrlHandlers.ChatSocket
         private static async Task SocketToSocketLoop(
             WebSocket inSocket, WebSocket outSocket, string loopType, ILogger logger, CancellationToken cancellationToken)
         {
-            var buf = new byte[128 * 1024];
-            while (true)
+            try
             {
-                var recvResult = await inSocket.ReceiveAsync(buf, cancellationToken);
-                await outSocket.SendAsync(new ArraySegment<byte>(buf, 0, recvResult.Count), recvResult.MessageType,
-                    recvResult.EndOfMessage, cancellationToken);
-
-                if (recvResult.MessageType == WebSocketMessageType.Close && recvResult.EndOfMessage == true)
+                var buf = new byte[128 * 1024];
+                while (true)
                 {
-                    return;
+                    var recvResult = await inSocket.ReceiveAsync(buf, cancellationToken);
+                    await outSocket.SendAsync(new ArraySegment<byte>(buf, 0, recvResult.Count), recvResult.MessageType,
+                        recvResult.EndOfMessage, cancellationToken);
+
+                    if (recvResult.MessageType == WebSocketMessageType.Close && recvResult.EndOfMessage == true)
+                    {
+                        return;
+                    }
                 }
+            }
+            catch when (cancellationToken.IsCancellationRequested)
+            {
             }
         }
     }

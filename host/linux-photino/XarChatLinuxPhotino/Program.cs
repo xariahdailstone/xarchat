@@ -166,13 +166,13 @@ namespace XarChatLinuxPhotino
                 };
                 window.WindowCreated += (sender, args) => {
                     Console.WriteLine("window created");
+#if !LINUX
                     Console.WriteLine($"Resizable = {window.Resizable}");
                     window.Resizable = false;
                     Console.WriteLine($"Resizable = {window.Resizable}");
                     window.Resizable = true;
                     Console.WriteLine($"Resizable = {window.Resizable}");
-                    //window.Size = new Size(600, 400);
-
+#endif
                     //window.ShowDevTools();
                 };
 

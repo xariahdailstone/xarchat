@@ -1,4 +1,10 @@
 
+param (
+    [Parameter(Mandatory=$false)]
+    [boolean]
+    $UseEmoji=$false
+)
+
 $ContentFilesPath="../../../browser/mainapp"
 
 Push-Location -Path $ContentFilesPath
@@ -15,7 +21,13 @@ if (Test-Path "content.zip" -PathType Leaf) {
 	Remove-Item "content.zip"
 }
 
-$files = Get-ChildItem -Path "." -Exclude @("src", "node_modules")
+if ($UseEmoji) {
+	$files = Get-ChildItem -Path "." -Exclude @("src", "node_modules")
+}
+else {
+	Write-Host "excluding emoji font..."
+	$files = Get-ChildItem -Path "." -Exclude @("src", "node_modules", "assets-emoji")
+}
 Compress-Archive -DestinationPath "content.zip" -Path $files -CompressionLevel Optimal
 
 Pop-Location

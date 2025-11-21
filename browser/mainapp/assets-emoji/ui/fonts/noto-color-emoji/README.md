@@ -1,0 +1,1 @@
+Font from https://github.com/infolektuell/noto-color-emoji
