@@ -363,7 +363,7 @@ jobs:
       working-directory: ${{ github.workspace }}
       run: |
         dotnet msbuild "${{ github.workspace }}\XarChat-linuxphotino.sln" /nologo \
-          /nr:false /T:"Restore;host/linux-photino/XarChatLinuxPhotino/XarChatLinuxPhotino:Publish" /p:IsPublishing=true \
+          /nr:false /T:"Restore;host\XarChatLinuxPhotino:Publish" /p:IsPublishing=true \
           /p:AzureBuildNumber="${{ needs.generate_build_branding.outputs.buildid }}" \
           /p:Platform="Any CPU" /p:Configuration="Release" /p:VisualStudioVersion="17.0"
 

@@ -15,6 +15,18 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Photino.NET", "host\shared\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "XarChat.Backend.Photino", "host\shared\XarChat.Backend.Photino\XarChat.Backend.Photino.csproj", "{1C7676CE-51F2-7112-9AD4-9E6AB4305573}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "libraries", "libraries", "{3EC266A6-489F-484F-8986-769D865DF158}"
+	ProjectSection(SolutionItems) = preProject
+		CHANGELOG.md = CHANGELOG.md
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{F38B3314-DF69-48CE-BD82-9548578F5660}"
+	ProjectSection(SolutionItems) = preProject
+		CHANGELOG.md = CHANGELOG.md
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "host", "host", "{55D7EBA5-7C81-4712-BEF7-F8722D260097}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -48,6 +60,14 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{344B1953-0472-4B25-AC87-E14C80679FE1} = {3EC266A6-489F-484F-8986-769D865DF158}
+		{0751CDE8-5BEB-433F-B7D2-D5DE2785EFDB} = {55D7EBA5-7C81-4712-BEF7-F8722D260097}
+		{BD4E83B0-C606-4E20-8DCB-ACE51CEB4A45} = {3EC266A6-489F-484F-8986-769D865DF158}
+		{03F75260-4093-45F9-9D64-1E2364CFB94A} = {3EC266A6-489F-484F-8986-769D865DF158}
+		{03F75260-4093-45F9-9D64-1E2364CFB94B} = {3EC266A6-489F-484F-8986-769D865DF158}
+		{1C7676CE-51F2-7112-9AD4-9E6AB4305573} = {3EC266A6-489F-484F-8986-769D865DF158}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {77C2FB46-4D51-4683-BC89-2B13F3F04C4F}
