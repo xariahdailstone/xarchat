@@ -357,6 +357,14 @@ jobs:
         echo "node_modules/typescript/bin/tsc --project tsconfig.json"
         node_modules/typescript/bin/tsc --project tsconfig.json
 
+    - id: cpp_build
+      name: "C++ Build"
+      shell: bash
+      working-directory: ${{ github.workspace }}
+      run: |
+        cd host/shared/photino.Native
+        make linux-x64
+
     - id: csharp_build
       name: "C# Build"
       shell: bash
