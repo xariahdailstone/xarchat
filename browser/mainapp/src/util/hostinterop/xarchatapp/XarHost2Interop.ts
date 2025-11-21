@@ -27,11 +27,12 @@ import { XarHost2InteropSession } from "./XarHost2InteropSession";
 import { HostInteropLogSearch2 } from "../HostInteropLogSearch2";
 import { XarHost2HostInteropLogSearch2Impl } from "./XarHost2HostInteropLogSearch2Impl";
 import { IXarHost2HostInterop } from "./IXarHost2HostInterop";
-import { ChatWebSocket, UrlLaunchedEventArgs } from "../IHostInterop";
+import { ChatWebSocket, NoCorsFetchArgs, NoCorsFetchResult, UrlLaunchedEventArgs } from "../IHostInterop";
 import { IObservable, Observable, ObservableValue } from "../../Observable";
 import { DateUtils } from "../../DateTimeUtils";
 import { HostInteropLogFileMaintenance } from "../HostInteropLogFileMaintenance";
 import { XarHost2InteropLogFileMaintenance } from "./XarHost2InteropLogFileMaintenance";
+import { XarHost2InteropNoCorsSession } from "./XarHost2InteropNoCorsSession";
 
 
 
@@ -67,10 +68,12 @@ export class XarHost2Interop implements IXarHost2HostInterop {
             });
         }
 
-        this.logSearch = new XarHost2InteropLogSearch((msg) => this.writeToXCHostSocket("logsearch." + msg));
+        this.logSearch = new XarHost2InteropLogSearch();
 
         // TODO:
         this.logSearch2 = new XarHost2HostInteropLogSearch2Impl();
+
+        this.noCorsProxy = new XarHost2InteropNoCorsSession();
 
         this.logFileMaintenance = new XarHost2InteropLogFileMaintenance();
         
@@ -82,7 +85,9 @@ export class XarHost2Interop implements IXarHost2HostInterop {
         this.sessions = [
             this._windowCommandSession,
             this._hostInteropEIconLoader,
-            this.logFileMaintenance
+            this.logFileMaintenance,
+            this.logSearch,
+            this.noCorsProxy
         ];
         for (let sess of this.sessions) {
             sess.writeMessage = (msg) => this.writeToXCHostSocket(sess.prefix + msg);
@@ -92,6 +97,8 @@ export class XarHost2Interop implements IXarHost2HostInterop {
             this.doClientResize(window.innerWidth * window.devicePixelRatio, window.innerHeight * window.devicePixelRatio, false);
         });
     }
+
+    private noCorsProxy: XarHost2InteropNoCorsSession;
 
     doDownloadStatusUpdate(data: any) {
         if ((window as any)["__vm"]) {
@@ -1196,4 +1203,11 @@ export class XarHost2Interop implements IXarHost2HostInterop {
         const ws = new WebSocket(url.href);
         return ws;
     }
+
+    noCorsFetch(args: NoCorsFetchArgs, cancellationToken: CancellationToken): Promise<NoCorsFetchResult> {
+        const ps = new PromiseSource<NoCorsFetchResult>();
+        this.noCorsProxy.performFetchAsync(args, ps, cancellationToken);
+        return ps.promise;
+    }
 }
+

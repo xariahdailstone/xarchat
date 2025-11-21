@@ -30,6 +30,9 @@ export class DisconnectedWarning extends RenderingComponentBase<ActiveLoginViewM
                 case ChatConnectionState.DISCONNECTED_NORMALLY:
                     msgBuilder.push("You disconnected from chat.");
                     break;
+                case ChatConnectionState.DISCONNECTED_LOGGED_IN_ELSEWHERE:
+                    msgBuilder.push("You were disconnected because you logged in somewhere else.");
+                    break;
             }
 
             if (reconnectInSec != null) {

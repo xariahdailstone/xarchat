@@ -554,12 +554,17 @@ export class ChatConnectionImpl implements ChatConnection {
 
     private _identifiedCharacter: CharacterName = CharacterName.create("");
 
+    private _gotLoggedInElsewhereError: boolean = false;
+
     private handleDisconnect() {
         if (this._bannedFromChat) {
             this.sink.disconnectedFromServer(ChatDisconnectReason.KICKED_FROM_SERVER);
         }
         else if (this._requestedDisconnect) {
             this.sink.disconnectedFromServer(ChatDisconnectReason.REQUESTED_DISCONNECT);
+        }
+        else if (this._gotLoggedInElsewhereError) {
+            this.sink.disconnectedFromServer(ChatDisconnectReason.LOGGED_IN_ELSEWHERE);
         }
         else {
             this.sink.disconnectedFromServer(ChatDisconnectReason.UNEXPECTED_DISCONNECT);
@@ -999,6 +1004,10 @@ export class ChatConnectionImpl implements ChatConnection {
 
     private handleERRMessage(msg: HandleableTypedChatMessage<ServerERRMessage>) {
         const errorNum = msg.body!.number;
+
+        if (errorNum == ServerErrorNumbers.LoggedInElsewhere) {
+            this._gotLoggedInElsewhereError = true;
+        }
 
         this.sink.serverErrorReceived(msg.body!.number, msg.body!.message);
         

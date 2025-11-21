@@ -50,3 +50,5 @@
 * Fixed an issue where the badge on the taskbar icon (the red dot or white dot) might not
   update properly.
 * Added preliminary Linux build
+* Updated auto reconnect routine to not automatically reconnect to chat if you were disconnected
+  because you logged your character in somewhere else.
