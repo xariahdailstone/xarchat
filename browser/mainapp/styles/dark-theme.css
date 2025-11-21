@@ -1,10 +1,10 @@
 
 body {
-    font-family: 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
+    font-family: var(--emoji-font-family) , 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
     --normal-font-size: 14pt;
 
     --chat-font-size: 12px;
-    --chat-font-family: Verdana, Tahoma, Geneva, sans-serif;
+    --chat-font-family: var(--emoji-font-family) , Verdana, Tahoma, Geneva, sans-serif;
 
     --bg-base-hue: 225;
     --bg-base-sat: 7%;

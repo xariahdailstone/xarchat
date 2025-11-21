@@ -47,3 +47,5 @@
     font-weight: bold;
     src: local('Gill Sans MT Bold Italic'), url(../assets/ui/fonts/GillSansMT-BoldItalic.woff) format('woff')
 }
+
+:root { --emoji-font-family: 'invalidnonexistentfont' }

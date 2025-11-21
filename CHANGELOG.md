@@ -49,3 +49,4 @@
 	that are enabled for in-app toasts show up here.
 * Fixed an issue where the badge on the taskbar icon (the red dot or white dot) might not
   update properly.
+* Added preliminary Linux build

@@ -47,6 +47,19 @@ namespace XarChatLinuxPhotino
             var window = new PhotinoWindow();
             var wc = new PhotinoWindowControl(window);
 #if LINUX
+            var autoUpdater = AutoUpdateManagerFactory.Create(
+                    new FileInfo("asdf"),
+                    args,
+                    new DirectoryInfo(profilePath),
+                    new Version(AssemblyVersionInfo.XarChatVersion),
+                    "linux-amd64",
+                    AssemblyVersionInfo.XarChatBranch);
+
+            ThreadPool.QueueUserWorkItem(delegate
+            {
+                autoUpdater.StartUpdateChecks();
+            });
+
             var backend = new XarChatBackend(new LinuxBackendServiceSetup(wc), clArgs, autoUpdater);
 #endif
 #if MAC
@@ -153,13 +166,13 @@ namespace XarChatLinuxPhotino
                 };
                 window.WindowCreated += (sender, args) => {
                     Console.WriteLine("window created");
+#if !LINUX
                     Console.WriteLine($"Resizable = {window.Resizable}");
                     window.Resizable = false;
                     Console.WriteLine($"Resizable = {window.Resizable}");
                     window.Resizable = true;
                     Console.WriteLine($"Resizable = {window.Resizable}");
-                    //window.Size = new Size(600, 400);
-
+#endif
                     //window.ShowDevTools();
                 };
 
