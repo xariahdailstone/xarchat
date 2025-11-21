@@ -5,22 +5,28 @@ namespace XarChat.Backend.Features.FListApi
     public class KinksList
     {
         [JsonPropertyName("kinks")]
-        public KinksListInner Kinks { get; set; }
+        public required KinksListInner Kinks { get; set; }
     }
 
     public class SaveMemoResponse
     {
         [JsonPropertyName("note")]
-        public string Note { get; set; }
+        public required string Note { get; set; }
 
         [JsonPropertyName("error")]
         public string? Error { get; set; }
     }
 
+    public class SubmitReportResponse
+    {
+        [JsonPropertyName("log_id")]
+        public string? LogId { get; set; }
+    }
+
     public class GetAllMemosResponse
     {
         [JsonPropertyName("memos")]
-        public List<GetAllMemosResponseItem> Memos { get; set; }
+        public required List<GetAllMemosResponseItem> Memos { get; set; }
     }
 
     public class GetAllMemosResponseItem
@@ -32,6 +38,6 @@ namespace XarChat.Backend.Features.FListApi
         public string? CharacterName { get; set; }
 
         [JsonPropertyName("note")]
-        public string MemoText { get; set; }
+        public required string MemoText { get; set; }
     }
 }

@@ -1,14 +1,16 @@
 import { CharacterName } from "../../../shared/CharacterName";
 import { CancellationTokenSource } from "../../../util/CancellationTokenSource";
 import { CatchUtils } from "../../../util/CatchUtils";
-import { HostInterop } from "../../../util/HostInterop";
+import { HostInterop } from "../../../util/hostinterop/HostInterop";
+import { KeyCodes } from "../../../util/KeyCodes";
 //import { CompatibilityCalculator } from "../../util/CompatibilityCalculator";
 import { observableProperty } from "../../../util/ObservableBase";
 import { ObservableCollection } from "../../../util/ObservableCollection";
 import { ActiveLoginViewModel } from "../../ActiveLoginViewModel";
 import { AppViewModel } from "../../AppViewModel";
-import { DialogCaptionButtonViewModel, DialogViewModel } from "../DialogViewModel";
+import { DialogButtonStyle, DialogCaptionButtonViewModel, DialogViewModel } from "../DialogViewModel";
 import { EditMemoViewModel } from "../EditMemoViewModel";
+import { ReportSource, ReportViewModel } from "../ReportViewModel";
 import { CharacterProfileDetailViewModel } from "./CharacterProfileDetailViewModel";
 
 export class CharacterProfileDialogViewModel extends DialogViewModel<number> {
@@ -134,7 +136,29 @@ export class CharacterProfileDialogViewModel extends DialogViewModel<number> {
     }
 
     async reportProfile() {
-        await this.activeLoginViewModel.appViewModel.alertAsync("Not Yet Implemented");
+        if (this.profileDetails) {
+            const shouldContinue = await this.activeLoginViewModel.appViewModel.promptAsync<boolean>({
+                message: "To report a character profile, you must file a ticket on the f-list.net website.  Click 'Continue' below to go there.",
+                title: "Report Profile",
+                buttons: [
+                    {
+                        title: "Cancel",
+                        shortcutKeyCode: KeyCodes.ESCAPE,
+                        resultValue: false,
+                        style: DialogButtonStyle.CANCEL
+                    },
+                    {
+                        title: "Continue",
+                        shortcutKeyCode: KeyCodes.RETURN,
+                        resultValue: true,
+                        style: DialogButtonStyle.DEFAULT
+                    },
+                ]
+            });
+            if (shouldContinue) {
+                HostInterop.launchCharacterReport(this.activeLoginViewModel.appViewModel, this.profileDetails.character);
+            }
+        }
     }
 }
 

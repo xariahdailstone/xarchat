@@ -1,19 +1,25 @@
-import { AppViewModel } from "../../viewmodel/AppViewModel";
-import { SettingsDialogSectionViewModel, SettingsDialogItemViewModel, SettingsDialogSettingViewModel, SettingsDialogTabViewModel, SettingsDialogViewModel } from "../../viewmodel/dialogs/SettingsDialogViewModel";
+import { AppViewModel, GetConfigSettingChannelViewModel } from "../../viewmodel/AppViewModel";
+import { SettingsDialogSectionViewModel, SettingsDialogItemViewModel, SettingsDialogSettingViewModel, SettingsDialogTabViewModel, SettingsDialogViewModel, ISettingsDialogItemViewModel, ISettingsDialogSettingViewModel } from "../../viewmodel/dialogs/SettingsDialogViewModel";
 import { componentArea, componentElement } from "../ComponentBase";
 import { makeRenderingComponent, RenderingComponentBase } from "../RenderingComponentBase";
 import { DialogBorderType, DialogComponentBase, dialogViewFor } from "./DialogFrame";
-import { Fragment, init, jsx, VNode, styleModule, toVNode, propsModule, eventListenersModule, h, Hooks, Attrs, On } from "../../snabbdom/index.js";
+import { Fragment, init, jsx, VNode, styleModule, toVNode, propsModule, eventListenersModule, h, Hooks, Attrs, On, VNodeStyle } from "../../snabbdom/index.js";
 import { IterableUtils } from "../../util/IterableUtils";
 import { HTMLUtils } from "../../util/HTMLUtils";
-import { ConfigSchemaItemDefinitionItem, PingLineItemDefinition, PingLineItemMatchStyle, PingLineItemMatchStyleConvert } from "../../configuration/ConfigSchemaItem";
+import { ConfigSchemaItemDefinitionItem, EnableIfOptions, PingLineItemDefinition, PingLineItemMatchStyle, PingLineItemMatchStyleConvert } from "../../configuration/ConfigSchemaItem";
 import { ColorHSSelectPopup } from "../popups/ColorHSSelectPopup";
 import { ColorHSSelectPopupViewModel } from "../../viewmodel/popups/ColorHSSelectPopupViewModel";
-import { HostInterop } from "../../util/HostInterop";
+import { HostInterop } from "../../util/hostinterop/HostInterop";
 import { NotificationRouting, NotificationRoutingTargetSetting } from "../../configuration/NotificationRouting";
 import { ColorRGBSelectPopupViewModel } from "../../viewmodel/popups/ColorRGBSelectPopupViewModel";
 import { ThemeToggle } from "../ThemeToggle";
 import { Collection } from "../../util/ObservableCollection";
+import { ChannelName } from "../../shared/ChannelName";
+import { StringUtils } from "../../util/StringUtils";
+
+const EMOJI_NO = "\u274C";
+const EMOJI_YES = "\u2705";
+const EMOJI_IMPORTANT = "\u26A0\uFE0F";
 
 @componentArea("dialogs")
 @componentElement("x-settingsdialog")
@@ -45,18 +51,18 @@ export class SettingsDialog extends DialogComponentBase<SettingsDialogViewModel>
                         { vm.selectedTab ? this.renderTreeViewPane(vm.selectedTab.settings) : "" }
                     </div>
                     <div classList={["tabpanel"]}>
-                        { vm.selectedTab ? this.renderTabPane(vm.selectedTab) : "" }
+                        { vm.selectedTab ? this.renderTabPane(vm, vm.selectedTab) : "" }
                     </div>
                 </div>
             </div>;
         }
     }
 
-    private renderTreeViewPane(settings: Collection<SettingsDialogSettingViewModel>): VNode {
+    private renderTreeViewPane(settings: Collection<ISettingsDialogSettingViewModel>): VNode {
         const items: VNode[] = [];
 
         for (let settingsItem of settings) {
-            if (settingsItem instanceof SettingsDialogSectionViewModel) {
+            if (!settingsItem.isItem) {
                 items.push(<div classList={[ "treeview-item", "treeview-item-group" ]}>
                     <div classList={[ "treeview-item-group-title"]} on={{
                         "click": () => {
@@ -86,60 +92,88 @@ export class SettingsDialog extends DialogComponentBase<SettingsDialogViewModel>
         </div>;
     }
 
-    private renderTabPane(tab: SettingsDialogTabViewModel): VNode {
+    private renderTabPane(vm: SettingsDialogViewModel, tab: SettingsDialogTabViewModel): VNode {
         return <div classList={["tabpane", "tabpane-standard"]}>
             <div classList={["tabpane-description"]}>{ tab.tabInstructions }</div>
-            { IterableUtils.asQueryable(tab.settings).select(x => this.renderSetting(x)).toArray() }
+            { IterableUtils.asQueryable(tab.settings).select(x => this.renderSetting(vm, x)).toArray() }
         </div>;
     }
 
-    private renderSetting(setting: SettingsDialogSettingViewModel): VNode {
+    private renderSetting(vm: SettingsDialogViewModel, setting: ISettingsDialogSettingViewModel): VNode {
         let inner: VNode;
+        let actionButtonsNode: VNode | null = null;
         let settingClasses: string[] = ["setting"];
 
         if (setting instanceof SettingsDialogSectionViewModel) {
             settingClasses.push("setting-group");
-            inner = <div classList={["setting-group-container"]}>{IterableUtils.asQueryable(setting.settings).select(x => this.renderSetting(x)).toArray()}</div>;
+            inner = <div classList={["setting-group-container"]}>{IterableUtils.asQueryable(setting.settings).select(x => this.renderSetting(vm, x)).toArray()}</div>;
         }
-        else if (setting instanceof SettingsDialogItemViewModel) {
+        else if (setting.isItem) {
+            const itemSetting = setting as unknown as ISettingsDialogItemViewModel;
             settingClasses.push("setting-item");
-            switch (setting.schema.type) {
+            if (itemSetting.isReadOnly) {
+                settingClasses.push("setting-item-readonly");
+            }
+            switch (itemSetting.schema.type) {
                 case "text":
-                    inner = this.renderSettingText(setting.schema);
+                    inner = this.renderSettingText(itemSetting);
                     break;
                 case "boolean":
-                    inner = this.renderSettingBoolean(setting);
+                    inner = this.renderSettingBoolean(itemSetting);
                     break;
                 case "integer":
-                    inner = this.renderSettingInteger(setting);
+                    inner = this.renderSettingInteger(itemSetting);
+                    break;
+                case "number":
+                    inner = this.renderSettingNumber(itemSetting);
                     break;
                 case "color":
-                    inner = this.renderSettingColor(setting);
+                    inner = this.renderSettingColor(itemSetting);
                     break;
                 case "bgcolorcontrol":
-                    inner = this.renderSettingBgColorControl(setting);
+                    inner = this.renderSettingBgColorControl(itemSetting);
                     break;
                 case "color-hs":
-                    inner = this.renderSettingColorHS(setting);
+                    inner = this.renderSettingColorHS(itemSetting);
                     break;
                 case "radio":
-                    inner = this.renderSettingRadio(setting);
+                    inner = this.renderSettingRadio(itemSetting);
                     break;
                 case "text[]":
-                    inner = this.renderSettingTextList(setting);
+                    inner = this.renderSettingTextList(itemSetting);
                     break;
                 case "pinglist":
-                    inner = this.renderSettingPingList(setting);
+                    inner = this.renderSettingPingList(itemSetting);
                     break;
                 case "timespan":
-                    inner = this.renderSettingTimespan(setting.schema);
+                    inner = this.renderSettingTimespan(itemSetting.schema);
                     break;
                 case "notifroutes":
-                    inner = this.renderSettingNotifRoute(setting);
+                    inner = this.renderSettingNotifRoute(itemSetting);
                     break;
                 case "select":
-                    inner = this.renderSettingSelect(setting);
+                    inner = this.renderSettingSelect(itemSetting);
                     break;
+                case "displaytext":
+                    inner = this.renderSettingDisplayText(itemSetting);
+                    break;
+            }
+
+            if (itemSetting.schema.actionButtons && itemSetting.schema.actionButtons.length > 0) {
+                const buttonNodes: VNode[] = [];
+                for (let ab of itemSetting.schema.actionButtons) {
+                    const buttonNode = <button classList={[ "setting-actionbuttons-button", "themed" ]} on={{
+                        "click": () => {
+                            ab.onClick({
+                               appViewModel: vm.parent 
+                            });
+                        }
+                    }}>{ab.title}</button>;
+                    buttonNodes.push(buttonNode);
+                }
+                actionButtonsNode = <div classList={[ "setting-actionbuttons" ]}>
+                    { buttonNodes }
+                </div>;
             }
         }
         else {
@@ -149,15 +183,44 @@ export class SettingsDialog extends DialogComponentBase<SettingsDialogViewModel>
         if (setting.isDisabled) {
             settingClasses.push("setting-is-disabled");
         }
+        if (setting instanceof SettingsDialogItemViewModel && setting.schema.enableIf) {
+            const eiFunc = setting.schema.enableIf;
+            const eiOpts: EnableIfOptions = {
+                myCharacterName: setting.scope.myCharacter,
+                channelCategory: setting.scope.categoryName,
+                channelName: setting.scope.targetChannel ?? undefined,
+                interlocutorName: setting.scope.pmConvoCharacter,
+                getConfigEntryById: (id: string) => {
+                    let xx: GetConfigSettingChannelViewModel | undefined;
+                    if (setting.scope.categoryName && setting.scope.targetChannel) {
+                        xx = { channelCategory: setting.scope.categoryName, channelTitle: setting.scope.targetChannel };
+                    }
+                    else if (setting.scope.pmConvoCharacter) {
+                        xx = { characterName: setting.scope.pmConvoCharacter };
+                    }
+
+                    return vm.parent.getConfigSettingById(id,
+                        setting.scope.myCharacter ? { characterName: setting.scope.myCharacter } : null,
+                        xx
+                    );
+                }
+            };
+            if (!eiFunc(eiOpts)) {
+                settingClasses.push("setting-is-disabled");
+            }
+        }
+
+        
         return <div classList={settingClasses} data-sectiontitle={setting.title} props={{ "inert": setting.isDisabled }}>
             <div classList={["setting-title"]}>{setting.title}</div>
             <div classList={["setting-description"]}>{setting.description}</div>
             { this.getInheritedInfoVNode(setting) }
             { inner }
+            { actionButtonsNode }
         </div>;
     }
 
-    private getInheritedInfoVNode(setting: SettingsDialogSettingViewModel): VNode {
+    private getInheritedInfoVNode(setting: ISettingsDialogSettingViewModel): VNode {
         if (setting.showInheritedInfo) {
             if (setting.useInheritedValue) {
                 return <div classList={["setting-inheritprompt", "setting-using-inherited"]}>{setting.inheritedFromText}</div>
@@ -183,12 +246,49 @@ export class SettingsDialog extends DialogComponentBase<SettingsDialogViewModel>
         }
     }
 
-    private renderSettingText(setting: ConfigSchemaItemDefinitionItem): VNode {
-        //return <input classList={["setting-entry", "setting-entry-text"]} attr-type="text"></input>
-        return <></>;
+    private renderSettingDisplayText(setting: ISettingsDialogItemViewModel): VNode {
+        return <div classList={["setting-entry", "setting-entry-displaytext"]}>{setting.value}</div>;
     }
 
-    private renderSettingBoolean(setting: SettingsDialogItemViewModel): VNode {
+    private renderSettingText(setting: ISettingsDialogItemViewModel): VNode {
+
+        const hooks: Hooks = {
+            postpatch: (o, n) => {
+                const elInput = (n.elm as HTMLInputElement);
+                if (elInput.value != setting.value) {
+                    elInput.value = setting.value;
+                }
+            }
+        }
+
+        const onValueChange = (e: Event) => {
+            const txtValue = (e.target as HTMLInputElement).value;
+            if (setting.value != txtValue) {
+                setting.value = txtValue;
+            }
+        };
+
+        const attrs: Attrs = {
+            "text": "text"
+        };
+        if (setting.schema.maxLength != null) {
+            attrs["maxlength"] = setting.schema.maxLength.toString();
+        }
+        if (setting.schema.fieldWidth != null) {
+            attrs["style"] = `width: ${setting.schema.fieldWidth}; max-width: 100%;`;
+        }
+
+        return <input classList={["setting-entry", "setting-entry-text", "themed"]}
+            attrs={attrs}
+            hook={hooks}
+            props={{ value: setting.value }}
+            on={{
+                "input": onValueChange,
+                "change": onValueChange
+            }}></input>
+    }
+
+    private renderSettingBoolean(setting: ISettingsDialogItemViewModel): VNode {
         const schema = setting.schema;
 
         const hooks: Hooks = {
@@ -206,7 +306,39 @@ export class SettingsDialog extends DialogComponentBase<SettingsDialogViewModel>
             on={{ "change": onChange }}></x-themetoggle>
     }
 
-    private renderSettingInteger(setting: SettingsDialogItemViewModel): VNode {
+    private setupValidatingInput(
+        elNode: VNode,
+        validateFunc: (value: string) => { valid: boolean, validationMessage?: string, result?: any },
+        assignFunc: (value: any) => void) {
+
+        const processValue = (e: Event, report: boolean) => {
+            const el = (e.target as HTMLInputElement);
+            const enteredValue = el.value;
+            const valResult = validateFunc(enteredValue);
+            if (valResult.valid) {
+                if (report) {
+                    assignFunc(valResult.result);
+                }
+                el.title = "";
+                el.classList.remove("invalid-value");
+            }
+            else {
+                if (report) {
+                    el.title = valResult.validationMessage ?? "Invalid value.";
+                    el.classList.add("invalid-value");
+                }
+            }
+        };
+        const evts: On = {
+            "input": (e: Event) => processValue(e, false),
+            "blur": (e: Event) => processValue(e, true)
+        }
+
+        elNode.data = elNode.data ?? {};
+        elNode.data.on = { ...(elNode.data?.on ?? {}), ...evts };
+    }
+
+    private renderSettingInteger(setting: ISettingsDialogItemViewModel): VNode {
         let min: number | undefined = setting.schema.min;
         let max: number | undefined = setting.schema.max;
         const attrs: Attrs = {
@@ -214,30 +346,78 @@ export class SettingsDialog extends DialogComponentBase<SettingsDialogViewModel>
             "step": "1"
         };
         if (min != null) { attrs.min = min.toString(); }
-        if (min != null) { attrs.max = min.toString(); }
+        if (max != null) { attrs.max = max.toString(); }
 
-        const vChange = (e: Event) => {
-            const x = (e.target as HTMLInputElement).value.trim();
+        const validateTextboxValue = (x: string) => {
             if (x == "") {
-                if (!(setting.schema.allowEmpty ?? false)) { return; }
+                if (!(setting.schema.allowEmpty ?? false)) { return "A value is required."; }
                 setting.value = null;
             }
 
-            const xnum = parseInt(x);
-            if (xnum == null) { return; }
-            if (min != null && xnum < min) { return; }
-            if (max != null && xnum > max) { return; }
+            const xnum = !StringUtils.isNullOrWhiteSpace(x) ? +x : null;
+            if (xnum == null) { return "Invalid value."; }
+            if (min != null && xnum < min) { return `Value must be between ${min} and ${max}.`; }
+            if (max != null && xnum > max) { return `Value must be between ${min} and ${max}.`; }
             setting.value = xnum;
+            return null;
         };
+        const vChange = (e: Event) => {
+            const tgt = (e.target as HTMLInputElement);
+            const x = tgt.value.trim();
+            const err = validateTextboxValue(x);
+            if (err) {
+                tgt.setCustomValidity(err);
+            }
+            else {
+                tgt.setCustomValidity("");
+            }
+            tgt.reportValidity();
+        };
+
         const evts: On = {
             "change": vChange,
             "input": vChange
         };
 
-        return <input classList={["setting-entry", "setting-entry-integer"]} attrs={attrs} on={evts} props={{ "value": setting.value?.toString() ?? "" }}></input>
+        return <input classList={["setting-entry", "setting-entry-integer", "themed"]} attrs={attrs} on={evts} props={{ "value": setting.value?.toString() ?? "" }}></input>
     }
 
-    private renderSettingColor(setting: SettingsDialogItemViewModel): VNode {
+    private renderSettingNumber(setting: ISettingsDialogItemViewModel): VNode {
+        let min: number | undefined = setting.schema.min;
+        let max: number | undefined = setting.schema.max;
+        const attrs: Attrs = {
+            "type": "text"
+        };
+        const styles: VNodeStyle = {
+        };
+        if (setting.schema.fieldWidth) {
+            styles["width"] = setting.schema.fieldWidth;
+        }
+
+        const resNode = <input classList={["setting-entry", "setting-entry-integer", "themed"]} 
+                attrs={attrs} 
+                props={{ "value": setting.value?.toString() ?? "" }} style={styles}></input>
+        this.setupValidatingInput(resNode,
+            (x: string) => {
+                if (x == "") {
+                    if (!(setting.schema.allowEmpty ?? false)) { return { valid: false, validationMessage: "A value is required." }; }
+                }
+
+                const xnum = !StringUtils.isNullOrWhiteSpace(x) ? +x : null;
+                if (xnum == null || isNaN(xnum) || !isFinite(xnum)) { return { valid: false, validationMessage: "Invalid value." }; }
+                if (min != null && xnum < min) { return { valid: false, validationMessage: `Value too small. Must be between ${min} and ${max}.`}; }
+                if (max != null && xnum > max) { return { valid: false, validationMessage: `Value too large. Must be between ${min} and ${max}.`}; }
+                return { valid: true, result: xnum };
+            },
+            (v) => {
+                setting.value = v;
+            }
+        );
+
+        return resNode;
+    }
+
+    private renderSettingColor(setting: ISettingsDialogItemViewModel): VNode {
         return <div classList={["setting-entry", "setting-entry-color"]}>
             <div classList={[ "setting-entry-color-swatch" ]} style={{ "fontWeight": "bold", "backgroundColor": setting.value }}
                 on={{ "click": (e) => { this.showColorRGBPicker(setting, e.target as HTMLElement); } }}></div>
@@ -245,7 +425,7 @@ export class SettingsDialog extends DialogComponentBase<SettingsDialogViewModel>
                 on={{ "click": () => { setting.value = null; } }}>Default</button>
         </div>
     }
-    private showColorRGBPicker(setting: SettingsDialogItemViewModel, el: HTMLElement) {
+    private showColorRGBPicker(setting: ISettingsDialogItemViewModel, el: HTMLElement) {
         if (this.viewModel){
             const vm = new ColorRGBSelectPopupViewModel(this.viewModel.parent, el);
             vm.rgbString = setting.value;
@@ -256,7 +436,7 @@ export class SettingsDialog extends DialogComponentBase<SettingsDialogViewModel>
         }
     }
 
-    private renderSettingBgColorControl(setting: SettingsDialogItemViewModel): VNode {
+    private renderSettingBgColorControl(setting: ISettingsDialogItemViewModel): VNode {
         const vparts = (setting.value as string).split(';');
         if (vparts.length == 2) {
             vparts.push("1");
@@ -271,7 +451,7 @@ export class SettingsDialog extends DialogComponentBase<SettingsDialogViewModel>
         </div>
     }
 
-    private renderSettingColorHS(setting: SettingsDialogItemViewModel): VNode {
+    private renderSettingColorHS(setting: ISettingsDialogItemViewModel): VNode {
         const vparts = (setting.value as string).split(';');
         const cssValue = `hsl(${+vparts[0]}, ${+vparts[1]}%, 50%)`;
         return <div classList={["setting-entry", "setting-entry-color"]}>
@@ -281,7 +461,7 @@ export class SettingsDialog extends DialogComponentBase<SettingsDialogViewModel>
                 on={{ "click": () => { setting.value = null; } }}>Default</button>
         </div>
     }
-    private showColorHSPicker(setting: SettingsDialogItemViewModel, includeBrightnessFactor: boolean, el: HTMLElement) {
+    private showColorHSPicker(setting: ISettingsDialogItemViewModel, includeBrightnessFactor: boolean, el: HTMLElement) {
         if (this.viewModel){
             const vparts = (setting.value as string).split(';');
             const vm = new ColorHSSelectPopupViewModel(this.viewModel.parent, el, includeBrightnessFactor);
@@ -305,7 +485,7 @@ export class SettingsDialog extends DialogComponentBase<SettingsDialogViewModel>
         }
     }
 
-    private renderSettingRadio(setting: SettingsDialogItemViewModel): VNode {
+    private renderSettingRadio(setting: ISettingsDialogItemViewModel): VNode {
         const schema = setting.schema;
         const settingId = schema.id ?? this.getOrCreateSettingId(schema);
         const radioName = `el${schema.id}radio`;
@@ -353,8 +533,7 @@ export class SettingsDialog extends DialogComponentBase<SettingsDialogViewModel>
                                 title: `Choose Audio File`,
                                 file: curFileName,
                                 filters: [
-                                    { name: "MP3 Files (*.mp3)", pattern: "*.mp3" },
-                                    { name: "All Files (*.*)", pattern: "*.*" },
+                                    { name: "MP3 Files", extensions: [ "mp3" ] }
                                 ]
                             });
                             if (fn) {
@@ -402,7 +581,7 @@ export class SettingsDialog extends DialogComponentBase<SettingsDialogViewModel>
         return id;
     }
 
-    private renderSettingPingList(setting: SettingsDialogItemViewModel): VNode {
+    private renderSettingPingList(setting: ISettingsDialogItemViewModel): VNode {
         const rawv = setting.value as (string | PingLineItemDefinition)[];
         const v: PingLineItemDefinition[] = [];
         for (let item of rawv) {
@@ -476,7 +655,7 @@ export class SettingsDialog extends DialogComponentBase<SettingsDialogViewModel>
         </div>;
     }
 
-    private renderSettingTextList(setting: SettingsDialogItemViewModel): VNode {
+    private renderSettingTextList(setting: ISettingsDialogItemViewModel): VNode {
         const v = setting.value as string[];
         return <div classList={["setting-entry", "setting-entry-textlist"]}>
             {
@@ -509,25 +688,58 @@ export class SettingsDialog extends DialogComponentBase<SettingsDialogViewModel>
         return <></>;
     }
 
-    private renderSettingNotifRoute(setting: SettingsDialogItemViewModel): VNode {
+    private renderSettingNotifRoute(setting: ISettingsDialogItemViewModel): VNode {
         const settingId = this.getOrCreateSettingId(setting.schema);
         const nr = new NotificationRouting(setting.value as string);
 
-        const makeButton = (title: string, value: NotificationRoutingTargetSetting, id: keyof NotificationRouting) => {
-            const nextValue = value == "no" ? "yes"
-                : value == "yes" ? "important"
-                : "no";
+        const makeButton = (title: string, value: NotificationRoutingTargetSetting, id: keyof NotificationRouting,
+            availableOptions: NotificationRoutingTargetSetting[]) => {
 
-            return <div classList={[ "notifroute-button", `notifroute-button-${value}` ]} on={{
-                    "click": () => { 
-                        (nr as any)[id] = nextValue;
-                        setting.value = nr.toString()
-                    }
-                }}><span classList={[ "notifroute-button-text" ]}>{title}</span></div>;
+            // const nextValue = value == "no" ? "yes"
+            //     : value == "yes" ? "important"
+            //     : "no";
+
+            const noOption = availableOptions.includes("no")
+                ? <option attrs={{ value: "no", selected: value=="no" }}>{EMOJI_NO} No</option>
+                : null;
+            const yesOption = availableOptions.includes("yes")
+                ? <option attrs={{ value: "yes", selected: value=="yes" }}>{EMOJI_YES} Yes</option>
+                : null;
+            const importantOption = availableOptions.includes("important")
+                ? <option attrs={{ value: "important", selected: value=="important" }}>{EMOJI_IMPORTANT} Yes (as Important)</option>
+                : null;
+
+            const selNode = <select classList={[ "notifroute-button", `notifroute-button-${value}`, 'themed' ]} props={{
+                "value": value
+            }} on={{
+                "change": (e) => {
+                    const selEl = e.target as HTMLSelectElement;
+                    (nr as any)[id] = (selEl.selectedIndex == 0) ? "no"
+                        : (selEl.selectedIndex == 1) ? "yes"
+                        : (selEl.selectedIndex == 2) ? "important"
+                        : "no";
+                    setting.value = nr.toString();
+                }
+            }}>
+                {noOption}
+                {yesOption}
+                {importantOption}
+            </select>
+
+            return selNode;
+
+            // return <div classList={[ "notifroute-button", `notifroute-button-${value}` ]} on={{
+            //         "click": () => { 
+            //             (nr as any)[id] = nextValue;
+            //             setting.value = nr.toString()
+            //         }
+            //     }}><span classList={[ "notifroute-button-text" ]}>{title}</span></div>;
         };
-        const makeSelect = (title: string, id: keyof NotificationRouting, tooltip: string) => {
+        const makeSelect = (title: string, id: keyof NotificationRouting, tooltip: string, availableOptions?: NotificationRoutingTargetSetting[]) => {
             const selId = `sel${settingId}-${id}`;
             const curValue = nr[id] as NotificationRoutingTargetSetting;
+
+            availableOptions ??= [ "no", "yes", "important" ];
 
             let showButton = true;
             if (!(setting.schema.notifRouteOptions?.hasChannelContext ?? false) && id == "targetChannel") {
@@ -538,20 +750,51 @@ export class SettingsDialog extends DialogComponentBase<SettingsDialogViewModel>
             }
 
             return <div classList={["notifroute-button-container"]} attr-title={showButton ? tooltip : ""}>
-                { showButton ? makeButton(title, curValue, id) : <></> }
+                <div classList={[ "notifroute-button-container-title" ]}>{title}</div>
+                <div classList={[ "notifroute-button-container-description" ]}>{tooltip}</div>
+                { showButton ? makeButton(title, curValue, id, availableOptions) : <></> }
             </div>;
         };
+        const makeUnavailableSelect = () => {
+            return <div classList={["notifroute-button-container"]}>
+                <></>
+            </div>;
+        }
+
+        const characterSelect: (VNode | null) = (setting.schema.notifRouteOptions?.hasCharacterContext ?? false)
+            ? makeSelect("Character", "pmConvo", "Send to the PM conversation tab for character (if one exists).")
+            : null;
+
+        const channelSelect: (VNode | null) = (setting.schema.notifRouteOptions?.hasChannelContext ?? false)
+            ? makeSelect("Channel", "targetChannel", "Send to the channel tab for the channel (if one exists).")
+            : null;
+
+        const toastSelect: (VNode | null) = (setting.schema.notifRouteOptions?.canToast ?? false)
+            ? makeSelect("Toast", "toast", "Show as an in-app toast popup.", [ "no", "yes"])
+            : null;
+
+        const notificationSelect: (VNode | null) = (setting.schema.notifRouteOptions?.canGoToNotifications ?? false)
+            ? makeSelect("Notification", "notification", "Add to the \"Recent Notifications\" tab.", [ "no", "yes"])
+            : null;
 
         return <div classList={["setting-entry", "setting-entry-notifroute"]}>
-            { makeSelect("Console", "console", "Send notifications of this type to the console.") }
-            { makeSelect("Current", "currentTab", "Send notifications of this type to the currently active tab.") }
-            { makeSelect("Character", "pmConvo", "Send notifications of this type to the PM conversation tab for the related character (if one exists).") }
-            { makeSelect("Channel", "targetChannel", "Send notifications of this type to the channel tab for the related channel (if one exists).") }
-            { makeSelect("All", "everywhere", "Send notifications of this type to every open tab.") }
+            <div classList={[ "setting-entry-notifroute-group" ]}>
+                <div classList={[ "setting-entry-notifroute-group-title" ]}>Chat Tabs</div>
+                { makeSelect("Console", "console", "Send to the console.") }
+                { makeSelect("Current", "currentTab", "Send to the currently active tab.") }
+                { characterSelect }
+                { channelSelect }
+                { makeSelect("All", "everywhere", "Send to every open tab.") }
+            </div>
+            <div classList={[ "setting-entry-notifroute-group" ]}>
+                <div classList={[ "setting-entry-notifroute-group-title" ]}>Notifications</div>
+                { toastSelect }
+                { notificationSelect }
+            </div>
         </div>
     }
 
-    private renderSettingSelect(setting: SettingsDialogItemViewModel): VNode {
+    private renderSettingSelect(setting: ISettingsDialogItemViewModel): VNode {
         const optionNodes: VNode[] = [];
 
         const valueMap = new Map<number, any>();

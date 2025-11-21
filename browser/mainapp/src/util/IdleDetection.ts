@@ -1,5 +1,5 @@
 import { IDisposable } from "./Disposable";
-import { HostInterop } from "./HostInterop";
+import { HostInterop } from "./hostinterop/HostInterop";
 
 export type IdleDetectionCallback = (userState: IdleDetectionUserState, screenState: IdleDetectionScreenState) => void;
 export type IdleDetectionUserState = "active" | "idle";

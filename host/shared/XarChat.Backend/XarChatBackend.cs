@@ -71,6 +71,18 @@ using XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.ConfigData;
 using XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.EIconSearch;
 using XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.ZoomLevel;
 using XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.GetMemo;
+using XarChat.Backend.Features.StyleUpdateWatcher;
+using XarChat.Backend.Features.EIconFavoriteManager;
+using XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.GetLocaleList;
+using XarChat.Backend.Logging;
+using XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.AppSettings;
+using XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.FlashWindow;
+using XarChat.Backend.Features.WindowControl;
+using XarChat.Backend.Features.AppDataFolder;
+using XarChat.Backend.Features.IdleDetection;
+using XarChat.Backend.Features.NotificationBadge;
+using XarChat.Backend.Features.FileChooser;
+using XarChat.Backend.Features.LocaleList;
 
 namespace XarChat.Backend
 {
@@ -156,7 +168,7 @@ namespace XarChat.Backend
             });
 
             startupLogWriter("XarChatBackend.RunAsync - configuring app services");
-            ConfigureServices(builder.Services);
+            ConfigureServices(builder);
 
             startupLogWriter("XarChatBackend.RunAsync - building app");
             await using var app = builder.Build();
@@ -233,8 +245,10 @@ namespace XarChat.Backend
             return -1;
         }
 
-        private void ConfigureServices(IServiceCollection services)
+        private void ConfigureServices(WebApplicationBuilder builder)
         {
+            var services = builder.Services;
+
             services.AddHttpClient();
             services.AddHttpClient<IFListApi>()
                 .ConfigurePrimaryHttpMessageHandler(() =>
@@ -289,6 +303,12 @@ namespace XarChat.Backend
             services.AddSingleton<IFalsifiedClientTicketManager, FalsifiedClientTicketManager>();
 
             services.AddSingleton<ICommandLineOptions>(_commandLineOptions);
+            if (!String.IsNullOrWhiteSpace(_commandLineOptions.LogToFile))
+            {
+                var sw = new StreamWriter(_commandLineOptions.LogToFile, append: true);
+                sw.AutoFlush = true;
+                builder.Logging.AddProvider(new CustomFileLoggerProvider(sw));
+            }
 
             services.AddSingleton<IAppFileServer>(sp =>
             {
@@ -311,11 +331,24 @@ namespace XarChat.Backend
             services.AddSingleton<ICommandableWindowRegistry, CommandableWindowRegistry>();
 
             _backendServiceSetup.ConfigureServices(services);
+            services.AddSingleton<IWindowControl>(sp => sp.GetRequiredService<IRequiredServicesProvider>().WindowControl);
+            services.AddSingleton<IAppDataFolder>(sp => sp.GetRequiredService<IRequiredServicesProvider>().AppDataFolder);
+            services.AddSingleton<IIdleDetectionManager>(sp => sp.GetRequiredService<IRequiredServicesProvider>().IdleDetectionManager);
+            services.AddSingleton<INotificationBadgeManager>(sp => sp.GetRequiredService<IRequiredServicesProvider>().NotificationBadgeManager);
+            services.AddSingleton<IAppSettingsDataProtectionManager>(sp => sp.GetRequiredService<IRequiredServicesProvider>().AppSettingsDataProtectionManager);
+            services.AddSingleton<IFileChooser>(sp => sp.GetRequiredService<IRequiredServicesProvider>().FileChooser);
+            services.AddSingleton<ICrashLogWriterCallback>(sp => sp.GetRequiredService<IRequiredServicesProvider>().CrashLogWriterCallback);
+            services.AddSingleton<ILocaleList>(sp => sp.GetRequiredService<IRequiredServicesProvider>().LocaleList);
 
             if (!services.Any(sd => sd.ServiceType == typeof(IMemoryHinter)))
             {
                 services.AddSingleton<IMemoryHinter, NullMemoryHinter>();
             }
+
+            services.AddHostedService<StyleUpdateWatcher>();
+
+            services.AddSingleton<IEIconFavoriteBlockManager, 
+                XarChat.Backend.Features.EIconFavoriteBlockManager.Impl.EIconFavoriteBlockManager>();
         }
 
         private void SetupXCHostCommandHandlers(IServiceCollection services)
@@ -330,6 +363,7 @@ namespace XarChat.Backend
             services.AddXCHostCommandHandler<WinCloseCommandHandler>("win.close");
             services.AddXCHostCommandHandler<LogChannelMessageCommandHandler>("log.ChannelMessage");
             services.AddXCHostCommandHandler<LogPMConvoMessageCommandHandler>("log.PMConvoMessage");
+            services.AddXCHostCommandHandler<GetChatLogSizeCommandHandler>("log.GetLogSize");
             services.AddXCHostCommandHandler<EndCharacterSessionCommandHandler>("endCharacterSession");
             services.AddXCHostCommandHandler<UpdateAppBadgeCommandHandler>("updateAppBadge");
             services.AddXCHostCommandHandler<AddIdleMonitorRegistrationCommandHandler>("addIdleMonitorRegistration");
@@ -346,11 +380,15 @@ namespace XarChat.Backend
             services.AddXCHostCommandHandler<SubmitEIconMetadataCommandHandler>("submiteiconmetadata");
             services.AddXCHostCommandHandler<SetZoomLevelCommandHandler>("setZoomLevel");
             services.AddXCHostCommandHandler<GetMemoCommandHandler>("getMemo");
+            services.AddXCHostCommandHandler<GetLocaleListCommandHandler>("getLocales");
+            services.AddXCHostCommandHandler<GetAppSettingsCommandHandler>("getAppSettings");
+            services.AddXCHostCommandHandler<SetAppSettingsCommandHandler>("setAppSettings");
+            services.AddXCHostCommandHandler<FlashWindowCommandHandler>("flashWindow");
         }
 
-        private object _concurrentCountLock = new object();
-        private int _concurrentRequestCount = 0;
-        private int _concurrentHighwater = 0;
+        //private object _concurrentCountLock = new object();
+        //private int _concurrentRequestCount = 0;
+        //private int _concurrentHighwater = 0;
 
         private void Configure(Action<string> startupLogWriter, WebApplication app)
         {
@@ -416,7 +454,7 @@ namespace XarChat.Backend
                     {
                         var afs = httpContext.RequestServices.GetRequiredService<IAppFileServer>();
                         var result = await afs.HandleRequestAsync(relPath, cancellationToken);
-                        httpContext.Response.Headers.Add("Cache-Control", "no-cache, no-store");
+                        httpContext.Response.Headers.Append("Cache-Control", "no-cache, no-store");
                         return result;
                     }
                     catch (Exception ex)
@@ -477,11 +515,11 @@ namespace XarChat.Backend
                 //certificate.FriendlyName = commonName;
 
                 // Return the PFX exported version that contains the key
-                return new X509Certificate2(
+                
+                return X509CertificateLoader.LoadPkcs12(
                     certificate.Export(X509ContentType.Pfx, password),
                     password,
                     X509KeyStorageFlags.UserKeySet);
-                //X509KeyStorageFlags.MachineKeySet);
             }
         }
     }

@@ -23,5 +23,9 @@ namespace XarChat.Backend.Features.CommandLine
         string? ProfilePath { get; }
 
         bool DisableGpuAcceleration { get; }
+
+        string? BrowserLanguage { get; }
+
+        string? LogToFile { get; }
     }
 }

@@ -12,6 +12,15 @@ export const EmptyDisposable: (IDisposable & Disposable) = {
     isDisposed: true
 };
 
+export class ObjectDisposedError extends Error {
+    constructor(obj: any) {
+        super("The object has been disposed.");
+        this.object = obj;
+    }
+
+    readonly object: any;
+}
+
 function isIDisposable(obj: any) {
     return (
         obj != null 
@@ -26,6 +35,14 @@ export function isDisposable(obj: any) {
         && typeof obj[Symbol.dispose] == "function");
 }
 
+export function maybeDispose(obj: any) {
+    if (isDisposable(obj)) {
+        (obj as Disposable)[Symbol.dispose]();
+    }
+    else if (isIDisposable(obj)) {
+        (obj as IDisposable).dispose();
+    }
+}
 export type ConvertibleToDisposable = ((() => void) | IDisposable | Disposable | null | undefined);
 
 class NamedDisposable implements IDisposable {
@@ -140,8 +157,9 @@ function getNamedDisposableClass(name: string): ConstructorOf<NamedDisposable> {
     return c;
 }
 export function asNamedDisposable(name: string, ...funcs: ConvertibleToDisposable[]): (IDisposable & Disposable) {
-    const c = getNamedDisposableClass(name);
-    return new c(...funcs);
+    //const c = getNamedDisposableClass(name);
+    //return new c(...funcs);
+    return new NamedDisposable(...funcs);
 }
 (window as any)["__asNamedDisposable"] = asNamedDisposable;
 

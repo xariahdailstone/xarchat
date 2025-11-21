@@ -2,10 +2,14 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection.Metadata;
+using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
+using XarChat.Backend.Common;
 using XarChat.Backend.Common.DbSchema;
+using XarChat.Backend.Features.AppConfiguration;
 using XarChat.Backend.Features.AppDataFolder;
 using XarChat.Backend.Features.ChatLogging.Sqlite.Migrations;
 using XarChat.Backend.Features.StartupTasks;
@@ -14,6 +18,9 @@ namespace XarChat.Backend.Features.ChatLogging.Sqlite
 {
     public class SqliteChatLogWriter : IChatLogWriter, IDisposable
     {
+        private readonly IAppConfiguration _appConfiguration;
+        private readonly IAppDataFolder _appDataFolder;
+
         private readonly SemaphoreSlim _sem = new SemaphoreSlim(1);
         private Microsoft.Data.Sqlite.SqliteConnection? _cnn;
 
@@ -21,11 +28,21 @@ namespace XarChat.Backend.Features.ChatLogging.Sqlite
         private readonly CancellationTokenSource _disposeCTS = new CancellationTokenSource();
 
         public SqliteChatLogWriter(
-            IAppDataFolder appDataFolder)
+            IAppDataFolder appDataFolder,
+            IAppConfiguration appConfiguration)
         {
-            var adf = appDataFolder.GetAppDataFolder();
-            var fn = Path.Combine(adf, "chatlog.db");
+            _appDataFolder = appDataFolder;
+            _appConfiguration = appConfiguration;
+
+            var fn = GetChatLogDbFilename();
             VerifySchema(fn);
+        }
+
+        private string GetChatLogDbFilename()
+        {
+            var adf = _appDataFolder.GetAppDataFolder();
+            var fn = Path.Combine(adf, "chatlog.db");
+            return fn;
         }
 
         private void VerifySchema(string fn)
@@ -35,32 +52,42 @@ namespace XarChat.Backend.Features.ChatLogging.Sqlite
             {
                 try
                 {
-                    StartupTask.UpdateStatus(false, "Migrating chat log format...", null);
-
-                    _cnn = await DbSchemaManager.VerifySchemaAsync(fn, false,
-                        [
-                            new Migration01Initial(),
-                            new Migration02AddSchemaVersionTable(),
-                            new Migration03AddGenderStatusToMessageLog(),
-                            new Migration04AddGenderStatusToPMLog(),
-                            new Migration05MovePMConvosToChannels()
-                        ],
-                        _disposeCTS.Token);
-
-                    StartupTask.UpdateStatus(true, "Chat log is ready.", null);
-                }
-                catch (Exception ex)
-                {
-                    StartupTask.UpdateStatus(false, "Chat log migration failed.", ex);
-
-                    try { _cnn?.Close(); }
-                    catch { }
+                    await VerifySchemaInternalAsync(fn,
+                        (isComplete, currentStatus, failureException) => StartupTask.UpdateStatus(isComplete, currentStatus, failureException));
                 }
                 finally
                 {
                     _sem.Release();
                 }
             });
+        }
+
+        private async Task VerifySchemaInternalAsync(string fn,
+            Action<bool, string, Exception?> startupTaskUpdateStatus)
+        {
+            try
+            {
+                startupTaskUpdateStatus(false, "Migrating chat log format...", null);
+
+                _cnn = await DbSchemaManager.VerifySchemaAsync(fn, false,
+                    [
+                        new Migration01Initial(),
+                            new Migration02AddSchemaVersionTable(),
+                            new Migration03AddGenderStatusToMessageLog(),
+                            new Migration04AddGenderStatusToPMLog(),
+                            new Migration05MovePMConvosToChannels(),
+                        ],
+                    _disposeCTS.Token);
+
+                startupTaskUpdateStatus(true, "Chat log is ready.", null);
+            }
+            catch (Exception ex)
+            {
+                startupTaskUpdateStatus(false, "Chat log migration failed.", ex);
+
+                try { _cnn?.Close(); }
+                catch { }
+            }
         }
 
         public void Dispose()
@@ -265,7 +292,85 @@ namespace XarChat.Backend.Features.ChatLogging.Sqlite
             }
             return false;
         }
-        
+
+        public async Task VacuumAsync(CancellationToken cancellationToken)
+        {
+            var result = await WithSemaphore(
+                cancellationToken: cancellationToken,
+                func: async (connection, cancellationToken) =>
+                {
+                    //using var xa = connection.BeginTransaction();
+
+                    using (var vacuumCmd = connection.CreateCommand())
+                    {
+                        //vacuumCmd.Transaction = xa;
+                        vacuumCmd.CommandText = "vacuum";
+                        await vacuumCmd.ExecuteNonQueryAsync(cancellationToken);
+                    }
+
+                    //await xa.CommitAsync(cancellationToken);
+                    return 0;
+                });
+        }
+
+        public async Task ClearDatabaseAsync(CancellationToken cancellationToken)
+        {
+            var result = await WithSemaphore(
+                cancellationToken: cancellationToken,
+                func: async (connection, cancellationToken) =>
+                {
+                    connection.Close();
+                    await connection.DisposeAsync();
+                    _cnn = null;
+
+                    GC.Collect();
+                    GC.WaitForPendingFinalizers();
+                    GC.Collect();
+
+                    SqliteConnection.ClearAllPools();
+
+                    GC.WaitForPendingFinalizers();
+                    GC.Collect();
+                    GC.WaitForPendingFinalizers();
+                    GC.Collect();
+
+                    var fn = GetChatLogDbFilename();
+
+                    try
+                    {
+                        // Delete the existing database file
+                        await FileSystemUtil.DeleteAsync(fn, retryCount: 40, retryDelay: TimeSpan.FromMilliseconds(250),
+                            collectGCOnRetry: true);
+                    }
+                    finally
+                    {
+                        // Initialize a new database file
+                        Exception? savedFailureException = null;
+                        await VerifySchemaInternalAsync(fn,
+                            (isCompleted, currentStatus, failureException) =>
+                            {
+                                if (failureException is not null)
+                                {
+                                    savedFailureException = failureException;
+                                }
+                            });
+
+                        if (savedFailureException is not null)
+                        {
+                            throw new ApplicationException("ClearDatabase failed: " + savedFailureException.Message, savedFailureException);
+                        }
+                    }
+                    return 0;
+                });
+        }
+
+        public async Task<long> GetLogFileSizeAsync(CancellationToken cancellationToken)
+        {
+            var fn = GetChatLogDbFilename();
+            var fi = new FileInfo(fn);
+            return fi.Length;
+        }
+
         public async Task<List<string>> GetChannelHintsFromPartialNameAsync(string partialChannelName,
             CancellationToken cancellationToken)
         {
@@ -557,6 +662,179 @@ namespace XarChat.Backend.Features.ChatLogging.Sqlite
                     }
                 });
             return result;
+        }
+
+        private record struct ChannelInfo(long Id, string Name, string Title);
+        private record struct PMConvoInfo(
+            long MyCharacterId, string MyCharacterName, 
+            long InterlocutorCharacterId, string InterlocutorCharacterName);
+
+        private async IAsyncEnumerable<ChannelInfo> EnumerateChannelsAsync(
+            SqliteConnection connection, SqliteTransaction xa, [EnumeratorCancellation] CancellationToken cancellationToken)
+        {
+            using (var qCmd = connection.CreateCommand())
+            {
+                qCmd.Transaction = xa;
+                qCmd.CommandText = @"
+                    select id, name, title
+                    from channel c
+";
+                await using var dr = await qCmd.ExecuteReaderAsync(cancellationToken);
+                while (await dr.ReadAsync(cancellationToken))
+                {
+                    var id = Convert.ToInt64(dr["id"]);
+                    var chanName = Convert.ToString(dr["name"]) ?? "";
+                    var chanTitle = Convert.ToString(dr["title"]) ?? "";
+                    yield return new ChannelInfo(id, chanName, chanTitle);
+                }
+            }
+        }
+
+        private async IAsyncEnumerable<PMConvoInfo> EnumeratePMConvosAsync(
+            SqliteConnection connection, SqliteTransaction xa, [EnumeratorCancellation] CancellationToken cancellationToken)
+        {
+            using (var qCmd = connection.CreateCommand())
+            {
+                qCmd.Transaction = xa;
+                qCmd.CommandText = @"
+                    select distinct mycharacterid, interlocutorcharacterid,
+                        c1.name as mycharactername, c2.name as interlocutorcharactername
+                    from pmconvomessage pmm
+                    inner join character c1 on c1.id = pmm.mycharacterid
+                    inner join character c2 on c2.id = pmm.interlocutorcharacterid
+                ";
+                await using var dr = await qCmd.ExecuteReaderAsync(cancellationToken);
+                while (await dr.ReadAsync(cancellationToken))
+                {
+                    var myCharacterId = Convert.ToInt64(dr["mycharacterid"]);
+                    var interlocutorCharacterId = Convert.ToInt64(dr["interlocutorcharacterid"]);
+                    var myCharacterName = Convert.ToString(dr["mycharactername"]) ?? "";
+                    var interlocutorCharacterName = Convert.ToString(dr["interlocutorcharactername"]) ?? "";
+                    
+                    yield return new PMConvoInfo(myCharacterId, myCharacterName, interlocutorCharacterId, interlocutorCharacterName);
+                }
+            }
+        }
+
+        private async Task<int> PerformExpirationPMConvoAsync(
+            SqliteConnection connection, SqliteTransaction xa,
+            PMConvoInfo pmConvoInfo,
+            CancellationToken cancellationToken)
+        {
+            var retentionDays =
+                (int?)_appConfiguration.GetArbitraryValue($"character.{pmConvoInfo.MyCharacterName.ToLower()}.pm.{pmConvoInfo.InterlocutorCharacterName.ToLower()}.logging.retentionDays")
+                ?? (int?)_appConfiguration.GetArbitraryValue($"character.{pmConvoInfo.MyCharacterName.ToLower()}.any.logging.defaultPmConvoRretentionDays")
+                ?? (int?)_appConfiguration.GetArbitraryValue("global.logging.defaultPmConvoRretentionDays");
+
+            if (retentionDays is not null && retentionDays > 0)
+            {
+                var expireBeforeDate = DateTimeOffset.UtcNow - TimeSpan.FromDays(retentionDays.Value);
+
+                using (var purgeCmd = connection.CreateCommand())
+                {
+                    purgeCmd.Transaction = xa;
+                    purgeCmd.CommandText = @"
+                        delete from pmconvomessage
+                        where mycharacterid = @mycharacterid 
+                            and interlocutorcharacterid = @interlocutorcharacterid 
+                            and timestamp < @expirebefore
+                    ";
+                    purgeCmd.Parameters.Add("@mycharacterid", SqliteType.Integer).Value = pmConvoInfo.MyCharacterId;
+                    purgeCmd.Parameters.Add("@interlocutorcharacterid", SqliteType.Integer).Value = pmConvoInfo.InterlocutorCharacterId;
+                    purgeCmd.Parameters.Add("@expirebefore", SqliteType.Integer).Value = expireBeforeDate.ToUnixTimeMilliseconds();
+                    var rowsPurged = await purgeCmd.ExecuteNonQueryAsync(cancellationToken);
+                    return rowsPurged;
+                }
+            }
+            else
+            {
+                return 0;
+            }
+        }
+
+        private async Task<int> PerformExpirationChannelAsync(
+            SqliteConnection connection, SqliteTransaction xa, 
+            ChannelInfo channelInfo,
+            CancellationToken cancellationToken)
+        {
+            var retentionDays = 
+                (int?)_appConfiguration.GetArbitraryValue($"global.logging.channel.{channelInfo.Name}.retentionDays")
+                ?? (int?)_appConfiguration.GetArbitraryValue("global.logging.defaultChannelRetentionDays");
+
+            if (retentionDays is not null && retentionDays > 0)
+            {
+                var expireBeforeDate = DateTimeOffset.UtcNow - TimeSpan.FromDays(retentionDays.Value);
+
+                using (var purgeCmd = connection.CreateCommand())
+                {
+                    purgeCmd.Transaction = xa;
+                    purgeCmd.CommandText = @"
+                        delete from channelmessage
+                        where channelid = @channelid
+                            and timestamp < @expirebefore
+                    ";
+                    purgeCmd.Parameters.Add("@channelid", SqliteType.Integer).Value = channelInfo.Id;
+                    purgeCmd.Parameters.Add("@expirebefore", SqliteType.Integer).Value = expireBeforeDate.ToUnixTimeMilliseconds();
+                    var rowsPurged = await purgeCmd.ExecuteNonQueryAsync(cancellationToken);
+                    return rowsPurged;
+                }
+            }
+            else
+            {
+                return 0;
+            }
+        }
+
+        public async Task PerformExpirationAsync(CancellationToken cancellationToken)
+        {
+            var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+            var result = await WithSemaphore(
+                cancellationToken: cancellationToken,
+                func: async (connection, cancellationToken) =>
+                {
+                    using var xa = connection.BeginTransaction();
+
+                    var channels = await EnumerateChannelsAsync(connection, xa, cancellationToken)
+                        .ToListAsync(cancellationToken);
+
+                    var totalRowsRemoved = 0;
+                    foreach (var chan in channels)
+                    {
+                        totalRowsRemoved +=  await PerformExpirationChannelAsync(connection, xa, chan, cancellationToken);
+                    }
+
+                    var pmConvos = await EnumeratePMConvosAsync(connection, xa, cancellationToken)
+                        .ToListAsync(cancellationToken);
+
+                    foreach (var pmConvo in pmConvos)
+                    {
+                        totalRowsRemoved += await PerformExpirationPMConvoAsync(connection, xa,
+                            pmConvo, cancellationToken);
+                    }
+
+                    //if (totalRowsRemoved > 0)
+                    //{
+                    using (var purgeStringsCmd = connection.CreateCommand())
+                    {
+                        purgeStringsCmd.Transaction = xa;
+                        purgeStringsCmd.CommandText = @"
+                            delete from strings
+                            where id not in (
+	                            select distinct cm.textstringid
+	                            from channelmessage cm
+	                            union
+	                            select distinct pmm.textstringid
+	                            from pmconvomessage pmm
+                            )
+                        ";
+                        await purgeStringsCmd.ExecuteNonQueryAsync(cancellationToken);
+                    }
+                    //}
+
+                    xa.Commit();
+                    return 0;
+                });
         }
     }
 }

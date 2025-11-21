@@ -38,6 +38,7 @@
     font-style: normal;
 }
 .character-status-spacer {
+    -webkit-user-select: none;
     user-select: none;
 }
 

@@ -1,7 +1,7 @@
 import { ChannelName } from "../shared/ChannelName";
 import { CharacterName } from "../shared/CharacterName";
 import { OnlineStatus, OnlineStatusConvert } from "../shared/OnlineStatus";
-import { HostInterop } from "../util/HostInterop";
+import { HostInterop } from "../util/hostinterop/HostInterop";
 import { IterableUtils } from "../util/IterableUtils";
 import { Collection, CollectionChangeType } from "../util/ObservableCollection";
 import { Optional } from "../util/Optional";

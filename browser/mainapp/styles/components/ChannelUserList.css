@@ -19,6 +19,60 @@
 
     overflow-x: hidden;
     overflow-y: auto;
+
+    contain: layout paint;
+}
+
+.search-container {
+    display: contents;
+}
+#elMain:has(.search-textbox) .search-container {
+    display: grid;
+    grid-template-rows: auto;
+    grid-template-columns: 1fr auto;
+    grid-template-areas: "textbox icon";
+}
+
+.search-toggle-icon {
+    float: right;
+    margin-top: 5px;
+    margin-right: 5px;
+    padding-top: 5px;
+    padding-right: 5px;
+    padding-left: 5px;
+    padding-bottom: 5px;
+    cursor: pointer;
+
+    &:hover {
+        background: var(--bg-level-2);
+    }
+}
+
+#elMain:has(.search-textbox) .search-toggle-icon {
+    float: none;
+    grid-area: icon;
+}
+.search-textbox {
+    grid-area: textbox;
+    border: none;
+    background: var(--bg-level-2);
+    color: var(--fg-level-2);
+    margin-top: 8px;
+    margin-left: 8px;
+    padding: 1px 4px;
+    display: block;
+    outline: none;
+    border: 1px solid transparent;
+    font: inherit;
+
+    &:focus {
+        border: 1px solid var(--fg-level-2);
+    }
+}
+
+.search-toggle-icon-image {
+    max-width: 16px;
+    max-height: 16px;
 }
 
 .usercount {
@@ -30,6 +84,7 @@
 
 .section {
     padding-bottom: 10px;
+    contain: layout paint;
 }
 
 .sectiontitle {
@@ -37,6 +92,10 @@
     font-variant: small-caps;
     text-transform: uppercase;
     padding: 10px;
+    contain: layout paint;
+}
+.sectionitems {
+    contain: layout paint;
 }
 
 .hidden {
@@ -58,6 +117,12 @@
     font-family: var(--chat-font-family);
     font-weight: bold;
 
+    overflow: hidden;
+    max-width: 100%;
+    contain: layout paint size;
+
+    width: 100%;
+    height: 16px;
 }
 
 .statusdot { grid-area: statusdot; }
@@ -67,4 +132,13 @@
     white-space: nowrap;
     text-overflow: ellipsis;
     overflow: hidden;
+}
+
+.character-link {
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+}
+.nickname {
+    font-weight: normal;
 }

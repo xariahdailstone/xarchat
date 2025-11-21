@@ -100,11 +100,14 @@
 .sectionitems-item-icon { 
     grid-area: icon; 
 
-    max-width: 22px;
-    max-height: 22px;
+    --icon-width: 22px;
+    --icon-height: 22px;
+
+    max-width: var(--icon-width);
+    max-height: var(--icon-width);
     margin-right: 7px;
-    --iconimage-max-width: 22px;
-    --iconimage-max-height: 22px;
+    --iconimage-max-width: var(--icon-width);
+    --iconimage-max-height: var(--icon-width);
 }
 .sectionitems-item-name { 
     grid-area: name; 
@@ -184,6 +187,8 @@
     --itembgcolor: var(--bg-level-3);
     background: var(--itembgcolor);
 
+    contain: layout paint;
+
     &.selected {
         --itembgcolor: var(--bg-level-3);
         background: var(--bg-level-3-highlight);
@@ -227,6 +232,12 @@
     }
 }
 
+.sectionitems-item {
+    contain: paint layout size;
+    width: 100%;
+    height: 40px;
+}
+
 .sectionitems-item-unseen-container {
     grid-area: unseen;
     display: none;
@@ -239,13 +250,15 @@
 .sectionitems-item-icon { 
     z-index: 1;
     position: relative;
-    width: 22px;
-    height: 22px;
-    max-width: 22px;
-    max-height: 22px;
+    --icon-width: 22px;
+    --icon-height: 22px;
+    width: var(--icon-width);
+    height: var(--icon-width);
+    max-width: var(--icon-width);
+    max-height: var(--icon-width);
     margin-right: 7px;
-    --iconimage-max-width: 22px;
-    --iconimage-max-height: 22px;
+    --iconimage-max-width: var(--icon-width);
+    --iconimage-max-height: var(--icon-width);
 }
 .sectionitems-item-icon > * {
     width: var(--iconimage-max-width);
@@ -340,6 +353,10 @@
     text-overflow: ellipsis;
     text-wrap: nowrap;
     overflow: hidden;
+
+    .nickname {
+        color: var(--fg-level-3);
+    }
 }
 
 .pin-icon-container {
@@ -422,3 +439,25 @@
 }
 #elMain.has-alerts-below .new-alerts-below { display: grid !important; }
 #elMain.has-alerts-above .new-alerts-above { display: grid !important; }
+
+
+.density-dense {
+    .sectiontitle {
+        padding-top: 4px;
+        padding-bottom: 4px;
+        zoom: 0.9;
+    }
+    .sectionitems {
+        zoom: 0.9;
+    }
+    .sectionitems-item-inner {
+        padding-top: 4px;
+        padding-bottom: 4px;
+        /*zoom: 0.9;*/
+
+        .sectionitems-item-icon {
+            --icon-width: 22px;
+            --icon-height: 2px;
+        }
+    }
+}

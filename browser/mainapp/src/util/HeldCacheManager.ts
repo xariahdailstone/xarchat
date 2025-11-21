@@ -1,5 +1,6 @@
 import { CallbackSet } from "./CallbackSet";
 import { asDisposable, IDisposable } from "./Disposable";
+import { Scheduler } from "./Scheduler";
 
 export interface HeldCacheManager {
     addReleasableItem(
@@ -15,12 +16,15 @@ class HeldCacheManagerImpl implements HeldCacheManager {
 
     addReleasableItem(releaseFunc: () => any, releaseAfterMs: number): IDisposable {
         const myKey = {};
-        let myTimeoutHandle: number | null = null;
+        let myTimeoutHandle: IDisposable | null = null;
         const wrappedReleaseFunc = () => {
             this._releasableItems.delete(myKey);
             if (myTimeoutHandle) {
-                window.clearTimeout(myTimeoutHandle);
+                const mth = myTimeoutHandle;
                 myTimeoutHandle = null;
+                Scheduler.scheduleNamedCallback("HeldCacheManagerImpl.addReleasableItem", ["idle", 250], () => {
+                    mth.dispose();
+                })
             }
             try {
                 releaseFunc();
@@ -29,16 +33,21 @@ class HeldCacheManagerImpl implements HeldCacheManager {
         };
 
         this._releasableItems.set(myKey, wrappedReleaseFunc);
-        myTimeoutHandle = window.setTimeout(() => {
-            myTimeoutHandle = null;
-            wrappedReleaseFunc();
-        }, releaseAfterMs);
+        myTimeoutHandle = Scheduler.scheduleNamedCallback("HeldCacheManager.myTimeoutHandle", releaseAfterMs, () => {
+            if (myTimeoutHandle != null) {
+                myTimeoutHandle = null;
+                wrappedReleaseFunc();
+            }
+        });
 
         return asDisposable(() => {
             this._releasableItems.delete(myKey);
             if (myTimeoutHandle) {
-                window.clearTimeout(myTimeoutHandle);
+                const mth = myTimeoutHandle;
                 myTimeoutHandle = null;
+                Scheduler.scheduleNamedCallback("HeldCacheManagerImpl.addReleasableItem.ret", ["idle", 250], () => {
+                    mth.dispose();
+                });
             }
         });
     }

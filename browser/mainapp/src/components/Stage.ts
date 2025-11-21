@@ -13,11 +13,16 @@ export class Stage extends ComponentBase<ActiveLoginViewModel> {
 
         HTMLUtils.clearChildren(this.elMain);
 
-        this.watchExpr(vm => vm.selectedTab, st => {
-            let createdEl: (ComponentBase<any> | null) = null;
-            this.logDebug("Stage viewModel change", st);
+        this.watchExpr(vm => [vm.isLoggingIn, vm.selectedTab], lst => {
+            const ili = lst ? lst[0] : false;
+            const st = lst ? lst[1] : null;
 
-            if (st) {
+            let createdEl: (ComponentBase<any> | null) = null;
+
+            if (ili) {
+                createdEl = null;
+            }
+            else if (st) {
                 createdEl = StageViews.getComponentFor(st);
             }
     
@@ -31,13 +36,18 @@ export class Stage extends ComponentBase<ActiveLoginViewModel> {
             if (createdEl) {
                 createdEl.classList.add("actor");
                 createdEl.viewModel = st;
+                this.logDebug("Stage viewModel change", ili, st, createdEl);
                 this.elMain.appendChild(createdEl);
                 if (typeof (createdEl as any).viewActivated == "function") {
                     (createdEl as any).viewActivated();
                 }
                 return asDisposable(() => {
+                    this.logDebug("Stage viewModel remove", createdEl);
                     createdEl!.remove();
                 });
+            }
+            else {
+                this.logDebug("Stage viewModel change (no element)", ili, st, createdEl);
             }
         });
     }

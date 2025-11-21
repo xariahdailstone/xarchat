@@ -24,7 +24,7 @@ namespace XarChat.Backend.UrlHandlers.LaunchUrl
         }
 
         private static readonly Regex ProcessLaunchPattern = new Regex(
-            @"^(?<arglist>\s*(?<arg>(""[^""]*"")|(\S+))\s*)+$", RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.ExplicitCapture);
+            @"^(?<arglist>\s*(?<arg>(""(\\""|[^""])*"")|(\S+))\s*)+$", RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.ExplicitCapture);
 
         private static async Task<IResult> LaunchUrlAsync(
             [FromQuery] string url,
@@ -50,7 +50,22 @@ namespace XarChat.Backend.UrlHandlers.LaunchUrl
                     { "url", targetUrl }
                 }, SourceGenerationContext.Default.JsonObject);
             }
-            else if (String.Equals("shell:", appConfiguration.UrlLaunchExecutable, StringComparison.OrdinalIgnoreCase))
+            else
+            {
+                await LaunchUrlExternallyAsync(url, appConfiguration, cancellationToken);
+            }
+
+            return Results.Ok();
+        }
+
+        private static async Task LaunchUrlExternallyAsync(
+            string url,
+            IAppConfiguration appConfiguration,
+            CancellationToken cancellationToken)
+        {
+            var urlLaunchExecutable = appConfiguration.UrlLaunchExecutable;
+
+            if (String.Equals("shell:", urlLaunchExecutable, StringComparison.OrdinalIgnoreCase))
             {
                 var psi = new ProcessStartInfo(url);
                 psi.UseShellExecute = true;
@@ -59,10 +74,7 @@ namespace XarChat.Backend.UrlHandlers.LaunchUrl
             }
             else
             {
-                var m = ProcessLaunchPattern.Match(appConfiguration.UrlLaunchExecutable);
-                var args = m.Groups["arg"].Captures.Cast<Capture>().Select(c => c.Value).ToList();
-
-                var uri = new Uri(url);
+                var m = ProcessLaunchPattern.Match(urlLaunchExecutable);
 
                 string StripQuotes(string raw)
                 {
@@ -72,33 +84,33 @@ namespace XarChat.Backend.UrlHandlers.LaunchUrl
                     }
                     else
                     {
-                        return raw;
+                        return raw ?? "";
                     }
                 }
 
+                var args = m.Groups["arg"].Captures
+                    .Cast<Capture>()
+                    .Select(c => StripQuotes(c.Value).Replace("\\\"", "\"")).ToList();
+
+                var uri = new Uri(url);
+
                 var psi = new ProcessStartInfo();
                 psi.UseShellExecute = false;
-                psi.FileName = StripQuotes(args[0]);
-                foreach (var v in args.Skip(1).Select(StripQuotes))
+                psi.FileName = args[0];
+                foreach (var v in args.Skip(1))
                 {
-                    if (v == "%s")
+                    if (v.Contains("%s"))
                     {
-                        psi.ArgumentList.Add(url);
+                        psi.ArgumentList.Add(v.Replace("%s", url));
                     }
                     else
                     {
                         psi.ArgumentList.Add(v);
                     }
                 }
-                //psi.FileName = @"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe";
-                //psi.ArgumentList.Add("--profile-directory=Profile 1");
-                //psi.ArgumentList.Add(uri.ToString());
+
                 Process.Start(psi);
-
             }
-
-
-            return Results.Ok();
         }
 
         private static async Task<bool> IsImageUrlAsync(string url, IHttpClientProvider httpClientProvider, TimeSpan timeout, CancellationToken cancellationToken)

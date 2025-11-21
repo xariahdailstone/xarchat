@@ -117,6 +117,7 @@
 
 .setting-item.setting-is-disabled {
     opacity: 0.5;
+    -webkit-user-select: none;
     user-select: none;
     pointer-events: none;
 }
@@ -132,6 +133,13 @@
 .setting-description {
     font-size: 90%;
     margin-top: 2px;
+}
+
+.setting-actionbuttons {
+    margin-top: 6px;
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-end;
 }
 
 .setting-group > .setting-title,
@@ -151,23 +159,26 @@
 .setting-item {
     display: grid;
     grid-template-columns: 1fr auto;
-    grid-template-rows: 50% auto auto;
+    grid-template-rows: auto auto auto auto;
     grid-template-areas:
         "title input"
         "description input"
-        "inheritprompt input";
+        "inheritprompt input"
+        "actionbuttons input";
 }
 .setting-title { grid-area: title; align-self: flex-end; }
 .setting-description { grid-area: description; }
 .setting-inheritprompt { grid-area: inheritprompt; font-size: 80%; }
+.setting-actionbuttons { grid-area: actionbuttons; }
 .setting-entry { 
     grid-area: input; 
     align-self: center;
     justify-self: center;
     margin-right: 10px;
+    margin-left: 10px;
 }
 
-.setting-using-inherited { opacity: 0.7;}
+.setting-using-inherited { color: rgba(255, 255, 255, 0.5); }
 .setting-revert-to-inherited { color: yellow; }
 .revert-link {
     cursor: pointer;
@@ -193,12 +204,13 @@
 .setting-item:has(.setting-entry-textlist) {
     display: grid;
     grid-template-columns: 100%;
-    grid-template-rows: auto auto auto auto;
+    grid-template-rows: auto auto auto auto auto;
     grid-template-areas:
         "title"
         "description"
         "inheritprompt"
-        "input";
+        "input"
+        "actionbuttons";
 }
 .setting-entry-textlist-item-container,
 .setting-entry-textlist-item-container-add {
@@ -213,12 +225,13 @@
 .setting-item:has(.setting-entry-pinglist) {
     display: grid;
     grid-template-columns: 100%;
-    grid-template-rows: auto auto auto auto;
+    grid-template-rows: auto auto auto auto auto;
     grid-template-areas:
         "title"
         "description"
         "inheritprompt"
-        "input";
+        "input"
+        "actionbuttons";
 }
 .setting-entry-pinglist-item-container,
 .setting-entry-pinglist-item-container-add {
@@ -241,12 +254,13 @@
 .setting-item:has(.setting-entry-radio-container) {
     display: grid;
     grid-template-columns: 100%;
-    grid-template-rows: auto auto auto auto;
+    grid-template-rows: auto auto auto auto auto;
     grid-template-areas:
         "title"
         "description"
         "inheritprompt"
-        "input";
+        "input"
+        "actionbuttons";
 }
 .setting-entry-radio-container {
     justify-self: normal;
@@ -269,25 +283,75 @@
 .setting-item:has(.setting-entry-notifroute) {
     display: grid;
     grid-template-columns: 100%;
-    grid-template-rows: auto auto auto auto;
+    grid-template-rows: auto auto auto auto auto;
     grid-template-areas:
         "title"
         "description"
         "inheritprompt"
-        "input";
+        "input"
+        "actionbuttons";
 }
 .setting-entry-notifroute {
     font-size: 80%;
     margin-top: 5px;
-    display: grid;
-    width: 80%;
-    grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
+    width: 95%;
+    display: flex;
+    flex-direction: column;
     gap: 12px;
+
+    .setting-entry-notifroute-group {
+        background-color: rgba(0, 0, 0, 0.1);
+        padding: 4px 4px;
+        border-radius: 4px;
+        display: flex;
+        flex-direction: column;
+
+        .setting-entry-notifroute-group-title {
+            font-weight: bold;
+            font-size: 110%;
+            margin-bottom: 5px;
+            margin-top: 5px;
+        }
+    }
+
+    .notifroute-button-container {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        grid-template-rows: 1fr minmax(50%, auto);
+        grid-template-areas:
+            "title button"
+            "description button";
+        width: 90%;
+        margin-left: auto;
+        margin-right: auto;
+        margin-top: 2px;
+        margin-bottom: 2px;
+
+        background: var(--bg-main-textbox-btn);
+        border-radius: 6px;
+        padding: 3px 9px;
+
+        .notifroute-button-container-title { 
+            grid-area: title; 
+            text-align: left;
+            font-weight: bold;
+            align-self: flex-end;
+        }
+        .notifroute-button-container-description { 
+            grid-area: description; 
+            text-align: left;
+            align-self: flex-start;
+        }
+        .notifroute-button { 
+            grid-area: button; 
+            align-self: center;
+            width: 150px;
+            background-color: var(--bg-level-4);
+            color: var(--fg-level-4);
+        }
+    }
 }
-.setting-entry-notifroute .notifroute-button-container {
-    background: var(--bg-main-textbox-btn);
-    border-radius: 6px;
-    padding: 3px 9px;
+/* .setting-entry-notifroute .notifroute-button-container {
     text-align: center;
 }
 .setting-entry-notifroute .notifroute-button-container:has(.notifroute-button) {
@@ -318,4 +382,43 @@
 .setting-entry-notifroute .notifroute-button-important .notifroute-button-text {
     color: white;
     background: red;
+} */
+
+.setting-item:has(.setting-entry-text) {
+    display: grid;
+    grid-template-columns: 100%;
+    grid-template-rows: auto auto auto auto auto;
+    grid-template-areas:
+        "title"
+        "description"
+        "inheritprompt"
+        "input"
+        "actionbuttons";
+
+    .setting-entry-text {
+        margin-top: 7px;
+    }
+}
+
+.setting-item:has(.setting-entry-displaytext) {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-rows: auto auto auto 8px auto;
+    grid-template-areas:
+        "title input"
+        "description input"
+        "inheritprompt input"
+        ". ."
+        "actionbuttons actionbuttons";
+
+    .setting-entry-displaytext {
+        margin-top: 7px;
+    }
+}
+
+.setting-entry-integer,
+.setting-entry-number {
+    background: var(--bg-main-textbox-btn);
+    color: var(--fg-main-textbox-btn);
+    font: inherit;
 }

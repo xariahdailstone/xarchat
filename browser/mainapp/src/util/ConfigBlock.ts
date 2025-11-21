@@ -1,5 +1,9 @@
+import { ConfigSchema, ConfigSchemaItemDefinition, ConfigSchemaItemDefinitionItem, ConfigSchemaItemDefinitionSection, ConfigSchemaVersion } from '../configuration/ConfigSchemaItem';
+import { CallbackSet } from './CallbackSet';
+import { KeyValuePair } from './collections/KeyValuePair';
+import { SnapshottableMap } from './collections/SnapshottableMap';
 import { IDisposable } from './Disposable';
-import { HostInterop } from './HostInterop';
+import { HostInterop } from './hostinterop/HostInterop';
 import { Logger, Logging } from './Logger';
 import { Observable } from './Observable';
 import { ObservableExpression } from './ObservableExpression';
@@ -13,6 +17,9 @@ export interface ConfigBlock {
     getFirstWithDefault(keys: string[], defaultValue: any): (unknown | null);
 
     observe(key: string, onValueUpdated: (value: (unknown | null)) => void): IDisposable;
+    observeAll(onValueUpdated: (key: string, value: (unknown | null)) => void): IDisposable;
+
+    forEach(callback: (kvp: KeyValuePair<string, unknown | null>) => void): void;
 }
 
 export class HostInteropConfigBlock implements ConfigBlock {
@@ -23,6 +30,8 @@ export class HostInteropConfigBlock implements ConfigBlock {
         HostInterop.registerConfigChangeCallback(kvp => {
             result.hostAssign(kvp.key, kvp.value);
         });
+        //debugger;
+        result.performMigration(ConfigSchemaVersion);
         return result;
     }
 
@@ -36,10 +45,13 @@ export class HostInteropConfigBlock implements ConfigBlock {
     }
 
     private readonly _logger: Logger;
-    private _values: Map<string, unknown | null> = new Map();
+    private _values: SnapshottableMap<string, unknown | null> = new SnapshottableMap();
 
     get(key: string): unknown | null {
-        const v = this._values.get(key) ?? null;
+        let v = this._values.get(key) ?? null;
+        if (v instanceof Array) {
+            v = [ ...v ];
+        }
         Observable.publishNamedRead(`hicb:${key}`, v);
         return v;
     }
@@ -62,7 +74,7 @@ export class HostInteropConfigBlock implements ConfigBlock {
         return this.getFirst(keys) ?? defaultValue;
     }
 
-    set(key: string, value: string | null): void {
+    set(key: string, value: unknown | null): void {
         const v = this._values.get(key) ?? null;
         if (value != v) {
             if (value != null) {
@@ -73,6 +85,7 @@ export class HostInteropConfigBlock implements ConfigBlock {
             }
             HostInterop.setConfigValue(key, value);
             Observable.publishNamedUpdate(`hicb:${key}`, value);
+            this._allObservers.invoke(key, value);
             this.logDebugChange(key, value);
         }
     }
@@ -83,6 +96,11 @@ export class HostInteropConfigBlock implements ConfigBlock {
             (err) => { onValueUpdated(null); });
 
         return expr;
+    }
+
+    private _allObservers: CallbackSet<(key: string, value: (unknown | null)) => void> = new CallbackSet("ConfigBlockAllObservers");
+    observeAll(onValueUpdated: (key: string, value: (unknown | null)) => void): IDisposable {
+        return this._allObservers.add(onValueUpdated);
     }
 
     hostAssignSet(pairs: { key: string, value: (unknown | null) }[]): void {
@@ -101,11 +119,77 @@ export class HostInteropConfigBlock implements ConfigBlock {
                 this._values.delete(key);
             }
             Observable.publishNamedUpdate(`hicb:${key}`, value);
+            this._allObservers.invoke(key, value);
             this.logDebugChange(key, value);
         }
     }
 
+    forEach(callback: (kvp: KeyValuePair<string, unknown | null>) => void) {
+        this._values.forEachEntrySnapshotted(kvp => {
+            callback(new KeyValuePair(kvp[0], kvp[1]));
+        });
+    }
+
     private logDebugChange(key: string, value: (unknown | null)) {
         this._logger.logDebug("configchange", key, value);
+    }
+
+    private performMigration(targetVersion: number) {
+        const rawCurrentVersion = +(this.get("configVersion") ?? 0);
+        const currentVersion = (isNaN(rawCurrentVersion) || !isFinite(rawCurrentVersion)) ? 0 : rawCurrentVersion;
+
+        for (let thisVer = currentVersion + 1; thisVer <= targetVersion; thisVer++) {
+            this.performSpecificVersionMigration(thisVer);
+            this.set("configVersion", thisVer);
+        }
+    }
+
+    private performSpecificVersionMigration(version: number) {
+        this._values.forEachEntrySnapshotted(kvp => {
+            const key = kvp[0];
+            const existingValue = kvp[1];
+            const configSchemaItem = this.findConfigSchemaItemForKey(key, ConfigSchema.settings);
+            if (configSchemaItem) {
+                const newValue = this.performSpecificVersionMigrationForItem(version, existingValue, configSchemaItem);
+                this.set(key, newValue);
+            }
+        });
+    }
+
+    performSpecificVersionMigrationForItem(version: number, existingValue: unknown, configSchemaItem: ConfigSchemaItemDefinitionItem) {
+        if (configSchemaItem.migrations && configSchemaItem.migrations[version]) {
+            try {
+                const migrationFunc = configSchemaItem.migrations[version];
+                const newValue = migrationFunc(existingValue);
+                return newValue;
+            }
+            catch { }
+        }
+        return existingValue;
+    }
+
+    private findConfigSchemaItemForKey(key: string, section: ConfigSchemaItemDefinition[]): (ConfigSchemaItemDefinitionItem | null) {
+
+        for (let k of section) {
+            if (k.items) {
+                const tk = k as ConfigSchemaItemDefinitionSection;
+                const subCheck = this.findConfigSchemaItemForKey(key, tk.items);
+                if (subCheck != null) {
+                    return subCheck;
+                }
+            }
+            else {
+                const tk = k as ConfigSchemaItemDefinitionItem;
+                if (this.isKeyMatchForConfigItem(key, tk)) {
+                    return tk;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    isKeyMatchForConfigItem(key: string, tk: ConfigSchemaItemDefinitionItem): boolean {
+        return key.endsWith("." + tk.configBlockKey);
     }
 }

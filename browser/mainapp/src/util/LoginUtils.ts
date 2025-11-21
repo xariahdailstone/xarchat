@@ -1,21 +1,19 @@
 import { ChatViewModelSink } from "../ChatViewModelSink";
 import { ApiTicket, FListAuthenticatedApi } from "../fchat/api/FListApi";
-import { ChatConnection, IdentificationFailedError } from "../fchat/ChatConnection";
+import { ChatConnection } from "../fchat/ChatConnection";
 import { ChatConnectionFactory } from "../fchat/ChatConnectionFactory";
-import { AppSettings } from "../settings/AppSettings";
 import { ChannelName } from "../shared/ChannelName";
 import { CharacterName } from "../shared/CharacterName";
 import { OnlineStatus } from "../shared/OnlineStatus";
 import { ActiveLoginViewModel, ChatConnectionState } from "../viewmodel/ActiveLoginViewModel";
-import { AppNotifyEventType, AppViewModel } from "../viewmodel/AppViewModel";
+import { AppViewModel } from "../viewmodel/AppViewModel";
 import { ChatChannelPresenceState } from "../viewmodel/ChatChannelViewModel";
 import { CancellationToken } from "./CancellationTokenSource";
 import { CatchUtils } from "./CatchUtils";
 import { TupleComparer } from "./Comparer";
-import { HostInterop } from "./HostInterop";
+import { HostInterop } from "./hostinterop/HostInterop";
 import { IterableUtils } from "./IterableUtils";
 import { Logging } from "./Logger";
-import { TaskUtils } from "./TaskUtils";
 
 const logger = Logging.createLogger("LoginUtils");
 
@@ -44,6 +42,7 @@ export class LoginUtils {
                     const appSettings = appViewModel.appSettings;
 
                     activeLoginViewModel = new ActiveLoginViewModel(appViewModel, authApi, appSettings.savedChatStates.getOrCreate(character));
+                    activeLoginViewModel.isLoggingIn = true;
                     disposeALVMOnError = true;
                 }
                 else {
@@ -63,6 +62,9 @@ export class LoginUtils {
                 return { activeLoginViewModel: activeLoginViewModel, chatConnection: cc };
             }
             catch (e) {
+                if (disposeALVMOnError) {
+                    activeLoginViewModel?.dispose();
+                }
                 // try { cc?.dispose(); }
                 // catch { }
 
@@ -166,6 +168,7 @@ export class LoginUtils {
 
         appViewModel.currentlySelectedSession = ns;
         ns.connectionState = ChatConnectionState.CONNECTED;
+        ns.isLoggingIn = false;
         HostInterop.signalLoginSuccessAsync();
     }
 
@@ -214,5 +217,6 @@ export class LoginUtils {
 
         logger.logDebug("reconnectAsync: done reconnecting, setting state CONNECTED...");
         activeLoginViewModel.connectionState = ChatConnectionState.CONNECTED;
+        activeLoginViewModel.isLoggingIn = false;
     }
 }

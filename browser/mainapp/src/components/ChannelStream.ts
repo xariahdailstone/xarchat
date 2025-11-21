@@ -1,9 +1,11 @@
 import { CharacterGenderConvert } from "../shared/CharacterGender.js";
 import { CharacterName } from "../shared/CharacterName.js";
 import { OnlineStatusConvert } from "../shared/OnlineStatus.js";
+import { AutohideElementsManager } from "../util/AutohideElementsManager.js";
 import { BBCodeParser, ChatBBCodeParser } from "../util/bbcode/BBCode.js";
 import { CharacterLinkUtils } from "../util/CharacterLinkUtils.js";
 import { getEffectiveCharacterName, getEffectiveCharacterNameDocFragment } from "../util/CharacterNameIcons.js";
+import { ChatMessageUtils } from "../util/ChatMessageUtils.js";
 import { KeyValuePair } from "../util/collections/KeyValuePair.js";
 import { ReadOnlyStdObservableCollection } from "../util/collections/ReadOnlyStdObservableCollection.js";
 import { NumberComparer } from "../util/Comparer.js";
@@ -12,34 +14,39 @@ import { EventListenerUtil } from "../util/EventListenerUtil.js";
 import { getRoot } from "../util/GetRoot.js";
 import { HTMLUtils } from "../util/HTMLUtils.js";
 import { IterableUtils } from "../util/IterableUtils.js";
+import { Logger, Logging } from "../util/Logger.js";
+import { ObjectUniqueId } from "../util/ObjectUniqueId.js";
 import { ObservableValue } from "../util/Observable.js";
+import { FirstInAnimationFrameManager } from "../util/RequestAnimationFrameHook.js";
 import { ResizeObserverNice } from "../util/ResizeObserverNice.js";
+import { Scheduler } from "../util/Scheduler.js";
 import { ScrollAnchorTo } from "../util/ScrollAnchorTo.js";
 import { URLUtils } from "../util/URLUtils.js";
-import { ChannelMessageDisplayStyle, ChannelMessageType, ChannelMessageViewModel, ChannelViewModel, ChannelViewScrollPositionModel } from "../viewmodel/ChannelViewModel.js";
+import { ChannelMessageDisplayStyle, ChannelMessageType, ChannelMessageViewModel, ChannelViewModel, ChannelViewScrollPositionModel, IChannelStreamViewModel } from "../viewmodel/ChannelViewModel.js";
+import { ChannelFiltersBar } from "./ChannelFiltersBar.js";
 import { ChannelStreamMessageViewRenderer } from "./ChannelStreamMessageViewRenderer.js";
-import { ChannelView } from "./ChannelView.js";
 import { CollectionView2 } from "./CollectionView2.js";
 import { CollectionViewLightweight } from "./CollectionViewLightweight.js";
 import { ComponentBase, componentElement } from "./ComponentBase.js";
 import { StatusDotLightweight } from "./StatusDot.js";
 
-enum ScrollSuppressionReason {
+export enum ScrollSuppressionReason {
     NotConnectedToDocument = "NotConnectedToDocument",
     CMCVNotReady = "CMCVNotReady",
     CMCVUpdatingElements = "CMCVUpdatingElements",
     ResettingScroll = "ResettingScroll",
+    ResettingScrollInternal = "ResettingScrollInternal",
     ScrollingStreamTo = "ScrollingStreamTo",
     ScrollingStreamToSmooth = "ScrollingStreamToSmooth",
 }
 
 @componentElement("x-channelstream")
-export class ChannelStream extends ComponentBase<ChannelViewModel> {
+export class ChannelStream extends ComponentBase<IChannelStreamViewModel> {
     constructor() {
         super();
 
         HTMLUtils.assignStaticHTMLFragment(this.elMain, `
-            <x-channelfiltersbar class="filtersbar"></x-channelfiltersbar>
+            <x-channelfiltersbar class="filtersbar" id="elFiltersBar"></x-channelfiltersbar>
             <div class="messagecontainerouter">
                 <div class="messagecontainer" id="elMessageContainer">
                 </div>
@@ -59,6 +66,7 @@ export class ChannelStream extends ComponentBase<ChannelViewModel> {
         const elScrolledUp = this.$("elScrolledUp") as HTMLButtonElement;
         const elNewMessagesBelow = this.$("elNewMessagesBelow") as HTMLButtonElement;
         const elSending = this.$("elSending") as HTMLDivElement;
+        const elFiltersBar = this.$("elFiltersBar") as ChannelFiltersBar;
 
         const iterateElements = function* (): Iterable<AnchorElementInfo> {
             for (let i = 0; i < elMessageContainer.children.length; i++) {
@@ -74,17 +82,24 @@ export class ChannelStream extends ComponentBase<ChannelViewModel> {
             const result = elMessageContainer.querySelector(`[data-messageid='${identity}']`) as (HTMLElement | null)
             return result;
         };
+
+        let currentScrollToVm: IChannelStreamViewModel | null = null;
         this._scrollManager = new DefaultStreamScrollManager(elMessageContainer, iterateElements, getElementByIdentity, (v) => {
-            //console.log("setting scrolledTo", v, this.viewModel?.collectiveName);
-            if (this.viewModel) {
-                if (v) {
-                    this.viewModel.scrolledTo = v;
-                }
-                else {
-                    this.viewModel.scrolledTo = null;
+            //this.logger.logDebug("setting scrolledTo", v, this.viewModel?.collectiveName);
+            const vm = currentScrollToVm;
+            if (vm) {
+                if ((v ?? null) != vm.scrolledTo) {
+                    this.logger.logDebug("DefaultStreamScrollManager.scrolledTo change", v, vm.title);
+                    if (v) {
+                        vm.scrolledTo = v;
+                    }
+                    else {
+                        vm.scrolledTo = null;
+                    }
                 }
             }
         });
+        
         //this._scrollManager = new NullStreamScrollManager();
 
         // this one managed by connected/disconnected
@@ -99,13 +114,13 @@ export class ChannelStream extends ComponentBase<ChannelViewModel> {
             const cmcv = new ChannelStreamMessageViewRenderer();
             cmcv.updatingElements = () => {
                 if (this.viewModel === vm) {
-                    //console.log("cmcv updatingelements", this.viewModel?.messages?.length ?? "null", elMessageContainer.childElementCount);
+                    //this.logger.logDebug("cmcv updatingelements", this.viewModel?.messages?.length ?? "null", elMessageContainer.childElementCount);
                     this.suppressScrollRecording(ScrollSuppressionReason.CMCVUpdatingElements);
                 }
             };
             cmcv.updatedElements = () => {
                 if (this.viewModel === vm) {
-                    //console.log("cmcv updatedelements", this.viewModel?.messages?.length ?? "null", elMessageContainer.childElementCount);
+                    //this.logger.logDebug("cmcv updatedelements", this.viewModel?.messages?.length ?? "null", elMessageContainer.childElementCount);
                     this.resumeScrollRecording(ScrollSuppressionReason.CMCVUpdatingElements);
                     if (!firstRenderComplete) {
                         firstRenderComplete = true;
@@ -134,7 +149,7 @@ export class ChannelStream extends ComponentBase<ChannelViewModel> {
 
         elMessageContainer.addEventListener("copy", (e: ClipboardEvent) => {
             BBCodeParser.performCopy(e);
-        });
+        }, true);
         elScrolledUp.addEventListener("click", (e) => {
             if (this.viewModel) {
                 this._scrollManager.setNextUpdateIsSmooth();
@@ -155,13 +170,27 @@ export class ChannelStream extends ComponentBase<ChannelViewModel> {
             elScrolledUp.classList.toggle("shown", scrolledUp && !newMsgs);
         };
 
+        this.watchExpr(vm => vm.showFilterBar, sfb => {
+            elFiltersBar.classList.toggle("hidden", !sfb);
+        });
+
         this.watchExpr(vm => vm.newMessagesBelowNotify, v => {
             updateAlerts();
         });
-        this.watchExpr(vm => vm.scrolledTo, (v) => {
-            //this.log("scrolledTo change, resetscroll");
-            this._scrollManager.scrolledTo = v ?? null;
-            updateAlerts();
+        this.watchExpr(vm => [vm, vm.scrolledTo], (vx) => {
+            if (vx) {
+                const vm = vx[0];
+                const v = vx[1];
+                currentScrollToVm = vm;
+                if (v != this._scrollManager.scrolledTo) {
+                    this.logger.logInfo("vm.scrolledTo change", v, vm.title);
+                    this._scrollManager.scrolledTo = v ?? null;
+                }
+                updateAlerts();
+            }
+            else {
+                currentScrollToVm = null;
+            }
         });
         this.watchExpr(vm => vm.pendingSendsCount, len => {
             len = len ?? 0;
@@ -173,6 +202,7 @@ export class ChannelStream extends ComponentBase<ChannelViewModel> {
         });
 
         this.whenConnected(() => {
+            this._scrollManager.enabled = true;
             const resizeObserver = new ResizeObserverNice((entries) => {
                 this._scrollManager.resetScroll();
             });
@@ -181,53 +211,93 @@ export class ChannelStream extends ComponentBase<ChannelViewModel> {
             this.resumeScrollRecording(ScrollSuppressionReason.NotConnectedToDocument);
         
             return asDisposable(() => {
+                this._scrollManager.enabled = false;
                 resizeObserver?.disconnect();
         
                 this.suppressScrollRecording(ScrollSuppressionReason.NotConnectedToDocument);
             });
         });
+
+        this.whenConnectedWithViewModel(vm => {
+            const isMessage = (el: HTMLElement) => el.classList.contains("collapse-host");
+            const hem = new AutohideElementsManager({
+                name: "ChannelStream",
+                rootEl: this.$("elMessageContainer") as HTMLElement,
+                includePredicate: isMessage,
+                watchAttributes: ["data-messageid"],
+                intersectionMargin: "100% 0px 100% 0px",
+                handleActiveSelection: true
+            });
+            return asDisposable(() => {
+                hem.dispose();
+            });
+        });
+
+        this.watchExpr(vm => vm.isHistoricalView, v => {
+            this.elMain.classList.toggle("historical-view", !!v);
+        });
     }
 
     private _previousCollapseHostRO: ResizeObserver | null = null;
-    private _roAnimHandle: number | null = null;
+    private _roAnimHandle: IDisposable | null = null;
     private _roAnimEntries: ResizeObserverEntry[] = [];
+    private readonly _previousCollapseHostROObserved: Set<Element> = new Set();
     updateCollapseHostMonitoring() {
-        const vm = this.viewModel;
-        const elMessageContainer = this.$("elMessageContainer") as HTMLDivElement;
+        // this.logDebug("updateCollapseHostMonitoring");
+        // const vm = this.viewModel;
+        // const elMessageContainer = this.$("elMessageContainer") as HTMLDivElement;
 
-        if (this._previousCollapseHostRO) {
-            this._previousCollapseHostRO.disconnect();
-            this._previousCollapseHostRO = null;
-        }
-        if (!vm) { return; }
+        // if (!vm) {
+        //     if (this._previousCollapseHostRO) {
+        //         this._previousCollapseHostRO.disconnect();
+        //         this._previousCollapseHostRO = null;
+        //     }
+        //     this._previousCollapseHostROObserved.clear();
+        //     return;
+        // }
 
-        const ro = new ResizeObserver(entries => {
-            this._roAnimEntries.push(...entries);
-            if (this._roAnimHandle == null) {
-                this._roAnimHandle = window.requestAnimationFrame(() => {
-                    this._roAnimHandle = null;
-                    const entries = this._roAnimEntries;
-                    this._roAnimEntries = [];
-                    for (let entry of entries) {
-                        const target = entry.target;
-                        if (target.classList.contains("messageitem")) {
-                            const mheight = entry.contentRect.height;
-                            if (mheight > 0) {
-                                const mvm = (target as any)["__vm"] as ChannelMessageViewModel;
-                                const overflowHeight = +(window.getComputedStyle(target).getPropertyValue("--ad-collapse-max-height-numeric") ?? "40");
-                                const isOversized = (mheight > overflowHeight);
-                                if (isOversized != mvm.isOversized) {
-                                    mvm.isOversized = (mheight > overflowHeight);
-                                    console.log("ad oversize changed", target, isOversized);
-                                }
-                            }
-                        }
-                    }
-                });
-            }
-        });
-        this._previousCollapseHostRO = ro;
-        elMessageContainer.querySelectorAll(".collapse-host.collapsible .messageitem").forEach(el => { ro.observe(el); });
+        // if (!this._previousCollapseHostRO) {
+        //     const ro = new ResizeObserver(entries => {
+        //         this._roAnimEntries.push(...entries);
+        //         if (this._roAnimHandle == null) {
+        //             this._roAnimHandle = Scheduler.scheduleNamedCallback("ChannelStream.collapseHostSize", ["frame", "idle", 250], () => {
+        //                 this._roAnimHandle = null;
+        //                 const entries = this._roAnimEntries;
+        //                 this._roAnimEntries = [];
+        //                 let overflowHeight: number | null = null;
+        //                 for (let entry of entries) {
+        //                     const target = entry.target;
+        //                     if (target.classList.contains("messageitem")) {
+        //                         const mheight = entry.contentRect.height;
+        //                         if (mheight > 0) {
+        //                             const mvm = (target as any)["__vm"] as ChannelMessageViewModel;
+        //                             overflowHeight = overflowHeight ?? +(window.getComputedStyle(target).getPropertyValue("--ad-collapse-max-height-numeric") ?? "40");
+        //                             const isOversized = (mheight > overflowHeight);
+        //                             if (isOversized != mvm.isOversized) {
+        //                                 mvm.isOversized = (mheight > overflowHeight);
+        //                                 this.logger.logDebug("ad oversize changed", target, isOversized);
+        //                             }
+        //                         }
+        //                     }
+        //                 }
+        //             });
+        //         }
+        //     });
+        //     this._previousCollapseHostRO = ro;
+        // }
+
+        // const tro = this._previousCollapseHostRO;
+        // const thisObserve = new Set<Element>();
+        // elMessageContainer.querySelectorAll(".collapse-host.collapsible .messageitem").forEach(el => { 
+        //     if (!this._previousCollapseHostROObserved.has(el)) {
+        //         tro.observe(el); 
+        //     }
+        //     thisObserve.add(el);
+        // });
+        // for (let removeEl of [...this._previousCollapseHostROObserved.difference(thisObserve).values()]) {
+        //     tro.unobserve(removeEl);
+        //     this._previousCollapseHostROObserved.delete(removeEl);
+        // }
     }
 
     protected get myRequiredStylesheets() {
@@ -237,9 +307,9 @@ export class ChannelStream extends ComponentBase<ChannelViewModel> {
         ];
     }
 
-    get viewModel(): (ChannelViewModel | null) { return super.viewModel; }
+    //get viewModel(): (ChannelViewModel | null) { return super.viewModel; }
 
-    private _scrollManager: StreamScrollManager;
+    private _scrollManager: DefaultStreamScrollManager;
 
     get hasTextSelection(): boolean {
         const elMessageContainer = this.$("elMessageContainer") as HTMLDivElement;
@@ -307,11 +377,11 @@ export class ChannelMessageCollectionView extends ComponentBase<ReadOnlyStdObser
     private readonly _renderer: ChannelStreamMessageViewRenderer = new ChannelStreamMessageViewRenderer();
 }
 
-interface AnchorElementInfo {
+export interface AnchorElementInfo {
     elementIdentity: any;
     element: HTMLElement;
 }
-interface AnchorElementScrollTo {
+export interface AnchorElementScrollTo {
     elementIdentity: object;
     scrollDepth: number;
 }
@@ -345,7 +415,36 @@ export class DefaultStreamScrollManager implements StreamScrollManager {
         private readonly scrolledToChanged: (value: AnchorElementScrollTo | null) => void
     ) {
 
-        this._disposables.push(EventListenerUtil.addDisposableEventListener(containerElement, "scroll", (e: Event) => this.containerScrolled()));
+        this._disposables.push(asDisposable(() => {
+            asDisposable(...this._enabledDisposables).dispose();
+            this._enabledDisposables = [];
+        }));
+    }
+
+    private _enabledDisposables: IDisposable[] = [];
+
+    private _enabled: boolean = false;
+    get enabled() { return this._enabled; }
+    set enabled(value) {
+        if (this._disposed) { value = false; }
+        if (value !== this._enabled) {
+            if (this._enabledDisposables) {
+                asDisposable(...this._enabledDisposables).dispose();
+                this._enabledDisposables = [];
+            }
+
+            this._enabled = value;
+
+            if (value) {
+                this._enabledDisposables.push(EventListenerUtil.addDisposableEventListener(this.containerElement, "scroll", (e: Event) => this.containerScrolled()));
+                this._enabledDisposables.push(EventListenerUtil.addDisposableEventListener(window, "resize", (e: Event) => this.resetScroll()));
+                this._enabledDisposables.push(EventListenerUtil.addDisposableEventListener(window, "focus", (e: Event) => this.resetScroll(false, true)));
+
+                const ro = new ResizeObserverNice(() => { this.resetScroll(); });
+                ro.observe(this.containerElement);
+                this._enabledDisposables.push(asDisposable(() => { ro.disconnect(); }));
+            }
+        }
     }
 
     private _disposables: IDisposable[] = [];
@@ -356,6 +455,7 @@ export class DefaultStreamScrollManager implements StreamScrollManager {
     dispose() {
         if (!this._disposed) {
             this._disposed = true;
+            this.enabled = false;
             for (let d of this._disposables) {
                 d.dispose();
             }
@@ -395,7 +495,7 @@ export class DefaultStreamScrollManager implements StreamScrollManager {
             this.containerElement.style.visibility = "hidden";
         }
         
-        //console.log("^^^ _suppressionCount", this._suppressionCount, this.buildReasonsString());
+        //this.logger.logDebug("^^^ _suppressionCount", this._suppressionCount, this.buildReasonsString());
     }
 
     resumeScrollRecording(reason: ScrollSuppressionReason, skipScrollReset?: boolean) {
@@ -414,7 +514,7 @@ export class DefaultStreamScrollManager implements StreamScrollManager {
             this._suppressionReasons.set(reason, prevCount - 1);
         }
 
-        //console.log("vvv _suppressionCount", this.buildReasonsString());
+        //this.logger.logDebug("vvv _suppressionCount", this.buildReasonsString());
         if (this._suppressionCount == 0) {
             this.containerElement.style.visibility = "visible";
         }
@@ -430,13 +530,13 @@ export class DefaultStreamScrollManager implements StreamScrollManager {
             lastTimestamp = msElapsed;
 
             if (this.containerElement.scrollTop != targetTop && msRemaining > 0) {
-                window.requestAnimationFrame(tick);
+                Scheduler.scheduleNamedCallback("DefaultStreamScrollManager.resumeScrollRecordingWhenTop(tick)", ["nextframe", 250], tick);
             }
             else {
                 this.resumeScrollRecording(ScrollSuppressionReason.ScrollingStreamToSmooth);
             }
         };
-        window.requestAnimationFrame(tick);
+        Scheduler.scheduleNamedCallback("DefaultStreamScrollManager.resumeScrollRecordingWhenTop(tick)", ["nextframe", 250], tick);
     }
 
     get isRecordingSuppressed() { return this._suppressionCount > 0; }
@@ -455,67 +555,80 @@ export class DefaultStreamScrollManager implements StreamScrollManager {
         }
     }
 
-    private _pendingResetScroll: (number | null) = null;
+    private readonly _pendingResetScroll: FirstInAnimationFrameManager = new FirstInAnimationFrameManager();
     private _nextUpdateIsSmooth: boolean = false;
     private _pendingScrollSmooth: boolean = false;
 
     setNextUpdateIsSmooth() {
         this._nextUpdateIsSmooth = true;
-        window.setTimeout(() => this._nextUpdateIsSmooth = false, 100);
+        Scheduler.scheduleNamedCallback("ChannelStream.setNextUpdateIsSmooth", 100, () => this._nextUpdateIsSmooth = false);
     }
 
-    resetScroll(smooth?: boolean) {
+    resetScroll(smooth?: boolean, immediate?: boolean) {
         this._pendingScrollSmooth = smooth ?? this._nextUpdateIsSmooth;
-        if (this._pendingResetScroll !== null) {
-            return;
+
+        if (!this._pendingResetScroll.hasPendingOrExecutingAnimationFrame) {
+            this.suppressScrollRecording(ScrollSuppressionReason.ResettingScroll);
+            this._pendingResetScroll.requestAnimationFrame(() => {
+                this.resetScrollInternal();
+                this.resumeScrollRecording(ScrollSuppressionReason.ResettingScroll);
+            });
         }
 
-        this.suppressScrollRecording(ScrollSuppressionReason.ResettingScroll);
-        this._pendingResetScroll = window.requestAnimationFrame(() => {
-            let isSmoothScroll = this._pendingScrollSmooth;
-            let isScrolledToMaximum: boolean;
-            let scrollToY: number;
-            //console.log("resetting scroll", this.scrolledTo);
-            if (this.scrolledTo) {
-                scrollToY = 0;
-                const scrollToEl = this.getElementByIdentity(this.scrolledTo.elementIdentity);
-                if (scrollToEl) {
-                    const pos = this.getElementPositioning(scrollToEl);
-                    scrollToY = pos.top + this.scrolledTo.scrollDepth;
-                    if (this.scrollAnchorTo == ScrollAnchorTo.BOTTOM) {
-                        scrollToY = Math.max(0, scrollToY - this.containerElement.clientHeight);
-                    }
+        if (immediate) {
+            this._pendingResetScroll.executeImmediately();
+        }
+    }
+
+    private readonly logger: Logger = Logging.createLogger(`DefaultStreamScrollManager#${ObjectUniqueId.get(this)}`);
+
+    private resetScrollInternal() {
+        this.suppressScrollRecording(ScrollSuppressionReason.ResettingScrollInternal);
+
+        //this.logger.logDebug("resetScrollInternal", this.scrolledTo);
+
+        let isSmoothScroll = this._pendingScrollSmooth;
+        let isScrolledToMaximum: boolean;
+        let scrollToY: number;
+        //this.logger.logDebug("resetting scroll", this.scrolledTo);
+        if (this.scrolledTo) {
+            scrollToY = 0;
+            const scrollToEl = this.getElementByIdentity(this.scrolledTo.elementIdentity);
+            if (scrollToEl) {
+                const pos = this.getElementPositioning(scrollToEl);
+                scrollToY = pos.top + this.scrolledTo.scrollDepth;
+                if (this.scrollAnchorTo == ScrollAnchorTo.BOTTOM) {
+                    scrollToY = Math.max(0, scrollToY - this.containerElement.clientHeight);
                 }
-                // for (let el of this.enumerateAnchorElements) {
-                //     if (el.elementIdentity == this.scrolledTo.elementIdentity) {
-                //         const pos = this.getElementPositioning(el.element);
-                //         scrollToY = pos.top + this.scrolledTo.scrollDepth;
-                //         break;
-                //     }
-                // }
+            }
+            // for (let el of this.enumerateAnchorElements) {
+            //     if (el.elementIdentity == this.scrolledTo.elementIdentity) {
+            //         const pos = this.getElementPositioning(el.element);
+            //         scrollToY = pos.top + this.scrolledTo.scrollDepth;
+            //         break;
+            //     }
+            // }
+        }
+        else {
+            if (this.scrollAnchorTo == ScrollAnchorTo.TOP) {
+                scrollToY = DefaultStreamScrollManager.SCROLL_TO_END;
             }
             else {
-                if (this.scrollAnchorTo == ScrollAnchorTo.TOP) {
-                    scrollToY = DefaultStreamScrollManager.SCROLL_TO_END;
-                }
-                else {
-                    scrollToY = 0;
-                }
+                scrollToY = 0;
             }
+        }
 
-            isScrolledToMaximum = this.scrollStreamTo(scrollToY, isSmoothScroll);
-            //console.log("resetting scroll ==> ", scrollToY, isScrolledToMaximum);
-            if (isScrolledToMaximum && this._suppressionCount == 1) {
-                this.scrolledTo = null;
-            }
+        isScrolledToMaximum = this.scrollStreamTo(scrollToY, isSmoothScroll);
+        //this.logger.logDebug("resetting scroll ==> ", scrollToY, isScrolledToMaximum);
+        if (isScrolledToMaximum && this._suppressionCount == 1) {
+            this.scrolledTo = null;
+        }
 
-            this._knownSize.width = this.containerElement.clientWidth;
-            this._knownSize.cheight = this.containerElement.clientHeight;
-            this._knownSize.sheight = this.containerElement.scrollHeight - this.containerElement.clientHeight;
+        this._knownSize.width = this.containerElement.clientWidth;
+        this._knownSize.cheight = this.containerElement.clientHeight;
+        this._knownSize.sheight = this.containerElement.scrollHeight - this.containerElement.clientHeight;
 
-            this.resumeScrollRecording(ScrollSuppressionReason.ResettingScroll);
-            this._pendingResetScroll = null;
-        });
+        this.resumeScrollRecording(ScrollSuppressionReason.ResettingScrollInternal);
     }
 
     private static SCROLL_TO_END = 9999999;

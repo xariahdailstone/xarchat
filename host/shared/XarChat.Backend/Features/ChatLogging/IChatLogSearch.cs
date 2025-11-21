@@ -1,7 +1,11 @@
-﻿namespace XarChat.Backend.Features.ChatLogging
+﻿using System.Text.Json.Serialization;
+
+namespace XarChat.Backend.Features.ChatLogging
 {
     public interface IChatLogSearch
     {
+        Task<long> GetLogFileSizeAsync(CancellationToken cancellationToken);
+
         Task<int> GetSearchResultCountAsync(SearchCriteria criteria, CancellationToken cancellationToken);
 
         Task<IReadOnlyList<long>> GetSearchResultIdsAsync(
@@ -24,6 +28,21 @@
 
         Task<bool> ValidatePMConvoInLogsAsync(
             string myCharacterName, string interlocutorName, CancellationToken cancellationToken);
+
+        Task<IList<RecentConversationInfo>> GetRecentConversationsAsync(
+            string myCharacterName, int resultLimit, CancellationToken cancellationToken);
+    }
+
+    public class RecentConversationInfo
+    {
+        [JsonPropertyName("channelId")]
+        public required long ChannelId { get; set; }
+
+        [JsonPropertyName("interlocutorName")]
+        public required string InterlocutorName { get; set; }
+
+        [JsonPropertyName("lastMessageAt")]
+        public required long LastMessageAt { get; set; }
     }
 
     public class SearchCriteria
@@ -66,26 +85,28 @@
 
     public class SearchLogsForCharacterCriterion : SearchWhoSpecCriterion
     { 
-        public string CharacterName { get; set; }
+        public required string CharacterName { get; set; }
     }
 
     public abstract class SearchStreamSpecCriterion : SearchCriterion { }
 
     public class SearchPrivateMessagesWithCriterion : SearchStreamSpecCriterion
     {
-        public string InterlocutorCharacterName { get; set; }
+        public required string MyCharacterName { get; set; }
+
+        public required string InterlocutorCharacterName { get; set; }
     }
 
     public class SearchInChannelCriterion : SearchStreamSpecCriterion
     {
-        public string ChannelTitle { get; set; }
+        public required string ChannelTitle { get; set; }
     }
 
     public abstract class SearchTextSpecCriterion : SearchCriterion { }
 
     public class SearchContainsTextCriterion : SearchTextSpecCriterion
     {
-        public string SearchText { get; set; }
+        public required string SearchText { get; set; }
     }
 
     public class SearchTimeSpecCriterion : SearchCriterion

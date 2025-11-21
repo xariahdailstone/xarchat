@@ -4,13 +4,17 @@ import { BBCodeParseOptions, ChatBBCodeParser } from "../util/bbcode/BBCode.js";
 import { asDisposable, IDisposable } from "../util/Disposable.js";
 import { HTMLUtils } from "../util/HTMLUtils.js";
 import { ResizeObserverNice } from "../util/ResizeObserverNice.js";
+import { Scheduler } from "../util/Scheduler.js";
+import { StringUtils } from "../util/StringUtils.js";
 import { URLUtils } from "../util/URLUtils.js";
 import { WhenChangeManager } from "../util/WhenChange.js";
 import { ChannelViewModel } from "../viewmodel/ChannelViewModel.js";
 import { ChatChannelMessageMode, ChatChannelViewModel } from "../viewmodel/ChatChannelViewModel.js";
 import { ConsoleChannelViewModel } from "../viewmodel/ConsoleChannelViewModel.js";
+import { ReportSource, ReportViewModel } from "../viewmodel/dialogs/ReportViewModel.js";
 import { PMConvoChannelViewModel } from "../viewmodel/PMConvoChannelViewModel.js";
 import { ChannelDescriptionPopupViewModel } from "../viewmodel/popups/ChannelDescriptionPopupViewModel.js";
+import { ContextMenuPopupViewModel } from "../viewmodel/popups/ContextMenuPopupViewModel.js";
 //import { ChannelHeaderFilter } from "./ChannelHeaderFilter.js";
 import { ComponentBase, componentElement } from "./ComponentBase.js";
 import { StatusDotLightweight } from "./StatusDot.js";
@@ -27,13 +31,15 @@ export class ChannelHeader extends ComponentBase<ChannelViewModel> {
             <div id="elOnlineStatusContainer" class="online-status-container"></div>
 
             <div id="elDescriptionArea" class="descriptionarea">
-                <div id="elDescriptionContainer" class="descriptioncontainer">
-                    <div id="elDescriptionText" class="descriptiontext"></div>
+                <div class="descriptionareainner">
                     <div id="elDescriptionTextSizer" class="descriptiontextsizer"></div>
+                    <div id="elDescriptionContainer" class="descriptionvisiblecontainer">
+                        <div id="elDescriptionText" class="descriptiontext"></div>
+                        <button id="elDescriptionShowMore" class="descriptionshowmore" tabindex="-1">
+                            Show Full Description...
+                        </button>
+                    </div>
                 </div>
-                <button id="elDescriptionShowMore" class="descriptionshowmore" tabindex="-1">
-                    Show Full Description...
-                </button>
             </div>
 
             <div id="elConfigIconContainer">
@@ -51,6 +57,101 @@ export class ChannelHeader extends ComponentBase<ChannelViewModel> {
 
         const elDescriptionShowMore = this.$("elDescriptionShowMore") as HTMLButtonElement;
 
+        this.elMain.addEventListener("contextmenu", (e: MouseEvent) => {
+            const vm = this.viewModel;
+            if (vm instanceof ChatChannelViewModel) {
+                const menuvm = new ContextMenuPopupViewModel<() => any>(vm.appViewModel, new DOMRect(e.clientX, e.clientY, 1, 1));
+                const isChanOp = vm.isEffectiveOp(vm.activeLoginViewModel.characterName);
+                const isChanOwner = vm.isEffectiveOwner(vm.activeLoginViewModel.characterName);
+
+                menuvm.addMenuItem("Copy BBCode Link to Channel", () => {
+                    navigator.clipboard.writeText(`[session=${vm.title}]${vm.name.value}[/session]`);
+                    menuvm.dismissed();
+                });
+
+                menuvm.addMenuItem("List Channel Operators", () => {
+                    vm.getChannelOpListAsync();
+                    menuvm.dismissed();
+                });
+
+                if (isChanOp) {
+                    menuvm.addSeparator();
+
+                    menuvm.addMenuItem("List Channel Bans", () => {
+                        vm.getBanListAsync();
+                        menuvm.dismissed();
+                    });
+                    menuvm.addMenuItem("Kick a Character From Channel...", () => {
+                        vm.kickAsync();
+                        menuvm.dismissed();
+                    });
+                    menuvm.addMenuItem("Timeout a Character From Channel...", () => {
+                        // TODO:
+                        vm.appViewModel.alertAsync("Not yet implemented, use the /timeout command instead.");
+                        menuvm.dismissed();
+                    });
+                    menuvm.addMenuItem("Ban a Character From Channel...", () => {
+                        vm.banAsync();
+                        menuvm.dismissed();
+                    });
+                    menuvm.addMenuItem("Unban a Character From Channel...", () => {
+                        vm.unbanAsync();
+                        menuvm.dismissed();
+                    });
+
+                    menuvm.addMenuItem("Invite Character to Channel...", () => {
+                        vm.inviteAsync();
+                        menuvm.dismissed();
+                    });
+    
+                    menuvm.addSeparator();
+
+                    menuvm.addMenuItem("Open Channel to Public", () => {
+                        vm.changeChannelPrivacyStatusAsync("public");
+                        menuvm.dismissed();
+                    });
+                    menuvm.addMenuItem("Close Channel to Public", () => {
+                        vm.changeChannelPrivacyStatusAsync("private");
+                        menuvm.dismissed();
+                    });
+
+                    menuvm.addMenuItem("Change Channel Description...", () => {
+                        vm.changeDescriptionAsync();
+                        menuvm.dismissed();
+                    });
+                }
+
+                if (isChanOwner) {
+                    menuvm.addSeparator();
+
+                    menuvm.addMenuItem("Add Channel Moderator...", () => {
+                        vm.opAsync();
+                        menuvm.dismissed();
+                    });
+                    menuvm.addMenuItem("Remove Channel Moderator...", () => {
+                        vm.deopAsync();
+                        menuvm.dismissed();
+                    });
+
+                    menuvm.addSeparator();
+                    menuvm.addMenuItem("Give Ownership of Channel...", () => {
+                        // TODO:
+                        vm.appViewModel.alertAsync("Not yet implemented, use the /makeowner command instead.");
+                        menuvm.dismissed();
+                    });
+                }
+
+                menuvm.addSeparator();
+                menuvm.addMenuItem("Report Channel...", () => {
+                    const reportvm = new ReportViewModel(vm.activeLoginViewModel, ReportSource.CHANNEL_HEADER, undefined, vm);
+                    vm.appViewModel.showDialogAsync(reportvm);
+                    menuvm.dismissed();
+                });
+                menuvm.onValueSelected = (v) => v();
+                vm.appViewModel.popups.push(menuvm);
+            }
+            e.preventDefault();
+        });
         this.watchViewModel(v => {
             const elMain = this.elMain;
             elMain.classList.toggle("chatchannel", (v instanceof ChatChannelViewModel));
@@ -59,9 +160,31 @@ export class ChannelHeader extends ComponentBase<ChannelViewModel> {
         this.watchExpr(vm => vm.iconUrl, v => {
             elIcon.src = v ? v : URLUtils.getEmptyImageUrl();
         });
-        this.watchExpr(vm => vm.title, v => {
-            elTitle.innerText = v ? v : "(none)";
-        });
+
+        const updateChannelTitle = () => {
+            const v = this.viewModel;
+            let nickname: (string | null) = null;
+            if (v) {
+                const xnn = v.getConfigSettingById("nickname") as (string | null | undefined);
+                if (!StringUtils.isNullOrWhiteSpace(xnn)) {
+                    nickname = xnn;
+                }
+            }
+            if (v && v.title) {
+                if (nickname) {
+                    elTitle.innerHTML = `${HTMLUtils.escapeHTML(v.title)} <span class="nickname">(${HTMLUtils.escapeHTML(nickname)})</span>`;
+                }
+                else {
+                    elTitle.innerText = v.title;
+                }
+            }
+            else {
+                elTitle.innerText = "(none)";    
+            }
+        };
+        this.watchExpr(vm => vm.title, updateChannelTitle);
+        this.watchExpr(vm => vm instanceof PMConvoChannelViewModel ? vm.getConfigSettingById("nickname") : null, updateChannelTitle);
+
         this.watchExprTyped(ChatChannelViewModel, vm => vm.messageMode, v => {
             let mode: string;
             switch (v) {
@@ -106,6 +229,11 @@ export class ChannelHeader extends ComponentBase<ChannelViewModel> {
 
             const fullDescx = ChatBBCodeParser.parse(rawDescStr, parseOptions);
             while (elDescriptionTextSizer.firstElementChild) { elDescriptionTextSizer.firstElementChild.remove(); }
+
+            const fdContainer = document.createElement("div");
+            fdContainer.classList.add("descriptiontextsizerinner");
+
+            elDescriptionTextSizer.appendChild(fdContainer);
             elDescriptionTextSizer.appendChild(fullDescx.element);
 
             elDescriptionShowMore.setAttribute("data-expandto", rawDescStr);
@@ -211,16 +339,16 @@ export class ChannelHeader extends ComponentBase<ChannelViewModel> {
         //     }
         // });
 
-        this.whenConnected(() => {
-            const rm = new ResizeObserverNice(() => {
-                this.checkDescriptionSizeNow();
-            });
-            rm.observe(elDescriptionText);
-            rm.observe(elDescriptionTextSizer);
-            return asDisposable(() => {
-                rm.disconnect();
-            });
-        });
+        // this.whenConnected(() => {
+        //     const rm = new ResizeObserverNice(() => {
+        //         this.checkDescriptionSizeNow();
+        //     });
+        //     rm.observe(elDescriptionText);
+        //     rm.observe(elDescriptionTextSizer);
+        //     return asDisposable(() => {
+        //         rm.disconnect();
+        //     });
+        // });
 
         this.$("elDescriptionShowMore")!.addEventListener("click", () => {
             const vm = this.viewModel;
@@ -241,24 +369,24 @@ export class ChannelHeader extends ComponentBase<ChannelViewModel> {
         });
     }
 
-    private _checkDescSizeHandle: number | null = null;
+    // private _checkDescSizeHandle: IDisposable | null = null;
 
-    private checkDescriptionSize() {
-        if (this._checkDescSizeHandle != null) { return; }
+    // private checkDescriptionSize() {
+    //     if (this._checkDescSizeHandle != null) { return; }
 
-        this._checkDescSizeHandle = window.requestAnimationFrame(() => {
-            this._checkDescSizeHandle = null;
-            this.checkDescriptionSizeNow();
-        });
-    }
+    //     this._checkDescSizeHandle = Scheduler.scheduleNamedCallback("ChannelHeader.checkDescriptionSize", ["frame", "idle", 250], () => {
+    //         this._checkDescSizeHandle = null;
+    //         this.checkDescriptionSizeNow();
+    //     });
+    // }
 
-    private checkDescriptionSizeNow() {
-        const elDescriptionText = this.$("elDescriptionText") as HTMLDivElement;
-        const elDescriptionTextSizer = this.$("elDescriptionTextSizer") as HTMLDivElement;
+    // private checkDescriptionSizeNow() {
+    //     const elDescriptionText = this.$("elDescriptionText") as HTMLDivElement;
+    //     const elDescriptionTextSizer = this.$("elDescriptionTextSizer") as HTMLDivElement;
         
-        const needOverflow = (elDescriptionText.offsetWidth != elDescriptionTextSizer.offsetWidth ||
-            elDescriptionText.offsetHeight != elDescriptionTextSizer.offsetHeight);
+    //     const needOverflow = (elDescriptionText.offsetWidth != elDescriptionTextSizer.offsetWidth ||
+    //         elDescriptionText.offsetHeight != elDescriptionTextSizer.offsetHeight);
 
-        this.$("elDescriptionShowMore")!.classList.toggle("shown", needOverflow);
-    }
+    //     this.$("elDescriptionShowMore")!.classList.toggle("shown", needOverflow);
+    // }
 }

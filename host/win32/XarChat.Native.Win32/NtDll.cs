@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -51,7 +52,7 @@ namespace XarChat.Native.Win32
         {
             var phandle = Windows.Win32.PInvoke.OpenProcess(Windows.Win32.System.Threading.PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_INFORMATION,
                 false, (uint)processId);
-            if (phandle.Value != 0)
+            if (new IntPtr(phandle.Value) != 0)
             {
                 try
                 {
@@ -61,7 +62,7 @@ namespace XarChat.Native.Win32
                     try
                     {
                         var res = Windows.Wdk.PInvoke.NtQueryInformationProcess(
-                            new Windows.Win32.Foundation.HANDLE(phandle),
+                            new Windows.Win32.Foundation.HANDLE(phandle.Value),
                             Windows.Wdk.System.Threading.PROCESSINFOCLASS.ProcessBasicInformation,
                             (void*)ptrPbi,
                             currentAllocLen,
@@ -228,6 +229,7 @@ namespace XarChat.Native.Win32
 
             private static bool ReadStructFromProcessMemory<TStruct>(
                 IntPtr hProcess, IntPtr lpBaseAddress, out TStruct val)
+                where TStruct : struct
             {
                 val = default;
                 var structSize = Marshal.SizeOf<TStruct>();
@@ -267,7 +269,7 @@ namespace XarChat.Native.Win32
                 WorkingDirectory,
             }
 
-            public static int Retrieve(nint processId, out string parameterValue, Parameter parameter = Parameter.CommandLine)
+            public static int Retrieve(nint processId, out string? parameterValue, Parameter parameter = Parameter.CommandLine)
             {
                 int rc = 0;
                 parameterValue = null;
@@ -306,7 +308,7 @@ namespace XarChat.Native.Win32
                                                         unicodeString.Buffer, memCL, clLen, out len))
                                                     {
                                                         rc = 0;
-                                                        return Marshal.PtrToStringUni(memCL);
+                                                        return Marshal.PtrToStringUni(memCL) ?? "";
                                                     }
                                                     else
                                                     {
@@ -318,7 +320,7 @@ namespace XarChat.Native.Win32
                                                 {
                                                     Marshal.FreeHGlobal(memCL);
                                                 }
-                                                return null;
+                                                return null ?? "";
                                             }
 
                                             switch (parameter)
@@ -388,7 +390,7 @@ namespace XarChat.Native.Win32
                     for (var i = 0; i < args.Length; ++i)
                     {
                         var p = Marshal.ReadIntPtr(argv, i * IntPtr.Size);
-                        args[i] = Marshal.PtrToStringUni(p);
+                        args[i] = Marshal.PtrToStringUni(p) ?? "";
                     }
                     return args.ToList().AsReadOnly();
                 }

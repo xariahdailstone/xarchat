@@ -35,6 +35,10 @@ namespace XarChat.Backend.Win32.AppDataFolder
             {
                 Directory.CreateDirectory(result /*, UnixFileMode.UserRead | UnixFileMode.UserWrite */);
             }
+            if (!Directory.Exists(Path.Combine(result, "customcss")))
+            {
+                Directory.CreateDirectory(Path.Combine(result, "customcss") /*, UnixFileMode.UserRead | UnixFileMode.UserWrite */);
+            }
 
             return result;
         }

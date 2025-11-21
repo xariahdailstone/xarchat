@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices.JavaScript;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -12,110 +13,27 @@ using static XarChat.Backend.UrlHandlers.AppSettings.AppSettingsExtensions;
 
 namespace XarChat.Backend.Features.AppSettings.AppDataFile
 {
-    internal class AppDataAppSettingsManager : IAppSettingsManager, IDisposable
+    internal class RotatingJsonManager
     {
-        private readonly IAppDataFolder _appDataFolder;
-        private readonly IAppSettingsDataProtectionManager _dataProtectionManager;
-
-        private SemaphoreSlim _writeLock = new SemaphoreSlim(1);
+        private readonly SemaphoreSlim _writeLock = new SemaphoreSlim(1);
         private int _lastWriteId = 0;
 
-        private readonly RateLimiter _rateLimiter;
+        private readonly IAppSettingsDataProtectionManager? _dataProtectionManager;
+        private readonly string _baseName;
 
-        public AppDataAppSettingsManager(
-            IAppDataFolder appDataFolder,
-            IAppSettingsDataProtectionManager dataProtectionManager)
+        public RotatingJsonManager(
+            IAppSettingsDataProtectionManager? dataProtectionManager,
+            string baseName)
         {
-            _appDataFolder = appDataFolder;
             _dataProtectionManager = dataProtectionManager;
-
-            _rateLimiter = new RateLimiter(TimeSpan.FromSeconds(5));
+            _baseName = baseName;
         }
 
-        public void Dispose()
-        {
-            _rateLimiter.Dispose();
-            _pendingSaveEvent.Wait();
-        }
+        private string CurrentFileName => _baseName;
+        private string NewFileName => _baseName + ".next";
+        private string PreviousFileName => _baseName + ".previous";
 
-        private string GetSettingsFileName()
-        {
-            var result = Path.Combine(_appDataFolder.GetAppDataFolder(), "clientsettings.json");
-
-            if (!Directory.Exists(Path.GetDirectoryName(result)))
-            {
-                Directory.CreateDirectory(Path.GetDirectoryName(result)!);
-            }
-
-            return result;
-        }
-
-        public AppSettingsData GetAppSettings()
-        {
-            var raw = GetAppSettingsDataRaw();
-            var result = JsonSerializer.Deserialize<AppSettingsData>(raw)!;
-            return result;
-        }
-
-        public JsonObject GetAppSettingsDataRaw()
-        {
-            JsonObject? settings = null;
-            var needWrite = false;
-
-            var settingsFn = GetSettingsFileName();
-            var settingsOldFn = settingsFn + ".old";
-
-            _writeLock.Wait();
-            try
-            {
-                if (File.Exists(settingsFn))
-                {
-                    try
-                    {
-                        using var fr = File.OpenText(settingsFn);
-                        var json = fr.ReadToEnd();
-                        settings = DeserializeAppSettings(json);
-                    }
-                    catch { }
-                }
-                if (settings == null && File.Exists(settingsOldFn))
-                {
-                    try
-                    {
-                        using var fr = File.OpenText(settingsOldFn);
-                        var json = fr.ReadToEnd();
-                        settings = DeserializeAppSettings(json);
-                        needWrite = true;
-                    }
-                    catch { }
-                }
-            }
-            finally
-            {
-                _writeLock.Release();
-            }
-
-            if (settings == null)
-            {
-                settings =
-                    JsonSerializer.Deserialize<JsonObject>(
-                        JsonSerializer.Serialize(new AppSettingsData(), SourceGenerationContext.Default.AppSettingsData),
-                        SourceGenerationContext.Default.JsonObject)!;
-                needWrite = true;
-            }
-
-            if (needWrite)
-            {
-                _ = Task.Run(async () =>
-                {
-                    await SaveAppSettings(settings);
-                });
-            }
-
-            return settings!;
-        }
-
-        private JsonObject? DeserializeAppSettings(string? json)
+        private JsonObject? DeserializeFileContent(string? json)
         {
             if (String.IsNullOrWhiteSpace(json)) return null;
 
@@ -124,12 +42,18 @@ namespace XarChat.Backend.Features.AppSettings.AppDataFile
             return result;
         }
 
-        private string SerializeAppSettings(JsonObject jsonObject)
+        private string? UnprotectString(string? str)
         {
-            var copiedSettings = (JsonObject)jsonObject.DeepClone()!;
-            ProtectStringsRecursive(copiedSettings);
-            var result = JsonUtilities.Serialize<JsonObject>(copiedSettings, SourceGenerationContext.Default.JsonObject);
-            return result;
+            if (_dataProtectionManager == null) { return str; }
+
+            return _dataProtectionManager!.Decode(str);
+        }
+
+        private string? ProtectString(string? str)
+        {
+            if (_dataProtectionManager == null) { return str; }
+
+            return _dataProtectionManager.Encode(str);
         }
 
         private void ProtectStringsRecursive(JsonObject jobj)
@@ -162,6 +86,14 @@ namespace XarChat.Backend.Features.AppSettings.AppDataFile
                             p => jobj[kvp.Key] = p);
                 }
             }
+        }
+
+        private string SerializeFileData(JsonObject jsonObject)
+        {
+            var copiedSettings = (JsonObject)jsonObject.DeepClone()!;
+            ProtectStringsRecursive(copiedSettings);
+            var result = JsonUtilities.Serialize<JsonObject>(copiedSettings, SourceGenerationContext.Default.JsonObject);
+            return result;
         }
 
         private void MaybeProtectJsonString(string? propertyName, JsonNode? v, Action<string?> onProtect)
@@ -230,14 +162,169 @@ namespace XarChat.Backend.Features.AppSettings.AppDataFile
             }
         }
 
-        private string? UnprotectString(string? str)
+        public JsonObject? ReadFromFile()
         {
-            return _dataProtectionManager!.Decode(str);
+            _writeLock.Wait();
+            try
+            {
+                foreach (var t in new[]
+                {
+                    new { Filename = this.CurrentFileName, NeedWrite = false },
+                    new { Filename = this.NewFileName, NeedWrite = false },
+                    new { Filename = this.PreviousFileName, NeedWrite = false }
+                })
+                {
+                    if (File.Exists(t.Filename))
+                    {
+                        try
+                        {
+                            JsonObject? tcontent;
+                            using (var fr = File.OpenText(t.Filename))
+                            {
+                                var json = fr.ReadToEnd();
+                                tcontent = DeserializeFileContent(json);
+                            }
+                            if (tcontent != null)
+                            {
+                                if (t.Filename != this.CurrentFileName)
+                                {
+                                    try
+                                    {
+                                        if (File.Exists(this.CurrentFileName))
+                                        {
+                                            FileSystemUtil.Delete(this.CurrentFileName);
+                                        }
+                                        File.Move(t.Filename, this.CurrentFileName);
+                                    }
+                                    catch { }
+                                }
+
+                                return tcontent;
+                            }
+                        }
+                        catch { }
+                    }
+                }
+            }
+            finally
+            {
+                _writeLock.Release();
+            }
+
+            return null;
         }
 
-        private string? ProtectString(string? str)
+        public async Task WriteToFileAsync(JsonObject value)
         {
-            return _dataProtectionManager.Encode(str);
+            var myWriteId = Interlocked.Increment(ref _lastWriteId);
+            await _writeLock.WaitAsync();
+            try
+            {
+                if (_lastWriteId != myWriteId) return;
+
+                if (File.Exists(this.NewFileName))
+                {
+                    await FileSystemUtil.DeleteAsync(this.NewFileName);
+                }
+
+                using var writer = File.CreateText(this.NewFileName);
+
+                await writer.WriteAsync(SerializeFileData(value));
+                await writer.FlushAsync();
+                await writer.DisposeAsync();
+
+                if (File.Exists(this.PreviousFileName))
+                {
+                    await FileSystemUtil.DeleteAsync(this.PreviousFileName);
+                }
+                if (File.Exists(this.CurrentFileName))
+                {
+                    File.Move(this.CurrentFileName, this.PreviousFileName);
+                }
+                File.Move(this.NewFileName, this.CurrentFileName);
+            }
+            finally
+            {
+                _writeLock.Release();
+            }
+        }
+    }
+
+    internal class AppDataAppSettingsManager : IAppSettingsManager, IDisposable
+    {
+        private readonly IAppDataFolder _appDataFolder;
+        private readonly IAppSettingsDataProtectionManager _dataProtectionManager;
+
+        private SemaphoreSlim _writeLock = new SemaphoreSlim(1);
+
+        private readonly RateLimiter _rateLimiter;
+
+        private readonly RotatingJsonManager _jsonManager;
+
+        public AppDataAppSettingsManager(
+            IAppDataFolder appDataFolder,
+            IAppSettingsDataProtectionManager dataProtectionManager)
+        {
+            _appDataFolder = appDataFolder;
+            _dataProtectionManager = dataProtectionManager;
+
+            _rateLimiter = new RateLimiter(TimeSpan.FromSeconds(5));
+
+            _jsonManager = new RotatingJsonManager(dataProtectionManager, GetSettingsFileName());
+        }
+
+        public void Dispose()
+        {
+            _rateLimiter.Dispose();
+            _pendingSaveEvent.Wait();
+        }
+
+        private string GetSettingsFileName()
+        {
+            var result = Path.Combine(_appDataFolder.GetAppDataFolder(), "clientsettings.json");
+
+            if (!Directory.Exists(Path.GetDirectoryName(result)))
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(result)!);
+            }
+
+            return result;
+        }
+
+        public AppSettingsData GetAppSettings()
+        {
+            var raw = GetAppSettingsDataRaw();
+            var result = JsonSerializer.Deserialize<AppSettingsData>(raw)!;
+            return result;
+        }
+
+        public JsonObject GetAppSettingsDataRaw()
+        {
+            var settingsFn = GetSettingsFileName();
+
+            JsonObject? settings = null;
+            var needWrite = false;
+
+            settings = _jsonManager.ReadFromFile();
+
+            if (settings == null)
+            {
+                settings =
+                    JsonSerializer.Deserialize<JsonObject>(
+                        JsonSerializer.Serialize(new AppSettingsData(), SourceGenerationContext.Default.AppSettingsData),
+                        SourceGenerationContext.Default.JsonObject)!;
+                needWrite = true;
+            }
+
+            if (needWrite)
+            {
+                _ = Task.Run(async () =>
+                {
+                    await SaveAppSettings(settings);
+                });
+            }
+
+            return settings!;
         }
 
         private object? _latestSerialize = null;
@@ -292,44 +379,7 @@ namespace XarChat.Backend.Features.AppSettings.AppDataFile
 
         private async Task SaveAppSettingsInternal(JsonObject jsonObject)
         {
-            var myWriteId = Interlocked.Increment(ref _lastWriteId);
-            await _writeLock.WaitAsync();
-            try
-            {
-                if (_lastWriteId != myWriteId) return;
-
-                var sfn = GetSettingsFileName();
-
-                if (File.Exists(sfn + ".tmp"))
-                {
-                    File.Delete(sfn + ".tmp");
-                }
-
-                using var writer = File.CreateText(sfn + ".tmp");
-
-                //await writer.WriteAsync(JsonConvert.SerializeObject(appSettingsData, Formatting.Indented));
-                await writer.WriteAsync(SerializeAppSettings(jsonObject));
-                await writer.FlushAsync();
-                await writer.DisposeAsync();
-
-                if (File.Exists(sfn + ".old"))
-                {
-                    File.Delete(sfn + ".old");
-                }
-                if (File.Exists(sfn))
-                {
-                    File.Move(sfn, sfn + ".old");
-                }
-                File.Move(sfn + ".tmp", sfn);
-                if (File.Exists(sfn + ".old"))
-                {
-                    File.Delete(sfn + ".old");
-                }
-            }
-            finally
-            {
-                _writeLock.Release();
-            }
+            await _jsonManager.WriteToFileAsync(jsonObject);
         }
 
         public AppSettingsData GetAppSettingsData()

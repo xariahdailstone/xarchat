@@ -2,6 +2,7 @@
     overflow-x: hidden;
     font-size: var(--chat-font-size);
     font-family: var(--chat-font-family);
+    -webkit-user-select: text;
     user-select: text;
 
     /* background: inherit; */
@@ -11,6 +12,7 @@
 }
 
 .messageitem {
+    -webkit-user-select: text;
     user-select: text;
     /* border-bottom: 1px solid var(--bg-level-2); */
     font-size: 100%;
@@ -35,6 +37,7 @@
 
 #elBottomNotifications {
     display: none;
+    -webkit-user-select: none;
     user-select: none;
 }
 #elBottomNotifications:has(.shown) {
@@ -107,6 +110,8 @@
 }
 */
 
+.nickname { font-weight: normal; }
+
 .messageitem.displaystyle-discord .message-content-container { display: flex; flex-direction: column; }
 .messageitem.displaystyle-discord:not(.system) {
     --icon-height: 42px;
@@ -139,6 +144,7 @@
         height: var(--icon-height);
         margin: 0 9px 9px 9px;
         align-self: flex-start;
+        -webkit-user-select: none;
         user-select: none;
     }
     & .dice-icon {
@@ -219,6 +225,7 @@
         height: var(--icon-height);
         margin: 0 9px 9px 9px;
         align-self: flex-start;
+        -webkit-user-select: none;
         user-select: none;
     }
     & .statusdot {
@@ -316,10 +323,12 @@
     & .character-status {
         font-style: normal;
         display: inline;
+        -webkit-user-select: none;
         user-select: none;
     }
 
     & .character-status-spacer {
+        -webkit-user-select: none;
         user-select: none;
     }
 
@@ -334,6 +343,7 @@
 }
 
 .messageitem-lognav {
+    -webkit-user-select: none;
     user-select: none;
     
     & .lognavtext {
@@ -349,11 +359,12 @@
     padding: 0;
     margin: 0;
     /* overflow: hidden; */
-    position: relative;
+    /* position: relative; */
 
     /* background: inherit; */
 
-    contain: paint;
+    contain: paint layout;
+    width: 100%;
     border-bottom: 1px solid var(--bg-level-2);
 
     --ad-collapse-max-height: calc(1px * var(--ad-collapse-max-height-numeric));
@@ -388,6 +399,7 @@
 .collapse-host .collapse-button-container {
     float: right;
     padding: 5px;
+    -webkit-user-select: none;
     user-select: none;
 }
 .collapse-host:not(.is-oversized) .collapse-button-container {
@@ -433,6 +445,102 @@
 }
 
 
+.collapse-host {
+    .collapse-host-innera {
+        position: relative;
+    }
+    .collapse-host-inner {
+        position: relative;
+        display: grid;
+        grid-template-columns: 1fr auto;
+        grid-template-rows: auto;
+        grid-template-areas: "message . expandbuttonspacer";
+        .collapse-host-inner-message {
+            grid-area: message;
+        }
+        .collapse-host-expandbuttonspacer {
+            grid-area: expandbuttonspacer;
+            visibility: hidden;
+        }
+    }
+
+    .collapse-button-appearance {
+        border: none;
+        outline: none;
+        padding: 3px 5px;
+        width: 55px;
+        background: var(--bg-level-4);
+        color: var(--fg-level-4);
+        border-radius: 5px 5px;
+        font: inherit;
+        font-size: 85%;
+        margin-top: 5px;
+        margin-right: 5px;
+        
+        cursor: pointer;
+    }
+
+    &:not(.collapsible) {
+        .collapse-host-expandcollapsecontainer { display: none; }
+        .collapse-host-expandbuttonspacer { display: none; }
+    }    
+
+    &.collapsible {
+        max-height: var(--ad-collapse-max-height);
+        overflow: clip;
+
+        .collapse-host-expandbuttonspacer { float: right; }
+
+        .collapse-host-expandcollapsecontainer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 100%;
+            container: expand-collapse-container / size;
+
+            pointer-events: none;
+
+            display: grid;
+            grid-template-rows: auto 1fr;
+            grid-template-columns: 1fr auto;
+            grid-template-areas:
+                ". expandbutton"
+                ". .";
+
+            .collapse-host-collapsebutton {
+                grid-area: expandbutton;
+                display: none;
+            }
+        }
+
+        &.expanded {
+            max-height: initial;
+
+            .collapse-host-expandcollapsecontainer {
+                container: none;
+                .collapse-host-collapsebutton {
+                    display: block;
+                    .collapse-host-collapsebutton-content::before { content: 'Collapse'; }
+                    pointer-events: all;
+                }
+            }
+        }
+    }
+}
+@container expand-collapse-container (height >= 65px) {
+    .collapse-host.collapsible {
+        .collapse-host-expandcollapsecontainer {
+            .collapse-host-collapsebutton {
+                display: block !important;
+                .collapse-host-collapsebutton-content::before { content: 'Expand'; }
+                pointer-events: all;
+            }
+        }
+    }
+}
+
+
 
 
 .messageitem.displaystyle-discordn {
@@ -465,6 +573,7 @@
             width: 42px;
             height: 42px;
             margin-right: 11px;
+            -webkit-user-select: none;
             user-select: none;
             z-index: 2;
         }
@@ -472,6 +581,7 @@
             font-weight: bold;
             align-self: flex-end;
             margin-right: 8px;
+            -webkit-user-select: none;
             user-select: none;
 
             & .statusdot {
@@ -483,9 +593,11 @@
             align-self: flex-end;
             margin-bottom: 0.15em;
             opacity: 0.5;
+            -webkit-user-select: none;
             user-select: none;
         }
         & .dice-icon { 
+            -webkit-user-select: none;
             user-select: none; 
             align-self: center;
             margin-right: 6px;

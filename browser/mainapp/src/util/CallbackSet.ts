@@ -3,6 +3,18 @@ import { SnapshottableSet } from "./collections/SnapshottableSet";
 import { asDisposable, asNamedDisposable, IDisposable } from "./Disposable";
 import { Logger, Logging } from "./Logger";
 
+// interface ICallbackSet<T extends (...args: any) => any> {
+//     readonly size: number;
+//     add(callback: T): IDisposable;
+//     delete(callback: T): void;
+//     clear(): void;
+//     invoke(...params: Parameters<T>): void;
+// }
+
+// export function createCallbackSet<T extends (...args: any) => any>(name: string, onCallbackRemoved?: () => void): ICallbackSet<T> {
+//     return new CallbackSet<T>(name, onCallbackRemoved);
+// }
+
 export class CallbackSet<T extends (...args: any) => any> {
     private _callbacksSet: SnapshottableMap<object, CallbackInfo<T>> = new SnapshottableMap();
 
@@ -10,12 +22,19 @@ export class CallbackSet<T extends (...args: any) => any> {
         public readonly name: string,
         private readonly onCallbackRemoved?: () => void) {
 
-        this._callbackName = `${name}-callback`;
-        this._logger = Logging.createLogger(name);
+        //this._callbackName = `${name}-callback`;
+        //this._logger = Logging.createLogger(name);
     }
 
-    public readonly _callbackName: string;
-    private readonly _logger: Logger;
+    //public readonly _callbackName: string;
+    
+    private _logger: Logger | undefined;
+    private get logger(): Logger {
+        if (!this._logger) {
+            this._logger = Logging.createLogger(this.name);
+        }
+        return this._logger;
+    }
 
     get size() { return this._callbacksSet.size; }
 
@@ -35,7 +54,8 @@ export class CallbackSet<T extends (...args: any) => any> {
         };
         this._callbacksSet.set(myKey, cbi);
 
-        return asNamedDisposable(this._callbackName, () => {
+        //return asNamedDisposable(this._callbackName, () => {
+        return asDisposable(() => {
             this._callbacksSet.delete(myKey);
             this.fireOnCallbackRemoved();
         });
@@ -43,13 +63,29 @@ export class CallbackSet<T extends (...args: any) => any> {
 
     delete(callback: T) {
         let anyRemoved = false;
-        this._callbacksSet.forEachValueSnapshotted(cbi => {
-            if (cbi.callback === callback) {
-                this._callbacksSet.delete(cbi.key);
-                anyRemoved = true;
+        let toDelete: CallbackInfo<T>[] | null = null;
+
+        for (let v of this._callbacksSet.values()) {
+            if (v.callback == callback) {
+                toDelete ??= [];
+                toDelete.push(v);
             }
-        });
+        }
+        if (toDelete) {
+            for (let td of toDelete) {
+                this._callbacksSet.delete(td);
+            }
+            anyRemoved = true;
+        }
+
         if (anyRemoved) {
+            this.fireOnCallbackRemoved();
+        }
+    }
+
+    clear() {
+        if (this._callbacksSet.size > 0) {
+            this._callbacksSet.clear();
             this.fireOnCallbackRemoved();
         }
     }
@@ -62,10 +98,10 @@ export class CallbackSet<T extends (...args: any) => any> {
             }
             catch (e) {
                 cbi.errorCount++;
-                this._logger.logError("Callback threw unhandled exception", this.name, cbi.callback, cbi.errorCount, e);
+                this.logger.logError("Callback threw unhandled exception", this.name, cbi.callback, cbi.errorCount, e);
 
                 if (cbi.errorCount > 10) {
-                    this._logger.logError("Unregistering repeatedly failing callback");
+                    this.logger.logError("Unregistering repeatedly failing callback");
                     this._callbacksSet.delete(cbi.key);
                     anyRemoved = true;
                 }
@@ -81,12 +117,20 @@ export class NamedCallbackSet<TName, TCallback extends (...args: any) => any> {
     private _callbacksSet: SnapshottableMap<TName, CallbackSet<TCallback>> = new SnapshottableMap();
 
     constructor(public readonly name: string) {
-        this._callbackName = `${name}-callback`;
-        this._logger = Logging.createLogger(name);
+        //this._callbackName = `${name}-callback`;
+        //this._logger = Logging.createLogger(name);
     }
 
-    private readonly _callbackName: string;
-    private readonly _logger: Logger;
+    //private readonly _callbackName: string;
+    //private readonly _logger: Logger;
+
+    private _logger: Logger | undefined;
+    private get logger(): Logger {
+        if (!this._logger) {
+            this._logger = Logging.createLogger(this.name);
+        }
+        return this._logger;
+    }
 
     add(name: TName, callback: TCallback): IDisposable {
         let nmap = this._callbacksSet.get(name);
@@ -100,7 +144,8 @@ export class NamedCallbackSet<TName, TCallback extends (...args: any) => any> {
         }
         const innerRes = nmap.add(callback);
 
-        return asNamedDisposable(nmap._callbackName, () => {
+        //return asNamedDisposable(nmap._callbackName, () => {
+        return asDisposable(() => {
             innerRes.dispose();
         });
     }

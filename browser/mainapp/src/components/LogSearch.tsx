@@ -5,7 +5,7 @@ import { RenderingComponentBase } from "./RenderingComponentBase";
 import { Fragment, jsx, VNode } from "../snabbdom/index.js";
 import { IDisposable, asDisposable } from "../util/Disposable.js";
 import { RenderingStageViewComponent, stageViewFor } from "./Stage";
-import { DateAnchor, LogSearchKind } from "../util/HostInteropLogSearch";
+import { DateAnchor, LogSearchKind } from "../util/hostinterop/HostInteropLogSearch";
 import { CollectionViewLightweight } from "./CollectionViewLightweight";
 import { EL } from "../util/EL";
 import { ChannelMessageCollectionView, DefaultStreamScrollManager } from "./ChannelStream";
@@ -13,6 +13,7 @@ import { ScrollAnchorTo } from "../util/ScrollAnchorTo";
 import { TextboxBinding } from "../util/bindings/TextboxBinding";
 import { getMappedValueReference, getValueReference } from "../util/ValueReference";
 import { CharacterName } from "../shared/CharacterName";
+import { Scheduler } from "../util/Scheduler";
 
 @componentElement("x-logsearch")
 @stageViewFor(LogSearchViewModel)
@@ -42,13 +43,13 @@ export class LogSearch extends RenderingStageViewComponent<LogSearchViewModel> {
     }
 
     private _storedScrollToCommand: ScrollToCommand | null = null;
-    private _scrollToHandle: number | null = null;
+    private _scrollToHandle: IDisposable | null = null;
 
     private setScrollToCommand(stc: ScrollToCommand | null) {
         if (stc != null) {
             this._storedScrollToCommand = stc;
             if (this._scrollToHandle == null) {
-                this._scrollToHandle = window.requestAnimationFrame(() => {
+                this._scrollToHandle = Scheduler.scheduleNamedCallback("LogSearch.setScrollToCommand", ["frame", "idle", 250], () => {
                     this._scrollToHandle = null;
                     this.executeScrollToCommand();
                 });
@@ -193,23 +194,17 @@ class LogSearchResultItemCollectionView extends CollectionViewLightweight<LogSea
 
             const ssp = savedScrollPos;
             const sat = this.scrollAnchorTo;
-            window.requestAnimationFrame(() => {
+            Scheduler.scheduleNamedCallback("LogSearchResultItemCollectionView.completeElementUpdate", ["frame", "idle", 250], () => {
                 const containerElement = this.containerElement;
                 if (containerElement != null && ssp != null) {
                     switch (sat) {
                         case ScrollAnchorTo.BOTTOM:
-                            // const scrollHandler = (e: Event) => { 
-                                this.logger.logDebug("restoring scroll (ssp)...", ssp);
-                                this.logger.logDebug("restoring scrolltop scrollTop...", containerElement.scrollTop);
-                                this.logger.logDebug("restoring scrolltop scrollheight...", containerElement.scrollHeight);
-                                const newScrollTop = containerElement.scrollHeight - ssp;
-                                this.logger.logDebug("restoring scrolltop newScrollTop...", newScrollTop);
-                                containerElement.scroll(0, newScrollTop);
-                            // };
-                            // containerElement.addEventListener("scroll", scrollHandler);
-                            // window.setTimeout(() => { 
-                            //     containerElement.removeEventListener("scroll", scrollHandler);
-                            // }, 100);
+                            this.logger.logDebug("restoring scroll (ssp)...", ssp);
+                            this.logger.logDebug("restoring scrolltop scrollTop...", containerElement.scrollTop);
+                            this.logger.logDebug("restoring scrolltop scrollheight...", containerElement.scrollHeight);
+                            const newScrollTop = containerElement.scrollHeight - ssp;
+                            this.logger.logDebug("restoring scrolltop newScrollTop...", newScrollTop);
+                            containerElement.scroll(0, newScrollTop);
                             break;
                         case ScrollAnchorTo.TOP:
                         default:

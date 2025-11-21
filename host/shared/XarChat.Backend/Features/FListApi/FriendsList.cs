@@ -5,15 +5,15 @@ namespace XarChat.Backend.Features.FListApi
     public class FriendsList
     {
         [JsonPropertyName("bookmarklist")]
-        public List<string> BookmarkList { get; set; }
+        public required List<string> BookmarkList { get; set; }
 
         [JsonPropertyName("friendlist")]
-        public List<FriendsListFriend> FriendList { get; set; }
+        public required List<FriendsListFriend> FriendList { get; set; }
 
         [JsonPropertyName("requestlist")]
-        public List<FriendsListRequest> RequestList { get; set; }
+        public required List<FriendsListRequest> RequestList { get; set; }
 
         [JsonPropertyName("requestpending")]
-        public List<FriendsListRequest> RequestPending { get; set; }
+        public required List<FriendsListRequest> RequestPending { get; set; }
     }
 }

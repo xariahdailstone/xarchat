@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.Extensions.Logging;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -10,6 +11,14 @@ namespace XarChat.Backend.Win32.IdleDetection
 {
     public class Win32IdleDetectionManagerImpl : IIdleDetectionManager
     {
+        public Win32IdleDetectionManagerImpl(
+            ILogger<Win32IdleDetectionManagerImpl> logger)
+        {
+            this.Logger = logger;
+        }
+
+        private ILogger Logger { get; }
+
         [DllImport("kernel32.dll")]
         static extern uint GetTickCount();
 
@@ -87,7 +96,7 @@ namespace XarChat.Backend.Win32.IdleDetection
             {
                 _registeredLoops[name] = myLoopCts;
             }
-            _ = MonitorLoop(idleAfter, callback, myLoopCts.Token);
+            _ = MonitorLoop(name, idleAfter, callback, myLoopCts.Token);
         }
 
         public void UnregisterCallback(string name)
@@ -102,33 +111,46 @@ namespace XarChat.Backend.Win32.IdleDetection
             }
         }
 
-        private async Task MonitorLoop(TimeSpan idleAfter, Action<string, string> callback, CancellationToken cancellationToken)
+        private async Task MonitorLoop(string name, TimeSpan idleAfter, Action<string, string> callback, CancellationToken cancellationToken)
         {
-            var lastKnownUserState = "";
-            var lastKnownScreenState = "";
-            var assignStates = (string userState, string screenState) =>
-            {
-                if (userState != lastKnownUserState || screenState != lastKnownScreenState)
-                {
-                    lastKnownUserState = userState;
-                    lastKnownScreenState = screenState;
-                    callback(lastKnownUserState, lastKnownScreenState);
-                }
-            };
-
+            Logger.LogInformation("Starting idle monitor loop {name}", name);
             try
             {
-                while (!cancellationToken.IsCancellationRequested)
+                var lastKnownUserState = "";
+                var lastKnownScreenState = "";
+                var assignStates = (string userState, string screenState) =>
                 {
-                    var currentUserState = GetIdleState(idleAfter);
-                    var currentScreenState = GetScreenState();
+                    if (userState != lastKnownUserState || screenState != lastKnownScreenState)
+                    {
+                        lastKnownUserState = userState;
+                        lastKnownScreenState = screenState;
+                        Logger.LogInformation("Idle loop state change {name}: {userState} {screenState}", name, userState, screenState);
+                        callback(lastKnownUserState, lastKnownScreenState);
+                    }
+                };
 
-                    assignStates(currentUserState, currentScreenState);
+                try
+                {
+                    while (!cancellationToken.IsCancellationRequested)
+                    {
+                        var currentUserState = GetIdleState(idleAfter);
+                        var currentScreenState = GetScreenState();
 
-                    await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
+                        assignStates(currentUserState, currentScreenState);
+
+                        await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
+                    }
+                }
+                catch (OperationCanceledException) { }
+                catch (Exception ex)
+                {
+                    Logger.LogError(ex, "Idle monitor loop exception {name} {message}", name, ex.Message);
                 }
             }
-            catch (OperationCanceledException) { }
+            finally
+            {
+                Logger.LogInformation("Ended idle monitor loop {name}", name);
+            }
         }
 
         private string GetIdleState(TimeSpan idleAfter)

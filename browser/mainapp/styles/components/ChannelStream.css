@@ -18,6 +18,7 @@
 
     --ad-collapse-max-height-numeric: 40;
 }
+#elMain.historical-view { background: inherit; }
 
 .filtersbar {
     /* display: none; */
@@ -27,6 +28,7 @@
 
     background: var(--bg-level-3);
 }
+#elMain.historical-view .filtersbar { display: none; }
 
 .messagecontainerouter {
     grid-area: messagecontainer;
@@ -36,6 +38,7 @@
     justify-content: flex-end;
 
     height: 100%;
+    -webkit-user-select: text;
     user-select: text;
     overflow: hidden;
 
@@ -59,7 +62,7 @@
 
 
 
-.typingstatusindicator { user-select: none; }
+.typingstatusindicator { -webkit-user-select: none; user-select: none; }
 .messageitem.typingstatusindicator {
     padding: 3px 0px; 
     border-bottom: 1px solid transparent;
@@ -69,3 +72,5 @@
 .messageitem.typingstatusindicator .messagetext {
     font-size: 75%;
 }
+
+#elMain.historical-view #elBottomNotifications { display: none; }

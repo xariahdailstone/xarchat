@@ -19,6 +19,13 @@ export class SlashCommandViewModel {
         public readonly onInvoke: (context: ChannelViewModel, args: unknown[]) => Promise<string | void>) {
     }
 
+    showInHelp: boolean = true;
+
+    withShowInHelp(value: boolean): this {
+        this.showInHelp = value;
+        return this;
+    }
+
     grabArgumentValue(argType: keyof ArgumentTypeMap, argumentStr: string): [string, any] {
         let argumentValue: any;
         switch (argType) {
@@ -45,10 +52,14 @@ export class SlashCommandViewModel {
                 break;
             case "character":
                 {
-                    if (argumentStr.trim() == "") {
+                    let ax = argumentStr.trim();
+                    if (ax == "") {
                         throw new Error("Character name required.");
                     }
-                    argumentValue = CharacterName.create(argumentStr.trim());
+                    if (ax.startsWith('"') && ax.endsWith('"')) {
+                        ax = ax.substring(1, ax.length - 1);
+                    }
+                    argumentValue = CharacterName.create(ax);
                     argumentStr = "";
                 }
                 break;

@@ -1,0 +1,94 @@
+
+#elMain {
+    max-width: 500px;
+}
+
+.groupbox {
+    background: var(--bg-level-2);
+    color: var(--fg-level-2);
+    margin-bottom: 8px;
+    padding: 8px 8px;
+    border-radius: 8px;
+}
+.groupbox-title {
+    font-weight: bold;
+    margin-bottom: 6px;
+}
+.groupbox-content {
+    margin: 0px 5px;
+}
+
+.group-logfilesize {
+    .groupbox-content {
+        display: grid;
+        grid-template-rows: auto;
+        grid-template-columns: 1fr auto;
+        grid-template-areas: "label value";
+
+        .group-logfilesize-label { grid-area: label; }
+        .group-logfilesize-value { grid-area: value; }
+    }
+}
+
+.group-vacuum {
+    .groupbox-content {
+        display: grid;
+        grid-template-rows: auto auto;
+        grid-template-columns: 1fr auto;
+        grid-template-areas:
+            "description description"
+            ". button";
+
+        .group-vacuum-description { grid-area: description; font-size: 90%; }
+        .group-vacuum-button { 
+            grid-area: button; 
+            margin-top: 8px; 
+
+            .vacuum-button-content {
+                display: flex;
+                flex-direction: row;
+                align-items: center;
+
+                .vacuum-icon {
+                    width: 16px;
+                    height: 16px;
+                    margin-right: 6px;
+                }
+            }
+        }
+    }
+}
+
+.group-cleardatabase {
+    .groupbox-content {
+        display: grid;
+        grid-template-rows: auto auto;
+        grid-template-columns: 1fr auto;
+        grid-template-areas:
+            "description description"
+            ". button";
+
+        .group-cleardatabase-description { grid-area: description; font-size: 90%; }
+        .group-cleardatabase-button { 
+            grid-area: button; 
+            margin-top: 8px; 
+
+            &:not(:disabled) {
+                background-color: red;
+                color: white;
+            }
+
+            .cleardatabase-button-content {
+                display: flex;
+                flex-direction: row;
+                align-items: center;
+
+                .cleardatabase-icon {
+                    width: 16px;
+                    height: 16px;
+                    margin-right: 6px;
+                }
+            }
+        }
+    }
+}

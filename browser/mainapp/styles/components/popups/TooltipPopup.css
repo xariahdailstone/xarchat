@@ -27,3 +27,25 @@
     pointer-events: none;
     padding: 5px 5px;
 }
+
+.flash-display {
+    animation-name: bgflash;
+    animation-duration: 1.45s;
+}
+@keyframes bgflash {
+    0% {
+        background-color: gold;
+        color: black;
+        opacity: 1;
+    }
+    80% {
+        background-color: gold;
+        color: black;
+        opacity: 1;
+    }
+    100% {
+        background-color: gold;
+        color: black;
+        opacity: 0;
+    }
+}

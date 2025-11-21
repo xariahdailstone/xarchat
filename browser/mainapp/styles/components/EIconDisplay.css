@@ -1,0 +1,23 @@
+:host {
+    display: inline-block;
+    -webkit-user-select: all;
+    user-select: all;
+}
+
+:root {
+    line-height: 0px;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+#elMain {
+    display: contents;
+}
+
+#elMain img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: var(--eicon-width);
+    height: var(--eicon-height);
+}

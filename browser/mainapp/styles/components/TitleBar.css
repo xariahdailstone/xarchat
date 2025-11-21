@@ -14,7 +14,7 @@
     grid-template-columns: auto auto auto 1fr auto auto auto auto;
     grid-template-areas: 
         "topsizer topsizer topsizer topsizer topsizer topsizer topsizer topsizer"
-        "title brandtag update-notice . status-message minimize maximize close";
+        "title brandtag . . status-message minimize maximize close";
 
     background: var(--bg-level-2);
     color: var(--fg-level-2);
@@ -47,19 +47,6 @@
     margin-left: 6px;
 }
 
-.update-notice { grid-area: update-notice; display: none; }
-.update-notice.shown {
-    display: block;
-    background-color: yellow;
-    color: black;
-    font-size: 70%;
-    padding: 2px 9px 2px 9px;
-    border-radius: 2px;
-    margin-left: 20px;
-    cursor: pointer;
-    -webkit-app-region: no-drag;
-}
-
 .status-message {
     grid-area: status-message; 
     margin-right: 10px;
@@ -69,10 +56,12 @@
 }
 #elMain.status-message-shown .status-message {
     opacity: 1;
+    will-change: opacity;
     transition: opacity 0.2s;
 }
 #elMain:not(.status-message-shown) .status-message {
     opacity: 0;
+    will-change: opacity;
     transition: opacity 0.5s;
 }
 

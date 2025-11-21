@@ -6,6 +6,7 @@ using System.Text.Json.Serialization;
 using System.Collections.Immutable;
 using System.Text.Json.Nodes;
 using System.Threading;
+using XarChat.Backend.Features.AppSettings.AppDataFile;
 
 namespace XarChat.Backend.Features.AppConfiguration.Impl
 {
@@ -21,6 +22,8 @@ namespace XarChat.Backend.Features.AppConfiguration.Impl
 
         private FileSystemWatcher _watcher;
 
+        private readonly RotatingJsonManager _jsonManager;
+
         public AppConfigurationImpl(
             IAppDataFolder appDataFolder,
             ICommandLineOptions commandLineOptions)
@@ -29,19 +32,10 @@ namespace XarChat.Backend.Features.AppConfiguration.Impl
             _commandLineOptions = commandLineOptions;
 
             _filename = Path.Combine(appDataFolder.GetAppDataFolder(), "config.json");
-            TRYAGAIN:
-            if (!File.Exists(_filename))
-            {
-                if (File.Exists(_filename + ".old"))
-                {
-                    File.Move(_filename + ".old", _filename);
-                    goto TRYAGAIN;
-                }
-                using var f = File.CreateText(_filename);
-                f.Write("{}");
-            }
+            _jsonManager = new RotatingJsonManager(null, _filename);
 
             _watcher = InitializeFileWatcher(_filename);
+
             LoadAppConfigJson();
         }
 
@@ -107,8 +101,10 @@ namespace XarChat.Backend.Features.AppConfiguration.Impl
         {
             try
             {
-                using var f = File.OpenText(_filename);
-                var jsonStr = f.ReadToEnd();
+                var jsonObj = _jsonManager.ReadFromFile();
+
+                var jsonStr = JsonUtilities.Serialize(jsonObj,
+                    SourceGenerationContext.Default.JsonObject);
                 var fdata = JsonUtilities.Deserialize<Dictionary<string, JsonNode>>(jsonStr,
                     SourceGenerationContext.Default.DictionaryStringJsonNode);
 
@@ -144,7 +140,7 @@ namespace XarChat.Backend.Features.AppConfiguration.Impl
             {
                 if (handledKeys.Contains(kvp.Key)) continue;
 
-                JsonNode v;
+                JsonNode? v;
                 if (!oldAcd.TryGetValue(kvp.Key, out v))
                 {
                     v = (JsonNode)JsonNode.Parse("null")!;
@@ -162,9 +158,9 @@ namespace XarChat.Backend.Features.AppConfiguration.Impl
             return ((a?.ToJsonString() ?? "null") == (b?.ToJsonString() ?? "null"));
         }
 
-        private void TriggerChange(string key, JsonNode value, Dictionary<string, object?>? changeMetadata)
+        private void TriggerChange(string key, JsonNode? value, Dictionary<string, object?>? changeMetadata)
         {
-            var cbs = new List<Action<string, JsonNode, Dictionary<string, object?>?>>();
+            var cbs = new List<Action<string, JsonNode?, Dictionary<string, object?>?>>();
             lock (_valueChangedCallbacks)
             {
                 cbs = _valueChangedCallbacks.Values.ToList();
@@ -177,8 +173,8 @@ namespace XarChat.Backend.Features.AppConfiguration.Impl
             }
         }
 
-        private readonly Dictionary<object, Action<string, JsonNode, Dictionary<string, object?>?>> _valueChangedCallbacks
-            = new Dictionary<object, Action<string, JsonNode, Dictionary<string, object?>?>>();
+        private readonly Dictionary<object, Action<string, JsonNode?, Dictionary<string, object?>?>> _valueChangedCallbacks
+            = new Dictionary<object, Action<string, JsonNode?, Dictionary<string, object?>?>>();
 
         public IDisposable OnValueChanged(Action<string, JsonNode?, Dictionary<string, object?>?> callback)
         {
@@ -240,27 +236,9 @@ namespace XarChat.Backend.Features.AppConfiguration.Impl
                         _watcher.EnableRaisingEvents = false;
                         try
                         {
-                            var tmpFn = _filename + ".tmp";
-                            var oldFn = _filename + ".old";
-
-                            if (File.Exists(tmpFn))
-                            {
-                                File.Delete(tmpFn);
-                            }
-                            if (File.Exists(oldFn))
-                            {
-                                File.Delete(oldFn);
-                            }
-
-                            using (var f = File.Create(tmpFn))
-                            {
-                                using var jw = new Utf8JsonWriter(f, new JsonWriterOptions() { Indented = true });
-                                JsonUtilities.Serialize(jw, _appConfigData!, SourceGenerationContext.Default.IImmutableDictionaryStringJsonNode);
-                            }
-
-                            File.Move(_filename, oldFn);
-                            File.Move(tmpFn, _filename);
-                            File.Delete(oldFn);
+                            var jsonStr = JsonUtilities.Serialize(_appConfigData!, SourceGenerationContext.Default.IImmutableDictionaryStringJsonNode);
+                            var jsonObj = JsonUtilities.Deserialize<JsonObject>(jsonStr, SourceGenerationContext.Default.JsonObject);
+                            await _jsonManager.WriteToFileAsync(jsonObj);
                         }
                         catch
                         {
@@ -292,10 +270,35 @@ namespace XarChat.Backend.Features.AppConfiguration.Impl
             NullIfWhiteSpace(GetArbitraryValueString("WebSocketPath")) ??
             "wss://chat.f-list.net/chat2";
 
-        public string UrlLaunchExecutable =>
-            NullIfWhiteSpace(_commandLineOptions.UrlLaunchExecutable) ??
-            NullIfWhiteSpace(GetArbitraryValueString("UrlLaunchExecutable")) ??
-            "shell:";
+        public string UrlLaunchExecutable
+        {
+            get
+            {
+                string EmptyAsShell(string str)
+                    => (str.Trim() == "") ? "shell:" : str;
+
+                var commandLineOption = _commandLineOptions.UrlLaunchExecutable;
+                if (commandLineOption is not null)
+                {
+                    return EmptyAsShell(commandLineOption);
+                }
+
+                var configedValue = GetArbitraryValueString("global.urlLaunchExecutable");
+                if (configedValue is not null)
+                {
+                    return EmptyAsShell(configedValue);
+                }
+
+                var legacyConfigedValue = GetArbitraryValueString("UrlLaunchExecutable");
+                if (legacyConfigedValue is not null)
+                {
+                    return EmptyAsShell(legacyConfigedValue);
+                }
+
+                return "shell:";
+            }
+        }
+            
 
         public bool LaunchImagesInternally =>
             _commandLineOptions.LaunchImagesInternally ??
@@ -320,7 +323,16 @@ namespace XarChat.Backend.Features.AppConfiguration.Impl
 		public bool EnableIndexDataCollection =>
 			Convert.ToBoolean(GetArbitraryValueString("EnableIndexDataCollection") ?? "true");
 
-		public IEnumerable<KeyValuePair<string, JsonNode>> GetAllArbitraryValues()
+        public bool DisableGpuAcceleration =>
+            (_commandLineOptions.DisableGpuAcceleration == true) ? true :
+            !(Convert.ToBoolean(GetArbitraryValueString("global.useGpuAcceleration") ?? "true"));
+
+        public string? BrowserLanguage =>
+            _commandLineOptions.BrowserLanguage ??
+            GetArbitraryValueString("global.spellCheckLanguage") ??
+            null;
+
+        public IEnumerable<KeyValuePair<string, JsonNode>> GetAllArbitraryValues()
         {
             var acd = _appConfigData;
             return acd;

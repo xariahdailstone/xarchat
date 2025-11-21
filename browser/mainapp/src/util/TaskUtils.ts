@@ -1,6 +1,7 @@
 import { CancellationToken } from "./CancellationTokenSource";
-import { IDisposable } from "./Disposable";
+import { asDisposable, IDisposable } from "./Disposable";
 import { PromiseSource } from "./PromiseSource";
+import { Scheduler } from "./Scheduler";
 
 export class TaskUtils {
     static async waitForCancel(cancellationToken: CancellationToken): Promise<void> {
@@ -24,17 +25,18 @@ export class TaskUtils {
             return ps.promise;
         }
 
-        let timeoutHandle: number;
+        let timeoutHandle: IDisposable;
         if (ms > 0) {
-            timeoutHandle = window.setTimeout(() => {
+            const thNum = Scheduler.scheduleNamedCallback("TaskUtils.delay", ms, () => {
                 if (!resolved) {
                     resolved = true;
                     ps.tryResolve();
                 }
-            }, ms);
+            });
+            timeoutHandle = asDisposable(() => thNum.dispose());
         }
         else {
-            timeoutHandle = window.requestIdleCallback(() => {
+            timeoutHandle = Scheduler.scheduleNamedCallback("TaskUtils.delay", ["idle", 250], () => {
                 if (!resolved) {
                     resolved = true;
                     ps.tryResolve();
@@ -46,12 +48,7 @@ export class TaskUtils {
             ? cancellationToken.register(() => {
                 if (!resolved) {
                     resolved = true;
-                    if (ms > 0) {
-                        window.clearTimeout(timeoutHandle);
-                    }
-                    else {
-                        window.cancelIdleCallback(timeoutHandle);
-                    }
+                    timeoutHandle.dispose();
                     ps.trySetCancelled(cancellationToken);
                 }
             }) : null;

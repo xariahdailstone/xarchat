@@ -25,6 +25,8 @@ export interface FListAuthenticatedApi extends FListApi {
     getGuestbookPageAsync(name: CharacterName, page: number, cancellationToken: CancellationToken): Promise<GuestbookPageInfo>;
 
     saveMemoAsync(name: CharacterName, memoText: string, cancellationToken: CancellationToken): Promise<string>;
+
+    submitReportAsync(reportData: ReportData, cancellationToken: CancellationToken): Promise<number | null>;
 }
 
 
@@ -236,4 +238,24 @@ export interface PartnerSearchFieldsDefinitions {
 export interface PartnerSearchKink {
     readonly name: string;
     readonly fetish_id: string;
+}
+
+export interface ReportData {
+    // The user submitting the report
+    character: CharacterName;
+
+    // User entered text (prefixed with some context)
+    reportText: string;
+
+    // JSON representation of the messages being reported
+    log: string;
+
+    // Text description of the channel the report is for
+    channel: string;
+
+    // ??
+    text: true,
+
+    // The user being reported
+    reportUser?: CharacterName;
 }

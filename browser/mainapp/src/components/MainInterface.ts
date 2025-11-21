@@ -2,7 +2,7 @@ import { CharacterName } from "../shared/CharacterName.js";
 import { IDisposable } from "../util/Disposable.js";
 import { FocusMagnet } from "../util/FocusMagnet.js";
 import { HTMLUtils } from "../util/HTMLUtils.js";
-import { HostInterop } from "../util/HostInterop.js";
+import { HostInterop } from "../util/hostinterop/HostInterop.js";
 import { TransitionUtils } from "../util/TransitionUtils.js";
 import { AppViewModel } from "../viewmodel/AppViewModel.js";
 import { DialogViewModel } from "../viewmodel/dialogs/DialogViewModel.js";
@@ -19,6 +19,9 @@ import { CharacterDetailPopup } from "./popups/CharacterDetailPopup.js";
 import { PopupFrame } from "./popups/PopupFrame.js";
 import { getValueReference, ValueReference } from "../util/ValueReference.js";
 import { PopupViewModel } from "../viewmodel/popups/PopupViewModel.js";
+import { DelayedCallManager, DelayedCallScheduler, DelayedCallStyle } from "../util/DelayedCallManager.js";
+import { Scheduler } from "../util/Scheduler.js";
+import { PlatformUtils } from "../util/PlatformUtils.js";
 
 @componentElement("x-maininterface")
 export class MainInterface extends ComponentBase<AppViewModel> {
@@ -111,7 +114,7 @@ export class MainInterface extends ComponentBase<AppViewModel> {
         });
 
         window.addEventListener("wheel", (e) => {
-            if (e.ctrlKey) {
+            if (PlatformUtils.isShortcutKey(e)) {
                 if (this.viewModel) {
                     if (e.deltaY > 0) {
                         this.viewModel.interfaceZoom = Math.max(0.5, this.viewModel.interfaceZoom - 0.02);
@@ -122,7 +125,7 @@ export class MainInterface extends ComponentBase<AppViewModel> {
                 }
                 e.preventDefault();
             }
-        }, { passive: false });
+        }, { passive: true });
         this.watchExpr(vm => vm.interfaceZoom, izoom => {
             if (izoom != null) {
                 //document.documentElement.style.zoom = izoom.toString();
@@ -141,11 +144,11 @@ export class MainInterface extends ComponentBase<AppViewModel> {
             }
         });
         // this.watchExpr(vm => vm.dialogs.length, v => {
-        //     console.log("vm.dialogs.length", v);
+        //     this.logger.logDebug("vm.dialogs.length", v);
         //     this.updateDialogsState();
         // });
         // this.watchExpr(vm => vm.popups.length, v => {
-        //     console.log("vm.popups.length", v);
+        //     this.logger.logDebug("vm.popups.length", v);
         //     this.updatePopupsState();
         // });
 
@@ -237,12 +240,34 @@ export class MainInterface extends ComponentBase<AppViewModel> {
         const hasUnclosedDialogs = (unclosedDialogsCount > 0);
         this.elMain.classList.toggle("has-unclosed-dialogs", hasUnclosedDialogs);
         this.elMain.classList.toggle("nogpu", this.viewModel?.noGpuMode ?? false);
-        elChatUi.inert = hasUnclosedDialogs;
+        this.setChatUiInert(hasUnclosedDialogs);
         if (lastDialog) {
             const el = elDialogCollectionView.getElementForViewModel(lastDialog);
             if (el && typeof (el as DialogFrame).setActiveDialog == "function") {
                 (el as DialogFrame).setActiveDialog();
             }
+        }
+    }
+
+    private _chatUiInertDCM = new DelayedCallManager(DelayedCallStyle.RUN_LAST, DelayedCallScheduler.SET_TIMEOUT_1MS);
+
+    private setChatUiInert(inert: boolean) {
+        const elChatUi = this.$("elChatUi") as HTMLDivElement;
+        if (inert) {
+            // This performs better when devtools is open for some reason?
+            elChatUi.style.pointerEvents = "none";
+            elChatUi.style.userSelect = "none";
+            this._chatUiInertDCM.scheduleDelayedCall(() => {
+                elChatUi.inert = true;
+            });
+        }
+        else {
+            elChatUi.style.removeProperty("pointer-events");
+            elChatUi.style.removeProperty("-webkit-user-select");
+            elChatUi.style.removeProperty("user-select");
+            //this._chatUiInertDCM.scheduleDelayedCall(() => {
+                elChatUi.inert = false;
+            //});
         }
     }
 
@@ -269,7 +294,7 @@ class DialogStackCollectionView extends CollectionViewLightweight<DialogViewMode
         if (this.mainInterface) {
             this.mainInterface.updateDialogsState();
         }
-        window.requestAnimationFrame(() => {
+        Scheduler.scheduleNamedCallback("DialogStackCollectionView.createUserElement", ["frame", "idle", 250], () => {
             el.onShown();
         });
         return el;

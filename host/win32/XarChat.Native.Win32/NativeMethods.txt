@@ -25,6 +25,7 @@ EnumDisplayMonitors
 GetMonitorInfo
 FindWindow
 SetForegroundWindow
+FlashWindow
 // Kernel32
 GetModuleHandle
 GetModuleFileName
@@ -44,3 +45,7 @@ EmptyWorkingSet
 NtQueryInformationProcess
 OpenProcess
 CloseHandle
+// WinNLS
+//EnumSystemLocalesEx
+EnumUILanguages
+GetLocaleInfoEx

@@ -7,6 +7,7 @@ import { asDisposable, IDisposable } from "./Disposable";
 import { Logger, Logging } from "./Logger";
 import { ObjectUniqueId } from "./ObjectUniqueId";
 import { ObservableExpression } from "./ObservableExpression";
+import { Scheduler } from "./Scheduler";
 import { StringUtils } from "./StringUtils";
 import { TaskUtils } from "./TaskUtils";
 
@@ -53,7 +54,7 @@ export class AutoAdManager implements IDisposable {
                     const useEntry = entries[n % entries.length];
 
                     this._logger.logDebug(`Auto-sending ad to ${chan.title}`);
-                    try { await chan.sendAdAsync("[b=::XarChatAutoAdPost][/b]" + useEntry.adText); }
+                    try { await chan.sendAdAsync("[b=::XarChatAutoAdPost][/b]" + useEntry.adText, true); }
                     catch { }
 
                     await TaskUtils.delay(1000);
@@ -83,9 +84,9 @@ export class AutoAdManager implements IDisposable {
 
         this._logger.logDebug("scheduling next tick...");
 
-        const h = window.setTimeout(() => { this.tick(); }, (1000 * 10)); // TODO: optimize this
+        const h = Scheduler.scheduleNamedCallback("AutoAdManager.scheduleNextTick", (1000 * 10), () => { this.tick(); });  // TODO: optimize this
         this._tickCleanups.push(asDisposable(() => {
-            window.clearTimeout(h);
+            h.dispose();
         }));
     }
 

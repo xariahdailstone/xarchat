@@ -6,27 +6,40 @@ import { RawSavedWindowLocation } from "../settings/RawAppSettings.js";
 import { ChannelName } from "../shared/ChannelName.js";
 import { CharacterName } from "../shared/CharacterName.js";
 import { ConfigBlock } from "../util/ConfigBlock.js";
-import { HostInterop, HostWindowState } from "../util/HostInterop.js";
+import { asDisposable, IDisposable, tryDispose } from "../util/Disposable.js";
+import { HostInterop, HostWindowState, LogMessageType } from "../util/hostinterop/HostInterop.js";
 import { IdleDetection, IdleDetectionScreenState, IdleDetectionUserState } from "../util/IdleDetection.js";
 import { Observable, ObservableValue, PropertyChangeEvent } from "../util/Observable.js";
 import { ObservableBase, observableProperty } from "../util/ObservableBase.js";
 import { Collection, CollectionChangeEvent, CollectionChangeType } from "../util/ObservableCollection.js";
+import { ObservableExpression } from "../util/ObservableExpression.js";
 import { PromiseSource } from "../util/PromiseSource.js";
+import { StringUtils } from "../util/StringUtils.js";
+import { URLUtils } from "../util/URLUtils.js";
 import { UpdateCheckerClient, UpdateCheckerState } from "../util/UpdateCheckerClient.js";
+import { BBCodeClickContext, BBCodeParseSink } from "../util/bbcode/BBCode.js";
 import { StdObservableCollectionChangeType } from "../util/collections/ReadOnlyStdObservableCollection.js";
 import { ActiveLoginViewModel } from "./ActiveLoginViewModel.js";
-import { ChannelViewModel } from "./ChannelViewModel.js";
+import { ChannelViewModel, IChannelStreamViewModel } from "./ChannelViewModel.js";
 import { ChatChannelUserViewModel, ChatChannelViewModel } from "./ChatChannelViewModel.js";
 import { ColorThemeViewModel } from "./ColorThemeViewModel.js";
+import { DateFormatSpecifier, LocaleViewModel, TimeFormatSpecifier } from "./LocaleViewModel.js";
 import { PMConvoChannelViewModel } from "./PMConvoChannelViewModel.js";
+import { AboutViewModel } from "./dialogs/AboutViewModel.js";
 import { AlertOptions, AlertViewModel } from "./dialogs/AlertViewModel.js";
 import { AppInitializeViewModel } from "./dialogs/AppInitializeViewModel.js";
 import { DialogViewModel } from "./dialogs/DialogViewModel.js";
 import { PromptForStringOptions, PromptForStringViewModel, PromptOptions, PromptViewModel } from "./dialogs/PromptViewModel.js";
-import { SettingsDialogViewModel } from "./dialogs/SettingsDialogViewModel.js";
+import { SettingsDialogViewModel, SettingsLevel } from "./dialogs/SettingsDialogViewModel.js";
 import { ContextMenuPopupViewModel } from "./popups/ContextMenuPopupViewModel.js";
 import { PopupViewModel } from "./popups/PopupViewModel.js";
+import { TooltipPopupViewModel } from "./popups/TooltipPopupViewModel.js";
 import { UIZoomNotifyPopupViewModel } from "./popups/UIZoomNotifyPopupViewModel.js";
+import { PlatformUtils } from "../util/PlatformUtils.js";
+import { InAppToastsViewModel, ToastInfo } from "./InAppToastsViewModel.js";
+import { Scheduler } from "../util/Scheduler.js";
+import { CharacterGender } from "../shared/CharacterGender.js";
+import { OnlineStatus } from "../shared/OnlineStatus.js";
 
 export class AppViewModel extends ObservableBase {
     constructor(configBlock: ConfigBlock) {
@@ -35,26 +48,46 @@ export class AppViewModel extends ObservableBase {
         this.configBlock = configBlock;
         this.colorTheme = new ColorThemeViewModel(this);
 
+        this.bbcodeParseSink = new AppViewModelBBCodeSink(this);
+
+        this.toasts = new InAppToastsViewModel(this);
+
         //this.flistApi = new FListApiImpl();
         this.flistApi = new HostInteropApi();
 
-        const loginPingUnseenChange = (ev: PropertyChangeEvent) => {
-            if (ev.propertyName == "hasPings" || ev.propertyName == "hasUnseenMessages") {
-                this.refreshPingMentionCount();
-            }
-        };
         this.logins.addCollectionObserver(entries => {
             for (let entry of entries) {
                 switch (entry.changeType) {
                     case StdObservableCollectionChangeType.ITEM_ADDED:
-                        entry.item.addEventListener("propertychange", loginPingUnseenChange);
-                        this.refreshPingMentionCount();
+                        {
+                            const item = entry.item;
+                            const oePingCount = new ObservableExpression(
+                                () => item.pingCount,
+                                () => this.refreshPingMentionCount(),
+                                () => this.refreshPingMentionCount()
+                            );
+                            const oeUnseenCount = new ObservableExpression(
+                                () => item.unseenCount,
+                                () => this.refreshPingMentionCount(),
+                                () => this.refreshPingMentionCount()
+                            );
+                            (item as any)[this.SYM_LOGIN_PINGUNSEEN_OE] = asDisposable(oePingCount, oeUnseenCount);
+                            this.refreshPingMentionCount();
+                        }
                         break;
                     case StdObservableCollectionChangeType.ITEM_REMOVED:
-                        entry.item.removeEventListener("propertychange", loginPingUnseenChange);
-                        this.refreshPingMentionCount();
-                        if (entry.item == this.currentlySelectedSession) {
-                            this.currentlySelectedSession = this.logins[0] ?? null;
+                        {
+                            const item = entry.item;
+                            const oe = (entry.item as any)[this.SYM_LOGIN_PINGUNSEEN_OE];
+                            delete (entry.item as any)[this.SYM_LOGIN_PINGUNSEEN_OE];
+                            tryDispose(oe);
+
+                            this.refreshPingMentionCount();
+
+                            if (entry.item == this.currentlySelectedSession) {
+                                this.currentlySelectedSession = this.logins[0] ?? null;
+                            }
+                            entry.item.dispose();
                         }
                         break;
                     case StdObservableCollectionChangeType.CLEARED:
@@ -68,16 +101,24 @@ export class AppViewModel extends ObservableBase {
             }
         });
 
-        this.addEventListener("propertychange", (ev) => {
-            if (ev.propertyName == "hasPings" || ev.propertyName == "hasUnseenMessages") {
-                HostInterop.updateAppBadge(this.hasPings, this.hasUnseenMessages);
+        const updateAppBadge = () => {
+            HostInterop.updateAppBadge(this.pingCount, this.unseenCount);
+        }
+        this.watchExpr(() => this.pingCount, () => updateAppBadge());
+        this.watchExpr(() => this.unseenCount, () => updateAppBadge());
+
+        const updateLoginIdleStates = () => {
+            for (let login of this.logins.iterateValues()) {
+                login.idleStateChanged();
             }
-            else if (ev.propertyName == "userState" || ev.propertyName == "screenState") {
-                for (let login of this.logins.iterateValues()) {
-                    login.idleStateChanged();
-                }
-            }
-        });
+        };
+        this.watchExpr(() => this.userState, () => updateLoginIdleStates());
+        this.watchExpr(() => this.screenState, () => updateLoginIdleStates());
+
+        this.watchExpr(() => this.configBlock.get("global.autoIdle"), () => this.updateAutoIdleSettings());
+        this.watchExpr(() => this.configBlock.get("global.autoAway"), () => this.updateAutoIdleSettings());
+        this.watchExpr(() => this.configBlock.get("global.idleAfterMinutes"), () => this.updateAutoIdleSettings());
+        this.updateAutoIdleSettings();
 
         this.appWindowState = HostInterop.windowState;
         HostInterop.registerWindowStateChangeCallback((winState) => {
@@ -85,20 +126,92 @@ export class AppViewModel extends ObservableBase {
         });
 
         (async () => {
+            let previousState = UpdateCheckerState.Unknown;
             this._updateCheckerClient = await UpdateCheckerClient.createAsync(state => {
                 this.updateCheckerState = state;
+                this.updateCheckerStateChanged(previousState, state);
+                previousState = state;
             });
         })();
+
+        this._heldOEs.push(this.setupLocaleMonitoring());
     }
+
+    private readonly _heldOEs: IDisposable[] = [];
+
+    private watchExpr<T>(func: () => T, callback: (value: T | undefined) => void): IDisposable {
+        const oe = new ObservableExpression(
+            func,
+            v => callback(v),
+            () => callback(undefined)
+        );
+        this._heldOEs.push(oe);
+        return asDisposable(() => {
+            tryDispose(oe);
+            const idx = this._heldOEs.indexOf(oe);
+            if (idx != -1) {
+                this._heldOEs.splice(idx, 1);
+            }
+        })
+    }
+
+    private readonly SYM_LOGIN_PINGUNSEEN_OE = Symbol();
 
     isInStartup: boolean = true;
 
     readonly colorTheme: ColorThemeViewModel;
 
+    readonly bbcodeParseSink: BBCodeParseSink;
+
     private _updateCheckerClient: UpdateCheckerClient | null = null;
+
+    readonly toasts: InAppToastsViewModel;
 
     @observableProperty
     updateCheckerState: UpdateCheckerState = UpdateCheckerState.Unknown;
+
+    private _updateToastAlreadyShown: boolean = false;
+
+    private updateCheckerStateChanged(oldState: UpdateCheckerState, newState: UpdateCheckerState) {
+        const oldStateIsUpdate = oldState == UpdateCheckerState.UpdateAvailable || oldState == UpdateCheckerState.UpdateAvailableRequired;
+        const newStateIsUpdate = newState == UpdateCheckerState.UpdateAvailable || newState == UpdateCheckerState.UpdateAvailableRequired;
+        if (!oldStateIsUpdate && newStateIsUpdate) {
+            if (!this._updateToastAlreadyShown) {
+                this._updateToastAlreadyShown = true;
+                this.showUpdateAvailableToast();
+            }
+        }
+    }
+
+    private showUpdateAvailableToast() {
+        const updateToastInfo: ToastInfo = {
+            priority: 1,
+            color: "black",
+            backgroundColor: "yellow",
+            canClose: true,
+            title: "XarChat Update Available",
+            description: "An update for XarChat is available.",
+            buttons: [
+                {
+                    title: "Remind Me Later",
+                    onClick: () => {
+                        Scheduler.scheduleCallback(1000 * 60 * 60, () => {
+                            this.showUpdateAvailableToast();
+                        });
+                        this.toasts.removeToast(updateToastInfo);
+                    }
+                },
+                {
+                    title: "Show",
+                    onClick: () => {
+                        this.launchUpdateUrlAsync();
+                        this.toasts.removeToast(updateToastInfo);
+                    }
+                }
+            ]
+        };
+        this.toasts.addNewToast(updateToastInfo);
+    }
 
     async relaunchToApplyUpdateAsync() {
         await HostInterop.relaunchToApplyUpdateAsync();
@@ -114,6 +227,7 @@ export class AppViewModel extends ObservableBase {
 
     get interfaceZoom(): number { return +(this.configBlock.get("uiZoom") ?? 1); }
     set interfaceZoom(value: number) {
+        value = Math.round(value * 100) / 100;
         if (value != this.interfaceZoom) {
             this.configBlock.set("uiZoom", value);
 
@@ -133,19 +247,113 @@ export class AppViewModel extends ObservableBase {
     get appSettings() { return this._appSettings; }
     set appSettings(value) {
         this._appSettings = value;
-        this.idleAfterSec = value.autoIdleSec ?? null;
     }
 
     @observableProperty
     appWindowState: HostWindowState;
 
     @observableProperty
+    locale: LocaleViewModel = LocaleViewModel.default;
+
+    setupLocaleMonitoring(): IDisposable {
+        const setDefaultLocale = () => {
+            this.locale = LocaleViewModel.default;
+        };
+
+        const oe = new ObservableExpression(
+            () => [ this.configBlock.get("global.locale.dateFormat"), this.configBlock.get("global.locale.timeFormat") ],
+            (v) => {
+                if (v) {
+                    const dateFormat = v[0];
+                    const timeFormat = v[1];
+
+                    let dateFormatFunc: (d: Date, format: DateFormatSpecifier) => string;
+                    let timeFormatFunc: (d: Date, format: TimeFormatSpecifier) => string;
+
+                    switch (dateFormat) {
+                        case "mdyyyy":
+                            dateFormatFunc = (d: Date, format: DateFormatSpecifier) => {
+                                const mm = d.getMonth() + 1;
+                                const dd = d.getDate();
+                                const yy = d.getFullYear();
+                                return `${mm}/${dd}/${yy}`;
+                            };
+                            break;
+                        case "mmddyyyy":
+                            dateFormatFunc = (d: Date, format: DateFormatSpecifier) => {
+                                const mm = StringUtils.makeTwoDigitString(d.getMonth() + 1);
+                                const dd = StringUtils.makeTwoDigitString(d.getDate());
+                                const yy = d.getFullYear();
+                                return `${mm}/${dd}/${yy}`;
+                            };
+                            break;
+                        case "dmyyyy":
+                            dateFormatFunc = (d: Date, format: DateFormatSpecifier) => {
+                                const mm = d.getMonth() + 1;
+                                const dd = d.getDate();
+                                const yy = d.getFullYear();
+                                return `${dd}/${mm}/${yy}`;
+                            };
+                            break;
+                        case "ddmmyyyy":
+                            dateFormatFunc = (d: Date, format: DateFormatSpecifier) => {
+                                const mm = StringUtils.makeTwoDigitString(d.getMonth() + 1);
+                                const dd = StringUtils.makeTwoDigitString(d.getDate());
+                                const yy = d.getFullYear();
+                                return `${dd}/${mm}/${yy}`;
+                            };
+                            break;
+                        case "yyyymmdd":
+                            dateFormatFunc = (d: Date, format: DateFormatSpecifier) => {
+                                const mm = StringUtils.makeTwoDigitString(d.getMonth() + 1);
+                                const dd = StringUtils.makeTwoDigitString(d.getDate());
+                                const yy = d.getFullYear();
+                                return `${yy}/${mm}/${dd}`;
+                            };
+                            break;
+                        default:
+                        case "default":
+                            dateFormatFunc = LocaleViewModel.defaultConvertDate;
+                            break;
+                    }
+
+                    switch (timeFormat) {
+                        case "12h":
+                            timeFormatFunc = (d: Date, format: TimeFormatSpecifier) => {
+                                return new Intl.DateTimeFormat(undefined, { timeStyle: format, hourCycle: "h12" }).format(d);
+                            };
+                            break;
+                        case "24h":
+                            timeFormatFunc = (d: Date, format: TimeFormatSpecifier) => {
+                                return new Intl.DateTimeFormat(undefined, { timeStyle: format, hourCycle: "h23" }).format(d);
+                            };
+                            break;
+                        default:
+                        case "default":
+                            timeFormatFunc = LocaleViewModel.defaultConvertTime;
+                            break;
+                    }
+
+                    this.locale = new LocaleViewModel({ convertDate: dateFormatFunc, convertTime: timeFormatFunc });
+                }
+                else {
+                    setDefaultLocale();
+                }
+            },
+            (err) => {
+                setDefaultLocale();
+            }
+        );
+        return oe;
+    }
+
+    @observableProperty
     get showTitlebar(): boolean {
         const sp = new URLSearchParams(document.location.search);
-        if (sp.get("ClientPlatform") == "linux-x64") {
-            return false;
+        if (PlatformUtils.isWindows) {
+            return true;
         }
-        return true;
+        return false;
     }
 
     @observableProperty
@@ -195,21 +403,32 @@ export class AppViewModel extends ObservableBase {
     collapseAds: boolean = true;
     collapseHeight: number = 40;
 
-    @observableProperty
-    hasPings: boolean = false;
+    private readonly _unseenCount: ObservableValue<number> = new ObservableValue(0);
+    private readonly _pingCount: ObservableValue<number> = new ObservableValue(0);
 
-    @observableProperty
-    hasUnseenMessages: boolean = false;
+    get unseenCount() { return this._unseenCount.value; }
+    get hasUnseenMessages() { return Observable.calculate("AppViewModel.hasUnseenMessages", () => this._unseenCount.value > 0); }
+
+    get pingCount() { return this._pingCount.value; }
+    get hasPings() { return Observable.calculate("AppViewModel.hasPings", () => this._pingCount.value > 0); }
 
     private refreshPingMentionCount() {
-        let newPings = false;
-        let newUnseen = false;
+        let unseenTotal = 0;
+        let pingTotal = 0;
         for (let login of this.logins) {
-            newPings = newPings || login.hasPings;
-            newUnseen = newUnseen || login.hasUnseenMessages;
+            unseenTotal += login.unseenCount;
+            pingTotal += login.pingCount;
         }
-        this.hasPings = newPings;
-        this.hasUnseenMessages = newUnseen;
+        this._unseenCount.value = unseenTotal;
+        this._pingCount.value = pingTotal;
+    }
+
+    flashTooltipAsync(message: string, contextElement: HTMLElement, clientX: number, clientY: number) {
+        const ttvm = new TooltipPopupViewModel(this, contextElement);
+        ttvm.mousePoint = { x: clientX, y: clientY };
+        ttvm.text = message;
+        ttvm.flashDisplay = true;
+        this.popups.push(ttvm);
     }
 
     alertAsync(message: string, title?: string, options?: Partial<AlertOptions>): Promise<void> {
@@ -228,6 +447,9 @@ export class AppViewModel extends ObservableBase {
 
     async launchUrlAsync(url: string, forceExternal?: boolean): Promise<void> {
         try {
+            const canLaunchInternally = !!this.getConfigSettingById("launchImagesInternally");
+            forceExternal = (forceExternal ?? false) || (!canLaunchInternally);
+
             await HostInterop.launchUrl(this, url, forceExternal ?? false);
         }
         catch { }
@@ -256,6 +478,7 @@ export class AppViewModel extends ObservableBase {
             for (let p of [...this.popups.iterateValues()]) {
                 p.dismissed();
             }
+            dialog.onShowing();
             this.dialogs.push(dialog);
         });
     }
@@ -282,9 +505,8 @@ export class AppViewModel extends ObservableBase {
     @observableProperty
     screenState: IdleDetectionScreenState = "unlocked";
 
-    @observableProperty
-    get idleAfterSec() { return this._idleAfterSec; }
-    set idleAfterSec(value: number | null) {
+    private get idleAfterSec() { return this._idleAfterSec; }
+    private set idleAfterSec(value: number | null) {
         if (value != this._idleAfterSec) {
             const thisIdleAssign = {};
             this._idleAfterAssign = thisIdleAssign;
@@ -299,6 +521,7 @@ export class AppViewModel extends ObservableBase {
                 this._appSettings.autoIdleSec = value;
             }
 
+            this.logger.logDebug("idleAfterSec set", value);
             if (value != null && value > 0) {
                 (async () => {
                     const id = await IdleDetection.createAsync(value, (userState, screenState) => {
@@ -323,20 +546,79 @@ export class AppViewModel extends ObservableBase {
         }
     }
 
-    async showSettingsDialogAsync(activeLoginViewModel?: ActiveLoginViewModel, interlocutor?: CharacterName) {
-        const dlg = new SettingsDialogViewModel(this, activeLoginViewModel, undefined, interlocutor);
+    private updateAutoIdleSettings() {
+        const autoIdleEnabled = !!this.configBlock.get("global.autoIdle") || !!this.configBlock.get("global.autoAway");
+        const autoIdleSec = autoIdleEnabled 
+            ? Math.round((+(this.configBlock.get("global.idleAfterMinutes") ?? 10)) * 60)
+            : null;
+        this.idleAfterSec = autoIdleSec;
+    }
+
+    async showSettingsDialogAtLevelAsync(
+        activeLoginViewModel: ActiveLoginViewModel | null | undefined, 
+        channel: ChannelViewModel | null | undefined, 
+        interlocutor: CharacterName | null | undefined,
+        level: SettingsLevel | null | undefined) {
+
+        if (!level) {
+            level =
+                (!!interlocutor) ? SettingsLevel.PMCONVO
+                : (!!channel) ? SettingsLevel.CHANNEL
+                : (!!activeLoginViewModel) ? SettingsLevel.SESSION
+                : SettingsLevel.GLOBAL;
+        }
+
+        if (!activeLoginViewModel) {
+            activeLoginViewModel = this.currentlySelectedSession;
+        }
+
+        if (activeLoginViewModel && !channel && !interlocutor) {
+            const selChannel = activeLoginViewModel.selectedChannel;
+            if (!channel && selChannel instanceof ChatChannelViewModel) {
+                channel = selChannel;
+            }
+            else if (!interlocutor && selChannel instanceof PMConvoChannelViewModel) {
+                interlocutor = selChannel.character;
+            }
+        }
+
+        using dlg = new SettingsDialogViewModel(this, activeLoginViewModel ?? undefined, channel ?? undefined, interlocutor ?? undefined);
+        dlg.selectLevel(level);
         await this.showDialogAsync(dlg);
     }
 
+    async showSettingsDialogAsync(activeLoginViewModel?: ActiveLoginViewModel, interlocutor?: CharacterName) {
+        return this.showSettingsDialogAtLevelAsync(activeLoginViewModel, undefined, interlocutor, 
+            ((!!interlocutor) ? SettingsLevel.PMCONVO
+                : (!!activeLoginViewModel) ? SettingsLevel.SESSION
+                : SettingsLevel.GLOBAL));
+    }
+
     async showSettingsDialogForChannelAsync(activeLoginViewModel: ActiveLoginViewModel, channel: ChannelViewModel) {
-        const dlg = new SettingsDialogViewModel(this, activeLoginViewModel, channel);
+        return this.showSettingsDialogAtLevelAsync(activeLoginViewModel, channel, undefined, SettingsLevel.CHANNEL);
+    }
+
+    async showAboutDialogAsync() {
+        const dlg = new AboutViewModel(this);
         await this.showDialogAsync(dlg);
     }
 
     getMainContextMenuItems(ctxVm: ContextMenuPopupViewModel<() => void>, activeLoginViewModel?: ActiveLoginViewModel) {
-        ctxVm.addMenuItem("Settings", () => {
-            this.showSettingsDialogAsync(activeLoginViewModel);
+        ctxVm.addMenuItem("About XarChat...", () => {
+            this.showAboutDialogAsync();
         });
+
+        ctxVm.addSeparator();
+
+        ctxVm.addMenuItem("Global Settings...", () => {
+            this.showSettingsDialogAsync();
+        });
+        if (this.currentlySelectedSession) {
+            ctxVm.addMenuItem(`Settings for ${this.currentlySelectedSession.characterName.value}...`, () => {
+                this.showSettingsDialogAsync(activeLoginViewModel);
+            }); 
+        }
+
         ctxVm.addSeparator();
     }
 
@@ -447,6 +729,23 @@ export class AppViewModel extends ObservableBase {
 
         fn = this.getConfigEntryHierarchical(`sound.event.${event.eventType.toString()}`, event.activeLoginViewModel, event.channel) as (string | null);
 
+        if (this.getConfigSettingById("flashTaskbarButton") ?? true) {
+            let shouldFlashWindow: boolean;
+            switch (event.eventType) {
+                case AppNotifyEventType.CONNECTED:
+                case AppNotifyEventType.DISCONNECTED:
+                    shouldFlashWindow = false;
+                    break;
+                case AppNotifyEventType.HIGHLIGHT_MESSAGE_RECEIVED:
+                case AppNotifyEventType.PRIVATE_MESSAGE_RECEIVED:
+                    shouldFlashWindow = true;
+                    break;
+            }
+            if (shouldFlashWindow) {
+                HostInterop.flashWindow();
+            }
+        }
+
         if (fn == null || fn == "default:")
         {
             switch (event.eventType) {
@@ -495,7 +794,7 @@ export class AppViewModel extends ObservableBase {
 }
 
 export type GetConfigSettingChannelViewModel = 
-    ChannelViewModel | 
+    IChannelStreamViewModel | 
     { channelTitle: string, channelCategory: string } |
     { characterName: CharacterName };
 
@@ -511,3 +810,29 @@ export interface AppNotifyEvent {
     activeLoginViewModel: ActiveLoginViewModel,
     channel?: ChannelViewModel
 }
+
+export class AppViewModelBBCodeSink implements BBCodeParseSink {
+    constructor(
+        protected readonly appViewModel: AppViewModel) {
+    }
+
+    userClick(name: CharacterName, context: BBCodeClickContext) {
+    }
+
+    webpageClick(url: string, forceExternal: boolean, context: BBCodeClickContext) {
+        try {
+            const maybeProfileTarget = URLUtils.tryGetProfileLinkTarget(url);
+            if (maybeProfileTarget != null && !forceExternal) {
+                this.userClick(CharacterName.create(maybeProfileTarget), context);
+            }
+            else {
+                this.appViewModel.launchUrlAsync(url, forceExternal);
+            }
+        }
+        catch { }
+    }
+
+    async sessionClick(target: string, titleHint: string, context: BBCodeClickContext) {
+    }
+}
+

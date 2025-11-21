@@ -3,14 +3,14 @@ import { FListAuthenticatedApi, FriendsList, ProfileInfo } from "../fchat/api/FL
 import { ChannelName } from "../shared/ChannelName.js";
 import { CharacterName } from "../shared/CharacterName.js";
 import { CharacterSet } from "../shared/CharacterSet.js";
-import { BBCodeClickContext, BBCodeParseSink } from "../util/bbcode/BBCode.js";
-import { tryDispose, IDisposable, addOnDispose } from "../util/Disposable.js";
-import { HostInterop } from "../util/HostInterop.js";
+import { BBCodeClickContext, BBCodeParseSink, ChatBBCodeParser } from "../util/bbcode/BBCode.js";
+import { tryDispose, IDisposable, addOnDispose, ConvertibleToDisposable, asDisposable } from "../util/Disposable.js";
+import { HostInterop, LogMessageType } from "../util/hostinterop/HostInterop.js";
 import { Observable, ObservableValue, PropertyChangeEvent } from "../util/Observable.js";
 import { ObservableBase, observableProperty, observablePropertyExt } from "../util/ObservableBase.js";
 import { Collection, CollectionChangeEvent, CollectionChangeType, ObservableCollection } from "../util/ObservableCollection.js";
 import { DictionaryChangeType, ObservableKeyExtractedOrderedDictionary, ObservableOrderedDictionaryImpl, ObservableOrderedSet } from "../util/ObservableKeyedLinkedList.js";
-import { AppNotifyEventType, AppViewModel, GetConfigSettingChannelViewModel } from "./AppViewModel.js";
+import { AppNotifyEventType, AppViewModel, AppViewModelBBCodeSink, GetConfigSettingChannelViewModel } from "./AppViewModel.js";
 import { ChannelMessageViewModel, ChannelViewModel } from "./ChannelViewModel.js";
 import { CharacterNameSet, FilteredWatchedCharsCharacterNameSet, OnlineWatchedCharsCharacterNameSet } from "./CharacterNameSet.js";
 import { ChatChannelPresenceState, ChatChannelViewModel, ChatChannelViewModelSortKey } from "./ChatChannelViewModel.js";
@@ -26,7 +26,7 @@ import { StdObservableCollectionChangeType } from "../util/collections/ReadOnlyS
 import { LoginUtils } from "../util/LoginUtils.js";
 import { OperationCancelledError } from "../util/PromiseSource.js";
 import { IterableUtils } from "../util/IterableUtils.js";
-import { AppSettings, SavedChatState, SavedChatStateJoinedChannel } from "../settings/AppSettings.js";
+import { SavedChatState } from "../settings/AppSettings.js";
 import { CharacterStatusEditorPopupViewModel } from "./popups/CharacterStatusEditorPopupViewModel.js";
 import { OnlineStatus } from "../shared/OnlineStatus.js";
 import { Logger, Logging } from "../util/Logger.js";
@@ -34,7 +34,7 @@ import { CatchUtils } from "../util/CatchUtils.js";
 import { ContextMenuPopupItemViewModel, ContextMenuPopupViewModel } from "./popups/ContextMenuPopupViewModel.js";
 import { MiscTabViewModel } from "./MiscTabViewModel.js";
 import { LogSearchViewModel } from "./LogSearchViewModel.js";
-import { DateAnchor } from "../util/HostInteropLogSearch.js";
+import { DateAnchor } from "../util/hostinterop/HostInteropLogSearch.js";
 import { URLUtils } from "../util/URLUtils.js";
 import { SlashCommandViewModel } from "./SlashCommandViewModel.js";
 import { IdleDetection } from "../util/IdleDetection.js";
@@ -42,20 +42,32 @@ import { StringUtils } from "../util/StringUtils.js";
 import { NamedObservableExpression, ObservableExpression } from "../util/ObservableExpression.js";
 import { InAppToastViewModel } from "./InAppToastViewModel.js";
 import { InAppToastManagerViewModel } from "./InAppToastManagerViewModel.js";
+import { LogSearch2ViewModel } from "./newlogsearch/LogSearch2ViewModel.js";
 import { PartnerSearchViewModel } from "./PartnerSearchViewModel.js";
 import { AutoAdManager } from "../util/AutoAdManager.js";
+import { NicknameSet } from "../shared/NicknameSet.js";
+import { EIconFavoriteBlockViewModel } from "./EIconFavoriteBlockViewModel.js";
+import { LeftSidebarTabContainerViewModel } from "./sidebartabs/LeftSidebarTabContainerViewModel.js";
+import { RightSidebarTabContainerViewModel } from "./sidebartabs/RightSidebarTabContainerViewModel.js";
+import { RecentConversationsViewModel } from "./RecentConversationsViewModel.js";
+import { CharacterGender } from "../shared/CharacterGender.js";
+import { NotificationManagerViewModel } from "./NotificationManagerViewModel.js";
+import { CallbackSet } from "../util/CallbackSet.js";
 
 declare const XCHost: any;
 
 let nextViewModelId = 1;
 
-export class ActiveLoginViewModel extends ObservableBase {
+export class ActiveLoginViewModel extends ObservableBase implements IDisposable {
     constructor(
         public readonly parent: AppViewModel,
         public readonly authenticatedApi: FListAuthenticatedApi,
         public readonly savedChatState: SavedChatState) {
 
         super();
+
+        this._nicknameSet = new NicknameSet(this);
+        this._disposeActions.push(() => this._nicknameSet.dispose());
 
         this.addPropertyListener("pmConvosCollapsed", (e) => {
             this.logger.logWarn("pmConvosCollapsed changed", e.propertyName, e.propertyValue);
@@ -69,10 +81,27 @@ export class ActiveLoginViewModel extends ObservableBase {
 
         this.console = new ConsoleChannelViewModel(this);
         this.partnerSearch = new PartnerSearchViewModel(this);
+        this.recentConversations = new RecentConversationsViewModel(this);
+        
+        this.recentNotifications = new NotificationManagerViewModel(this);
+        this._disposeActions.push(() => this.recentNotifications.dispose());
+
         this.miscTabs.push(new MiscTabViewModel(this, "Console", this.console));
         this._logSearchViewModel = new LogSearchViewModel(this, this.appViewModel, savedChatState.characterName);
         this.miscTabs.push(new MiscTabViewModel(this, "Log Viewer", this._logSearchViewModel));
+        this._logSearchViewModel2 = new LogSearch2ViewModel(this, this.appViewModel, savedChatState.characterName);
+        // TODO:
+        //this.miscTabs.push(new MiscTabViewModel(this, "Log Viewer 2", this._logSearchViewModel2));
         this.miscTabs.push(new MiscTabViewModel(this, "Partner Search", this.partnerSearch));
+        this.miscTabs.push(new MiscTabViewModel(this, "Recent Conversations", this.recentConversations));
+        this.miscTabs.push(new MiscTabViewModel(this, "Recent Notifications", this.recentNotifications));
+
+        this.leftTabs = new LeftSidebarTabContainerViewModel(this);
+        this.rightTabs = new RightSidebarTabContainerViewModel(this);
+        this._disposeActions.push(() => {
+            this.leftTabs.dispose();
+            this.rightTabs.dispose();
+        });
 
         //this.serverOps.addEventListener("collectionchange", (ev) => { this.notifyChannelsOfCharacterChange(this.serverOps, ev); });
         //this.watchedChars.addEventListener("collectionchange", (ev) => { this.notifyChannelsOfCharacterChange(this.watchedChars, ev); });
@@ -90,7 +119,7 @@ export class ActiveLoginViewModel extends ObservableBase {
             this.notifyChannelsOfCharacterChange(chars);
         });
 
-        this.characterSet = new CharacterSet(this.ignoredChars, this.friends, this.bookmarks, this.interests);
+        this.characterSet = new CharacterSet(this.ignoredChars, this.friends, this.bookmarks, this.interests, this.nicknameSet);
         this.onlineWatchedChars = new FilteredWatchedCharsCharacterNameSet(this, this.watchedChars, cs => cs.status != OnlineStatus.OFFLINE);
         this.onlineFriends = new FilteredWatchedCharsCharacterNameSet(this, this.friends, cs => cs.status != OnlineStatus.OFFLINE);
         this.onlineBookmarks = new FilteredWatchedCharsCharacterNameSet(this, this.bookmarks, cs => cs.status != OnlineStatus.OFFLINE);
@@ -98,30 +127,48 @@ export class ActiveLoginViewModel extends ObservableBase {
         this.lookingFriends = new FilteredWatchedCharsCharacterNameSet(this, this.friends, cs => cs.status == OnlineStatus.LOOKING);
         this.lookingBookmarks = new FilteredWatchedCharsCharacterNameSet(this, this.bookmarks, cs => cs.status == OnlineStatus.LOOKING);
 
-        const openChannelPingMentionChange = (ev: PropertyChangeEvent) => {
-            if (ev.propertyName == "hasPing" || ev.propertyName == "unseenMessageCount") {
-                this.refreshPingMentionCount();
-            }
-        };
         this.openChannels.addCollectionObserver(changes => {
             for (let change of changes) {
                 switch (change.changeType) {
                     case StdObservableCollectionChangeType.ITEM_ADDED:
-                        this.openChannelsByChannelName.set(change.item.name, change.item);
-                        change.item.addEventListener("propertychange", openChannelPingMentionChange);
-                        this.refreshPingMentionCount();
+                        {
+                            this.openChannelsByChannelName.set(change.item.name, change.item);
+
+                            const item = change.item;
+                            const oePing = new ObservableExpression(
+                                () => item.pingMessagesCount,
+                                () => this.refreshPingMentionCount(),
+                                () => this.refreshPingMentionCount()
+                            );
+                            const oeUnread = new ObservableExpression(
+                                () => item.unseenMessageCount,
+                                () => this.refreshPingMentionCount(),
+                                () => this.refreshPingMentionCount()
+                            );
+                            (item as any)[this.SYM_CHAN_DISPOSABLE] = asDisposable(oePing, oeUnread);
+
+                            this.refreshPingMentionCount();
+                            this.raiseChannelJoinLeaveHandler(change.item, true);
+                        }
                         break;
                     case StdObservableCollectionChangeType.ITEM_REMOVED:
-                        change.item.removeEventListener("propertychange", openChannelPingMentionChange);
-                        this._pinnedChannels.delete(change.item.sortKey);
-                        this._pinnedChannels2.remove(change.item);
-                        this._unpinnedChannels.delete(change.item.sortKey);
-                        this._unpinnedChannels2.remove(change.item);
-                        this.openChannelsByChannelName.delete(change.item.name);
-                        this.refreshPingMentionCount();
+                        {
+                            const item = change.item;
+                            const itemDisposable = (item as any)[this.SYM_CHAN_DISPOSABLE];
+                            delete (item as any)[this.SYM_CHAN_DISPOSABLE];
+                            tryDispose(itemDisposable);
+
+                            this._pinnedChannels.delete(change.item.sortKey);
+                            this._pinnedChannels2.remove(change.item);
+                            this._unpinnedChannels.delete(change.item.sortKey);
+                            this._unpinnedChannels2.remove(change.item);
+                            this.openChannelsByChannelName.delete(change.item.name);
+                            this.refreshPingMentionCount();
+                            this.raiseChannelJoinLeaveHandler(change.item, false);
+                        }
                         break;
                     case StdObservableCollectionChangeType.CLEARED:
-                        console.warn("unhandled clear");
+                        this.logger.logWarn("unhandled clear");
                         break;
                 }
             }
@@ -130,38 +177,83 @@ export class ActiveLoginViewModel extends ObservableBase {
             for (let change of changes) {
                 switch (change.changeType) {
                     case StdObservableCollectionChangeType.ITEM_ADDED:
-                        (change.item as any)[this._chanPropChangeSym] = new NamedObservableExpression(
-                                `${this.characterName.value}-${change.item.collectiveName}`,
-                                () => [ change.item.hasPing, change.item.unseenMessageCount ],
-                                () => { this.refreshPingMentionCount(); },
-                                () => { this.refreshPingMentionCount(); });
-                            // change.item.addEventListener("propertychange", openChannelPingMentionChange);
-                        this.refreshPingMentionCount();
-                        if (change.item instanceof PMConvoChannelViewModel) {
-                            if (!this.savedChatState.pmConvos.contains(change.item.savedChatStatePMConvo)) {
-                                this.savedChatState.pmConvos.push(change.item.savedChatStatePMConvo);
+                        {
+                            const item = change.item;
+                            const oePing = new ObservableExpression(
+                                () => item.pingMessagesCount,
+                                () => this.refreshPingMentionCount(),
+                                () => this.refreshPingMentionCount()
+                            );
+                            const oeUnread = new ObservableExpression(
+                                () => item.unseenMessageCount,
+                                () => this.refreshPingMentionCount(),
+                                () => this.refreshPingMentionCount()
+                            );
+                            (item as any)[this.SYM_CHAN_DISPOSABLE] = asDisposable(oePing, oeUnread);
+
+                            this.refreshPingMentionCount();
+
+                            if (change.item instanceof PMConvoChannelViewModel) {
+                                if (!this.savedChatState.pmConvos.contains(change.item.savedChatStatePMConvo)) {
+                                    this.savedChatState.pmConvos.push(change.item.savedChatStatePMConvo);
+                                }
                             }
                         }
                         break;
                     case StdObservableCollectionChangeType.ITEM_REMOVED:
-                        (change.item as any)[this._chanPropChangeSym].dispose();
-                        delete (change.item as any)[this._chanPropChangeSym];
-                        //change.item.removeEventListener("propertychange", openChannelPingMentionChange);
-                        this.refreshPingMentionCount();
-                        if (change.item instanceof PMConvoChannelViewModel) {
-                            this.savedChatState.pmConvos.removeWhere(x => x.character.equals(change.item.character));
+                        {
+                            const item = change.item;
+                            const itemDisposable = (item as any)[this.SYM_CHAN_DISPOSABLE]
+                            delete (item as any)[this.SYM_CHAN_DISPOSABLE];
+                            tryDispose(itemDisposable);
+
+                            this.refreshPingMentionCount();
+
+                            if (change.item instanceof PMConvoChannelViewModel) {
+                                this.savedChatState.pmConvos.removeWhere(x => x.character.equals(change.item.character));
+                            }
                         }
                         break;
                     case StdObservableCollectionChangeType.CLEARED:
-                        console.warn("unhandled clear");
+                        this.logger.logWarn("unhandled clear");
                         break;
                 }
             }
         });
 
         this.bbcodeSink = new ActiveLoginViewModelBBCodeSink(this, this._logger);
+        this.eIconFavoriteBlockViewModel = new EIconFavoriteBlockViewModel(this);
 
         this.getMyFriendsListInfo(CancellationToken.NONE);
+    }
+
+    private readonly SYM_CHAN_DISPOSABLE = Symbol();
+
+    private _isDisposed: boolean = false;
+    get isDisposed(): boolean { return this._isDisposed; }
+
+    private _disposeActions: ConvertibleToDisposable[] = [];
+
+    dispose(): void {
+        if (!this._isDisposed) {
+            this._isDisposed = true;
+            asDisposable(...this._disposeActions).dispose();
+            this._disposeActions = [];
+        }
+    }
+    [Symbol.dispose](): void {
+        this.dispose();
+    }
+
+    private _channelJoinLeaveHandlers: CallbackSet<(channelViewModel: ChannelViewModel, isJoin: boolean) => any> = new CallbackSet("ActiveLoginViewModel.channelJoinLeaveHandlers");
+    addChannelJoinLeaveHandler(callback: (channelViewModel: ChannelViewModel, isJoin: boolean) => any): IDisposable {
+        return this._channelJoinLeaveHandlers.add(callback);
+    }
+    removeChannelJoinLeaveHandler(callback: (channelViewModel: ChannelViewModel, isJoin: boolean) => any) {
+        this._channelJoinLeaveHandlers.delete(callback);
+    }
+    private raiseChannelJoinLeaveHandler(channelViewModel: ChannelViewModel, isJoin: boolean) {
+        this._channelJoinLeaveHandlers.invoke(channelViewModel, isJoin);
     }
 
     private readonly _chanPropChangeSym = Symbol("ActiveLoginViewModel.ChanPropChange");
@@ -171,7 +263,14 @@ export class ActiveLoginViewModel extends ObservableBase {
 
     private readonly _logSearchViewModel: LogSearchViewModel;
 
+    eIconFavoriteBlockViewModel: EIconFavoriteBlockViewModel;
+
+    private readonly _logSearchViewModel2: LogSearch2ViewModel;
+
     get appViewModel() { return this.parent; }
+
+    @observableProperty
+    isLoggingIn: boolean = false;
 
     private readonly _serverVariables: ObservableValue<{ [key: string]: any }> = new ObservableValue({});
     get serverVariables() { return this._serverVariables.value; }
@@ -305,6 +404,9 @@ export class ActiveLoginViewModel extends ObservableBase {
         this.autoReconnectInSec = null;
     }
 
+    private readonly _nicknameSet: NicknameSet;
+    get nicknameSet() { return this._nicknameSet; }
+
     private _characterName: CharacterName = CharacterName.create("");
     @observableProperty
     get characterName(): CharacterName { return this._characterName; }
@@ -335,6 +437,28 @@ export class ActiveLoginViewModel extends ObservableBase {
 
     // watchedChars = superset of friends + bookmarks + interests
     readonly watchedChars: CharacterNameSet = new CharacterNameSet();
+    updateWatchedCharsSet() {
+        let toRemove: CharacterName[] | null = null;
+        for (let n of this.watchedChars.iterateValues()) {
+            if (!this.friends.has(n.key) && !this.bookmarks.has(n.key) && !this.interests.has(n.key)) {
+                toRemove ??= [];
+                toRemove.push(n.key);
+            }
+        }
+        if (toRemove) {
+            for (let n of toRemove) {
+                this.watchedChars.delete(n);
+            }
+        }
+
+        for (let coll of [this.friends, this.bookmarks, this.interests]) {
+            for (let n of coll.iterateValues()) {
+                if (!this.watchedChars.has(n.key)) {
+                    this.watchedChars.add(n.key);
+                }
+            }
+        }
+    }
 
     readonly friends: CharacterNameSet = new CharacterNameSet();
 
@@ -377,26 +501,33 @@ export class ActiveLoginViewModel extends ObservableBase {
 
     readonly partnerSearch: PartnerSearchViewModel;
 
+    readonly recentConversations: RecentConversationsViewModel;
+
+    readonly recentNotifications: NotificationManagerViewModel;
+
     get pingWords() { return this.savedChatState.pingWords; };
 
-    @observableProperty
-    hasUnseenMessages: boolean = false;
+    private readonly _unseenCount: ObservableValue<number> = new ObservableValue(0);
+    private readonly _pingCount: ObservableValue<number> = new ObservableValue(0);
 
-    @observableProperty
-    hasPings: boolean = false;
+    get unseenCount() { return this._unseenCount.value; }
+    get pingCount() { return this._pingCount.value; }
+    get hasUnseenMessages() { return Observable.calculate("ActiveLoginViewModel.hasUnseenMessages", () => this._unseenCount.value > 0); }
+    get hasPings() { return Observable.calculate("ActiveLoginViewModel.hasPings", () => this._pingCount.value > 0); }
 
     private refreshPingMentionCount() {
-        let newUnseen = false;
-        let newPings = false;
-        for (let ch of IterableUtils.combine<ChannelViewModel>(this.openChannels, this._pmConversations2)) {
-            newPings = newPings || ch.hasPing;
-            newUnseen = newUnseen || (ch.unseenMessageCount > 0);
-            if (newPings && newUnseen) {
-                break;
-            }
+        let unseenTotal = 0;
+        let pingTotal = 0;
+        for (let ch of this.openChannels.iterateValues()) {
+            pingTotal += ch.pingMessagesCount;
+            unseenTotal += ch.unseenMessageCount;
         }
-        this.hasUnseenMessages = newUnseen;
-        this.hasPings = newPings;
+        for (let ch of this._pmConversations2.iterateValues()) {
+            pingTotal += ch.pingMessagesCount;
+            unseenTotal += ch.unseenMessageCount;
+        }
+        this._unseenCount.value = unseenTotal;
+        this._pingCount.value = pingTotal;
     }
 
     private readonly _pinnedChannels2: Collection<ChatChannelViewModel> = new Collection<ChatChannelViewModel>();
@@ -617,16 +748,20 @@ export class ActiveLoginViewModel extends ObservableBase {
     }
 
     private async populatePmConvoFromLogs(convovm: PMConvoChannelViewModel, interlocutor: CharacterName): Promise<void> {
-        const messages = await HostInterop.getRecentLoggedPMConvoMessagesAsync(this.characterName, interlocutor, 200);  // TODO: come from config
-        if (!convovm.populatedFromReplay) {
-            convovm.restoreFromLoggedMessages(messages);
+        if (this.getConfigSettingById("loggingEnabled", convovm)) {
+            const messages = await HostInterop.getRecentLoggedPMConvoMessagesAsync(this.characterName, interlocutor, 200);  // TODO: come from config
+            if (!convovm.populatedFromReplay) {
+                convovm.restoreFromLoggedMessages(messages);
+            }
         }
     }
 
     private async populateChannelFromLogs(chanvm: ChatChannelViewModel, channelName: ChannelName) {
-        const messages = await HostInterop.getRecentLoggedChannelMessagesAsync(channelName, 200);  // TODO: come from config
-        if (!chanvm.populatedFromReplay) {
-            chanvm.restoreFromLoggedMessages(messages);
+        if (this.getConfigSettingById("loggingEnabled", chanvm)) {
+            const messages = await HostInterop.getRecentLoggedChannelMessagesAsync(channelName, 200);  // TODO: come from config
+            if (!chanvm.populatedFromReplay) {
+                chanvm.restoreFromLoggedMessages(messages);
+            }
         }
     }
 
@@ -654,6 +789,12 @@ export class ActiveLoginViewModel extends ObservableBase {
 
     @observableProperty
     leftListSelectedPane: LeftListSelectedPane = LeftListSelectedPane.CHATS;
+
+    @observableProperty
+    leftTabs: LeftSidebarTabContainerViewModel;
+
+    @observableProperty
+    rightTabs: RightSidebarTabContainerViewModel;
 
     private _selectedChannelHistory: ChannelViewModel[] = [];
     private pushToSelectedChannelHistory(chan: ChannelViewModel) {
@@ -855,10 +996,14 @@ export class ActiveLoginViewModel extends ObservableBase {
                 async (context, args) => {
                     const vms = context.getSlashCommands();
                     const textBuilder = ["The following commands are available here:"];
+                    textBuilder.push("[list]");
                     for (let tvm of vms) {
-                        textBuilder.push(`[b]/${tvm.command[0]}[/b] - [i]${tvm.title}[/i]: ${tvm.description}`);
+                        if (tvm.showInHelp) {
+                            textBuilder.push(`[listitem][color=yellow][b]/${tvm.command[0]}[/b][/color] - [i]${tvm.title}[/i]: [indent]${tvm.description}[/indent][/listitem]`);
+                        }
                     }
-                    return textBuilder.join("\n");
+                    textBuilder.push("[/list]");
+                    return textBuilder.join("");
                 }
             ),
             new SlashCommandViewModel(
@@ -873,6 +1018,15 @@ export class ActiveLoginViewModel extends ObservableBase {
                         this.activatePMConvo(targetCharName);
                     }
                     return "";
+                }
+            ),
+            new SlashCommandViewModel(
+                ["devtools"],
+                "Show Developer Tools",
+                "Opens the browser developer tools for the XarChat user interface.",
+                [],
+                async (context, args) => {
+                    HostInterop.showDevTools();
                 }
             )
         ];
@@ -938,12 +1092,13 @@ export class ActiveLoginViewModel extends ObservableBase {
     }
 
     idleStateChanged() {
-        const autoIdleSetting = !!this.getFirstConfigEntryHierarchical(["autoIdle"]);
-        const autoAwaySetting = !!this.getFirstConfigEntryHierarchical(["autoAway"]);
+        const autoIdleSetting = !!this.appViewModel.getConfigSettingById("autoIdle"); // !!this.getFirstConfigEntryHierarchical(["autoIdle"]);
+        const autoAwaySetting = !!this.appViewModel.getConfigSettingById("autoAway"); // !!this.getFirstConfigEntryHierarchical(["autoAway"]);
 
         if (autoIdleSetting || autoAwaySetting) {
             const userState = autoIdleSetting ? this.parent.userState : "active";
             const screenState = autoAwaySetting ? this.parent.screenState : "unlocked";
+            this.logger.logInfo("idleStateChanged", userState, screenState);
             this.chatConnectionConnected?.setIdleStatusAsync(userState, screenState);
         }
     }
@@ -1014,11 +1169,134 @@ export class ActiveLoginViewModel extends ObservableBase {
     }
 
     readonly toastManager: InAppToastManagerViewModel;
+
+    // Called when an eicon loads the "no eicon" image
+    trackInvalidEIcon(eiconName: string) {
+        const eiconNameCanonical = eiconName.toLowerCase();
+
+        // Remove from recently-used list
+        {
+            const configBlockKey = `character.${this.characterName.canonicalValue}.recentlyUsedEIcons`;
+            let recentList: string[] = this.appViewModel.configBlock.get(configBlockKey) as (string[] | null | undefined) ?? [];
+            const rlIndex = recentList.indexOf(eiconNameCanonical);
+            if (rlIndex >= 0) {
+                recentList.splice(rlIndex, 1)
+                this.appViewModel.configBlock.set(configBlockKey, recentList);
+            }
+        }
+
+        // Remove from most-used list
+        {
+            const configBlockKey = `character.${this.characterName.canonicalValue}.mostUsedEIcons`;
+            let mostUsedList = {... this.appViewModel.configBlock.get(configBlockKey) as (Record<string, {lastUsed: number,count: number}> | null | undefined) ?? {} };
+            let muItem = mostUsedList[eiconNameCanonical];
+            if (muItem) {
+                delete mostUsedList[eiconNameCanonical];
+                this.appViewModel.configBlock.set(configBlockKey, mostUsedList);
+            }
+        }
+    }
+
+    trackUsedEIconsInMessage(msgContent: string) {
+        using parseResult = ChatBBCodeParser.parse(msgContent)
+        const usedSet = parseResult.usedEIcons;
+        usedSet.forEach(v => {
+            this.trackUsedEIcon(v);
+        });
+    }
+
+    // Called when this character sends a message containing an eicon
+    trackUsedEIcon(eiconName: string) {
+        const eiconNameCanonical = eiconName.toLowerCase();
+
+        // Add to recently-used list
+        {
+            const configBlockKey = `character.${this.characterName.canonicalValue}.recentlyUsedEIcons`;
+            let recentList: string[] = this.appViewModel.configBlock.get(configBlockKey) as (string[] | null | undefined) ?? [];
+            const rlIndex = recentList.indexOf(eiconNameCanonical);
+            if (rlIndex != 0) {
+                if (rlIndex >= 0) {
+                    recentList.splice(rlIndex, 1)
+                }
+                recentList.unshift(eiconNameCanonical);
+                while (recentList.length > 100) {
+                    recentList.pop();
+                }
+                this.appViewModel.configBlock.set(configBlockKey, recentList);
+            }
+        }
+
+        // Add to most used list
+        {
+            const configBlockKey = `character.${this.characterName.canonicalValue}.mostUsedEIcons`;
+            let mostUsedList = {... this.appViewModel.configBlock.get(configBlockKey) as (Record<string, {lastUsed: number,count: number}> | null | undefined) ?? {} };
+            let muItem = mostUsedList[eiconNameCanonical];
+            if (muItem) {
+                muItem.lastUsed = (new Date()).getTime();
+                muItem.count++;
+            }
+            else {
+                mostUsedList[eiconNameCanonical] = { lastUsed: (new Date()).getTime(), count: 1 };
+                while (Object.getOwnPropertyNames(mostUsedList).length > 100) {
+                    let leastRecentlyUsedKey: string | null = null;
+                    let leastRecentlyUsedItem: {lastUsed: number,count: number} | null = null;
+                    for (let item of Object.getOwnPropertyNames(mostUsedList).map(k => { return { key: k, value: mostUsedList[k] }; })) {
+                        const tkey = item.key;
+                        const titem = item.value;
+                        if (!leastRecentlyUsedItem || titem.lastUsed < leastRecentlyUsedItem.lastUsed) {
+                            leastRecentlyUsedKey = tkey;
+                            leastRecentlyUsedItem = titem;
+                        }
+                    }
+                    if (leastRecentlyUsedKey) {
+                        delete mostUsedList[leastRecentlyUsedKey];
+                    }
+                    else {
+                        break;
+                    }
+                }
+            }
+            this.appViewModel.configBlock.set(configBlockKey, mostUsedList);
+        }
+    }
+
+    getRecentlyUsedEIcons(): string[] {
+        const configBlockKey = `character.${this.characterName.canonicalValue}.recentlyUsedEIcons`;
+        const recentList: string[] = this.appViewModel.configBlock.get(configBlockKey) as (string[] | null | undefined) ?? [];
+        return recentList;
+    }
+
+    getMostUsedEIcons(): string[] {
+        const configBlockKey = `character.${this.characterName.canonicalValue}.mostUsedEIcons`;
+        const mostUsedList = {... this.appViewModel.configBlock.get(configBlockKey) as (Record<string, {lastUsed: number,count: number}> | null | undefined) ?? {} };
+        return [...Object.getOwnPropertyNames(mostUsedList)
+            .map(k => { return { key: k, value: mostUsedList[k] }; })
+            .sort((a, b) => b.value.count - a.value.count)
+            .map(e => e.key)];
+    }
+
+    logChannelMessage(channel: ChatChannelViewModel,
+            speakingCharacter: CharacterName, speakingCharacterGender: CharacterGender, speakingCharacterOnlineStatus: OnlineStatus,
+            messageType: LogMessageType, messageText: string): void {
+        if (this.getConfigSettingById("loggingEnabled", channel)) {
+            HostInterop.logChannelMessage(this.characterName, channel.name, channel.title, speakingCharacter, speakingCharacterGender,
+                speakingCharacterOnlineStatus, messageType, messageText);
+        }
+    }
+
+    logPMConvoMessage(pmConvo: PMConvoChannelViewModel,
+            speakingCharacter: CharacterName, speakingCharacterGender: CharacterGender, speakingCharacterOnlineStatus: OnlineStatus,
+            messageType: LogMessageType, messageText: string): void {
+        if (this.getConfigSettingById("loggingEnabled", pmConvo)) {
+            HostInterop.logPMConvoMessage(this.characterName, pmConvo.character, speakingCharacter, speakingCharacterGender,
+                speakingCharacterOnlineStatus, messageType, messageText);
+        }
+    }
 }
 
-export type SelectedChannel = ChannelViewModel | AddChannelsViewModel | LogSearchViewModel;
+export type SelectedChannel = ChannelViewModel | AddChannelsViewModel | LogSearchViewModel | LogSearch2ViewModel;
 
-export type SelectableTab = SelectedChannel | PartnerSearchViewModel;
+export type SelectableTab = SelectedChannel | PartnerSearchViewModel | RecentConversationsViewModel | NotificationManagerViewModel;
 
 export type CharactersEventListener = (characters: CharacterName[]) => void;
 
@@ -1102,13 +1380,13 @@ export interface SelectableTabViewModel {
     isTabActive: boolean;
 }
 
-class ActiveLoginViewModelBBCodeSink implements BBCodeParseSink {
+class ActiveLoginViewModelBBCodeSink extends AppViewModelBBCodeSink {
     constructor(
         private readonly owner: ActiveLoginViewModel,
         private readonly logger: Logger) {
-    }
 
-    private get appViewModel() { return this.owner.appViewModel; }
+        super(owner.appViewModel);
+    }
 
     userClick(name: CharacterName, context: BBCodeClickContext) {
         this.logger.logInfo("userclick", name.value, context.rightClick);
@@ -1120,19 +1398,6 @@ class ActiveLoginViewModelBBCodeSink implements BBCodeParseSink {
             else {
                 const pd = new CharacterProfileDialogViewModel(this.appViewModel, this.owner, name);
                 this.appViewModel.showDialogAsync(pd);
-            }
-        }
-        catch { }
-    }
-
-    webpageClick(url: string, forceExternal: boolean, context: BBCodeClickContext) {
-        try {
-            const maybeProfileTarget = URLUtils.tryGetProfileLinkTarget(url);
-            if (maybeProfileTarget != null && !forceExternal) {
-                this.userClick(CharacterName.create(maybeProfileTarget), context);
-            }
-            else {
-                this.appViewModel.launchUrlAsync(url, forceExternal);
             }
         }
         catch { }

@@ -2,7 +2,9 @@ import { asDisposable } from "../../util/Disposable";
 import { EventListenerUtil } from "../../util/EventListenerUtil";
 import { HTMLUtils } from "../../util/HTMLUtils";
 import { KeyCodes } from "../../util/KeyCodes";
+import { Collection } from "../../util/ObservableCollection";
 import { PromiseSource } from "../../util/PromiseSource";
+import { Scheduler } from "../../util/Scheduler";
 import { TransitionUtils } from "../../util/TransitionUtils";
 import { WhenChangeManager } from "../../util/WhenChange";
 import { DialogButtonViewModel, DialogCaptionButtonViewModel, DialogViewModel } from "../../viewmodel/dialogs/DialogViewModel";
@@ -117,7 +119,7 @@ export class DialogFrame extends ComponentBase<DialogViewModel<any>> {
                 if (!this.viewModel) { return; }
                 const avm = this.viewModel.parent;
                 if (avm.dialogs.length > 0 && (avm.dialogs[avm.dialogs.length - 1] == this.viewModel)) {
-                    if (!this.shouldPreventKeyboardEventDefault(ev)) {
+                    if (!this.shouldPreventKeyboardEventDefault(ev) && !ev.defaultPrevented) {
                         const btn = this.getButtonForKeyboardEvent(ev);
                         if (btn) {
                             btn.onClick();
@@ -126,7 +128,7 @@ export class DialogFrame extends ComponentBase<DialogViewModel<any>> {
                         }
                     }
                 }
-            }, true);
+            } /* , true */);
 
             return asDisposable(() => {
                 keydownListener.dispose();
@@ -142,7 +144,7 @@ export class DialogFrame extends ComponentBase<DialogViewModel<any>> {
         let clickedInDialog = false;
         this.elMain.addEventListener("click", (ev: MouseEvent) => {
             clickedInDialog = true;
-            window.requestIdleCallback(() => clickedInDialog = false);
+            Scheduler.scheduleNamedCallback("DialogFrame.elMainclick", ["idle", 250], () => clickedInDialog = false);
         });
         this.addEventListener("click", (ev: MouseEvent) => {
             if (!clickedInDialog) {
@@ -175,6 +177,7 @@ export class DialogFrame extends ComponentBase<DialogViewModel<any>> {
         if (!vm) { return null; }
 
         for (let tbtn of vm.buttons) {
+            if (!tbtn.enabled) { continue; }
             if (tbtn.shortcutKeyCode == ev.keyCode) {
                 return tbtn;
             }
@@ -196,7 +199,7 @@ export class DialogFrame extends ComponentBase<DialogViewModel<any>> {
     animateOpen() {
         //this.log("ADDING NEW CLASS");
         this.elMain.classList.add("new");
-        window.requestIdleCallback(() => {
+        Scheduler.scheduleNamedCallback("DialogFrame.animateOpen", ["idle", 250], () => {
             //this.log("REMOVING NEW CLASS");
             this.elMain.classList.remove("new");
         });
@@ -239,6 +242,9 @@ class DialogButton extends ComponentBase<DialogButtonViewModel> {
                 });
             }
         });
+        this.watchExpr(vm => vm.enabled, (v) => {
+            elButton.disabled = !v;
+        })
 
         elButton.addEventListener("click", () => {
             if (this.viewModel) {

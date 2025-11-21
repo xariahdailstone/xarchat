@@ -1,6 +1,7 @@
+import { DateFormatSpecifier, LocaleViewModel, TimeFormatSpecifier } from "../viewmodel/LocaleViewModel";
 import { Optional } from "./Optional";
 
-const intlDTFCache: Map<string, Intl.DateTimeFormat> = new Map();
+//const intlDTFCache: Map<string, Intl.DateTimeFormat> = new Map();
 const intlNFCache: Map<string, Intl.NumberFormat> = new Map();
 
 let confusablesMap: Map<string, string> | undefined = undefined;
@@ -28,20 +29,37 @@ export class StringUtils {
         return false;
     }
 
+    static makeTwoDigitString(n: number) {
+        let res = n.toString();
+        if (res.length == 1) {
+            return "0" + res;
+        }
+        else {
+            return res;
+        }
+    }
+
     static discardUnseen(str: string) {
         const xstr = [...str];
         return xstr.join("");
     }
 
-    static dateToString(date: Date, formatting: Intl.DateTimeFormatOptions) {
-        const key = JSON.stringify(formatting);
-        let v = intlDTFCache.get(key);
-        if (!v) {
-            v = new Intl.DateTimeFormat(undefined, formatting);
-            intlDTFCache.set(key, v);
+    static dateToString(locale: LocaleViewModel, date: Date, formatting: { dateStyle?: DateFormatSpecifier, timeStyle?: TimeFormatSpecifier }) {
+        const sb: string[] = [];
+        if (formatting.dateStyle) {
+            sb.push(locale.getDateString(date, formatting.dateStyle));
         }
-        const result = v.format(date);
-        return result;
+        if (formatting.timeStyle) {
+            sb.push(locale.getTimeString(date, formatting.timeStyle));
+        }
+        return sb.join(" ");
+    }
+
+    static leftPad(str: string, padChar: string, padLength: number) {
+        while (str.length < padLength) {
+            str = padChar + str;
+        }
+        return str;
     }
 
     static numberToString(num: number, formatting: Intl.NumberFormatOptions) {
@@ -199,6 +217,28 @@ export class StringUtils {
         }
 
         return result.join("");
+    }
+
+    public static numberToApproximateFileSize(num: number): string {
+        if (num < 1024) {
+            return (num == 1) ? "1 byte" : `${num.toLocaleString()} bytes`;
+        }
+        else if (num < 1024 * 1024) {
+            const unit = (num / 1024).toLocaleString(undefined, { maximumFractionDigits: 2 });
+            return (unit == "1") ? "1 KiB" : `${unit} KiB`;
+        }
+        else if (num < 1024 * 1024 * 1024) {
+            const unit = (num / (1024 * 1024)).toLocaleString(undefined, { maximumFractionDigits: 2 });
+            return (unit == "1") ? "1 MiB" : `${unit} MiB`;
+        }
+        else if (num < 1024 * 1024 * 1024 * 1024) {
+            const unit = (num / (1024 * 1024 * 1024)).toLocaleString(undefined, { maximumFractionDigits: 2 });
+            return (unit == "1") ? "1 GiB" : `${unit} GiB`;
+        }
+        else {
+            const unit = (num / (1024 * 1024 * 1024 * 1024)).toLocaleString(undefined, { maximumFractionDigits: 2 });
+            return (unit == "1") ? "1 TiB" : `${unit} TiB`;
+        }
     }
 }
 

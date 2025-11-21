@@ -1,11 +1,13 @@
 
 :host {
     display: contents;
+    -webkit-user-select: none;
     user-select: none;
 }
 
 #elMain {
     display: inline;
+    -webkit-user-select: none;
     user-select: none;
 }
 

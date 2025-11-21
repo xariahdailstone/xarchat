@@ -13,6 +13,8 @@ import { CharacterProfileDetailImageInfoViewModel } from "./CharacterProfileDeta
 import { CharacterProfileDetailSectionInfoViewModel } from "./CharacterProfileDetailSectionInfoViewModel";
 import { CharacterProfileDetailSummaryInfoViewModel } from "./CharacterProfileDetailSummaryInfoViewModel";
 import { CharacterGuestbookPostViewModel, CharacterGuestbookViewModel } from "./CharacterGuestbookViewModel";
+import { PromiseSource } from "../../../util/PromiseSource";
+import { ReportSource, ReportViewModel } from "../ReportViewModel";
 
 
 export class CharacterProfileDetailViewModel extends ObservableBase {
@@ -66,7 +68,7 @@ export class CharacterProfileDetailViewModel extends ObservableBase {
 
         super();
 
-        this.summaryInfo = new CharacterProfileDetailSummaryInfoViewModel(profileInfo, profileFieldsInfo, mappingList);
+        this.summaryInfo = new CharacterProfileDetailSummaryInfoViewModel(activeLoginViewModel.appViewModel, profileInfo, profileFieldsInfo, mappingList);
         this.description = profileInfo.description;
 
         // Grab correctly-cased character name from profile data
@@ -137,8 +139,10 @@ export class CharacterProfileDetailViewModel extends ObservableBase {
         this.parent.close(0);
     }
 
-    @observableProperty
-    openPrivateMessageTab: (() => void) | null = null;
+    openPrivateMessageTab() {
+        const pmConvo = this.activeLoginViewModel.activatePMConvo(this.character);
+        this.parent.close(0);
+    }
 
     // @observableProperty
     // addEditMemo: (() => void) | null = null;

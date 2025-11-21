@@ -1,12 +1,12 @@
-import { ChannelView } from "../components/ChannelView.js";
 import { PingLineItemDefinition, PingLineItemMatchStyle } from "../configuration/ConfigSchemaItem.js";
 import { BottleSpinData, ChannelMessageData, RollData } from "../fchat/ChatConnectionSink.js";
 import { CharacterGender } from "../shared/CharacterGender.js";
 import { CharacterName } from "../shared/CharacterName.js";
 import { CharacterSet, CharacterStatus } from "../shared/CharacterSet.js";
 import { OnlineStatus } from "../shared/OnlineStatus.js";
+import { PooledString, StringPool } from "../shared/StringPool.js";
 import { TypingStatus } from "../shared/TypingStatus.js";
-import { BBCodeParseResult, BBCodeParser, ChatBBCodeParser } from "../util/bbcode/BBCode.js";
+import { BBCodeParseResult, BBCodeParser, ChatBBCodeParser, SystemMessageBBCodeParser } from "../util/bbcode/BBCode.js";
 import { CatchUtils } from "../util/CatchUtils.js";
 import { KeyValuePair } from "../util/collections/KeyValuePair.js";
 import { ReadOnlyStdObservableCollection, StdObservableCollectionChangeType } from "../util/collections/ReadOnlyStdObservableCollection.js";
@@ -14,8 +14,9 @@ import { StdObservableConcatCollectionView } from "../util/collections/StdObserv
 import { StdObservableList } from "../util/collections/StdObservableView.js";
 import { asDisposable, tryDispose as maybeDispose, IDisposable, isDisposable } from "../util/Disposable.js";
 import { HeldCacheManager } from "../util/HeldCacheManager.js";
-import { LoggedMessage, LogMessageType } from "../util/HostInterop.js";
+import { LoggedMessage, LogMessageType } from "../util/hostinterop/HostInterop.js";
 import { IterableUtils } from "../util/IterableUtils.js";
+import { Logging } from "../util/Logger.js";
 import { ObjectUniqueId } from "../util/ObjectUniqueId.js";
 import { Observable, ObservableValue } from "../util/Observable.js";
 import { ObservableBase, observableProperty } from "../util/ObservableBase.js";
@@ -28,9 +29,116 @@ import { ActiveLoginViewModel } from "./ActiveLoginViewModel.js";
 import { AppNotifyEventType, AppViewModel } from "./AppViewModel.js";
 import { ChannelFiltersViewModel } from "./ChannelFiltersViewModel.js";
 import { MultiSelectPopupViewModel } from "./popups/MultiSelectPopupViewModel.js";
+import { FriendsListTabViewModel } from "./sidebartabs/FriendsListTabViewModel.js";
+import { SidebarTabContainerViewModel, SidebarTabViewModel } from "./sidebartabs/SidebarTabContainerViewModel.js";
 import { SlashCommandViewModel } from "./SlashCommandViewModel.js";
 
-export abstract class ChannelViewModel extends ObservableBase implements IDisposable {
+export interface ChannelViewModelState {
+    readonly canPin: boolean;
+    readonly isPinned: boolean;
+    readonly canClose: boolean;
+    readonly title: string;
+}
+
+export interface IChannelStreamViewModel {
+    readonly appViewModel: AppViewModel;
+    readonly activeLoginViewModel: ActiveLoginViewModel;
+    readonly parent: ActiveLoginViewModel;
+    readonly messages: ReadOnlyStdObservableCollection<KeyValuePair<ChannelMessageViewModel, ChannelMessageViewModel>>;
+    scrolledTo: ChannelViewScrollPositionModel | null;
+    newMessagesBelowNotify: boolean;
+
+    readonly title: string;
+    readonly channelTitle: string;
+
+    readonly channelCategory: string;
+
+    readonly pendingSendsCount: number;
+
+    readonly messageDisplayStyle: ChannelMessageDisplayStyle;
+
+    readonly showFilterBar: boolean;
+
+    readonly isHistoricalView: boolean;
+
+    getConfigSettingById(id: string): any;
+    getPingWordSet(): (PingLineItemDefinition & { pattern: RegExp | null })[];
+    
+    isEffectiveOwner(character: CharacterName): boolean;
+    isEffectiveOp(character: CharacterName): boolean;
+}
+
+export class TransientChannelStreamViewModel extends ObservableBase implements IDisposable, IChannelStreamViewModel {
+    constructor(
+        public readonly activeLoginViewModel: ActiveLoginViewModel,
+        public readonly title: string) {
+
+        super();
+    }
+
+    private _isDisposed: boolean = false;
+    get isDisposed() { return this._isDisposed; }
+
+    dispose() {
+        if (!this._isDisposed) {
+            this._isDisposed = true;
+            for (let m of this.messages) {
+                m.value.dispose();
+            }
+        }
+    }
+    [Symbol.dispose]() { this.dispose(); }
+
+    get appViewModel() { return this.activeLoginViewModel.appViewModel; }
+    get parent() { return this.activeLoginViewModel; }
+
+    readonly messages: Collection<KeyValuePair<ChannelMessageViewModel, ChannelMessageViewModel>> = new Collection();
+
+    private _isHistoricalView: ObservableValue<boolean> = new ObservableValue(true);
+
+    get isHistoricalView() { return this._isHistoricalView.value; }
+    set isHistoricalView(value: boolean) { this._isHistoricalView.value = value; }
+
+    @observableProperty
+    scrolledTo: ChannelViewScrollPositionModel | null = null;
+
+    @observableProperty
+    newMessagesBelowNotify: boolean = false;
+
+    get channelTitle() { return this.title; }
+
+    get channelCategory() { return "Other Channels"; }
+
+    readonly pendingSendsCount: number = 0;
+
+    //readonly messageDisplayStyle: ChannelMessageDisplayStyle = ChannelMessageDisplayStyle.FCHAT;
+
+    get messageDisplayStyle(): ChannelMessageDisplayStyle {
+        const cfgValue = this.activeLoginViewModel
+            .getConfigSettingById("messageDisplayStyle", { characterName: CharacterName.create(this.title) });
+        return cfgValue as ChannelMessageDisplayStyle;
+    }
+
+    readonly showFilterBar: boolean = false;
+
+    getConfigSettingById(id: string): any {
+        return this.activeLoginViewModel.getConfigSettingById(id, this);
+    }
+
+    getPingWordSet(): (PingLineItemDefinition & { pattern: RegExp | null })[] {
+        return [];
+    }
+    
+    isEffectiveOwner(character: CharacterName): boolean {
+        return false;
+    }
+
+    isEffectiveOp(character: CharacterName): boolean {
+        return false;
+    }
+}
+
+export abstract class ChannelViewModel extends ObservableBase implements IDisposable, IChannelStreamViewModel {
     constructor(parent: ActiveLoginViewModel, title: string) {
         super();
 
@@ -73,16 +181,23 @@ export abstract class ChannelViewModel extends ObservableBase implements IDispos
     }
     get isDisposed() { return this._disposed; }
 
-    @observableProperty
+    //@observableProperty
     readonly parent: ActiveLoginViewModel;
 
     get activeLoginViewModel() { return this.parent; }
     get appViewModel() { return this.parent.appViewModel; }
 
-    protected _title: string = "";
+    readonly isHistoricalView: boolean = false;
+
     @observableProperty
-    get title(): string { return this._title; }
-    set title(value) { this._title = value; }
+    get title(): string { return this.channelState.title; }
+    set title(value) { this.channelState = { ...this.channelState, title: value }; }
+
+    get channelTitle(): string { return this.channelState.title; }
+
+    get channelCategory(): string { return "Other Channels"; }
+
+    readonly showFilterBar: boolean = true;
 
     abstract get collectiveName(): string;
 
@@ -97,15 +212,24 @@ export abstract class ChannelViewModel extends ObservableBase implements IDispos
     showSettingsDialogAsync() { }
 
     @observableProperty
-    canClose: boolean = false;
+    channelState: ChannelViewModelState = {
+        canClose: false,
+        canPin: false,
+        isPinned: false,
+        title: ""
+    }
 
     @observableProperty
-    canPin: boolean = false;
+    get canClose(): boolean { return this.channelState.canClose; }
+    set canClose(value: boolean) { this.channelState = {...this.channelState, canClose: value }; }
 
-    private _isPinned: boolean = false;
     @observableProperty
-    get isPinned(): boolean { return this._isPinned; }
-    set isPinned(value: boolean) { this._isPinned = value; }
+    get canPin(): boolean { return this.channelState.canPin; }
+    set canPin(value: boolean) { this.channelState = {...this.channelState, canPin: value }; }
+
+    @observableProperty
+    get isPinned(): boolean { return this.channelState.isPinned; }
+    set isPinned(value: boolean) { this.channelState = { ...this.channelState, isPinned: value }; }
 
     @observableProperty
     userListWidth: number = 245;
@@ -169,8 +293,21 @@ export abstract class ChannelViewModel extends ObservableBase implements IDispos
         }
     }
 
+    protected getCanBottleSpin(): boolean {
+        const canSpin = this.performBottleSpinAsync != ChannelViewModel.prototype.performBottleSpinAsync;
+        return canSpin;
+    }
+
+    protected getCanRollDice(): boolean {
+        const canRoll = this.performRollAsync != ChannelViewModel.prototype.performRollAsync;
+        return canRoll;
+    }
+
     getSlashCommands(): SlashCommandViewModel[] {
-        return [
+        const canSpin = this.getCanBottleSpin();
+        const canRoll = this.getCanRollDice();
+
+        const commands: (SlashCommandViewModel | null)[] = [
             ...this.activeLoginViewModel.getSlashCommands(),
             new SlashCommandViewModel(
                 ["roll"],
@@ -181,7 +318,7 @@ export abstract class ChannelViewModel extends ObservableBase implements IDispos
                     const diceSpec = args[0] as string;
                     await this.performRollAsync(diceSpec);
                 }
-            ),
+            ).withShowInHelp(canRoll),
             new SlashCommandViewModel(
                 ["bottle"],
                 "Spin the Bottle",
@@ -190,7 +327,7 @@ export abstract class ChannelViewModel extends ObservableBase implements IDispos
                 async (context, args) => {
                     await this.performBottleSpinAsync();
                 }
-            ),
+            ).withShowInHelp(canSpin),
             new SlashCommandViewModel(
                 ["clear"],
                 "Clear Tab",
@@ -210,7 +347,9 @@ export abstract class ChannelViewModel extends ObservableBase implements IDispos
                     await this.createChannelAsync(newChanName);
                 }
             )
-        ]
+        ];
+
+        return commands.filter(x => x != null);
     }
 
     async processCommandInternalAsync(command: string): Promise<string> {
@@ -483,7 +622,7 @@ export abstract class ChannelViewModel extends ObservableBase implements IDispos
     }
 
     public static convertFromLoggedMessage(
-        cvm: ChannelViewModel | null, 
+        cvm: IChannelStreamViewModel | null, 
         activeLoginViewModel: ActiveLoginViewModel,
         appViewModel: AppViewModel,
         loggedMessage: LoggedMessage): ChannelMessageViewModel | null {
@@ -503,7 +642,8 @@ export abstract class ChannelViewModel extends ObservableBase implements IDispos
                         gender: (loggedMessage.speakingCharacterGender as CharacterGender) ?? CharacterGender.NONE,
                         status: (loggedMessage.speakingCharacterOnlineStatus as OnlineStatus) ?? OnlineStatus.OFFLINE,
                         statusMessage: "",
-                        typingStatus: TypingStatus.IDLE
+                        typingStatus: TypingStatus.IDLE,
+                        nickname: activeLoginViewModel.nicknameSet.get(loggedMessage.speakingCharacter)
                     },
                     suppressPing: true,
                     type: ChannelMessageType.CHAT
@@ -522,7 +662,8 @@ export abstract class ChannelViewModel extends ObservableBase implements IDispos
                         isBookmark: activeLoginViewModel.bookmarks.has(loggedMessage.speakingCharacter),
                         isInterest: activeLoginViewModel.interests.has(loggedMessage.speakingCharacter),
                         statusMessage: "",
-                        typingStatus: TypingStatus.IDLE
+                        typingStatus: TypingStatus.IDLE,
+                        nickname: activeLoginViewModel.nicknameSet.get(loggedMessage.speakingCharacter)
                     },
                     suppressPing: true,
                     type: ChannelMessageType.ROLL
@@ -571,19 +712,24 @@ export abstract class ChannelViewModel extends ObservableBase implements IDispos
 
     addRollMessage(timestamp: Date, rollData: RollData): ChannelMessageViewModel {
         const m = ChannelMessageViewModel.createRollMessage(this, timestamp, rollData);
-        this.addMessage(m, { fromReplay: (rollData.isHistorical ?? false) });
+        this.addMessage(m, { seen: (rollData.seen ?? false), fromReplay: (rollData.isHistorical ?? false) });
         return m;
     }
 
     addSpinMessage(spinData: BottleSpinData): ChannelMessageViewModel {
         const m = ChannelMessageViewModel.createSpinMessage(this, spinData);
-        this.addMessage(m, { fromReplay: (spinData.isHistorical ?? false) });
+        this.addMessage(m, { seen: (spinData.seen ?? false),fromReplay: (spinData.isHistorical ?? false) });
         return m;
     }
 
-    addSystemMessage(timestamp: Date, text: string, important: boolean = false, suppressPing: boolean = false): ChannelMessageViewModel {
+    addSystemMessage(timestamp: Date, text: string, 
+        important: boolean = false,
+        suppressPing: boolean = false,
+        seen: boolean = false,
+        isHistorical: boolean = false): ChannelMessageViewModel {
+
         const m = ChannelMessageViewModel.createSystemMessage(this, timestamp, text, important, suppressPing);
-        this.addMessage(m);
+        this.addMessage(m, { seen: (seen ?? false), fromReplay: (isHistorical ?? false) });
         return m;
     }
     
@@ -599,6 +745,9 @@ export abstract class ChannelViewModel extends ObservableBase implements IDispos
             m.dispose();
         }
 
+        this.unseenMessageCount = 0;
+        this.clearPings();
+        //this.hasPing = false;
         this.recalculateMessagesToShow();
     }
 
@@ -619,7 +768,8 @@ export abstract class ChannelViewModel extends ObservableBase implements IDispos
 
     protected onIsTabActiveChanged() { 
         if (this.isTabActive) {
-            this.hasPing = false;
+            this.clearPings();
+            //this.hasPing = false;
             this.unseenMessageCount = 0;
             this.ensureSelectableFilterSelected();
         }
@@ -630,7 +780,9 @@ export abstract class ChannelViewModel extends ObservableBase implements IDispos
 
     protected pingIfNecessary(message: ChannelMessageViewModel) {
         if (message.containsPing && !this.isTabActive && message.characterStatus.characterName != this.parent.characterName) {
-            this.hasPing = true;
+            //this.hasPing = true;
+            this.addPingMessage();
+            this.logger.logInfo("pinging due to message", this, message);
         }
     }
 
@@ -640,25 +792,27 @@ export abstract class ChannelViewModel extends ObservableBase implements IDispos
         }
     }
 
-    private readonly _hasPings: ObservableValue<boolean> = new ObservableValue(false);
-    private readonly _unseenMessagesCount: ObservableValue<number> = new ObservableValue(0);
+    private readonly _pingMessagesCount: ObservableValue<number> = new ObservableValue(0).withName("ChannelViewModel._pingMessagesCount");
+    private readonly _unseenMessagesCount: ObservableValue<number> = new ObservableValue(0).withName("ChannelViewModel._unseenMessagesCount");
 
-    @observableProperty
-    get hasPing(): boolean {
+    get pingMessagesCount() { 
         if (this.getConfigSettingById("allowPings")) {
-            return this._hasPings.value
+            return this._pingMessagesCount.value; 
         }
         else {
-            return false;
+            return 0;
         }
     }
-    set hasPing(value: boolean) {
-        this._hasPings.value = value;
+
+    addPingMessage() { this._pingMessagesCount.value = this._pingMessagesCount.value + 1; }
+    protected clearPings() { this._pingMessagesCount.value = 0; }
+
+    get hasPing(): boolean {
+        return Observable.calculate("ChannelViewModel.hasPing", () => this._pingMessagesCount.value > 0);
     }
 
-    @observableProperty
     get hasUnseenMessages() {
-        return this.unseenMessageCount > 0;
+        return Observable.calculate("ChannelViewModel.hasUnseenMessages", () => this.unseenMessageCount > 0);
     }
 
     @observableProperty
@@ -803,8 +957,9 @@ export function ChannelMessageViewModelComparer(a: ChannelMessageViewModel, b: C
     }
 }
 
+const cleanupRegisteryLogger = Logging.createLogger("ChannelViewModel.cleanupRegistry");
 const cleanupRegistry = new FinalizationRegistry<IDisposable>(hv => {
-    console.log("cleanupdispose", hv);
+    cleanupRegisteryLogger.logInfo("cleanupdispose", hv);
     try { hv.dispose(); }
     catch { }
 });
@@ -812,9 +967,11 @@ function registerCleanupDispose(cmvm: ChannelMessageViewModel, disposable: IDisp
     cleanupRegistry.register(cmvm, disposable);
 }
 
+const channelMessageContentStringPool = new StringPool("channelMessageContentStringPool");
+
 let nextUniqueMessageId: number = 1;
 export class ChannelMessageViewModel extends ObservableBase implements IDisposable {
-    static createChatMessage(parent: ChannelViewModel, timestamp: Date, character: CharacterName, text: string,
+    static createChatMessage(parent: IChannelStreamViewModel, timestamp: Date, character: CharacterName, text: string,
         gender?: CharacterGender | null, onlineStatus?: OnlineStatus | null): ChannelMessageViewModel {
 
         const isSelfMessage = parent.activeLoginViewModel.characterName.equals(character);
@@ -942,21 +1099,25 @@ export class ChannelMessageViewModel extends ObservableBase implements IDisposab
 
 
     private constructor(
-        parent: ChannelViewModel | null,
+        parent: IChannelStreamViewModel | null,
         public readonly activeLoginViewModel: ActiveLoginViewModel,
         public readonly appViewModel: AppViewModel,
         public readonly timestamp: Date,
         public readonly type: ChannelMessageType,
         public readonly characterStatus: Omit<CharacterStatus, "equals">,
-        public readonly text: string,
+        text: string,
         public readonly suppressPing: boolean = false,
         public readonly onClick?: () => any
     ) {
         super();
-        this._weakParent = parent ? new WeakRef<ChannelViewModel>(parent) : null;
+        this._pooledText = channelMessageContentStringPool.create(text);
+        this._weakParent = parent ? new WeakRef<IChannelStreamViewModel>(parent) : null;
         this.uniqueMessageId = nextUniqueMessageId++;
         this.containsPing = this.checkForPing();
     }
+
+    private _pooledText: PooledString;
+    get text(): string { return this._pooledText.value; }
 
     private _disposed: boolean = false;
     [Symbol.dispose]() { this.dispose(); }
@@ -969,7 +1130,7 @@ export class ChannelMessageViewModel extends ObservableBase implements IDisposab
     }
     get isDisposed() { return this._disposed; }
 
-    private readonly _weakParent: WeakRef<ChannelViewModel> | null;
+    private readonly _weakParent: WeakRef<IChannelStreamViewModel> | null;
 
     get parent() { return this._weakParent?.deref() ?? null; }
 
@@ -985,18 +1146,18 @@ export class ChannelMessageViewModel extends ObservableBase implements IDisposab
 
     incrementParsedTextUsage() {
         this._parsedTextInUse++;
-        //console.log("incrementParsedTextUsage", ObjectUniqueId.get(this), this._parsedTextInUse);
+        //this.logger.logInfo("incrementParsedTextUsage", ObjectUniqueId.get(this), this._parsedTextInUse);
         this.cancelParsedTextReleaseTimer();
     }
     decrementParsedTextUsage() {
         this._parsedTextInUse = Math.max(0, this._parsedTextInUse - 1);
-        //console.log("decrementParsedTextUsage", ObjectUniqueId.get(this), this._parsedTextInUse);
+        //this.logger.logInfo("decrementParsedTextUsage", ObjectUniqueId.get(this), this._parsedTextInUse);
         if (this._parsedTextInUse == 0) {
             this.cancelParsedTextReleaseTimer();
             this._parsedTextReleaseTimer = HeldCacheManager.addReleasableItem(() => {
                 this._parsedTextReleaseTimer = null;
                 if (this._parsedText != null) {
-                    //console.log("releasing parsedText");
+                    //cthis.logger.logInfo("releasing parsedText");
                     this._parsedText.dispose();
                     this._parsedText = null;
                 }
@@ -1029,7 +1190,12 @@ export class ChannelMessageViewModel extends ObservableBase implements IDisposab
                 }
             }
 
-            const parseResult = ChatBBCodeParser.parse(effectiveText, { 
+            let parser = ChatBBCodeParser;
+            if (this.characterStatus.characterName == CharacterName.SYSTEM) {
+                parser = SystemMessageBBCodeParser;
+            }
+
+            const parseResult = parser.parse(effectiveText, { 
                 sink: this.activeLoginViewModel.bbcodeSink, 
                 addUrlDomains: true, 
                 appViewModel: this.appViewModel, 
@@ -1105,7 +1271,7 @@ export class ChannelMessageViewModel extends ObservableBase implements IDisposab
     }
 
     static deserializeFromLog(
-        parent: ChannelViewModel | null, 
+        parent: IChannelStreamViewModel | null, 
         activeLoginViewModel: ActiveLoginViewModel,
         appViewModel: AppViewModel,
         serialized: SerializedChannelMessageViewModel) {

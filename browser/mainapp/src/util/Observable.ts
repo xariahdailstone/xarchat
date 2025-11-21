@@ -3,15 +3,18 @@ import { CallbackSet, NamedCallbackSet } from "./CallbackSet.js";
 import { SnapshottableMap } from "./collections/SnapshottableMap.js";
 import { SnapshottableSet } from "./collections/SnapshottableSet.js";
 import { IDisposable, EmptyDisposable, asDisposable } from "./Disposable.js";
+import { testEquality } from "./Equality.js";
+import { ObjectUniqueId } from "./ObjectUniqueId.js";
 import { setupValueSubscription, ValueSubscriptionImpl } from "./ObservableBase.js";
+import { ObservableExpression } from "./ObservableExpression.js";
 
-export interface Observable {
+export interface IObservable<T> {
     addEventListener(eventName: "propertychange", handler: PropertyChangeEventListener): IDisposable;
     removeEventListener(eventName: "propertychange", handler: PropertyChangeEventListener): void;
 //    raisePropertyChangeEvent(propertyName: string): void;
     raisePropertyChangeEvent(propertyName: string, propValue: unknown): void;
 
-    addValueSubscription(propertyPath: string, handler: (value: any) => any): ValueSubscription;
+    addValueSubscription(propertyPath: string, handler: (value: T) => any): ValueSubscription;
 }
 
 export function isObservable(obj: any) {
@@ -35,7 +38,7 @@ export interface ValueSubscription extends IDisposable {
 }
 
 export class Observable {
-    private static readonly _listeners: Set<ReadMonitorEventListener> = new Set();
+    private static _listeners: Set<ReadMonitorEventListener> = new Set();
 
     private static _currentFireStackDepth = 0;
     private static _currentFireStackCount = 0;
@@ -91,6 +94,22 @@ export class Observable {
         }
     }
 
+    static calculate<T>(name: string, func: () => T): T {
+        const oe = new CalculatedObservable(name, func);
+        return oe.value;
+    }
+
+    static inReadSubScope<T>(func: () => T): T {
+        const origListeners = this._listeners;
+        this._listeners = new Set();
+        try {
+            return func();
+        }
+        finally {
+            this._listeners = origListeners;
+        }
+    }
+
     static addReadMonitor(listener: ReadMonitorEventListener): (IDisposable & Disposable) {
 
         this._listeners.add(listener);
@@ -112,13 +131,13 @@ export class Observable {
         }
     }
 
-    static publishNamedRead(name: string, gotValue: unknown) {
-        const o = new DynamicNameObservable(name);
+    static publishNamedRead(name: NamedObservableName, gotValue: unknown) {
+        const o = DynamicNameObservable.getOrCreate(name);
         Observable.publishRead(o, "value", gotValue);
     }
 
-    static publishNamedUpdate(name: string, value: unknown) {
-        const o = new DynamicNameObservable(name);
+    static publishNamedUpdate(name: NamedObservableName, value: unknown) {
+        const o = DynamicNameObservable.getOrCreate(name);
         o.raisePropertyChangeEvent("value", value);
     }
 
@@ -129,7 +148,7 @@ export class Observable {
 
     static createDependencySetOver<T>(
         onExpire: () => any,
-        func: () => T): { dependencySet: DependencySet, result: T | undefined, error: any | undefined } {
+        func: () => T): CreateDependencySetOverResult<T> {
 
         const depSet = new DependencySetImpl();
         depSet.addChangeListener(onExpire);
@@ -148,11 +167,56 @@ export class Observable {
     }
 }
 
+export type CreateDependencySetOverResult<T> = { dependencySet: DependencySet, result: T | undefined, error: any | undefined };
+
+export type NamedObservableName = string; // | CompoundObservableName;
+
+export class CompoundObservableName {
+    constructor(private readonly parts: any[]) {
+    }
+
+    equals(other: CompoundObservableName): boolean {
+        if (other.parts.length != this.parts.length) { return false; }
+        for (let i = 0; i < this.parts.length; i++) {
+            const a = this.parts[i];
+            const b = other.parts[i];
+            if (!testEquality(a, b)) { return false; }
+        }
+        return true;
+    }
+}
+
+const activeDynamicNamedObservables = new Map<string, WeakRef<DynamicNameObservable>>();
+const dynamicNamedFinRef = new FinalizationRegistry<{ name: string, id: number }>(hv => {
+    const x = activeDynamicNamedObservables.get(hv.name);
+    if (x) {
+        const dno = x.deref();
+        if (!dno || ObjectUniqueId.get(dno) == hv.id) {
+            activeDynamicNamedObservables.delete(hv.name);
+        }
+    }
+});
+
 class DynamicNameObservable implements Observable {
+    static getOrCreate(name: NamedObservableName) {
+        const x = activeDynamicNamedObservables.get(name);
+        if (x) {
+            const dno = x.deref();
+            if (dno) {
+                return dno;
+            }
+        }
+        const newDNO = new DynamicNameObservable(name);
+        activeDynamicNamedObservables.set(name, new WeakRef(newDNO));
+        dynamicNamedFinRef.register(newDNO, { name: name, id: ObjectUniqueId.get(newDNO) });
+        return newDNO;
+    }
+
+
     private static _listeners2: NamedCallbackSet<string, PropertyChangeEventListener> = new NamedCallbackSet("DynamicNameObservable");
 
     constructor(
-        private readonly name: string) {
+        private readonly name: NamedObservableName) {
     }
 
     addEventListener(eventName: "propertychange", handler: PropertyChangeEventListener): IDisposable {
@@ -160,7 +224,7 @@ class DynamicNameObservable implements Observable {
             return DynamicNameObservable._listeners2.add(this.name, handler);
         }
         else {
-            return asDisposable();
+            return EmptyDisposable;
         }
     }
 
@@ -200,13 +264,19 @@ class DynamicNameObservable implements Observable {
 
 export type ReadMonitorEventListener = (observable: unknown, propertyName: string, gotValue: unknown) => void;
 
-export class ObservableValue<T> implements Observable {
+export class ObservableValue<T> implements IObservable<T> {
     constructor(initialValue: T, debug?: boolean) {
         this._value = initialValue;
         this.debug = debug ?? false;
     }
 
+    name: string | null = null;
     debug: boolean = false;
+
+    withName(name: string): ObservableValue<T> {
+        this.name = name;
+        return this;
+    }
 
     private _propertyChangeListeners2: CallbackSet<PropertyChangeEventListener> | null = null;
 
@@ -265,6 +335,11 @@ export class ObservableValue<T> implements Observable {
             this._value = value;
             this.raisePropertyChangeEvent("value", value);
         }
+    }
+
+    takeReadDependency() {
+        const result = this._value;
+        Observable.publishRead(this, "value", result);
     }
 }
 
@@ -327,7 +402,7 @@ class DependencySetImpl implements DependencySet {
     }
 
     private attachToObservable(observable: any, propertyName: string): IDisposable {
-        const newListener = (observable as Observable).addEventListener("propertychange", (e) => {
+        const newListener = (observable as IObservable<any>).addEventListener("propertychange", (e) => {
             if (e.propertyName == propertyName) {
                 this.stateHasChanged(observable, propertyName);
             }
@@ -362,4 +437,121 @@ class DependencySetImpl implements DependencySet {
 interface Dependency {
     target: any;
     propertyName: string;
+}
+
+export class CalculatedObservable<T> implements Observable, IDisposable {
+    constructor(
+        public readonly name: string,
+        private readonly expression: () => T) {
+
+        this._cbSet = new CallbackSet<PropertyChangeEventListener>("CalculatedObservable", () => this.maybeStopObserving());
+
+        Observable.inReadSubScope(() => {
+            this.updateValue();
+        });
+    }
+
+    private _cachedValueIsError = false;
+    private _cachedValue: T | undefined = undefined;
+    private _cachedError: any = undefined;
+
+    private _isDisposed = false;
+    private _observing = false;
+    private readonly _cbSet: CallbackSet<PropertyChangeEventListener>;
+    private _depSet: DependencySet | null = null;
+
+    get isDisposed(): boolean { return this._isDisposed; }
+
+    dispose(): void {
+        if (!this._isDisposed) {
+            this._isDisposed = true;
+            this.refreshDepSet();
+        }
+    }
+
+    [Symbol.dispose](): void { this.dispose(); }
+
+    private updateValue() {
+        const prevEffValue = this._cachedValueIsError ? this._cachedError : this._cachedValue;
+
+        try {
+            const res = this.expression();
+            this._cachedValueIsError = false;
+            this._cachedValue = res;
+            this._cachedError = undefined;
+        }
+        catch (e) {
+            this._cachedValueIsError = true;
+            this._cachedValue = undefined;
+            this._cachedError = e;
+        }
+
+        const newEffValue = this._cachedValueIsError ? this._cachedError : this._cachedValue;
+
+        if (prevEffValue !== newEffValue) {
+            this.raisePropertyChangeEvent("value", newEffValue);
+        }
+
+        return newEffValue;
+    }
+
+    private startObserving() {
+        if (!this._observing && !this._isDisposed) {
+            this._observing = true;
+            this.refreshDepSet();
+        }
+    }
+
+    private maybeStopObserving() { 
+        if (this._observing) {
+            this._observing = false;
+            this.refreshDepSet();
+        }
+    }
+
+    private refreshDepSet() {
+        if (this._depSet != null) {
+            this._depSet.dispose();
+            this._depSet = null;
+        }
+        if (this._isDisposed || !this._observing) { return; }
+
+        Observable.inReadSubScope(() => {
+            const cdsResult = Observable.createDependencySetOver(
+                () => this.refreshDepSet(),
+                () => this.updateValue()
+            );
+            this._depSet = cdsResult.dependencySet;
+        });
+    }
+
+    get value(): T {
+        if (this._cachedValueIsError) {
+            Observable.publishRead(this, "value", this._cachedError);
+            throw this._cachedError;
+        }
+        else {
+            Observable.publishRead(this, "value", this._cachedValue);
+            return this._cachedValue!;
+        }
+    }
+
+    addEventListener(eventName: "propertychange", handler: PropertyChangeEventListener): IDisposable {
+        const res = this._cbSet.add(handler);
+        this.startObserving();
+        return res;
+    }
+
+    removeEventListener(eventName: "propertychange", handler: PropertyChangeEventListener): void {
+        this._cbSet.delete(handler);
+    }
+
+    raisePropertyChangeEvent(propertyName: string, propValue: unknown): void {
+        this._cbSet.invoke(new PropertyChangeEvent(propertyName, propValue));
+    }
+
+    addValueSubscription(propertyPath: string, handler: (value: any) => any): ValueSubscription {
+        return setupValueSubscription(this, propertyPath, handler);
+    }
+   
 }

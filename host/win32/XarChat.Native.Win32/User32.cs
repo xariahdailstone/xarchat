@@ -81,6 +81,11 @@ namespace XarChat.Native.Win32
 
 		}
 
+        public static uint RegisterWindowMessage(string messageName)
+        {
+            return PInvoke.RegisterWindowMessage(messageName);
+        }
+
         public static void MessageBox(nint hWnd, string text, string caption)
         {
             PInvoke.MessageBox(
@@ -256,15 +261,20 @@ namespace XarChat.Native.Win32
             return PInvoke.GetDpiForWindow(new Windows.Win32.Foundation.HWND(hWnd));
         }
 
-        public static nint FindWindow(string? className, string? windowName)
+        public unsafe static nint FindWindow(string? className, string? windowName)
         {
             var hwnd = PInvoke.FindWindow(className, windowName);
-            return hwnd.Value;
+            return new IntPtr(hwnd.Value);
         }
 
         public static bool SetForegroundWindow(nint hwnd)
         {
             return PInvoke.SetForegroundWindow(new Windows.Win32.Foundation.HWND(hwnd));
+        }
+
+        public static bool FlashWindow(nint hwnd)
+        {
+            return PInvoke.FlashWindow(new Windows.Win32.Foundation.HWND(hwnd), true);
         }
 
         public enum IDC : int

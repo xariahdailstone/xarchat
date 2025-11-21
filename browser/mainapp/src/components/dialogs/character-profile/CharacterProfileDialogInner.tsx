@@ -5,6 +5,7 @@ import { BBCodeParseResult, ProfileBBCodeParser } from "../../../util/bbcode/BBC
 import { CatchUtils } from "../../../util/CatchUtils";
 import { getEffectiveCharacterNameVNodes } from "../../../util/CharacterNameIcons";
 import { asDisposable } from "../../../util/Disposable";
+import { HTMLUtils } from "../../../util/HTMLUtils";
 import { ObservableValue } from "../../../util/Observable";
 import { Collection } from "../../../util/ObservableCollection";
 import { StringUtils } from "../../../util/StringUtils";
@@ -162,7 +163,8 @@ export class CharacterProfileDialogInner extends RenderingComponentBase<Characte
                         on={{ "click": () => { vm.profileDetails!.openInFList(); } }}>
                         <x-iconimage src="assets/ui/openexternal-icon.svg"></x-iconimage>
                     </button>
-                    <button classList="profile-button profile-button-openpm" data-tooltip="Open Private Message Tab" id="elBtnOpenPM">
+                    <button classList="profile-button profile-button-openpm" data-tooltip="Open Private Message Tab" id="elBtnOpenPM"
+                        on={{ "click": () => { vm.profileDetails!.openPrivateMessageTab(); }}}>
                         <x-iconimage src="assets/ui/openpm-icon.svg"></x-iconimage>
                     </button>
                     <button classList="profile-button profile-button-memo" data-tooltip="Add/Edit Memo" id="elBtnEditMemo"
@@ -318,10 +320,12 @@ export class CharacterProfileDialogInner extends RenderingComponentBase<Characte
                         elArrow = <div classList={arrowClasses}>{"\u{1F846}"}</div>;
                     }
 
+                    const kinkTitle = k.isCustomKink ? k.name : HTMLUtils.unescapeHTML(k.name);
+
                     const tooltipText = !StringUtils.isNullOrWhiteSpace(k.tooltip) ? k.tooltip : "No description available.";
-                    const elKink = <div classList={{ "kink-list-item": true, "kink-list-iscustom": k.isCustomKink }} data-tooltiptitle={k.name} data-tooltip={tooltipText}>
+                    const elKink = <div classList={{ "kink-list-item": true, "kink-list-iscustom": k.isCustomKink }} data-tooltiptitle={kinkTitle} data-tooltip={tooltipText}>
                         {elArrow}
-                        <div classList="kink-list-item-name" props={{ innerHTML: k.name }}></div>
+                        <div classList="kink-list-item-name">{kinkTitle}</div>
                     </div>;
                     elContainer.children!.push(elKink);
 

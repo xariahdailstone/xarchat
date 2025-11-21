@@ -1,5 +1,5 @@
 import { IDisposable } from "../util/Disposable.js";
-import { Collection, CollectionChangeEvent, CollectionChangeType, ObservableCollection } from "../util/ObservableCollection.js";
+import { Collection, CollectionChangeEvent, CollectionChangeType, ObservableCollection, ReadOnlyObservableCollection } from "../util/ObservableCollection.js";
 import { ComponentBase, componentElement } from "./ComponentBase.js";
 
 export interface CollectionView2Events {
@@ -8,7 +8,7 @@ export interface CollectionView2Events {
 }
 
 @componentElement("x-collectionview2")
-export class CollectionView2<T> extends ComponentBase<ObservableCollection<any>> {
+export class CollectionView2<T> extends ComponentBase<ReadOnlyObservableCollection<any>> {
     private SYM_VIEWMODEL = Symbol();
     private SYM_ELEMENT = Symbol();
     private SYM_ELEMENTDISPOSE = Symbol();

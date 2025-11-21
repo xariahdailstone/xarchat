@@ -1,0 +1,62 @@
+
+#elMain {
+    width: 500px;
+    height: 300px;
+    max-width: 75vw;
+    max-height: 55vh;
+
+    display: grid;
+}
+
+.report-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+    height: 100%;
+}
+
+.report-info {
+    --bold-text-color: var(--fg-level-3-highlight)
+}
+.report-info b {
+    color: var(--bold-text-color);
+}
+
+.report-text-container {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.report-text-container-textarea {
+    flex-grow: 1;
+    resize: none;
+
+    background: var(--bg-main-textbox);
+    color: var(--fg-main-textbox);
+    font: inherit;
+    padding: 5px 5px;
+    border: none;
+    border-bottom: 1px solid transparent;
+    outline: none;
+}
+
+.info-text-okay {
+    background-color: rgba(0, 128, 0, 0.271);
+    color: white;
+    margin-top: 8px;
+    padding: 5px 5px;
+    margin-left: -5px;
+    margin-right: -5px;
+    --bold-text-color: white;
+}
+.info-text-warning {
+    background-color: goldenrod;
+    color: black;
+    margin-top: 8px;
+    padding: 5px 5px;
+    margin-left: -5px;
+    margin-right: -5px;
+    --bold-text-color: black;
+}

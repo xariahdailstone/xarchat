@@ -14,3 +14,10 @@
     .message { grid-area: message; }
     .textbox { grid-area: textbox; }
 }
+
+
+textarea.textbox {
+    resize: none;
+    height: 25vh;
+    width: 60vw;
+}

@@ -53,6 +53,10 @@ export class PromiseSource<T> {
         if (!this._complete) {
             this._complete = true;
             this._reject(reason);
+            return true;
+        }
+        else {
+            return false;
         }
     }
 

@@ -1,15 +1,18 @@
 import { CharacterName } from "../../shared/CharacterName";
 import { CancellationToken } from "../../util/CancellationTokenSource";
-import { HostInterop } from "../../util/HostInterop";
+import { HTMLUtils } from "../../util/HTMLUtils";
+import { HostInterop } from "../../util/hostinterop/HostInterop";
+import { KeyCodes } from "../../util/KeyCodes";
 import { ObservableValue } from "../../util/Observable";
 import { ObservableBase, observableProperty } from "../../util/ObservableBase";
 import { Collection } from "../../util/ObservableCollection";
 import { ReadOnlyStdObservableCollection } from "../../util/collections/ReadOnlyStdObservableCollection";
 import { ActiveLoginViewModel } from "../ActiveLoginViewModel";
 import { AppViewModel } from "../AppViewModel";
-import { ChannelViewModel } from "../ChannelViewModel";
+import { ChannelViewModel, IChannelStreamViewModel } from "../ChannelViewModel";
 import { ChatChannelViewModel } from "../ChatChannelViewModel";
 import { DialogButtonStyle } from "../dialogs/DialogViewModel";
+import { ReportSource, ReportViewModel } from "../dialogs/ReportViewModel";
 import { ContextPopupViewModel, PopupViewModel } from "./PopupViewModel";
 
 export class CharacterDetailPopupViewModel extends ContextPopupViewModel {
@@ -17,7 +20,7 @@ export class CharacterDetailPopupViewModel extends ContextPopupViewModel {
         public app: AppViewModel,
         public readonly session: ActiveLoginViewModel, 
         public readonly char: CharacterName,
-        public readonly channelViewModel: ChannelViewModel | null,
+        public readonly channelViewModel: IChannelStreamViewModel | null,
         contextElement: HTMLElement) {
 
         super(app, contextElement);
@@ -64,6 +67,39 @@ export class CharacterDetailPopupViewModel extends ContextPopupViewModel {
         this.parent.showSettingsDialogAsync(this.session, this.char);
     }
 
+    async submitReport() {
+        if (!this.session.selectedChannel) {
+            const presult = await this.parent.promptAsync<boolean>({
+                message: "To report chat behavior for this character, select the chat tab displaying the behavior you want to report first. " +
+                    "If you want to report the character as a whole (not related to any specific behavior in chat), click the 'Report Character' button " +
+                    "below to be redirected to the f-list.net website's ticket reporting system.",
+                title: "Reporting Character",
+                closeBoxResult: false,
+                buttons: [
+                    {
+                        title: "Cancel",
+                        resultValue: false,
+                        style: DialogButtonStyle.CANCEL,
+                        shortcutKeyCode: KeyCodes.ESCAPE
+                    },
+                    {
+                        title: "Report Character",
+                        resultValue: true,
+                        style: DialogButtonStyle.NORMAL,
+                        shortcutKeyCode: KeyCodes.RETURN
+                    }
+                ]
+            });
+            if (presult) {
+                HostInterop.launchCharacterReport(this.parent, this.char);
+            }
+        }
+        else {
+            const vm = new ReportViewModel(this.session, ReportSource.PROFILE_POPUP, this.char, this.session.selectedChannel ?? undefined);
+            const wasReported = await this.parent.showDialogAsync(vm);
+        }
+    }
+
     async kick() {
         const confirmed = await this.appViewModel.promptAsync({
             title: "Are you sure?",
@@ -89,7 +125,20 @@ export class CharacterDetailPopupViewModel extends ContextPopupViewModel {
     }
 
     async timeout() {
-        // TOOD:
+        const timeoutValue = await this.appViewModel.promptForStringAsync({
+            title: "Timeout Character",
+            messageAsHtml: true,
+            message: `How long, in minutes, do you want to timeout <b>${this.char.value}</b> from <b>${HTMLUtils.escapeHTML(this.channelViewModel!.title)}</b> for?`,
+            confirmButtonTitle: "Timeout",
+            initialValue: "",
+            valueOnCancel: null,
+            validationFunc: (str: string) => {
+                return !!str.match(/^(\d)+$/);
+            }
+        })
+        if (timeoutValue != null && (+timeoutValue) > 0) {
+            (this.channelViewModel as ChatChannelViewModel).timeoutAsync(this.char, +timeoutValue);
+        }
     }
 
     async ban() {
@@ -136,7 +185,7 @@ export class CharacterDetailPopupViewModel extends ContextPopupViewModel {
             ]
         });
         if (confirmed) {
-            // TODO:
+            (this.channelViewModel as ChatChannelViewModel).opAsync(this.char);
         }
     }
 
@@ -160,7 +209,7 @@ export class CharacterDetailPopupViewModel extends ContextPopupViewModel {
             ]
         });
         if (confirmed) {
-            // TODO:
+            (this.channelViewModel as ChatChannelViewModel).deopAsync(this.char);
         }
     }
 
@@ -184,7 +233,7 @@ export class CharacterDetailPopupViewModel extends ContextPopupViewModel {
             ]
         });
         if (confirmed) {
-            // TODO:
+            (this.channelViewModel as ChatChannelViewModel).changeOwnerAsync(this.char);
         }
     }
 }

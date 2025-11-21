@@ -1,5 +1,5 @@
 
-export function EL<K extends keyof HTMLElementTagNameMap>(name: K, attributes?: object, children?: (Node | string)[]): HTMLElementTagNameMap[K]
+export function EL<K extends keyof HTMLElementTagNameMap>(name: K, attributes?: object, children?: (Node | string | null | undefined)[]): HTMLElementTagNameMap[K]
 export function EL(name: string, attributes?: object, children?: (Node | string)[]): HTMLElement
 export function EL(name: string, attributes?: object, children?: (Node | string)[]): HTMLElement {
     const result = document.createElement(name);

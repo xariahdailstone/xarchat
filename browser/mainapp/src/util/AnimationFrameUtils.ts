@@ -1,29 +1,33 @@
+import { enterDelayingBlock } from "./DelayCodeUtils";
 import { IDisposable, asDisposable } from "./Disposable";
+import { Scheduler } from "./Scheduler";
 
 export class AnimationFrameUtils {
     static createPerFrame(callback: () => void): IDisposable {
         let disposed = false;
-        let handle: (number | null) = null;
+        let handle: (IDisposable | null) = null;
 
         const onFrame = () => {
             if (!disposed) {
-                handle = window.requestAnimationFrame(onFrame);
+                handle = Scheduler.scheduleNamedCallback("AnimationFrameUtils.createPerFrame", ["nextframe", 250], onFrame);
             }
             else {
                 handle = null;
             }
             
             try {
-                callback();
+                enterDelayingBlock(() => {
+                    callback();
+                });
             }
             catch { }
         };
-        handle = window.requestAnimationFrame(onFrame);
+        handle = Scheduler.scheduleNamedCallback("AnimationFrameUtils.createPerFrame", ["nextframe", 250], onFrame);
 
         return asDisposable(() => {
             disposed = true;
             if (handle) {
-                window.cancelAnimationFrame(handle);
+                handle.dispose();
                 handle = null;
             }
         });
@@ -31,10 +35,10 @@ export class AnimationFrameUtils {
 
     static createWithIntervals(intervalMs: number, callback: () => void): IDisposable {
         let disposed = false;
-        let rafHandle: (number | null) = null;
+        let rafHandle: (IDisposable | null) = null;
         let intervalHandle: (number | null) = window.setInterval(() => {
             if (rafHandle == null) {
-                rafHandle = window.requestAnimationFrame(() => {
+                rafHandle = Scheduler.scheduleNamedCallback("AnimationFrameUtils.createWithIntervals", ["frame", 250], () => {
                     rafHandle = null;
                     try { callback(); }
                     catch { }
@@ -45,7 +49,7 @@ export class AnimationFrameUtils {
         return asDisposable(() => {
             disposed = true;
             if (rafHandle != null) {
-                window.cancelAnimationFrame(rafHandle);
+                rafHandle.dispose();
                 rafHandle = null;
             }
             window.clearInterval(intervalHandle!);

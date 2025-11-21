@@ -50,7 +50,14 @@ class SnapshottedMap<K, V> implements ReadonlyMap<K, V>, IDisposable {
     }
 }
 
-export class SnapshottableMap<K, V> implements Map<K, V> {
+export interface ISnapshottableMap<K, V> extends Map<K, V> {
+    snapshot(): (ReadonlyMap<K, V> & IDisposable);
+    forEachEntrySnapshotted(callbackfn: (kvp: [K, V], set: Map<K, V>) => void, thisArg?: any): void;
+    forEachKeySnapshotted(callbackfn: (key: K, set: Map<K, V>) => void, thisArg?: any): void;
+    forEachValueSnapshotted(callbackfn: (value: V, set: Map<K, V>) => void, thisArg?: any): void;
+}
+
+export class SnapshottableMap<K, V> implements ISnapshottableMap<K, V> {
 
     private _map: Map<K, V> = new Map();
     private _cowCount: number = 0;

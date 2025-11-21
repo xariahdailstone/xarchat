@@ -17,12 +17,18 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.UpdateAppB
             _notificationBadgeManager = notificationBadgeManager;
         }
 
+        protected override bool RunInSerial => true;
+
         protected override Task HandleCommandAsync(UpdateAppBadgeArgs args, CancellationToken cancellationToken)
         {
-            var nbt = args.HasPings ? NotificationBadgeType.PingsWithCount(1) :
-                args.HasUnseen ? NotificationBadgeType.Mentions :
-                NotificationBadgeType.None;
-            _notificationBadgeManager.SetNotificationBadge(nbt);
+            var pingCount = args.PingCount ?? ((args.HasPings ?? false) ? 1 : 0);
+            var unseenCount = args.UnseenCount ?? ((args.HasUnseen ?? false) ? 1 : 0);
+
+            //var nbt = (pingCount > 0) ? NotificationBadgeType.PingsWithCount(pingCount) :
+            //    (unseenCount > 0) ? NotificationBadgeType.UnseenWithCount(unseenCount) :
+            //    NotificationBadgeType.None;
+
+            _notificationBadgeManager.SetNotificationBadge(pingCount, unseenCount);
             return Task.CompletedTask;
         }
     }

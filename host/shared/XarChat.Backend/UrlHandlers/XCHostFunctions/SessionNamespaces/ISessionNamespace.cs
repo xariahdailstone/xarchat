@@ -124,7 +124,7 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions.SessionNamespaces
                         var jobj = jv.AsObject();
                         if (jobj.ContainsKey("msgid"))
                         {
-                            var msgid = (long)jobj["msgid"];
+                            var msgid = (long)jobj["msgid"]!;
 
                             bool gotAsi;
                             ActiveStreamInfo? asi;

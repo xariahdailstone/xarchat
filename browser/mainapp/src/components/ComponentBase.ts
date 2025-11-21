@@ -1,5 +1,6 @@
 import { CharacterName } from "../shared/CharacterName.js";
 import { CharacterStatus } from "../shared/CharacterSet.js";
+import { ArrayUtils } from "../util/ArrayUtils.js";
 import { CancellationToken, CancellationTokenSource } from "../util/CancellationTokenSource.js";
 import { SnapshottableMap } from "../util/collections/SnapshottableMap.js";
 import { SnapshottableSet } from "../util/collections/SnapshottableSet.js";
@@ -7,13 +8,13 @@ import { DisposableOwnerField, IDisposable, asDisposable, asNamedDisposable, isD
 import { testEquality } from "../util/Equality.js";
 import { EventListenerUtil } from "../util/EventListenerUtil.js";
 import { FastEventSource } from "../util/FastEventSource.js";
-import { HostInterop } from "../util/HostInterop.js";
+import { HostInterop } from "../util/hostinterop/HostInterop.js";
 import { Logger, Logging, LogLevel } from "../util/Logger.js";
 import { ObjectUniqueId } from "../util/ObjectUniqueId.js";
 import { Observable, ValueSubscription } from "../util/Observable.js";
 import { ObservableBase } from "../util/ObservableBase.js";
 import { Collection } from "../util/ObservableCollection.js";
-import { ObservableExpression } from "../util/ObservableExpression.js";
+import { DelayedObservableExpression, ObservableExpression } from "../util/ObservableExpression.js";
 import { Optional } from "../util/Optional.js";
 import { Predicate } from "../util/Predicate.js";
 import { OperationCancelledError } from "../util/PromiseSource.js";
@@ -98,9 +99,11 @@ export class StyleLoader {
     await StyleLoader.refreshCss(filename);
 };
 
+const ATTR_IGNOREPARENT = "ignoreparent";
+
 export abstract class ComponentBase<TViewModel> extends HTMLElement {
 
-    static get observedAttributes(): string[] { return [ ]; };
+    static get observedAttributes(): string[] { return [ ATTR_IGNOREPARENT ]; };
 
     static readonly INHERITED_VIEW_MODEL = {};
 
@@ -119,6 +122,7 @@ export abstract class ComponentBase<TViewModel> extends HTMLElement {
 
         const elMain = document.createElement("div");
         elMain.id = "elMain";
+        elMain.classList.add(`component-${this.constructor.name}`);
         elMain.style.opacity = "0";
         this._sroot.appendChild(elMain);
 
@@ -131,11 +135,26 @@ export abstract class ComponentBase<TViewModel> extends HTMLElement {
 
         let commonLoaded = false;
         let compLoaded = false;
-        this.addMultipleStyleSheetsAsync(this.requiredStylesheets).then(() => {
+        this.addMultipleStyleSheetsAsync([...this.requiredStylesheets, ...this.postRequiredStylesheets]).then(() => {
             this.elMain.style.removeProperty("opacity");
         });
 
         this.uniqueId = ComponentBase._nextUniqueId++;
+    }
+
+    get ignoreParent() {
+        return (this.getAttribute(ATTR_IGNOREPARENT) ?? "false") == "true";
+    }
+    set ignoreParent(value: boolean) {
+        if (value !== this.ignoreParent) {
+            if (value) {
+                this.setAttribute(ATTR_IGNOREPARENT, "true");
+            }
+            else {
+                this.setAttribute(ATTR_IGNOREPARENT, "false");
+            }
+            this.viewModelContextUpdated();
+        }
     }
 
     get fastEvents() { return [ "viewmodelchange", "connected", "disconnected" ]; }
@@ -181,6 +200,10 @@ export abstract class ComponentBase<TViewModel> extends HTMLElement {
         ]
     }
 
+    protected get postRequiredStylesheets() {
+        return ["/customcss"];
+    }
+
     private static _nextUniqueId = 1;
     protected readonly uniqueId: number;
 
@@ -223,28 +246,38 @@ export abstract class ComponentBase<TViewModel> extends HTMLElement {
     protected get isComponentConnected() { return this._isComponentConnected; }
 
     private connectedCallback() {
-        this._isComponentConnected = true;
-        this.parentComponent = this.findParentComponent();
-        //console.log(`${this.constructor.name} connected`, this.parentComponent);
-        this.viewModelContextUpdated();
-        try { this.connectedToDocument(); } catch { }
-        this.setupWhenConnecteds();
-        this.raiseConnectedEvent();
+        try {
+            this._isComponentConnected = true;
+            this.parentComponent = this.findParentComponent();
+            //this.logger.logDebug(`${this.constructor.name} connected`, this.parentComponent);
+            this.viewModelContextUpdated();
+            this.connectedToDocument();
+            this.setupWhenConnecteds();
+            this.raiseConnectedEvent();
+        }
+        catch (e) {
+            this.logger.logError("connectedCallback failed", e);
+        }
     }
 
     protected connectedToDocument() { }
     protected disconnectedFromDocument() { }
 
     private disconnectedCallback() {
-        //console.log(`${this.constructor.name} disconnected`);
+        //this.logger.logDebug(`${this.constructor.name} disconnected`);
         this.logger.logDebug("disconnecting");
-        this._isComponentConnected = false;
-        this.parentComponent = null;
-        this.viewModelContextUpdated();
-        this.disconnectedFromDocument();
-        this.teardownWhenConnecteds();
-        this.raiseDisconnectedEvent();
-        this.logger.logDebug("disconnected");
+        try {
+            this._isComponentConnected = false;
+            this.parentComponent = null;
+            this.viewModelContextUpdated();
+            this.disconnectedFromDocument();
+            this.teardownWhenConnecteds();
+            this.raiseDisconnectedEvent();
+            this.logger.logDebug("disconnected"); 
+        } 
+        catch (e) { 
+            this.logger.logError("disconnectedCallback failed", e);
+        }
     }
 
     private _inAttributeChangedCallback: boolean = false;
@@ -272,6 +305,9 @@ export abstract class ComponentBase<TViewModel> extends HTMLElement {
         this._inAttributeChangedCallback = true;
         try
         {
+            if (name == ATTR_IGNOREPARENT) {
+                this.ignoreParent = (newValue == "true");
+            }
         }
         finally{
             this._inAttributeChangedCallback = false;
@@ -302,7 +338,7 @@ export abstract class ComponentBase<TViewModel> extends HTMLElement {
         const parentComponent = this.parentComponent;
         let vm: any = this._explicitViewModel;
 
-        if (vm == ComponentBase.INHERITED_VIEW_MODEL) {
+        if (vm == ComponentBase.INHERITED_VIEW_MODEL && !this.ignoreParent) {
             if (parentComponent) {
                 vm = parentComponent.viewModel;    
             }
@@ -383,11 +419,19 @@ export abstract class ComponentBase<TViewModel> extends HTMLElement {
         const result = this.whenConnectedWithViewModel((vm) => {
             const lastReturnedDisposable = new DisposableOwnerField();
 
-            const oexpr = new ObservableExpression(
+            const oexpr = new DelayedObservableExpression(
+                `${this.constructor.name}-watchExpr`,
                 () => expr(vm), 
                 v => {
-                    const vcResult = valueChanged(v);
-                    lastReturnedDisposable.value = vcResult ?? null;
+                    let shouldUpdate = true;
+                    if (v instanceof Array && lastReturnedDisposable instanceof Array) {
+                        shouldUpdate = !ArrayUtils.areEquivalent(v, lastReturnedDisposable);
+                    }
+
+                    if (shouldUpdate) {
+                        const vcResult = valueChanged(v);
+                        lastReturnedDisposable.value = vcResult ?? null;
+                    }
                 });
             
             return asNamedDisposable(`${this.constructor.name}_watchExprRegistration`, () => {
@@ -425,8 +469,13 @@ export abstract class ComponentBase<TViewModel> extends HTMLElement {
             invoke: (isConnected: boolean) => {
                 lastResult.value = null;
                 if (isConnected) {
-                    const tresult = createFunc();
-                    lastResult.value = tresult ?? null;
+                    try {
+                        const tresult = createFunc();
+                        lastResult.value = tresult ?? null;
+                    }
+                    catch {
+                        lastResult.value = null;
+                    }
                 }
             }, 
             lastResult: lastResult };
@@ -789,9 +838,13 @@ export function componentArea(area: string) {
     }
 }
 
-export function componentElement(elementName: string) {
+export function componentElement(elementName: string, extendsTagName?: string) {
     return function (target: any) {
         //alert(`componentElement elementName=${elementName} target=${target.name}`);
-        window.customElements.define(elementName, target);
+        const opts: ElementDefinitionOptions = {};
+        if (extendsTagName) {
+            opts["extends"] = extendsTagName;
+        }
+        window.customElements.define(elementName, target, opts);
     }
 }

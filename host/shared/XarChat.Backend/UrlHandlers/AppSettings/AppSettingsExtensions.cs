@@ -69,16 +69,16 @@ namespace XarChat.Backend.UrlHandlers.AppSettings
         public class SavedLogin
         {
             [JsonPropertyName("account")]
-            public string Account { get; set; }
+            public required string Account { get; set; }
 
             [JsonPropertyName("characterName")]
-            public string CharacterName { get; set; }
+            public required string CharacterName { get; set; }
         }
 
         public class SavedWindowLocation
         {
             [JsonPropertyName("desktopMetrics")]
-            public string DesktopMetrics { get; set; }
+            public required string DesktopMetrics { get; set; }
 
             [JsonPropertyName("windowX")]
             public int WindowX { get; set; }
@@ -96,22 +96,22 @@ namespace XarChat.Backend.UrlHandlers.AppSettings
         public class SavedAccountCredentials
         {
             [JsonPropertyName("account")]
-            public string Account { get; set; }
+            public required string Account { get; set; }
 
             [JsonPropertyName("password")]
-            public ProtectedString Password { get; set; }
+            public required ProtectedString Password { get; set; }
         }
 
         public class SavedChatState
         {
             [JsonPropertyName("characterName")]
-            public string CharacterName { get; set; }
+            public required string CharacterName { get; set; }
 
             [JsonPropertyName("lastLogin")]
             public long? LastLogin { get; set; }
 
             [JsonPropertyName("pingWords")]
-            public List<string> PingWords { get; set; }
+            public List<string> PingWords { get; set; } = [];
 
             [JsonPropertyName("joinedChannels")]
             public List<SavedJoinedChannel> JoinedChannels { get; set; } = new List<SavedJoinedChannel>();
@@ -141,10 +141,10 @@ namespace XarChat.Backend.UrlHandlers.AppSettings
         public class SavedJoinedChannel
         {
             [JsonPropertyName("name")]
-            public string Name { get; set; }
+            public required string Name { get; set; }
 
             [JsonPropertyName("title")]
-            public string Title { get; set; }
+            public required string Title { get; set; }
 
             [JsonPropertyName("order")]
             public int Order { get; set; } = 0;
@@ -153,7 +153,7 @@ namespace XarChat.Backend.UrlHandlers.AppSettings
         public class SavedPMConvo
         {
             [JsonPropertyName("character")]
-            public string Character { get; set; }
+            public required string Character { get; set; }
 
             [JsonPropertyName("lastInteraction")]
             public long LastInteractionAt { get; set; }

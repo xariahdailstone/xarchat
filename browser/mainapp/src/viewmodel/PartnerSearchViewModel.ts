@@ -4,9 +4,10 @@ import { CharacterStatus } from "../shared/CharacterSet";
 import { OnlineStatus } from "../shared/OnlineStatus";
 import { CancellationToken } from "../util/CancellationTokenSource";
 import { CatchUtils } from "../util/CatchUtils";
-import { HostInterop } from "../util/HostInterop";
+import { HostInterop } from "../util/hostinterop/HostInterop";
 import { ObservableBase, observableProperty } from "../util/ObservableBase";
 import { Collection } from "../util/ObservableCollection";
+import { Scheduler } from "../util/Scheduler";
 import { ActiveLoginViewModel } from "./ActiveLoginViewModel";
 import { AppViewModel } from "./AppViewModel";
 
@@ -119,9 +120,9 @@ export class PartnerSearchViewModel extends ObservableBase {
             }
             finally {
                 this.currentState = PartnerSearchState.Idle;
-                window.setTimeout(() => {
+                Scheduler.scheduleNamedCallback("PartnerSearchViewModel.executeSearch", 5000, () => {
                     this.canSearch = true;
-                }, 5000);
+                });
             }
         }
     }

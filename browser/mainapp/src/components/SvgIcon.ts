@@ -1,4 +1,5 @@
 import { SnapshottableSet } from "../util/collections/SnapshottableSet";
+import { DelayedCallManager, DelayedCallScheduler, DelayedCallStyle } from "../util/DelayedCallManager";
 import { HTMLUtils } from "../util/HTMLUtils";
 import { Logger, Logging } from "../util/Logger";
 import { ObjectUniqueId } from "../util/ObjectUniqueId";
@@ -134,47 +135,52 @@ class SvgIcon extends HTMLElement {
     private _fgColor: string | null = null;
     private _bgColor: string | null = null;
 
+    private _recheckStyleDCM = new DelayedCallManager(
+        DelayedCallStyle.RUN_LAST, DelayedCallScheduler.REQUEST_ANIMATION_FRAME);
+
     private recheckStyle() {
-        const computedStyle = window.getComputedStyle(this);
+        this._recheckStyleDCM.scheduleDelayedCall(() => {
+            const computedStyle = window.getComputedStyle(this);
 
-        let svgDoc: HTMLElement | null;
-        try {
-            svgDoc = this.elIcon?.getSVGDocument()?.documentElement ?? null;
-        }
-        catch (e) {
-            svgDoc = null;
-        }
+            let svgDoc: HTMLElement | null;
+            try {
+                svgDoc = this.elIcon?.getSVGDocument()?.documentElement ?? null;
+            }
+            catch (e) {
+                svgDoc = null;
+            }
 
-        if (svgDoc) {
-            const computedFgColor = computedStyle.color;
-            const computedBgColor = computedStyle.backgroundColor;
+            if (svgDoc) {
+                const computedFgColor = computedStyle.color;
+                const computedBgColor = computedStyle.backgroundColor;
 
-            if (computedFgColor != this._fgColor) {
-                this._fgColor = computedFgColor;
-                svgDoc.style.setProperty("--fgcolor", computedFgColor);
+                if (computedFgColor != this._fgColor) {
+                    this._fgColor = computedFgColor;
+                    svgDoc.style.setProperty("--fgcolor", computedFgColor);
+                }
+                if (computedBgColor != this._bgColor) {
+                    this._bgColor = computedBgColor;
+                    svgDoc.style.setProperty("--bgcolor", computedBgColor);
+                }
             }
-            if (computedBgColor != this._bgColor) {
-                this._bgColor = computedBgColor;
-                svgDoc.style.setProperty("--bgcolor", computedBgColor);
-            }
-        }
 
-        const elIcon = this.elIcon;
-        if (elIcon) {
-            if (computedStyle.maxWidth == "" || computedStyle.maxWidth == "none") {
-                elIcon.style.maxWidth = "var(--svgicon-max-width)";
-                elIcon.style.maxHeight = "var(--svgicon-max-height)";
+            const elIcon = this.elIcon;
+            if (elIcon) {
+                if (computedStyle.maxWidth == "" || computedStyle.maxWidth == "none") {
+                    elIcon.style.maxWidth = "var(--svgicon-max-width)";
+                    elIcon.style.maxHeight = "var(--svgicon-max-height)";
+                }
+                else {
+                    elIcon.style.maxWidth = computedStyle.maxWidth;
+                    elIcon.style.maxHeight = computedStyle.maxHeight;
+                }
             }
-            else {
-                elIcon.style.maxWidth = computedStyle.maxWidth;
-                elIcon.style.maxHeight = computedStyle.maxHeight;
+            
+            if (svgDoc) {
+                this.logger.logDebug("svgicon styled", this.src);
+                this.elMain.classList.add("styled");
             }
-        }
-        
-        if (svgDoc) {
-            this.logger.logDebug("svgicon styled", this.src);
-            this.elMain.classList.add("styled");
-        }
+        });
     }
 }
 

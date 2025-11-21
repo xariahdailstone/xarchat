@@ -1,0 +1,15 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\photino.NET\Photino.NET\Photino.NET.csproj" />
+    <ProjectReference Include="..\XarChat.AutoUpdate\XarChat.AutoUpdate.csproj" />
+    <ProjectReference Include="..\XarChat.Backend\XarChat.Backend.csproj" />
+  </ItemGroup>
+
+</Project>

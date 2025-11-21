@@ -1,6 +1,42 @@
 import { Logger, Logging } from "./Logger";
 import { ObjectUniqueId } from "./ObjectUniqueId";
 
+export class FocusUtil {
+
+    private static _instance: FocusUtil | null = null;
+    static get instance() {
+        if (this._instance == null) {
+            this._instance = new FocusUtil();
+        }
+        return this._instance;
+    }
+
+    get ultimateFocus(): Element | null {
+        let curEl: DocumentOrShadowRoot = document;
+        while (curEl) {
+            if (curEl.activeElement) {
+                //console.log("activeel", curEl, curEl.activeElement);
+                const activeElement = curEl.activeElement;
+                if ((activeElement as any)._sroot) {
+                    curEl = (activeElement as any)._sroot as DocumentOrShadowRoot;
+                }
+                else {
+                    const res = activeElement;
+                    //console.log("ultimateFocus", res);
+                    return res;
+                }
+            }
+            else {
+                //console.log("ultimateFocus null");
+                return null;
+            }
+        }
+        //console.log("ultimateFocus null");
+        return null;
+    }
+}
+(window as any)["__focusutil"] = FocusUtil.instance;
+
 export class FocusMagnet {
 
     private static _instance: FocusMagnet | null = null;
@@ -14,17 +50,11 @@ export class FocusMagnet {
     constructor() {
         this.logger = Logging.createLogger(`FocusMagnet#${ObjectUniqueId.get(this)}`);
 
-        document.addEventListener("focus", (e) => { 
-            //this.logger.logDebug("focusmanager document.focus", e.target);
-            this.ultimateFocus = this.drillDown(e.target as Element);
-        }, { capture: true });
-        document.addEventListener("blur", (e) => {
-            //this.logger.logDebug("focusmanager document.blur", e.target);
-            this.ultimateFocus = null;
-        }, { capture: true });
-
-        // document.addEventListener("selectionchange", (e) => {
-        //     this.logger.logDebug("focusmanager document.selectionchange", e.target);
+        // document.addEventListener("focus", (e) => { 
+        //     this.ultimateFocus = this.drillDown(e.target as Element);
+        // }, { capture: true });
+        // document.addEventListener("blur", (e) => {
+        //     this.ultimateFocus = null;
         // }, { capture: true });
     }
 
@@ -37,7 +67,7 @@ export class FocusMagnet {
     set ultimateFocus(value: Element | null) {
         if (value != this._ultimateFocus) {
             this._ultimateFocus = value;
-            this.logger.logDebug("focusmanager ultimate element", value);
+            this.logger.logInfo("focusmanager ultimate element", value);
         }
     }
 

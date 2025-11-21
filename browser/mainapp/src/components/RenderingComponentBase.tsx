@@ -2,7 +2,7 @@ import { ComponentBase, componentElement } from "./ComponentBase.js";
 import { Fragment, init, jsx, VNode, styleModule, toVNode, propsModule, eventListenersModule } from "../snabbdom/index.js";
 import { DependencySet, Observable, isObservable } from "../util/Observable.js";
 import { ObservableBase } from "../util/ObservableBase.js";
-import { DisposableOwnerField, IDisposable, asDisposable } from "../util/Disposable.js";
+import { ConvertibleToDisposable, DisposableOwnerField, IDisposable, asDisposable } from "../util/Disposable.js";
 import { CharacterName } from "../shared/CharacterName.js";
 import { ActiveLoginViewModel } from "../viewmodel/ActiveLoginViewModel.js";
 import { CharacterSet, CharacterStatus } from "../shared/CharacterSet.js";
@@ -14,9 +14,14 @@ import { idModule } from "../util/snabbdom/id.js";
 import { CharacterGender } from "../shared/CharacterGender.js";
 import { HTMLUtils } from "../util/HTMLUtils.js";
 import { valueSyncModule } from "../util/snabbdom/valueSyncHook.js";
+import { Scheduler } from "../util/Scheduler.js";
+
+export interface RenderArguments {
+    addDisposable(disp: ConvertibleToDisposable): void;
+}
 
 export interface MakeRenderingComponentOptions {
-    render: () => (VNode | [VNode, IDisposable]);
+    render: (renderArgs: RenderArguments) => (VNode | [VNode, IDisposable]);
     afterRender?: () => (void | IDisposable | IDisposable[] | Iterable<IDisposable>);
 }
 export interface RenderingComponentFunctions {
@@ -40,7 +45,7 @@ export function makeRenderingComponent<TViewModel>(
 
     let refreshing: number = 0;
     let refreshDisposable: IDisposable | null = null;
-    let statehasChangedRegistration: number | null = null;
+    let statehasChangedRegistration: IDisposable | null = null;
 
     let currentDependencies = new DisposableOwnerField();
     
@@ -48,7 +53,7 @@ export function makeRenderingComponent<TViewModel>(
 
     const stateHasChanged = (obs?: any, propName?: string) => {
         if (statehasChangedRegistration == null) {
-            statehasChangedRegistration = window.requestAnimationFrame(() => {
+            statehasChangedRegistration = Scheduler.scheduleNamedCallback("makeRenderingComponent.stateHasChanged", ["frame", "idle", 250], () => {
                 statehasChangedRegistration = null;
                 refreshDOM();
             });
@@ -57,7 +62,7 @@ export function makeRenderingComponent<TViewModel>(
     let curDepSet: DependencySet | null = null;
     const refreshDOM = () => {
         if (statehasChangedRegistration != null) {
-            window.cancelAnimationFrame(statehasChangedRegistration);
+            statehasChangedRegistration.dispose();
             statehasChangedRegistration = null;
         }
         if (!isConnected) { return; }
@@ -66,7 +71,7 @@ export function makeRenderingComponent<TViewModel>(
         const myDepSet = Observable.createDependencySet();
         curDepSet = myDepSet;
         myDepSet.addChangeListener((obs, propName) => { 
-            //console.log("RenderingComponentBase myDepSet.addChangeListener", component.constructor.name, obs, propName);
+            //this.logger.logDebug("RenderingComponentBase myDepSet.addChangeListener", component.constructor.name, obs, propName);
             if (curDepSet == myDepSet) { 
                 logger.logDebug("RenderingComponentBase myDepSet.addChangeListener match", component.constructor.name, obs, propName);
                 stateHasChanged(obs, propName); 
@@ -93,22 +98,33 @@ export function makeRenderingComponent<TViewModel>(
             }
         });
         try {
+            logger.logDebug("render() start");
+            const renderStart = performance.now();
+
             let renderResult: (VNode | [VNode, IDisposable]);
+            const rdisposables: ConvertibleToDisposable[] = [];
             try {
-                renderResult = options.render();
+                renderResult = options.render({
+                    addDisposable(disp: ConvertibleToDisposable) {
+                        rdisposables.push(disp);
+                    }
+                });
+                const renderEnd = performance.now();
+                logger.logDebug(`render() complete, took ${renderEnd - renderStart}ms, ${myDepSet.count} deps`)
             }
             catch (e) {
-                logger.logError("Failed to render", component.constructor.name, e);
+                const renderEnd = performance.now();
+                logger.logError(`render() failed, took ${renderEnd - renderStart}ms, ${myDepSet.count} deps`, e);
                 throw e;
             }
             let newVNode: VNode;
             if (renderResult instanceof Array) {
                 newVNode = renderResult[0];
-                refreshDisposable = renderResult[1];
+                refreshDisposable = asDisposable(renderResult[1], ...rdisposables);
             }
             else {
                 newVNode = renderResult;
-                refreshDisposable = null;
+                refreshDisposable = asDisposable(...rdisposables);
             }
             currentVNode = patch(currentVNode, newVNode);
             
@@ -126,6 +142,9 @@ export function makeRenderingComponent<TViewModel>(
                 }
             }
         }
+        catch (e) {
+            logger.logError("rendering component failure", e);
+        }
         finally
         {
             rmDisposable.dispose();
@@ -139,7 +158,8 @@ export function makeRenderingComponent<TViewModel>(
     });
     component.addEventListener("connected", () => {
         isConnected = true;
-        refreshDOM();
+        //refreshDOM();
+        stateHasChanged();
     });
     component.addEventListener("disconnected", () => {
         isConnected = false;
@@ -162,14 +182,14 @@ export abstract class RenderingComponentBase<TViewModel> extends ComponentBase<T
         super();
         this._rcFuncs = makeRenderingComponent(
             this, {
-                render: () => this.render(),
+                render: (args) => this.render(args),
                 afterRender: () => this.afterRender()
             });
     }
 
     private readonly _rcFuncs: RenderingComponentFunctions;
 
-    protected abstract render(): (VNode | [VNode, IDisposable]);
+    protected abstract render(args: RenderArguments): (VNode | [VNode, IDisposable]);
 
     protected afterRender(): (void | IDisposable | IDisposable[] | Iterable<IDisposable>) { }
 
