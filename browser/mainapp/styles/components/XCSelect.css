@@ -1,0 +1,65 @@
+
+:host { position: relative; }
+
+:root {
+    background-color: red;
+    --xcoptiondisplay: block;
+}
+
+.container {
+    display: grid;
+    grid-template-rows: auto;
+    grid-template-columns: 1fr auto;
+    grid-template-areas: "title icon";
+}
+
+
+.title {
+    grid-area: title;
+    
+    ::slotted(x-xcoption) {
+        display: block;
+        visibility: visible;
+    }
+}
+.title-invis {
+    grid-area: title;
+    display: grid;
+    ::slotted(x-xcoption) {
+        max-height: 0px;
+        display: block;
+        visibility: hidden;
+    }
+
+    & > * {
+        grid-row: 1;
+        grid-column: 1;
+    }
+}
+.icon {
+    grid-area: icon;
+    margin-left: 10px;
+    align-self: center;
+    vertical-align: middle;
+
+    pointer-events: none;
+
+    & > #elIconInner {
+        pointer-events: none;
+        --icon-size: 0.6em;
+        max-width: var(--icon-size);
+        max-height: var(--icon-size);
+        --svgicon-max-width: var(--icon-size);
+        --svgicon-max-height: var(--icon-size);
+    }
+}
+
+.focus-btn {
+    position: absolute;
+    top: 0px;
+    left: 0px;
+    width: 0px;
+    height: 0px;
+    opacity: 0;
+}
+
