@@ -34,6 +34,13 @@ export class LoginDialog extends DialogComponentBase<LoginViewModel> {
                         <input type="checkbox" id="elRememberUsername" />
                         <div>Remember Account Name</div>
                     </label>
+                    <!--
+                    <x-xcselect>
+                        <x-xcoption selected="selected">Option 1</x-xcoption>
+                        <x-xcoption>Option 2 longer value</x-xcoption>
+                        <x-xcoption selected="selected">Option 3</x-xcoption>
+                    </x-xcselect>
+                    -->
                 </div>
                 <div class="rememberpassword">
                     <label>

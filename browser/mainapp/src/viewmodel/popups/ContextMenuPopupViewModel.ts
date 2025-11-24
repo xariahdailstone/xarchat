@@ -1,5 +1,8 @@
+import { IDisposable } from "../../util/Disposable";
+import { ObservableValue } from "../../util/Observable";
 import { ObservableBase, observableProperty } from "../../util/ObservableBase";
-import { StdObservableList } from "../../util/collections/StdObservableView";
+import { Collection } from "../../util/ObservableCollection";
+import { StdObservableCollectionChangeType } from "../../util/collections/ReadOnlyStdObservableCollection";
 import { AppViewModel } from "../AppViewModel";
 import { ContextPopupViewModel, PopupViewModel } from "./PopupViewModel";
 
@@ -8,11 +11,34 @@ export class ContextMenuPopupViewModel<TSelectedValue> extends ContextPopupViewM
     constructor(parent: AppViewModel, contextRect: DOMRect);
     constructor(parent: AppViewModel, contextAnchor: HTMLElement | DOMRect) {
         super(parent, contextAnchor);
-        this.items = new StdObservableList<ContextMenuPopupItemViewModel<TSelectedValue>>();
+        this.items = new Collection<ContextMenuPopupItemViewModel<TSelectedValue>>();
+
+        this._itemsObserver = this.items.addCollectionObserver(entries => {
+            this.logger.logInfo("items collection observation", entries);
+            for (let entry of entries) {
+                switch (entry.changeType) {
+                    case StdObservableCollectionChangeType.ITEM_ADDED:
+                        this.logger.logInfo("menu item owner set", entry.item);
+                        entry.item.owner = this;
+                        break;
+                    case StdObservableCollectionChangeType.ITEM_REMOVED:
+                        this.logger.logInfo("menu item owner clear", entry.item);
+                        entry.item.owner = null;
+                        break;
+                }
+            }
+        })
     }
 
+    private _itemsObserver: IDisposable;
+
     @observableProperty
-    items: StdObservableList<ContextMenuPopupItemViewModel<TSelectedValue>>;
+    items: Collection<ContextMenuPopupItemViewModel<TSelectedValue>>;
+
+    private readonly _highlightedItem: ObservableValue<ContextMenuPopupItemViewModel<TSelectedValue> | null> = new ObservableValue(null);
+
+    get highlightedItem(): ContextMenuPopupItemViewModel<TSelectedValue> | null { return this._highlightedItem.value; }
+    set highlightedItem(value: ContextMenuPopupItemViewModel<TSelectedValue> | null) { this._highlightedItem.value = value; }
 
     onValueSelected: (((value: TSelectedValue) => void) | null) = null;
 
@@ -38,6 +64,19 @@ export class ContextMenuPopupItemViewModel<TSelectedValue> extends ObservableBas
         this.title = title;
         this.value = value;
         this.enabled = enabled;
+    }
+
+    private readonly _owner: ObservableValue<ContextMenuPopupViewModel<TSelectedValue> | null> = new ObservableValue(null);
+    get owner(): ContextMenuPopupViewModel<TSelectedValue> | null { return this._owner.value; }
+    set owner(value: ContextMenuPopupViewModel<TSelectedValue> | null) { this._owner.value = value; }
+
+    get isHighlightedItem() {
+        if (this.owner != null) {
+            return this.owner.highlightedItem == this;
+        }
+        else {
+            return false;
+        }
     }
 
     @observableProperty

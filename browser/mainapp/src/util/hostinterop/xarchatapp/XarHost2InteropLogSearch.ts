@@ -1,50 +1,14 @@
 import { CharacterName } from "../../../shared/CharacterName";
 import { CancellationToken } from "../../CancellationTokenSource";
-import { PromiseSource } from "../../PromiseSource";
 import { HostInteropLogSearch, LogSearchKind, DateAnchor, LogSearchResult, RecentConversationResult } from "../HostInteropLogSearch";
+import { XarHost2InteropSession } from "./XarHost2InteropSession";
 
-
-export class XarHost2InteropLogSearch implements HostInteropLogSearch {
-    constructor(
-        private readonly writeMessage: (message: string) => void) {
+export class XarHost2InteropLogSearch extends XarHost2InteropSession implements HostInteropLogSearch {
+    constructor() {
+        super();
     }
 
-    receiveMessage(cmd: string, data: object) {
-        const msgid = +(data as any)["msgid"];
-        const rh = this._msgResponseHandlers.get(msgid);
-        if (rh) {
-            rh(cmd, data);
-            if (cmd == "endresponse") {
-                this._msgResponseHandlers.delete(msgid);
-            }
-        }
-    }
-
-    private _nextId: number = 1;
-    private _msgResponseHandlers: Map<number, (cmd: string, data: object) => void> = new Map();
-    private sendAndReceiveAsync(cmd: string, data: object, cancellationToken: CancellationToken, onReply: (cmd: string, data: any) => void) {
-        const ps = new PromiseSource<void>();
-
-        const myId = this._nextId++;
-        (data as any)["msgid"] = myId;
-        this.writeMessage(`${cmd} ${JSON.stringify(data)}`);
-
-        const ctreg = cancellationToken.register(() => {
-            this.writeMessage(`cancel ${JSON.stringify({ msgid: myId })}`);
-        });
-
-        this._msgResponseHandlers.set(myId, (cmd: string, data: object) => {
-            if (cmd == "endresponse") {
-                ctreg.dispose();
-                ps.resolve();
-            }
-            else {
-                onReply(cmd, data);
-            }
-        });
-
-        return ps.promise;
-    }
+    prefix = "logsearch.";
 
     async getHintsFromTermAsync(logsFor: CharacterName, kind: LogSearchKind, term: string, cancellationToken: CancellationToken): Promise<string[]> {
         let result: string[] = [];

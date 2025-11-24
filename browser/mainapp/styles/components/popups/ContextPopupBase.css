@@ -12,3 +12,9 @@
 
     box-sizing: border-box;
 }
+
+@supports not (backdrop-filter: blur(8px)) {
+    :host {
+        background-color: var(--bg-level-3);
+    }
+}

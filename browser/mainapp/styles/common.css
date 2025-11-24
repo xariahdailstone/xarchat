@@ -266,3 +266,18 @@ select.themed.invalid-value {
 x-eicondisplay { display: inline-block; -webkit-user-select: all; user-select: all;; line-height: 0px; font-size: 0px; }
 x-eicondisplay img { width: inherit; height: inherit; }
 x-eicondisplay img.blocked { filter: blur(10px); }
+
+
+x-xcselect {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 3px;
+    background-color: var(--bg-main-textbox-btn);
+    color: var(--fg-main-textbox-btn);
+    outline: none;
+    margin: 2px;
+
+    &:focus {
+        outline: 1px solid var(--highlight-main-textbox);
+    }
+}

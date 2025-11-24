@@ -316,6 +316,9 @@ export class ChatViewModelSink implements ChatConnectionSink {
             case ChatDisconnectReason.KICKED_FROM_SERVER:
                 this.viewModel.connectionState = ChatConnectionState.DISCONNECTED_KICKED;
                 break;
+            case ChatDisconnectReason.LOGGED_IN_ELSEWHERE:
+                this.viewModel.connectionState = ChatConnectionState.DISCONNECTED_LOGGED_IN_ELSEWHERE;
+                break;
         }
         
     }

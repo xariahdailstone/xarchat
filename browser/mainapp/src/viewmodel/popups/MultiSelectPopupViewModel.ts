@@ -1,4 +1,3 @@
-import { StdObservableList } from "../../util/collections/StdObservableView";
 import { ObservableBase, observableProperty } from "../../util/ObservableBase";
 import { Collection, ObservableCollection } from "../../util/ObservableCollection";
 import { AppViewModel } from "../AppViewModel";

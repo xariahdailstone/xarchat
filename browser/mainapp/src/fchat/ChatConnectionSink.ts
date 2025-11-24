@@ -77,7 +77,8 @@ export interface ChatConnectionSink {
 export enum ChatDisconnectReason {
     UNEXPECTED_DISCONNECT,
     REQUESTED_DISCONNECT,
-    KICKED_FROM_SERVER
+    KICKED_FROM_SERVER,
+    LOGGED_IN_ELSEWHERE
 }
 
 export interface MaybeHistorical {

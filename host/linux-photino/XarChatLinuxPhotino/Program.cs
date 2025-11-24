@@ -109,7 +109,7 @@ namespace XarChatLinuxPhotino
                 .SetMinSize(600, 400)
                 .SetMaxSize(99999, 99999)
                 #if LINUX
-                .SetBrowserControlInitParameters("{\"enable-developer-extras\":true}")
+                .SetBrowserControlInitParameters("{\"set_enable_developer_extras\":true,\"set_disable_web_security\":true}")
                 #endif
                 #if MAC
                 .SetBrowserControlInitParameters("{\"developerExtrasEnabled\":true}")

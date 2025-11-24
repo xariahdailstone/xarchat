@@ -12,5 +12,11 @@
     backdrop-filter: blur(8px);
 }
 
+@supports not (backdrop-filter: blur(8px)) {
+    :host {
+        background-color: var(--bg-level-3);
+    }
+}
+
 #elMain {
 }

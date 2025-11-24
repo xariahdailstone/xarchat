@@ -4,7 +4,7 @@ import { HTMLUtils } from "../util/HTMLUtils";
 import { Logger, Logging } from "../util/Logger";
 import { ObjectUniqueId } from "../util/ObjectUniqueId";
 
-class SvgIcon extends HTMLElement {
+export class SvgIcon extends HTMLElement {
 
     static get observedAttributes() { return [ 'src' ] };
 

@@ -11,6 +11,7 @@ import { PartnerSearchState, PartnerSearchViewModel } from "../viewmodel/Partner
 import { componentElement } from "./ComponentBase";
 import { RenderingStageViewComponent, stageViewFor } from "./Stage";
 import { StatusDotVNodeBuilder } from "./StatusDot";
+import { XCSelectElement } from "./XCSelect";
 
 @componentElement("x-partnersearch")
 @stageViewFor(PartnerSearchViewModel)
@@ -172,7 +173,7 @@ export class PartnerSearch extends RenderingStageViewComponent<PartnerSearchView
 
         const optionNodes: VNode[] = [];
         if (index == -1) {
-            optionNodes.push(<option attr-value="-1">Select a Kink</option>);
+            optionNodes.push(<x-xcoption key={"-1"} attrs={{ value: "-1", selected: "" }}>Select a Kink</x-xcoption>);
         }
         if (vm.partnerSearchFields) {
             for (let k of vm.partnerSearchFields?.kinks) {
@@ -183,7 +184,7 @@ export class PartnerSearch extends RenderingStageViewComponent<PartnerSearchView
                     if (thisItem?.fetish_id == k.fetish_id) {
                         attrs["selected"] = true;
                     }
-                    optionNodes.push(<option attrs={attrs}>{k.name}</option>);
+                    optionNodes.push(<x-xcoption key={k.fetish_id} attrs={attrs}>{k.name}</x-xcoption>);
                 }
             }
         }
@@ -199,9 +200,9 @@ export class PartnerSearch extends RenderingStageViewComponent<PartnerSearchView
 
         const selectionChanged = (ev: Event) => {
             if (vm.partnerSearchFields) {
-                const elSelect = ev.target as HTMLSelectElement;
+                const elSelect = ev.target as XCSelectElement;
                 if (index == -1) {
-                    if (elSelect.value != "-1") {
+                    if (elSelect.value != "-1" && elSelect.value != "") {
                         const k = vm.partnerSearchFields.kinks.filter(k => k.fetish_id == elSelect.value);
                         if (k && k.length == 1) {
                             vm.searchKinks.add(k[0]);
@@ -218,9 +219,9 @@ export class PartnerSearch extends RenderingStageViewComponent<PartnerSearchView
         };
 
         return <div classList={[ "parameters-kinks-set-item" ]}>
-            <select classList={[ "parameters-kinks-set-item-select" ]} props={{ "value": thisItem?.fetish_id ?? "" }} on={{
+            <x-xcselect classList={[ "parameters-kinks-set-item-select" ]} props={{ "value": thisItem?.fetish_id ?? "-1" }} on={{
                 "change": selectionChanged
-            }}>{ optionNodes }</select>
+            }}>{ optionNodes }</x-xcselect>
             { removeNode }
         </div>;
     }

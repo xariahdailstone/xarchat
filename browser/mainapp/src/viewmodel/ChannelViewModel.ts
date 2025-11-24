@@ -11,7 +11,6 @@ import { CatchUtils } from "../util/CatchUtils.js";
 import { KeyValuePair } from "../util/collections/KeyValuePair.js";
 import { ReadOnlyStdObservableCollection, StdObservableCollectionChangeType } from "../util/collections/ReadOnlyStdObservableCollection.js";
 import { StdObservableConcatCollectionView } from "../util/collections/StdObservableConcatCollectionView.js";
-import { StdObservableList } from "../util/collections/StdObservableView.js";
 import { asDisposable, tryDispose as maybeDispose, IDisposable, isDisposable } from "../util/Disposable.js";
 import { HeldCacheManager } from "../util/HeldCacheManager.js";
 import { LoggedMessage, LogMessageType } from "../util/hostinterop/HostInterop.js";

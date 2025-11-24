@@ -220,7 +220,7 @@ export class ConfigureAutoAdsDialog extends DialogComponentBase<ConfigureAutoAds
 
             resultNodes.push(<div key={`chanitem${i++}`} classList={[ "chanitem" ]}>
                 {notInChanAlertNode}
-                <select classList={[ "chanitem-title" ]} props={{ "value": ch.canonicalValue }} on={{
+                <x-xcselect classList={[ "chanitem-title" ]} props={{ "value": ch.canonicalValue }} on={{
                     "change": (e) => {
                         const sv = (e.target as HTMLSelectElement).value
                         const idx = item.targetChannels.indexOf(ch);
@@ -229,14 +229,14 @@ export class ConfigureAutoAdsDialog extends DialogComponentBase<ConfigureAutoAds
                     }
                 }}>
                     {
-                        (chan == null) ? <option attr-value={ch.canonicalValue} attrs={{ "selected": true }}>{ch.value}</option> : null
+                        (chan == null) ? <x-xcoption key={ch.canonicalValue} attr-value={ch.canonicalValue} attrs={{ "selected": true }}>{ch.value}</x-xcoption> : null
                     }
                     {
                         inChanOptionNodes
                             .filter(c => c.name == ch || !item.targetChannels.contains(c.name))
-                            .map(c => <option attr-value={c.name.canonicalValue} attrs={{ "selected": c.name == ch }}>{c.title}</option>)
+                            .map(c => <x-xcoption key={c.name.canonicalValue} attr-value={c.name.canonicalValue} attrs={{ "selected": c.name == ch }}>{c.title}</x-xcoption>)
                     }
-                </select>
+                </x-xcselect>
                 <div classList={[ "chanitem-close" ]} on={{
                     "click": () => {
                         item.targetChannels.remove(ch);
@@ -246,19 +246,19 @@ export class ConfigureAutoAdsDialog extends DialogComponentBase<ConfigureAutoAds
         }
 
         resultNodes.push(<div key={`newchanitem${i++}`} classList={[ "chanitem", "chanitem-new" ]}>
-            <select classList={[ "chanitem-title" ]} props={{ "value": "" }} on={{
+            <x-xcselect classList={[ "chanitem-title" ]} props={{ "value": "" }} on={{
                 "change": (e) => {
                     const sv = (e.target as HTMLSelectElement).value;
                     item.targetChannels.add(ChannelName.create(sv));
                 }
             }}>
-                    <option attrs={{ "value": "", "selected": true }}>Select Channel</option>
+                    <x-xcoption key=" empty" attrs={{ "value": "", "selected": true }}>Select Channel</x-xcoption>
                     {
                         inChanOptionNodes
                             .filter(c => !item.targetChannels.contains(c.name))
-                            .map(c => <option attr-value={c.name.canonicalValue}>{c.title}</option>)
+                            .map(c => <x-xcoption key={c.name.canonicalValue} attr-value={c.name.canonicalValue}>{c.title}</x-xcoption>)
                     }
-                </select>
+                </x-xcselect>
         </div>);
 
         return resultNodes;

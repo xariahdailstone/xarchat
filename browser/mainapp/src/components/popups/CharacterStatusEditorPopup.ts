@@ -8,6 +8,7 @@ import { CharacterStatusEditDialogViewModel } from "../../viewmodel/dialogs/Char
 import { CharacterStatusEditorPopupViewModel } from "../../viewmodel/popups/CharacterStatusEditorPopupViewModel";
 import { componentArea, componentElement } from "../ComponentBase";
 import { StatusDotLightweight } from "../StatusDot";
+import { XCSelectElement } from "../XCSelect";
 import { ContextPopupBase } from "./ContextPopupBase";
 import { popupViewFor } from "./PopupFrame";
 
@@ -27,13 +28,13 @@ export class CharacterStatusEditorPopup extends ContextPopupBase<CharacterStatus
             <div class="character-name" id="elCharacterName"></div>
             <div class="online-status-container">
                 <div class="online-status-label">Online Status:</div>
-                <select class="online-status-select" id="elOnlineStatusSelect" data-canhavefocus="true">
-                    <option>Online</option>
-                    <option>Looking</option>
-                    <option>Busy</option>
-                    <option>Away</option>
-                    <option>DND</option>
-                </select>
+                <x-xcselect class="online-status-select" id="elOnlineStatusSelect" data-canhavefocus="true">
+                    <x-xcoption>Online</x-xcoption>
+                    <x-xcoption>Looking</x-xcoption>
+                    <x-xcoption>Busy</x-xcoption>
+                    <x-xcoption>Away</x-xcoption>
+                    <x-xcoption>DND</x-xcoption>
+                </x-xcselect>
             </div>
 
             <div class="current-status-message-container">
@@ -43,7 +44,7 @@ export class CharacterStatusEditorPopup extends ContextPopupBase<CharacterStatus
         `);
 
         const elAvatarImage = this.$("elAvatarImage") as HTMLImageElement;
-        const elOnlineStatusSelect = this.$("elOnlineStatusSelect") as HTMLSelectElement;
+        const elOnlineStatusSelect = this.$("elOnlineStatusSelect") as XCSelectElement;
         const elStatusDotContainer = this.$("elStatusDotContainer") as HTMLDivElement;
         const elCharacterName = this.$("elCharacterName") as HTMLDivElement;
         const elCurrentStatusMessage = this.$("elCurrentStatusMessage") as HTMLDivElement;
