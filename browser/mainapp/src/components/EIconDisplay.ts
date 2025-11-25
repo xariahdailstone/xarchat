@@ -80,7 +80,7 @@ export class EIconDisplay extends HTMLElement {
     constructor() {
         super();
 
-        // this._sroot = this.attachShadow({ mode: 'closed' });
+        // this._sroot = ShadowRootsManager.elementAttachShadow(this, { mode: 'closed' });
         // HTMLUtils.assignStaticHTMLFragment(this._sroot, `
         //     <div id="elMain">
         //     </div>

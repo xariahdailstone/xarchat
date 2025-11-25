@@ -1,7 +1,9 @@
+import { CallbackSet } from "../util/CallbackSet";
 import { IDisposable } from "../util/Disposable";
 import { HTMLUtils } from "../util/HTMLUtils";
 import { KeyCodes } from "../util/KeyCodes";
 import { Scheduler } from "../util/Scheduler";
+import { ShadowRootsManager } from "../util/ShadowRootsManager";
 import { StringUtils } from "../util/StringUtils";
 import { setStylesheetAdoption } from "../util/StyleSheetPolyfill";
 import { AppViewModel } from "../viewmodel/AppViewModel";
@@ -16,7 +18,7 @@ const selectStylesheetTask = StyleLoader.loadAsync("styles/components/XCSelect.c
 export class XCSelectElement extends HTMLElement {
     constructor() {
         super();
-        this._sroot = this.attachShadow({ mode: 'closed', delegatesFocus: true });
+        this._sroot = ShadowRootsManager.elementAttachShadow(this, { mode: 'closed', delegatesFocus: true });
         HTMLUtils.assignStaticHTMLFragment(this._sroot, `
             <div class="container" id="elContainer">
                 <div class="title" id="elTitle"><slot name="selected"></slot></div>
@@ -299,6 +301,14 @@ export class XCSelectElement extends HTMLElement {
         }
     }
 
+    private _connectDisconnectCallbackSet: CallbackSet<() => void> = new CallbackSet(this.constructor.name);
+    addConnectDisconnectHandler(callback: () => void): IDisposable {
+        return this._connectDisconnectCallbackSet.add(callback);
+    }
+    removeConnectDisconnectHandler(callback: () => void): void {
+        this._connectDisconnectCallbackSet.delete(callback);
+    }   
+        
     private connectedCallback() {
         this._mo = new MutationObserver(entries => {
             for (let entry of entries) {
@@ -319,6 +329,8 @@ export class XCSelectElement extends HTMLElement {
         this.options.forEach(option => {
             this.handleAddedOptionChild(option);
         });
+
+        this._connectDisconnectCallbackSet.invoke();
     }
 
     private disconnectedCallback() {
@@ -327,6 +339,8 @@ export class XCSelectElement extends HTMLElement {
             this._mo =null;
         }
         this.toggleDropdown(false, false);
+
+        this._connectDisconnectCallbackSet.invoke();
     }
 
     childSetSelected(option: XCOptionElement) {
