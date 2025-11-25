@@ -1,4 +1,7 @@
+import { CallbackSet } from "../util/CallbackSet";
+import { IDisposable } from "../util/Disposable";
 import { HTMLUtils } from "../util/HTMLUtils";
+import { ShadowRootsManager } from "../util/ShadowRootsManager";
 import { IconImage } from "./IconImage";
 
 let svgLoadPromise: Promise<string> | null = null;
@@ -24,7 +27,7 @@ export class LoadingIcon extends HTMLElement {
     constructor() {
         super();
 
-        const sroot = this.attachShadow({ mode: 'closed' });
+        const sroot = ShadowRootsManager.elementAttachShadow(this, { mode: 'closed' });
         HTMLUtils.assignStaticHTMLFragment(sroot, `
             <style>
                 :host {
@@ -52,6 +55,22 @@ export class LoadingIcon extends HTMLElement {
             const content = await getSvgContentAsync();
             elImgContainer.innerHTML = content;
         })();
+    }
+
+    private _connectDisconnectCallbackSet: CallbackSet<() => void> = new CallbackSet(this.constructor.name);
+    addConnectDisconnectHandler(callback: () => void): IDisposable {
+        return this._connectDisconnectCallbackSet.add(callback);
+    }
+    removeConnectDisconnectHandler(callback: () => void): void {
+        this._connectDisconnectCallbackSet.delete(callback);
+    }    
+
+    protected connectedCallback() {
+        this._connectDisconnectCallbackSet.invoke();
+    }
+
+    protected disconnectedCallback() {
+        this._connectDisconnectCallbackSet.invoke();
     }
 }
 

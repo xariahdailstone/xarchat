@@ -45,6 +45,8 @@ import { BBCodeTagSup } from "./tags/BBCodeTagSup";
 import { BBCodeTagU } from "./tags/BBCodeTagU";
 import { BBCodeTagUrl } from "./tags/BBCodeTagUrl";
 import { BBCodeTagUser } from "./tags/BBCodeTagUser";
+import { ShadowRootsManager } from "../ShadowRootsManager";
+//import { RangeUtils } from "../RangeUtils";
 
 interface SerStackEntry {
     tag?: BBCodeTag;
@@ -521,13 +523,35 @@ export class BBCodeParser {
     static performCopy(e: ClipboardEvent) {
         const root = getRoot(e.target as Node);
         if (!root) return;
-        
-        const sel = (root as Document).getSelection();
-        if (sel?.type != "Range") return;
 
-        const range = sel.getRangeAt(0);
-        const frag = range.cloneContents();
         const copyBuilder: string[] = [];
+
+        let frag: DocumentFragment;
+        if ((root as Document).getSelection) {
+            const sel = (root as Document).getSelection();
+            if (sel?.type != "Range") return;
+            const range = sel.getRangeAt(0);
+            frag = range.cloneContents();
+        }
+        else {
+            const sel = window.getSelection();
+            const sroots = ShadowRootsManager.getRegisteredShadowRoots();
+            let srange: StaticRange;
+            // Try standard format first
+            try {
+                srange = (sel as any).getComposedRanges({ shadowRoots: sroots })[0];
+            }
+            catch {
+                srange = (sel as any).getComposedRanges(...sroots)[0];
+            }
+
+            const range = new Range();
+            range.setStart(srange.startContainer, srange.startOffset);
+            range.setEnd(srange.endContainer, srange.endOffset);
+            
+            frag = range.cloneContents();
+        }
+
         for (let i = 0; i < frag.childNodes.length; i++) {
             this.performCopyInternal(frag.childNodes.item(i), copyBuilder);
         }

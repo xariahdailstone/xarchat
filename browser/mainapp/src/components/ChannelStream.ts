@@ -315,24 +315,6 @@ export class ChannelStream extends ComponentBase<IChannelStreamViewModel> {
         const sel = window.getSelection();
         this.logger.logInfo("window.getSelection()?.type", sel?.type);
         return (sel?.type == "Range");
-        
-
-        // const elMessageContainer = this.$("elMessageContainer") as HTMLDivElement;
-
-        // const root = getRoot(elMessageContainer as Node);
-        // if (!root) return false;
-        
-        // let tel = root as any as HTMLElement;
-        // while (!(tel instanceof Document)) {
-        //     if (tel.parentElement == null) { return false; }
-        //     tel = tel.parentElement;
-        // }
-
-        // //const sel = (root as Document).getSelection();
-        // const sel = (tel as Document).getSelection();
-        // if (sel?.type != "Range") return false;
-
-        // return true;
     }
 
     private _suppressScrollRecording: number = 0;

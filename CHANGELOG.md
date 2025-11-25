@@ -52,3 +52,4 @@
 * Added preliminary Linux build
 * Updated auto reconnect routine to not automatically reconnect to chat if you were disconnected
   because you logged your character in somewhere else.
+* Fixed BBCode copy formatting on MacOS and Linux
