@@ -93,7 +93,19 @@ namespace XarChatLinuxPhotino
             });
 
 #if LINUX
-            var windowTitle = "XarChat (Linux)";
+            var windowTitle = "XarChat";
+
+            var iconFileName = Path.Combine(profilePath, "xarchat.png");
+            if (!File.Exists(iconFileName))
+            {
+                using var resStream =
+                    (from rn in Assembly.GetExecutingAssembly().GetManifestResourceNames()
+                     where rn.EndsWith(".xarchat.png")
+                     select Assembly.GetExecutingAssembly().GetManifestResourceStream(rn)).First();
+                using var outf = File.Create(iconFileName);
+                resStream.CopyTo(outf);
+                outf.Flush();
+            }
 #endif
 #if MAC
             var windowTitle = "XarChat";
@@ -108,7 +120,8 @@ namespace XarChatLinuxPhotino
                 .SetUseOsDefaultLocation(true)
                 .SetMinSize(600, 400)
                 .SetMaxSize(99999, 99999)
-                #if LINUX
+#if LINUX
+                .SetIconFile(iconFileName)
                 .SetBrowserControlInitParameters("{\"set_enable_developer_extras\":true,\"set_disable_web_security\":true}")
                 #endif
                 #if MAC
@@ -155,15 +168,15 @@ namespace XarChatLinuxPhotino
                     window.LoadRawString("");
                     return false;
                 };
-                window.WindowSizeChanged += (sender, args) => {
-                    var w = window.Width;
-                    var h = window.Height;
-                    try
-                    {
-                        window.SendWebMessage($"{{ \"type\": \"clientresize\", \"bounds\": [ {w}, {h} ] }}");
-                    }
-                    catch { }
-                };
+                //window.WindowSizeChanged += (sender, args) => {
+                //    var w = window.Width;
+                //    var h = window.Height;
+                //    try
+                //    {
+                //        window.SendWebMessage($"{{ \"type\": \"clientresize\", \"bounds\": [ {w}, {h} ] }}");
+                //    }
+                //    catch { }
+                //};
                 window.WindowCreated += (sender, args) => {
                     Console.WriteLine("window created");
 #if !LINUX
