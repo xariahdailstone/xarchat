@@ -19,7 +19,7 @@
 
 * { box-sizing: border-box; }
 
-.parameters { grid-area: params; min-height: 0; max-height: 50%; flex-shrink: 1; }
+.parameters { grid-area: params; min-height: 0; max-height: 50%; flex-shrink: 0; }
 .results { grid-area: results; flex-grow: 1; }
 
 .parameters {

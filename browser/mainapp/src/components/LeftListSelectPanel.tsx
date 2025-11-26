@@ -25,7 +25,7 @@ export class LeftListSelectPanel extends RenderingComponentBase<ActiveLoginViewM
                     hasPingsClass = "has-ping-icon";
                 }
                 else if (hasUnseenMessages) {
-                    hasPingsNode = "\u{2B24}";
+                    hasPingsNode = <x-litestatusdot></x-litestatusdot>;
                     hasPingsClass = "has-unseen-dot";
                 }
             }
@@ -144,7 +144,7 @@ class LeftListSelectPanelOld extends ComponentBase<ActiveLoginViewModel> {
                 }
                 else if (vp?.hasUnseenMessages) {
                     klass = "has-unseen-dot";
-                    headerDotText = "\u{2B24}";
+                    headerDotText = "<x-litestatusdot></x-litestatusdot>";
                 }
             }
             headerDotWCM.assign({ headerDotText }, () => {
