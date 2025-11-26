@@ -281,3 +281,13 @@ x-xcselect {
         outline: 1px solid var(--highlight-main-textbox);
     }
 }
+
+x-litestatusdot {
+    display: inline-block;
+    vertical-align: baseline;
+    background-color: currentColor;
+    margin-bottom: -0.05em;
+    width: 0.81em;
+    height: 0.81em;
+    border-radius: 50%;
+}

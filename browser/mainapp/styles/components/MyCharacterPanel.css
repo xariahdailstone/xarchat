@@ -63,6 +63,13 @@
 
     & .statusdot {
         -webkit-text-stroke: 3px var(--statusdot-border-color);
+        
+        x-litestatusdot { box-shadow: 0 0 0 3px var(--statusdot-border-color); }
+    }
+
+    &:has(x-litestatusdot) {
+        margin-right: 4px;
+        font-size: 90%;
     }
 }
 

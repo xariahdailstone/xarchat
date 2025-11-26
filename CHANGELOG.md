@@ -53,3 +53,5 @@
 * Updated auto reconnect routine to not automatically reconnect to chat if you were disconnected
   because you logged your character in somewhere else.
 * Fixed BBCode copy formatting on MacOS and Linux
+* Added window icon to Linux build
+* Made character status dots consistent in appearance between Windows/MacOS/Linux
