@@ -45,6 +45,7 @@
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="content.dat" />
+    <EmbeddedResource Include="xarchat.png" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="..\..\shared\photino.Native\lib\x64\Photino.Native.*">

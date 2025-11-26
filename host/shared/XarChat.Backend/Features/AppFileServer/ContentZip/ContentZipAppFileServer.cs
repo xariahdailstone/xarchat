@@ -61,7 +61,7 @@ namespace XarChat.Backend.Features.AppFileServer.ContentZip
                 }
                 else
                 {
-                    Console.WriteLine("got zip resource: " + nameToTry);
+                    //Console.WriteLine("got zip resource: " + nameToTry);
                 }
             }
 
