@@ -22,4 +22,29 @@ namespace XarChat.Backend.Features.FListApi
 
         Task<PartnerSearchFieldsDefinitions> GetPartnerSearchFieldsDefinitionsAsync(CancellationToken cancellationToken);
     }
+
+
+    [Serializable]
+    public class FListApiErrorException : ApplicationException
+    {
+        public FListApiErrorException()
+            : base("F-List API returned an unknown error.")
+        {
+            this.FListErrorMessage = "Unknown error.";
+        }
+
+        public FListApiErrorException(string message) 
+            : base($"F-List API returned error: {message}") 
+        { 
+            this.FListErrorMessage = message;
+        }
+
+        public FListApiErrorException(string message, Exception inner) 
+            : base($"F-List API returned error: {message}", inner) 
+        {
+            this.FListErrorMessage = message;
+        }
+
+        public string FListErrorMessage { get; }
+    }
 }

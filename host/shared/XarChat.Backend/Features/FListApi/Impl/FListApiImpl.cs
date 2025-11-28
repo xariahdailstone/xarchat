@@ -386,7 +386,7 @@ namespace XarChat.Backend.Features.FListApi.Impl
             }
 #endif
 
-            private Task<ApiTicket> AcquireApiTicketAsync(string account, string password, CancellationToken cancellationToken)
+            private async Task<ApiTicket> AcquireApiTicketAsync(string account, string password, CancellationToken cancellationToken)
             {
                 var task = System.Threading.Tasks.Task.Run(async () =>
                 {
@@ -416,7 +416,7 @@ namespace XarChat.Backend.Features.FListApi.Impl
                     var errMsg = (dynObj?.ContainsKey("error") ?? false) ? dynObj["error"]?.ToString() : "";
                     if (!String.IsNullOrEmpty(errMsg))
                     {
-                        throw new ApplicationException($"GetApiTicket call failed, server returned error \"{errMsg}\".");
+                        throw new FListApiErrorException(errMsg);
                     }
 
                     var result = dynObj.Deserialize<ApiTicket>(SourceGenerationContext.Default.ApiTicket)!;
@@ -448,7 +448,7 @@ namespace XarChat.Backend.Features.FListApi.Impl
                     }
                 });
 
-                return task;
+                return await task;
             }
         }
     }

@@ -33,9 +33,9 @@ namespace XarChat.Backend.Caching
             {
                 if (_cacheEntries.TryGetValue(cacheKey, out CacheEntry? entry) && entry.ExpiresAt > DateTimeOffset.UtcNow)
                 {
-                    creationFuncTask = entry.ValueTask.ContinueWith(t =>
+                    creationFuncTask = Task.Run(async () =>
                     {
-                        var result = t.Result;
+                        var result = await entry.ValueTask;
                         return new ValueWithCameFromCache<T>((result as T)!, true);
                     });
                 }
@@ -54,24 +54,27 @@ namespace XarChat.Backend.Caching
             if (tcs != null)
             {
                 var creationTask = createFunc();
-                _ = creationTask.ContinueWith(t =>
+
+                async Task HandleCreationCompletion(Task<AsyncCacheCreationResult<T>> creationTask)
                 {
-                    if (t.IsCompletedSuccessfully)
+                    try
                     {
-                        var result = t.Result;
+                        var result = await creationTask;
                         newCacheEntry!.ExpiresAt = DateTimeOffset.UtcNow + result.ExpireAfter;
                         tcs.SetResult(result.Value);
                     }
-                    else if (t.IsFaulted || t.IsCanceled)
+                    catch (Exception ex)
                     {
                         newCacheEntry!.ExpiresAt = DateTimeOffset.UtcNow + _faultsCachedFor;
-                        tcs.SetException(t.Exception!);
+                        tcs.SetException(ex);
                     }
-                });
+                }
 
-                creationFuncTask = newCacheEntry!.ValueTask.ContinueWith(t =>
+                _ = HandleCreationCompletion(creationTask);
+
+                creationFuncTask = Task.Run(async () =>
                 {
-                    var result = t.Result;
+                    var result = await newCacheEntry!.ValueTask;
                     return new ValueWithCameFromCache<T>((result as T)!, false);
                 });
             }

@@ -59,8 +59,23 @@ namespace XarChat.Backend.UrlHandlers.FListApiProxy
                 var account = request.Form["account"].First()!.ToString();
                 var password = request.Form["password"].First()!.ToString();
 
-                await flistApi.GetAuthenticatedFListApiAsync(account, password, cancellationToken);
-                return CustomResults.NewtonsoftJsonResult(new JsonObject(), SourceGenerationContext.Default.JsonObject);
+                try
+                {
+                    await flistApi.GetAuthenticatedFListApiAsync(account, password, cancellationToken);
+                    return CustomResults.NewtonsoftJsonResult(new JsonObject(), SourceGenerationContext.Default.JsonObject);
+                }
+                catch (FListApiErrorException fex)
+                {
+                    var jsonObject = new JsonObject();
+                    jsonObject["error"] = fex.FListErrorMessage;
+                    return CustomResults.NewtonsoftJsonResult(jsonObject, SourceGenerationContext.Default.JsonObject, statusCode: 400);
+                }
+                catch (Exception ex)
+                {
+                    var jsonObject = new JsonObject();
+                    jsonObject["error"] = "Unexpected error: " + ex.Message;
+                    return CustomResults.NewtonsoftJsonResult(jsonObject, SourceGenerationContext.Default.JsonObject, statusCode: 500);
+                }
             });
 
             // Authenticated API
