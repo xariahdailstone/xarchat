@@ -161,7 +161,14 @@ export class AppInitializeViewModel extends DialogViewModel<void> {
                     }
                     const creds = appSettings.savedAccountCredentials.get(savedLoginAccount.account);
                     if (creds && creds.password) {
-                        await LoginUtils.performLoginAsync(this.parent, creds.account, creds.password, savedLoginAccount.characterName, restoreSavedCTS.token);
+                        try {
+                            await LoginUtils.performLoginAsync(this.parent, creds.account, creds.password, savedLoginAccount.characterName, restoreSavedCTS.token);
+                        }
+                        catch (e) {
+                            if (!(e instanceof OperationCancelledError)) {
+                                await this.parent.alertAsync(`Could not automatically log in to character \"${savedLoginAccount.characterName}\":\n${CatchUtils.getMessage(e)}`, "Error");
+                            }                            
+                        }
                     }
                 }
             }

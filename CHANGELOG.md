@@ -55,3 +55,9 @@
 * Fixed BBCode copy formatting on MacOS and Linux
 * Added window icon to Linux build
 * Made character status dots consistent in appearance between Windows/MacOS/Linux
+* Fixed a couple login issues:
+  * The login dialog will now show a more proper error message if a login failed due to an invalid
+    username and/or password.
+  * If your saved logins credentials are no longer valid (e.g., you changed your password on F-List),
+    there was an error where XarChat would not properly drop you back onto the login dialog. That
+    has been fixed.

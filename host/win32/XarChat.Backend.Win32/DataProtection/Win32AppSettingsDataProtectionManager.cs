@@ -15,6 +15,10 @@ namespace XarChat.Backend.Win32.DataProtection
         public string? Decode(string? encodedValue)
         {
             if (encodedValue == null) return null;
+            if (encodedValue.StartsWith("plaintext:"))
+            {
+                return encodedValue.Substring("plaintext:".Length);
+            }
             try
             {
                 var protectedData = Convert.FromBase64String(encodedValue);
