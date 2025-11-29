@@ -272,13 +272,9 @@ export class XarHost2Interop implements IXarHost2HostInterop {
                 };
 
                 while (true) {
-                    //const readTimeout = new CancellationTokenSource();
-                    //readTimeout.cancelAfter(1000);
                     try {
-                        //const data = await aws.readDataAsync(readTimeout.token);
                         const data = await aws.readDataAsync(CancellationToken.NONE);
                         try {
-                            // TODO: handle incoming data
                             if (typeof data == "string") {
                                 this.processIncomingMessage(data);
                             }
@@ -286,9 +282,7 @@ export class XarHost2Interop implements IXarHost2HostInterop {
                         catch { }
                     }
                     catch {
-                        //if (readTimeout.isCancellationRequested) {
-                        //this.writeToXCHostSocket("ping");
-                        //}
+                        break;
                     }
                 }
             }
