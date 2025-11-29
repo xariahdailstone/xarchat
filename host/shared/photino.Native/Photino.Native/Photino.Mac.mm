@@ -493,6 +493,13 @@ void Photino::GetZoom(int* zoom)
 	*zoom = (int)rawValue;
 }
 
+void Photino::GetTitlebarColor(int *r, int *g, int *b)
+{
+	*r = _titlebarR;
+	*g = _titlebarG;
+	*b = _titlebarB;
+}
+
 void Photino::NavigateToString(AutoString content)
 {
     [_webview loadHTMLString: [NSString stringWithUTF8String: content] baseURL: nil];
@@ -767,6 +774,14 @@ void Photino::SetZoom(int zoom)
 {
     CGFloat newZoom = zoom / 100.0;
 	[_webview setMagnification: newZoom];
+}
+
+void Photino::SetTitlebarColor(int r, int g, int b)
+{
+    _titlebarR = r;
+	_titlebarG = g;
+	_titlebarB = b;
+    // TODO:
 }
 
 void EnsureInvoke(dispatch_block_t block)

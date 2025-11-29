@@ -1,3 +1,5 @@
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Photino;
 using Photino.NET;
 //using PhotinoNET;
@@ -7,9 +9,11 @@ using System.Drawing;
 using System.IO.Pipes;
 using System.Reflection;
 using System.Web;
+using Wacton.Unicolour;
 using XarChat.AutoUpdate;
 using XarChat.AutoUpdate.Impl.Disabled;
 using XarChat.Backend;
+using XarChat.Backend.Features.AppConfiguration;
 using XarChat.Backend.Features.CommandLine.Impl;
 using XarChat.Backend.Features.SingleInstanceManager.ProfileLockFile;
 
@@ -106,6 +110,7 @@ namespace XarChatLinuxPhotino
                 resStream.CopyTo(outf);
                 outf.Flush();
             }
+
 #endif
 #if MAC
             var windowTitle = "XarChat";
@@ -121,6 +126,7 @@ namespace XarChatLinuxPhotino
                 .SetMinSize(600, 400)
                 .SetMaxSize(99999, 99999)
 #if LINUX
+                .SetTitlebarColor(0, 0, 0)
                 .SetIconFile(iconFileName)
                 .SetBrowserControlInitParameters("{\"set_enable_developer_extras\":true,\"set_disable_web_security\":true}")
                 #endif
@@ -185,6 +191,51 @@ namespace XarChatLinuxPhotino
                     Console.WriteLine($"Resizable = {window.Resizable}");
                     window.Resizable = true;
                     Console.WriteLine($"Resizable = {window.Resizable}");
+               
+#endif
+#if LINUX
+                    Task.Run(async () => {
+                        var sp = await backend.GetServiceProviderAsync();
+                        var cancellationToken = sp.GetRequiredService<IHostApplicationLifetime>().ApplicationStopping;
+                        
+                        var ac = sp.GetRequiredService<IAppConfiguration>();
+                        using var subscr = ac.OnValueChanged("global.bgColor", (value, changeMetadata) => {
+                            try
+                            {
+                                string valStr;
+                                if (value == null)
+                                {
+                                    valStr = "255;7";
+                                }
+                                else
+                                {
+                                    valStr = value.ToString();
+                                }
+
+                                Console.WriteLine($"global.bgColor === {valStr}");
+                                var parts = valStr.Split(';');
+                                var hue = Convert.ToDouble(parts[0]);
+                                var sat = Convert.ToDouble(parts[1]) / 100d;
+                                var brightnessFactor = parts.Length > 2 ? Convert.ToDouble(parts[2]) : 1d;
+
+                                Console.WriteLine($"HSL === {hue}, {sat}, {brightnessFactor * 15d / 100d}");
+                                // TODO:
+                                Unicolour x = new(ColourSpace.Hsl, hue, sat, (brightnessFactor * 15d) / 100d);
+
+                                var r = (int)Math.Floor(x.Rgb.R * 255d);
+                                var g = (int)Math.Floor(x.Rgb.G * 255d);
+                                var b = (int)Math.Floor(x.Rgb.B * 255d);
+                                Console.WriteLine($"COLOR === {r},{g},{b}");
+                                window.SetTitlebarColor(r, g, b);
+                            }
+                            catch { }
+                        }, true);
+                        try {
+                            await Task.Delay(-1, cancellationToken);
+                        }
+                        catch when (cancellationToken.IsCancellationRequested) { }
+                    });
+
 #endif
                     //window.ShowDevTools();
                 };

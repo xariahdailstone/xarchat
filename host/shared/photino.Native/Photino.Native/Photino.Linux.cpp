@@ -6,8 +6,10 @@
 #include <mutex>
 #include <condition_variable>
 #include <X11/Xlib.h>
+#include <gtk/gtk.h>
 #include <webkit2/webkit2.h>
 #include <JavaScriptCore/JavaScript.h>
+#include <string>
 #include <sstream>
 #include <iomanip>
 #include <libnotify/notify.h>
@@ -71,6 +73,10 @@ Photino::Photino(PhotinoInitParams *initParams) : _webview(nullptr)
 		gtk_widget_destroy(dialog);
 		exit(0);
 	}
+
+	_titlebarR = -1;
+	_titlebarG = -1;
+	_titlebarB = -1;
 
 	_windowTitle = new char[256];
 	if (initParams->Title != NULL)
@@ -136,6 +142,9 @@ Photino::Photino(PhotinoInitParams *initParams) : _webview(nullptr)
 	_ignoreCertificateErrorsEnabled = initParams->IgnoreCertificateErrorsEnabled;
 
 	_zoom = initParams->Zoom;
+	_titlebarR = initParams->TitlebarR;
+	_titlebarG = initParams->TitlebarG;
+	_titlebarB = initParams->TitlebarB;
 	_minWidth = initParams->MinWidth;
 	_minHeight = initParams->MinHeight;
 	_maxWidth = initParams->MaxWidth;
@@ -168,6 +177,15 @@ Photino::Photino(PhotinoInitParams *initParams) : _webview(nullptr)
 
 	_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 	_dialog = new PhotinoDialog();
+
+	_headerbar = gtk_header_bar_new();
+	gtk_header_bar_set_show_close_button(GTK_HEADER_BAR(_headerbar), TRUE);
+	gtk_window_set_titlebar(GTK_WINDOW(_window), _headerbar);
+	gtk_window_set_decorated(GTK_WINDOW(_window), TRUE);
+
+	_cssprovider = gtk_css_provider_new();
+	auto defaultdisplay = gdk_screen_get_default();
+	gtk_style_context_add_provider_for_screen(defaultdisplay, GTK_STYLE_PROVIDER(_cssprovider), GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
 
 	if (initParams->FullScreen)
 		SetFullScreen(true);
@@ -265,6 +283,9 @@ Photino::Photino(PhotinoInitParams *initParams) : _webview(nullptr)
 
 	if (_zoom != 100.0)
 		SetZoom(_zoom);
+
+	if (_titlebarR != -1 && _titlebarG != -1 && _titlebarB != -1)
+		SetTitlebarColor(_titlebarR, _titlebarG, _titlebarB);
 
 	//gchar* webkitVer = g_strconcat(g_strdup_printf("%d", webkit_get_major_version()), ".", g_strdup_printf("%d", webkit_get_minor_version()), ".", g_strdup_printf("%d", webkit_get_micro_version()), NULL);
 	//Photino::ShowNotification("Web Kit Version", webkitVer);
@@ -460,6 +481,13 @@ void Photino::GetZoom(int *zoom)
 	*zoom = (int)rawValue;
 }
 
+void Photino::GetTitlebarColor(int *r, int *g, int *b)
+{
+	*r = _titlebarR;
+	*g = _titlebarG;
+	*b = _titlebarB;
+}
+
 void Photino::NavigateToString(AutoString content)
 {
 	webkit_web_view_load_html(WEBKIT_WEB_VIEW(_webview), content, NULL);
@@ -651,6 +679,43 @@ void Photino::SetZoom(int zoom)
 {
 	double newZoom = zoom / 100.0;
 	webkit_web_view_set_zoom_level(WEBKIT_WEB_VIEW(_webview), newZoom);
+}
+
+std::string rgbToHex(int r, int g, int b)
+{
+	std::ostringstream ss;
+	ss << "#"
+	   << std::uppercase << std::setfill('0') << std::hex
+	   << std::setw(2) << (r & 0xFF)
+	   << std::setw(2) << (g & 0xFF)
+	   << std::setw(2) << (b & 0xFF);
+	return ss.str();
+}
+
+void Photino::SetTitlebarColor(int r, int g, int b)
+{
+	_titlebarR = r;
+	_titlebarG = g;
+	_titlebarB = b;
+	if (_titlebarR != -1 && _titlebarG != -1 && _titlebarB != -1)
+	{
+		std::string bgcolorstr = rgbToHex(_titlebarR, _titlebarG, _titlebarB);
+
+		std::ostringstream css;
+		css << "window { color: #eeeeee; background: " << bgcolorstr << "; }\n"
+		   << "headerbar { border: none; background: " << bgcolorstr << "; }";
+		
+		std::string cssString = css.str();
+		gtk_css_provider_load_from_data(_cssprovider, cssString.c_str(), cssString.size(), nullptr);
+	}
+	else
+	{
+		std::ostringstream css;
+		css << "window { }\nheaderbar { }";
+		std::string cssString = css.str();
+
+		gtk_css_provider_load_from_data(_cssprovider, cssString.c_str(), cssString.size(), nullptr);
+	}
 }
 
 void Photino::ShowDevTools()

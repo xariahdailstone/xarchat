@@ -1429,6 +1429,40 @@ public partial class PhotinoWindow
         }
     }
 
+    public (int Red, int Green, int Blue) TitlebarColor
+    {
+        get
+        {
+            if (_nativeInstance == IntPtr.Zero)
+                return (
+                    _startupParameters.TitlebarR,
+                    _startupParameters.TitlebarG,
+                    _startupParameters.TitlebarB);
+
+            int r = 0;
+            int g = 0;
+            int b = 0;
+            Invoke(() => Photino_GetTitlebarColor(_nativeInstance, out r, out g, out b));
+            return (r, g, b);
+        }
+        set
+        {
+            if (TitlebarColor != value)
+            {
+                if (_nativeInstance == IntPtr.Zero)
+                {
+                    _startupParameters.TitlebarR = value.Red;
+                    _startupParameters.TitlebarG = value.Green;
+                    _startupParameters.TitlebarB = value.Blue;
+                }
+                else
+                {
+                    Invoke(() => Photino_SetTitlebarColor(_nativeInstance, value.Red, value.Green, value.Blue));
+                }
+            }
+        }
+    }
+
     /// <summary>
     /// Gets or sets the logging verbosity to standard output (Console/Terminal).
     /// 0 = Critical Only
@@ -2256,6 +2290,13 @@ public partial class PhotinoWindow
     {
         Log($".SetZoom({zoom})");
         Zoom = zoom;
+        return this;
+    }
+
+    public PhotinoWindow SetTitlebarColor(int r, int g, int b)
+    {
+        Log($".SetTitlebarColor({r},{g},{b})");
+        TitlebarColor = (r, g, b);
         return this;
     }
 

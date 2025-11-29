@@ -93,6 +93,9 @@ struct PhotinoInitParams
 	int Width;
 	int Height;
 	int Zoom;
+	int TitlebarR;
+	int TitlebarG;
+	int TitlebarB;
 	int MinWidth;
 	int MinHeight;
 	int MaxWidth;
@@ -143,6 +146,9 @@ private:
 	AutoString _iconFileName;
 	AutoString _userAgent;
 	AutoString _browserControlInitParameters;
+	int _titlebarR;
+	int _titlebarG;
+	int _titlebarB;
 
 	bool _transparentEnabled;
 	bool _devToolsEnabled;
@@ -173,6 +179,8 @@ private:
 #elif __linux__
 	// GtkWidget* _window;
 	GtkWidget *_webview;
+	GtkWidget *_headerbar;
+	GtkCssProvider *_cssprovider;
 	GdkGeometry _hints;
 	void AddCustomSchemeHandlers();
 	bool _isFullScreen;
@@ -267,6 +275,7 @@ public:
 	void GetTopmost(bool *topmost);
 	void GetZoom(int *zoom);
 	void GetIgnoreCertificateErrorsEnabled(bool* enabled);
+	void GetTitlebarColor(int *r, int *g, int *b);
 
 	void NavigateToString(AutoString content);
 	void NavigateToUrl(AutoString url);
@@ -288,6 +297,7 @@ public:
 	void SetTitle(AutoString title);
 	void SetTopmost(bool topmost);
 	void SetZoom(int zoom);
+	void SetTitlebarColor(int r, int g, int b);
 
 	void ShowDevTools();
 

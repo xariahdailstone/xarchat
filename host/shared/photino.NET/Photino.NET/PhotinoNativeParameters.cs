@@ -134,6 +134,10 @@ internal struct PhotinoNativeParameters
     ///<summary>OPTIONAL: Initial zoom level of the native browser control. e.g.100 = 100%  Default is 100.</summary>
     [MarshalAs(UnmanagedType.I4)] internal int Zoom;
 
+    [MarshalAs(UnmanagedType.I4)] internal int TitlebarR;
+    [MarshalAs(UnmanagedType.I4)] internal int TitlebarG;
+    [MarshalAs(UnmanagedType.I4)] internal int TitlebarB;
+
     ///<summary>OPTIONAL: Initial minimum window width in pixels.</summary>
     [MarshalAs(UnmanagedType.I4)] internal int MinWidth;
 
