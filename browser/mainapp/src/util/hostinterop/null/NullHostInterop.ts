@@ -13,7 +13,7 @@ import { LogMessageType, LogChannelMessage, LogPMConvoMessage, HostWindowState, 
 import { HostInteropLogFileMaintenance } from "../HostInteropLogFileMaintenance";
 import { DateAnchor, HostInteropLogSearch, LogSearchKind, LogSearchResult, RecentConversationResult } from "../HostInteropLogSearch";
 import { HostInteropLogSearch2, LogSearch2Results, PerformSearchOptions } from "../HostInteropLogSearch2";
-import { ChatWebSocket, HostInteropBase, IHostInterop, UrlLaunchedEventArgs } from "../IHostInterop";
+import { ChatWebSocket, HostInteropBase, IHostInterop, NoCorsFetchArgs, NoCorsFetchResult, UrlLaunchedEventArgs } from "../IHostInterop";
 
 export class NullHostInterop extends HostInteropBase implements IHostInterop {
     get isInXarChatHost(): boolean { return false; }
@@ -214,6 +214,41 @@ export class NullHostInterop extends HostInteropBase implements IHostInterop {
 
     createChatWebSocket(): ChatWebSocket {
         throw new Error("Method not implemented."); 
+    }
+
+    async noCorsFetch(args: NoCorsFetchArgs, cancellationToken: CancellationToken): Promise<NoCorsFetchResult> {
+        const combinedHeaders: [string, string][] = [];
+        const ingestHeaders = (hdrs: { name: string, value: string }[] | null | undefined) => {
+            if (hdrs) {
+                for (let kvp of hdrs) {
+                    combinedHeaders.push([kvp.name, kvp.value]);
+                }
+            }
+        }
+
+        ingestHeaders(args.requestHeaders);
+        ingestHeaders(args.contentHeaders);
+
+        const r = await fetch(args.url, {
+            method: args.method,
+            headers: combinedHeaders,
+            body: args.body,
+            signal: cancellationToken.signal
+        });
+
+        const hdrs: { name: string, value: string }[] = [];
+        r.headers.forEach((v, k) => {
+            hdrs.push({ name: k, value: v });
+        });
+
+        const result: NoCorsFetchResult = {
+            status: r.status,
+            contentHeaders: [],
+            responseHeaders: hdrs,
+            json: () => r.json(),
+            text: () => r.text()
+        };
+        return result;
     }
 }
 

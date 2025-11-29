@@ -1,8 +1,10 @@
+import { CallbackSet } from "../util/CallbackSet.js";
 import { CancellationToken } from "../util/CancellationTokenSource.js";
 import { IDisposable } from "../util/Disposable.js";
 import { EL } from "../util/EL.js";
 import { HostInterop } from "../util/hostinterop/HostInterop.js";
 import { HTMLUtils } from "../util/HTMLUtils.js";
+import { ShadowRootsManager } from "../util/ShadowRootsManager.js";
 import { createStylesheet, setStylesheetAdoption } from "../util/StyleSheetPolyfill.js";
 import { ComponentBase, componentElement, StyleLoader } from "./ComponentBase.js";
 
@@ -162,7 +164,7 @@ export class IconImage extends HTMLElement {
 
     constructor() {
         super();
-        this._sroot = this.attachShadow({ mode: 'closed' });
+        this._sroot = ShadowRootsManager.elementAttachShadow(this, { mode: 'closed' });
         HTMLUtils.assignStaticHTMLFragment(this._sroot,
             `<div id="elMain" class="main"></div>`);
 
@@ -183,10 +185,20 @@ export class IconImage extends HTMLElement {
         }
     }
 
+    private _connectDisconnectCallbackSet: CallbackSet<() => void> = new CallbackSet(this.constructor.name);
+    addConnectDisconnectHandler(callback: () => void): IDisposable {
+        return this._connectDisconnectCallbackSet.add(callback);
+    }
+    removeConnectDisconnectHandler(callback: () => void): void {
+        this._connectDisconnectCallbackSet.delete(callback);
+    }    
+
     protected connectedCallback() {
+        this._connectDisconnectCallbackSet.invoke();
     }
 
     protected disconnectedCallback() {
+        this._connectDisconnectCallbackSet.invoke();
     }
 
     private nullIf(value: string, ...nullIfValues: string[]) {

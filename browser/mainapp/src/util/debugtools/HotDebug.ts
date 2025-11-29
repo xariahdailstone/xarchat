@@ -1,4 +1,6 @@
 import { DialogButtonStyle } from "../../viewmodel/dialogs/DialogViewModel";
+import { CancellationToken } from "../CancellationTokenSource";
+import { HostInterop } from "../hostinterop/HostInterop";
 import { KeyCodes } from "../KeyCodes";
 import { StringUtils } from "../StringUtils";
 import { ConsoleCommand, consoleCommand, ExecuteArgs } from "./ConsoleCommand";
@@ -38,7 +40,7 @@ export class HotDebug extends ConsoleCommand {
             }
 
             const url = `https://xariah.net/temp/hotdebug/${args.patternMatch[1]}.js?d=${new Date().getTime()}`;
-            const resp = await fetch(url);
+            const resp = await HostInterop.noCorsFetch({ method: "GET", url: url }, CancellationToken.NONE);
             if (resp.status != 200) {
                 args.print(`EXECUTION FAILED: Could not download debugging script, status code [color=yellow]${resp.status}[/color].`);
                 return;

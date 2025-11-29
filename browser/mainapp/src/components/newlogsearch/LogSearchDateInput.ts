@@ -1,5 +1,8 @@
+import { CallbackSet } from "../../util/CallbackSet";
+import { IDisposable } from "../../util/Disposable";
 import { FastEventSource } from "../../util/FastEventSource";
 import { HTMLUtils } from "../../util/HTMLUtils";
+import { ShadowRootsManager } from "../../util/ShadowRootsManager";
 import { StringUtils } from "../../util/StringUtils";
 import { setStylesheetAdoption } from "../../util/StyleSheetPolyfill";
 import { AppViewModel } from "../../viewmodel/AppViewModel";
@@ -17,7 +20,7 @@ export class LogSearchDateInput extends HTMLElement {
     constructor() {
         super();
 
-        const sroot = this.attachShadow({ mode: 'closed' });
+        const sroot = ShadowRootsManager.elementAttachShadow(this, { mode: 'closed' });
         this._sroot = sroot
         HTMLUtils.assignStaticHTMLFragment(sroot, `
             <button style="display: none;" class="theme-button nowtext" id="elButton">
@@ -90,6 +93,22 @@ export class LogSearchDateInput extends HTMLElement {
         const result = StringUtils.dateToString(locale, dt, { dateStyle: "long", timeStyle: "long" });
         return result;
     }
+
+    private _connectDisconnectCallbackSet: CallbackSet<() => void> = new CallbackSet(this.constructor.name);
+    addConnectDisconnectHandler(callback: () => void): IDisposable {
+        return this._connectDisconnectCallbackSet.add(callback);
+    }
+    removeConnectDisconnectHandler(callback: () => void): void {
+        this._connectDisconnectCallbackSet.delete(callback);
+    }   
+
+    protected connectedCallback() {
+        this._connectDisconnectCallbackSet.invoke();
+    }
+
+    protected disconnectedCallback() {
+        this._connectDisconnectCallbackSet.invoke();
+    }    
 
     // disconnectedFromDocument() {
     //     if (this._selectionPopup) {

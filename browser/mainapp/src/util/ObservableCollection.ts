@@ -110,7 +110,7 @@ export class Collection<T> implements ObservableCollection<T>, Observable {
             },
             set(target: any, prop: PropertyKey, value: any, receiver: any) {
                 if (typeof prop == "number" || isNumeric(prop.toString())) {
-                    return target.setByIndex(+prop.toString(), value);
+                    target.setByIndex(+prop.toString(), value);
                 }
                 else {
                     (target as any)[prop] = value;

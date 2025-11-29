@@ -6,7 +6,7 @@ import { SnapshottableSet } from "../util/collections/SnapshottableSet";
 export abstract class CollectionViewUltraLightweight<TViewModel> implements IDisposable {
 
     constructor(
-        private readonly containerElement: HTMLElement) {
+        protected readonly containerElement: HTMLElement) {
     }
 
     dispose() {

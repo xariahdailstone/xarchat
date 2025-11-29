@@ -783,7 +783,7 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
                     <div classList={["sectionitems-item-inner", 
                             isChatChannel ? "chatchannel" : isPMConvo ? "pmconvo" : "", 
                             isSelected ? "selected" : "not-selected"]}>
-                        <div classList={["sectionitems-item-unseen-container", showUnseenDot ? "shown" : "not-shown"]}>{"\u{2B24}"}</div>
+                        <div classList={["sectionitems-item-unseen-container", showUnseenDot ? "shown" : "not-shown"]}><x-litestatusdot></x-litestatusdot></div>
                         <div classList={["sectionitems-item-icon-container"]}>
                             <div classList={["sectionitems-item-icon"]}>
                                 <x-iconimage classList={["iconimagelightweight-iconimage"]} attr-src={cvm.iconUrl}></x-iconimage>
@@ -808,7 +808,7 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
             result = <span classList={["header-dot-container"]}><x-iconimage key={`${key}-iconimage`} attr-src="assets/ui/channel-ping.svg" classList={["header-ping-icon"]}></x-iconimage></span>;
         }
         else if (hasUnseen) {
-            result = <span classList={["header-dot-container"]}>{"\u{2B24} "}</span>;
+            result = <span classList={["header-dot-container"]}><x-litestatusdot></x-litestatusdot></span>;
         }
         else {
             result = null;   

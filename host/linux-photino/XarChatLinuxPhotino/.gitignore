@@ -1,1 +1,4 @@
 content.dat
+.flatpak-builder/
+builddir/
+repo/

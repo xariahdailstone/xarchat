@@ -3,6 +3,17 @@
     <head>
         <title>XarChat Main Interface</title>
         <link rel="stylesheet" type="text/css" href="styles/fonts.css" />
+        <script>
+            (function() {
+                const u = new URLSearchParams(document.location.search);
+                if (u.get("ClientPlatform") == "linux-x64") {
+                    document.write('<link rel="stylesheet" type="text/css" href="assets-emoji/ui/fonts/noto-color-emoji/index.css" id="elEmojiFont" />');
+                }
+                else {
+                    document.write('<!-- skipped emoji font css -->');
+                }
+            })();
+        </script>
         <link rel="stylesheet" type="text/css" href="styles/dark-theme.css" id="elLinkDarkTheme" />
         <style>
             html, body {

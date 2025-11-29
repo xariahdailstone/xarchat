@@ -6,6 +6,7 @@ import { HTMLUtils } from "../../util/HTMLUtils";
 import { KeyCodes } from "../../util/KeyCodes";
 import { CharacterStatusEditDialogViewModel } from "../../viewmodel/dialogs/CharacterStatusEditDialogViewModel";
 import { componentArea, componentElement } from "../ComponentBase";
+import { XCSelectElement } from "../XCSelect";
 import { DialogComponentBase, dialogViewFor } from "./DialogFrame";
 
 @componentArea("dialogs")
@@ -18,13 +19,13 @@ export class CharacterStatusEditDialog extends DialogComponentBase<CharacterStat
         HTMLUtils.assignStaticHTMLFragment(this.elMain, `
             <div class="online-status-container">
                 <div class="online-status-label">Online Status:</div>
-                <select class="online-status-select" id="elOnlineStatusSelect">
-                    <option>Online</option>
-                    <option>Looking</option>
-                    <option>Busy</option>
-                    <option>Away</option>
-                    <option>DND</option>
-                </select>
+                <x-xcselect class="online-status-select" id="elOnlineStatusSelect">
+                    <x-xcoption>Online</x-xcoption>
+                    <x-xcoption>Looking</x-xcoption>
+                    <x-xcoption>Busy</x-xcoption>
+                    <x-xcoption>Away</x-xcoption>
+                    <x-xcoption>DND</x-xcoption>
+                </x-xcselect>
             </div>
             <div class="status-message-editor-container">
                 <textarea class="status-message-editor" id="elTextarea" data-initial-focus="true"></textarea>
@@ -35,8 +36,7 @@ export class CharacterStatusEditDialog extends DialogComponentBase<CharacterStat
                 <div class="status-preview" id="elPreview"></div>
             </div>
         `);
-
-        const elOnlineStatusSelect = this.$("elOnlineStatusSelect") as HTMLSelectElement;
+        const elOnlineStatusSelect = this.$("elOnlineStatusSelect") as XCSelectElement;
         const elTextarea = this.$("elTextarea") as HTMLTextAreaElement;
         const elCharsUsed = this.$("elCharsUsed") as HTMLSpanElement;
         const elPreview = this.$("elPreview") as HTMLDivElement;

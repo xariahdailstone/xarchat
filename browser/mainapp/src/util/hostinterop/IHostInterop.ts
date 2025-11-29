@@ -105,7 +105,25 @@ export interface IHostInterop {
     flashWindow(): void;
 
     createChatWebSocket(): ChatWebSocket;
+
+    noCorsFetch(args: NoCorsFetchArgs, cancellationToken: CancellationToken): Promise<NoCorsFetchResult>;
 }
+
+export interface NoCorsFetchArgs {
+    method: string;
+    url: string;
+    requestHeaders?: NoCorsHeaderSet;
+    contentHeaders?: NoCorsHeaderSet;
+    body?: string;
+}
+export interface NoCorsFetchResult {
+    status: number;
+    responseHeaders: NoCorsHeaderSet;
+    contentHeaders: NoCorsHeaderSet;
+    text(): Promise<string>;
+    json(): Promise<unknown>;
+}
+export type NoCorsHeaderSet = { name: string, value: string }[];
 
 export interface ChatWebSocket {
     send(data: string): void;

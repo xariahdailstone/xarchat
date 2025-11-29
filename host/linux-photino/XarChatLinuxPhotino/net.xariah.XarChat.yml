@@ -1,0 +1,21 @@
+id: net.xariah.XarChat
+runtime: org.gnome.Platform
+runtime-version: '48'
+sdk: org.gnome.Sdk
+command: XarChatLinuxPhotino
+modules:
+  - name: XarChatLinuxPhotino
+    buildsystem: simple
+    build-commands:
+      - install -Dm755 XarChatLinuxPhotino /app/bin/XarChatLinuxPhotino
+    sources:
+      - type: file
+        dest-filename: XarChatLinuxPhotino
+        path: ./bin/Release/net9.0/linux-x64/publish/XarChatLinuxPhotino
+finish-args:
+  - --share=ipc
+  - --socket=fallback-x11
+  - --socket=wayland
+  - --device=dri
+  - --share=network
+  - --filesystem=host

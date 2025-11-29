@@ -273,10 +273,15 @@
     right: 6px;
     bottom: -2px;
 }
-.sectionitems-item-inner.pmconvo .sectionitems-item-icondot {
+.sectionitems-item-icondot:has(x-litestatusdot) {
+    bottom: 0px;
+}
+.sectionitems-item-inner.pmconvo .sectionitems-item-icondot,
+.sectionitems-item-inner.pmconvo .sectionitems-item-icondot x-litestatusdot {
     display: block;
     font-size: 10px;
     -webkit-text-stroke: 2px var(--itembgcolor);
+    box-shadow: 0 0 0 2px var(--itembgcolor);
 }
 
 .sectionitems-item-typingindicator-container {

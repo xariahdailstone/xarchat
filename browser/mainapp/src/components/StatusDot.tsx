@@ -14,7 +14,7 @@ export class StatusDot extends ComponentBase<CharacterSet> {
     constructor() {
         super();
 
-        this.elMain.appendChild(document.createTextNode("\u2B24"));
+        this.elMain.appendChild(document.createElement("x-litestatusdot"));
     }
 
     protected override attributeChangedCallback(name: string, oldValue?: string | undefined, newValue?: string | undefined): void {
@@ -145,7 +145,7 @@ export class StatusDotLightweight implements IDisposable {
         const result = document.createElement("span");
         result.classList.add("statusdot");
 
-        result.appendChild(document.createTextNode("\u2B24"));
+        result.appendChild(document.createElement("x-litestatusdot"));
 
         this.element = result;
         this.updateState();
@@ -260,7 +260,7 @@ export class StatusDotVNodeBuilder {
         const attrs: Record<string, string> = {};
         attrs["title"] = OnlineStatusConvert.toString(cs.status);
 
-        const resultNode = <span class={classes} attrs={attrs}>{ "\u2B24" }</span>;
+        const resultNode = <span class={classes} attrs={attrs}><x-litestatusdot></x-litestatusdot></span>;
         return resultNode;
     }
 }

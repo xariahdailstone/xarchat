@@ -90,7 +90,7 @@ class InstanceSelectPanelTab extends ComponentBase<ActiveLoginViewModel> {
                 }
                 else if (vp?.hasUnseenMessages) {
                     klass = "has-unseen-dot";
-                    headerDotText = "\u{2B24}";
+                    headerDotText = "<x-litestatusdot></x-litestatusdot>";
                 }
             }
             headerDotWCM.assign({ headerDotText }, () => {

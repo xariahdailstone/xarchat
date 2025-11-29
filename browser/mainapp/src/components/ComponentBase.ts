@@ -1,6 +1,7 @@
 import { CharacterName } from "../shared/CharacterName.js";
 import { CharacterStatus } from "../shared/CharacterSet.js";
 import { ArrayUtils } from "../util/ArrayUtils.js";
+import { CallbackSet } from "../util/CallbackSet.js";
 import { CancellationToken, CancellationTokenSource } from "../util/CancellationTokenSource.js";
 import { SnapshottableMap } from "../util/collections/SnapshottableMap.js";
 import { SnapshottableSet } from "../util/collections/SnapshottableSet.js";
@@ -18,6 +19,7 @@ import { DelayedObservableExpression, ObservableExpression } from "../util/Obser
 import { Optional } from "../util/Optional.js";
 import { Predicate } from "../util/Predicate.js";
 import { OperationCancelledError } from "../util/PromiseSource.js";
+import { ShadowRootsManager } from "../util/ShadowRootsManager.js";
 import { createStylesheet, setStylesheetAdoption, SharedStyleSheet } from "../util/StyleSheetPolyfill.js";
 import { TaskUtils } from "../util/TaskUtils.js";
 import { WhenChangeManager } from "../util/WhenChange.js";
@@ -116,7 +118,7 @@ export abstract class ComponentBase<TViewModel> extends HTMLElement {
 
         this._fastEventSource = new FastEventSource(this.fastEvents, this);
 
-        this._sroot = this.attachShadow({ mode: 'closed' });
+        this._sroot = ShadowRootsManager.elementAttachShadow(this, { mode: 'closed' });
 
         const className = this.constructor.name;
 
@@ -245,6 +247,14 @@ export abstract class ComponentBase<TViewModel> extends HTMLElement {
     private _isComponentConnected: boolean = false;
     protected get isComponentConnected() { return this._isComponentConnected; }
 
+    private _connectDisconnectCallbackSet: CallbackSet<() => void> = new CallbackSet(this.constructor.name);
+    addConnectDisconnectHandler(callback: () => void): IDisposable {
+        return this._connectDisconnectCallbackSet.add(callback);
+    }
+    removeConnectDisconnectHandler(callback: () => void): void {
+        this._connectDisconnectCallbackSet.delete(callback);
+    }
+
     private connectedCallback() {
         try {
             this._isComponentConnected = true;
@@ -254,6 +264,7 @@ export abstract class ComponentBase<TViewModel> extends HTMLElement {
             this.connectedToDocument();
             this.setupWhenConnecteds();
             this.raiseConnectedEvent();
+            this._connectDisconnectCallbackSet.invoke();
         }
         catch (e) {
             this.logger.logError("connectedCallback failed", e);
@@ -273,6 +284,7 @@ export abstract class ComponentBase<TViewModel> extends HTMLElement {
             this.disconnectedFromDocument();
             this.teardownWhenConnecteds();
             this.raiseDisconnectedEvent();
+            this._connectDisconnectCallbackSet.invoke();
             this.logger.logDebug("disconnected"); 
         } 
         catch (e) { 

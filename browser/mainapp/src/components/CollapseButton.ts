@@ -1,6 +1,8 @@
-import { asDisposable } from "../util/Disposable";
+import { CallbackSet } from "../util/CallbackSet";
+import { asDisposable, IDisposable } from "../util/Disposable";
 import { testEquality } from "../util/Equality";
 import { HTMLUtils } from "../util/HTMLUtils";
+import { ShadowRootsManager } from "../util/ShadowRootsManager";
 import { setStylesheetAdoption } from "../util/StyleSheetPolyfill";
 import { WhenChangeManager } from "../util/WhenChange";
 import { BooleanComponentAttribute, ComponentAttribute, ComponentAttributeAssignmentArgs, ComponentAttributeChangeHandler, ComponentAttributeValueChangeResult, ComponentBase, StyleLoader, componentElement } from "./ComponentBase";
@@ -136,7 +138,7 @@ export class CollapseButton extends ComponentBase<boolean> {
 export class CollapseBody extends HTMLElement {
     constructor() {
         super();
-        this._sroot = this.attachShadow({ mode: 'closed' });
+        this._sroot = ShadowRootsManager.elementAttachShadow(this, { mode: 'closed' });
         this._elMain = document.createElement("div");
         this._elMain.id = "elMain";
         this._elMain.style.display = "none";
@@ -157,14 +159,24 @@ export class CollapseBody extends HTMLElement {
         this.updateState(false);
     }
 
+    private _connectDisconnectCallbackSet: CallbackSet<() => void> = new CallbackSet(this.constructor.name);
+    addConnectDisconnectHandler(callback: () => void): IDisposable {
+        return this._connectDisconnectCallbackSet.add(callback);
+    }
+    removeConnectDisconnectHandler(callback: () => void): void {
+        this._connectDisconnectCallbackSet.delete(callback);
+    }
+
     connectedCallback() {
         this._ro = new ResizeObserver(entries => this.resizeObserverCallback(entries));
         this._ro.observe(this._elMainInner);
+        this._connectDisconnectCallbackSet.invoke();
     }
 
     disconnectedCallback() {
         this._ro?.disconnect();
         this._ro = null;
+        this._connectDisconnectCallbackSet.invoke();
     }
 
     private readonly _sroot: ShadowRoot;

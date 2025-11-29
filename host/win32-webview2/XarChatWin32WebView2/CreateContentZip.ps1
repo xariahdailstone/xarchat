@@ -3,7 +3,7 @@ Add-Type -Assembly 'System.IO.Compression.FileSystem'
 
 $ContentFilesPath = "..\..\..\browser\mainapp\"
 
-$files = Get-ChildItem -Path $ContentFilesPath -Recurse | Where {$_.FullName -notlike "*\mainapp\src\*" -and $_.FullName -notlike "*\mainapp\node_modules\*" }
+$files = Get-ChildItem -Path $ContentFilesPath -Recurse | Where {$_.FullName -notlike "*\mainapp\src\*" -and $_.FullName -notlike "*\mainapp\node_modules\*" -and $_.FullName -notlike "*\assets-emoji\*" }
 
 # exclude directory entries and generate fullpath list
 $filesFullPath = $files | Where-Object -Property Attributes -CContains Archive | ForEach-Object -Process {Write-Output -InputObject $_.FullName}

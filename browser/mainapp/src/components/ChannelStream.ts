@@ -312,15 +312,9 @@ export class ChannelStream extends ComponentBase<IChannelStreamViewModel> {
     private _scrollManager: DefaultStreamScrollManager;
 
     get hasTextSelection(): boolean {
-        const elMessageContainer = this.$("elMessageContainer") as HTMLDivElement;
-
-        const root = getRoot(elMessageContainer as Node);
-        if (!root) return false;
-        
-        const sel = (root as Document).getSelection();
-        if (sel?.type != "Range") return false;
-
-        return true;
+        const sel = window.getSelection();
+        this.logger.logInfo("window.getSelection()?.type", sel?.type);
+        return (sel?.type == "Range");
     }
 
     private _suppressScrollRecording: number = 0;

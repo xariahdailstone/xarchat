@@ -47,6 +47,19 @@ namespace XarChatLinuxPhotino
             var window = new PhotinoWindow();
             var wc = new PhotinoWindowControl(window);
 #if LINUX
+            var autoUpdater = AutoUpdateManagerFactory.Create(
+                    new FileInfo("asdf"),
+                    args,
+                    new DirectoryInfo(profilePath),
+                    new Version(AssemblyVersionInfo.XarChatVersion),
+                    "linux-amd64",
+                    AssemblyVersionInfo.XarChatBranch);
+
+            ThreadPool.QueueUserWorkItem(delegate
+            {
+                autoUpdater.StartUpdateChecks();
+            });
+
             var backend = new XarChatBackend(new LinuxBackendServiceSetup(wc), clArgs, autoUpdater);
 #endif
 #if MAC
@@ -80,7 +93,19 @@ namespace XarChatLinuxPhotino
             });
 
 #if LINUX
-            var windowTitle = "XarChat (Linux)";
+            var windowTitle = "XarChat";
+
+            var iconFileName = Path.Combine(profilePath, "xarchat.png");
+            if (!File.Exists(iconFileName))
+            {
+                using var resStream =
+                    (from rn in Assembly.GetExecutingAssembly().GetManifestResourceNames()
+                     where rn.EndsWith(".xarchat.png")
+                     select Assembly.GetExecutingAssembly().GetManifestResourceStream(rn)).First();
+                using var outf = File.Create(iconFileName);
+                resStream.CopyTo(outf);
+                outf.Flush();
+            }
 #endif
 #if MAC
             var windowTitle = "XarChat";
@@ -95,8 +120,9 @@ namespace XarChatLinuxPhotino
                 .SetUseOsDefaultLocation(true)
                 .SetMinSize(600, 400)
                 .SetMaxSize(99999, 99999)
-                #if LINUX
-                .SetBrowserControlInitParameters("{\"enable-developer-extras\":true}")
+#if LINUX
+                .SetIconFile(iconFileName)
+                .SetBrowserControlInitParameters("{\"set_enable_developer_extras\":true,\"set_disable_web_security\":true}")
                 #endif
                 #if MAC
                 .SetBrowserControlInitParameters("{\"developerExtrasEnabled\":true}")
@@ -142,24 +168,24 @@ namespace XarChatLinuxPhotino
                     window.LoadRawString("");
                     return false;
                 };
-                window.WindowSizeChanged += (sender, args) => {
-                    var w = window.Width;
-                    var h = window.Height;
-                    try
-                    {
-                        window.SendWebMessage($"{{ \"type\": \"clientresize\", \"bounds\": [ {w}, {h} ] }}");
-                    }
-                    catch { }
-                };
+                //window.WindowSizeChanged += (sender, args) => {
+                //    var w = window.Width;
+                //    var h = window.Height;
+                //    try
+                //    {
+                //        window.SendWebMessage($"{{ \"type\": \"clientresize\", \"bounds\": [ {w}, {h} ] }}");
+                //    }
+                //    catch { }
+                //};
                 window.WindowCreated += (sender, args) => {
                     Console.WriteLine("window created");
+#if !LINUX
                     Console.WriteLine($"Resizable = {window.Resizable}");
                     window.Resizable = false;
                     Console.WriteLine($"Resizable = {window.Resizable}");
                     window.Resizable = true;
                     Console.WriteLine($"Resizable = {window.Resizable}");
-                    //window.Size = new Size(600, 400);
-
+#endif
                     //window.ShowDevTools();
                 };
 

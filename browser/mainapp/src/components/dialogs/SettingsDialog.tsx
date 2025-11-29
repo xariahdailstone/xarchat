@@ -600,21 +600,25 @@ export class SettingsDialog extends DialogComponentBase<SettingsDialogViewModel>
         const getTypeSelectVNode = (def: PingLineItemDefinition, onChange: (style: PingLineItemMatchStyle) => any) => {
             const optionNodes: VNode[] = [];
             const createOptionNode = (style: PingLineItemMatchStyle) => {
-                optionNodes.push(<option attrs={{
+                optionNodes.push(<x-xcoption key={style.toString()} attrs={{
                     "value": style.toString(),
                     "selected": def.matchStyle == style
-                }}>{PingLineItemMatchStyleConvert.toString(style)}</option>)
+                }}>{PingLineItemMatchStyleConvert.toString(style)}</x-xcoption>)
             };
             createOptionNode(PingLineItemMatchStyle.CONTAINS);
             createOptionNode(PingLineItemMatchStyle.WHOLE_WORD);
             createOptionNode(PingLineItemMatchStyle.REGEX);
-            return <select classList={[ "setting-entry-pinglist-item-type "]} on={{ 
+            return <x-xcselect classList={[ "setting-entry-pinglist-item-type "]}
+                props={{
+                    value: def.matchStyle.toString()
+                }}
+                on={{ 
                     "change": (e) => {
                         const elSelect = e.target as HTMLSelectElement;
                         const value = elSelect.value as PingLineItemMatchStyle;
                         onChange(value);
                     }
-                }}>{optionNodes}</select>
+                }}>{optionNodes}</x-xcselect>
         }
         const addFromScratchValue = (text: string) => {
             const addValue = { ...scratchValue, text: text };
@@ -700,16 +704,16 @@ export class SettingsDialog extends DialogComponentBase<SettingsDialogViewModel>
             //     : "no";
 
             const noOption = availableOptions.includes("no")
-                ? <option attrs={{ value: "no", selected: value=="no" }}>{EMOJI_NO} No</option>
+                ? <x-xcoption key="no" attrs={{ value: "no", selected: value=="no" }}>{EMOJI_NO} No</x-xcoption>
                 : null;
             const yesOption = availableOptions.includes("yes")
-                ? <option attrs={{ value: "yes", selected: value=="yes" }}>{EMOJI_YES} Yes</option>
+                ? <x-xcoption key="yes" attrs={{ value: "yes", selected: value=="yes" }}>{EMOJI_YES} Yes</x-xcoption>
                 : null;
             const importantOption = availableOptions.includes("important")
-                ? <option attrs={{ value: "important", selected: value=="important" }}>{EMOJI_IMPORTANT} Yes (as Important)</option>
+                ? <x-xcoption key="yesi" attrs={{ value: "important", selected: value=="important" }}>{EMOJI_IMPORTANT} Yes (as Important)</x-xcoption>
                 : null;
 
-            const selNode = <select classList={[ "notifroute-button", `notifroute-button-${value}`, 'themed' ]} props={{
+            const selNode = <x-xcselect classList={[ "notifroute-button", `notifroute-button-${value}`, 'themed' ]} props={{
                 "value": value
             }} on={{
                 "change": (e) => {
@@ -724,7 +728,7 @@ export class SettingsDialog extends DialogComponentBase<SettingsDialogViewModel>
                 {noOption}
                 {yesOption}
                 {importantOption}
-            </select>
+            </x-xcselect>
 
             return selNode;
 
@@ -800,11 +804,13 @@ export class SettingsDialog extends DialogComponentBase<SettingsDialogViewModel>
         const valueMap = new Map<number, any>();
         let nextValueNum = 1;
 
+        let selectedValue: string = "";
         for (let o of setting.schema.selectOptions!) {
             const isSelected = setting.value == o.value;
             const thisValueNum = nextValueNum++;
+            selectedValue = thisValueNum.toString();
             valueMap.set(thisValueNum, o.value);
-            optionNodes.push(<option attrs={{ "value": thisValueNum.toString(), "selected": isSelected }}>{o.displayValue ?? o.value.toString()}</option>)
+            optionNodes.push(<x-xcoption key={thisValueNum.toString()} attrs={{ "value": thisValueNum.toString(), "selected": isSelected }}>{o.displayValue ?? o.value.toString()}</x-xcoption>)
         }
 
         const onChange = (e: Event) => {
@@ -813,9 +819,9 @@ export class SettingsDialog extends DialogComponentBase<SettingsDialogViewModel>
         };
 
         return <div classList={[ "setting-entry", "setting-entry-select" ]}>
-            <select classList={[ "theme-select" ]} on={{ "change": onChange }}>
+            <x-xcselect classList={[ "themed" ]} props={{ "value": selectedValue }} on={{ "change": onChange }}>
                 {optionNodes}
-            </select>
+            </x-xcselect>
         </div>;
     }
 }

@@ -22,7 +22,7 @@ export class ChatsListTabViewRenderer extends SidebarTabViewRenderer<ChatsListTa
             (!isSelectedTab && hasPings) ? 
                 <x-iconimage attr-src="assets/ui/channel-ping.svg" classList={["ping-icon"]}></x-iconimage>
             : (!isSelectedTab && hasUnseenMessage) ?
-                <>{"\u{2B24}"}</>
+                <x-litestatusdot></x-litestatusdot>
             : null;
 
         // if (headerDotNode) {

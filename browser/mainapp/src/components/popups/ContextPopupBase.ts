@@ -13,7 +13,8 @@ export type PositionTestFuncResult = Rect & {
     enforceMaxHeight?: boolean,
     strictSize?: boolean, 
     strictWidth?: boolean, 
-    strictHeight?: boolean 
+    strictHeight?: boolean,
+    allowExpansion?: boolean
 };
 export type PositionTestFunc = (viewportSize: Size, aroundRect: Rect, desiredSize: Size) => PositionTestFuncResult;
 
@@ -93,6 +94,10 @@ export abstract class ContextPopupBase<TViewModel extends ContextPopupViewModel>
     constructor() {
         super();
 
+        this.initializePositioningLogic();
+    }
+
+    protected initializePositioningLogic() {
         this.whenConnected(() => {
             this._cachedViewportElement = null;
             const pf = AnimationFrameUtils.createPerFrame(() => this.positionPopup());
@@ -144,7 +149,7 @@ export abstract class ContextPopupBase<TViewModel extends ContextPopupViewModel>
         }
     }
 
-    private getMyDesiredSize(): Size {
+    protected getMyDesiredSize(): Size {
         //this.style.maxHeight = "none";
         //this.style.maxWidth = "none";
         return { width: this.offsetWidth, height: this.offsetHeight };
@@ -228,10 +233,20 @@ export abstract class ContextPopupBase<TViewModel extends ContextPopupViewModel>
                         this.positionFrozen = true;
                     }
                     if (displayRect?.enforceSize || displayRect?.enforceMaxWidth) {
-                        this.style.maxWidth = `${displayRect?.width ?? vpSize.width}px`;
+                        if (displayRect?.allowExpansion) {
+                            this.style.maxWidth = `${vpSize.width - (displayRect?.x ?? 0)}px`;
+                        }
+                        else {
+                            this.style.maxWidth = `${displayRect?.width ?? vpSize.width}px`;
+                        }
                     }
                     if (displayRect?.enforceSize || displayRect?.enforceMaxHeight) {
-                        this.style.maxHeight = `${displayRect?.height ?? vpSize.height}px`;
+                        if (displayRect?.allowExpansion) {
+                            this.style.maxHeight = `${vpSize.height - (displayRect?.height ?? 0)}px`;
+                        }
+                        else {
+                            this.style.maxHeight = `${displayRect?.height ?? vpSize.height}px`;
+                        }
                     }
                     if (displayRect?.strictSize || displayRect?.strictWidth) {
                         this.style.width = `${displayRect?.width ?? vpSize.width}px`;

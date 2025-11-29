@@ -13,6 +13,8 @@ namespace XarChat.Backend.Linux.AppDataFolder
             _commandLineOptions = commandLineOptions;
         }
 
+        private bool _outputtedProfileDir = false;
+
         public string GetAppDataFolder()
         {
             string result;
@@ -27,7 +29,12 @@ namespace XarChat.Backend.Linux.AppDataFolder
                 result = Path.Combine(baseDir, ".xarchat");
             }
 
-            Console.WriteLine($"profile dir = {result}");
+            if (!_outputtedProfileDir)
+            {
+                _outputtedProfileDir = true;
+                Console.WriteLine($"profile dir = {result}");
+            }
+
             if (!Directory.Exists(result))
             {
                 Directory.CreateDirectory(result, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);

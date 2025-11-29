@@ -34,7 +34,7 @@
     border-bottom: 1px solid var(--tooltip-border);
 }
 
-.menu-item:hover:not(.disabled) {
+.menu-item.highlighted:not(.disabled) {
     background-color: rgba(255, 255, 255, 0.1);
     color: var(--fg-level-3-highlight);
 }

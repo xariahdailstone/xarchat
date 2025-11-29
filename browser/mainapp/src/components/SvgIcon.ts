@@ -1,10 +1,13 @@
+import { CallbackSet } from "../util/CallbackSet";
 import { SnapshottableSet } from "../util/collections/SnapshottableSet";
 import { DelayedCallManager, DelayedCallScheduler, DelayedCallStyle } from "../util/DelayedCallManager";
+import { IDisposable } from "../util/Disposable";
 import { HTMLUtils } from "../util/HTMLUtils";
 import { Logger, Logging } from "../util/Logger";
 import { ObjectUniqueId } from "../util/ObjectUniqueId";
+import { ShadowRootsManager } from "../util/ShadowRootsManager";
 
-class SvgIcon extends HTMLElement {
+export class SvgIcon extends HTMLElement {
 
     static get observedAttributes() { return [ 'src' ] };
 
@@ -13,7 +16,7 @@ class SvgIcon extends HTMLElement {
 
         this.logger = Logging.createLogger(`SvgIcon#${ObjectUniqueId.get(this)}`);
 
-        this._sroot = this.attachShadow({ mode: 'closed' });
+        this._sroot = ShadowRootsManager.elementAttachShadow(this, { mode: 'closed' });
         HTMLUtils.assignStaticHTMLFragment(this._sroot, `
             <link rel="stylesheet" type="text/css" href="styles/components/SvgIcon.css" />
             <div id="elMain">
@@ -84,13 +87,23 @@ class SvgIcon extends HTMLElement {
         this._mutationObservers.clear();
     }
 
+    private _connectDisconnectCallbackSet: CallbackSet<() => void> = new CallbackSet(this.constructor.name);
+    addConnectDisconnectHandler(callback: () => void): IDisposable {
+        return this._connectDisconnectCallbackSet.add(callback);
+    }
+    removeConnectDisconnectHandler(callback: () => void): void {
+        this._connectDisconnectCallbackSet.delete(callback);
+    }   
+
     private connectedCallback() {
         this.setupMutationObservers();
         this.recheckStyle();
+        this._connectDisconnectCallbackSet.invoke();
     }
 
     private disconnectedCallback() {
         this.teardownMutationObservers();
+        this._connectDisconnectCallbackSet.invoke();
     }
 
     private attrSrcChanged(oldValue?: string, newValue?: string) {
