@@ -24,6 +24,7 @@
     <!-- <PackageReference Include="Photino.NET" Version="3.0.14" /> -->
     <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.2" />
     <PackageReference Include="Mono.Posix" Version="7.1.0-final.1.21458.1" />
+    <PackageReference Include="Wacton.Unicolour" Version="6.3.0" />
   </ItemGroup>
 
   <ItemGroup>
