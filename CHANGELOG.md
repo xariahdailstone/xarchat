@@ -61,3 +61,4 @@
   * If your saved logins credentials are no longer valid (e.g., you changed your password on F-List),
     there was an error where XarChat would not properly drop you back onto the login dialog. That
     has been fixed.
+* Fixed an issue where XarChat might hang on Windows when suspending/resume the OS
