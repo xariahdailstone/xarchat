@@ -166,6 +166,11 @@ extern "C"
 		instance->GetZoom(zoom);
 	}
 
+	EXPORTED void Photino_GetTitlebarColor(Photino* instance, int* r, int* g, int* b)
+	{
+		instance->GetTitlebarColor(r, g, b);
+	}
+
 	EXPORTED void Photino_NavigateToString(Photino* instance, AutoString content)
 	{
 		instance->NavigateToString(content);
@@ -259,6 +264,11 @@ extern "C"
 	EXPORTED void Photino_SetZoom(Photino* instance, int zoom)
 	{
 		instance->SetZoom(zoom);
+	}
+
+	EXPORTED void Photino_SetTitlebarColor(Photino* instance, int r, int g, int b)
+	{
+		instance->SetTitlebarColor(r, g, b);
 	}
 	
 	EXPORTED void Photino_ShowDevTools(Photino* instance)
