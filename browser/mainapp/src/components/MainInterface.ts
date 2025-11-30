@@ -258,6 +258,7 @@ export class MainInterface extends ComponentBase<AppViewModel> {
             elChatUi.style.pointerEvents = "none";
             elChatUi.style.userSelect = "none";
             this._chatUiInertDCM.scheduleDelayedCall(() => {
+                this.logger.logInfo("Making ChatUI inert");
                 elChatUi.inert = true;
             });
         }
@@ -266,6 +267,7 @@ export class MainInterface extends ComponentBase<AppViewModel> {
             elChatUi.style.removeProperty("-webkit-user-select");
             elChatUi.style.removeProperty("user-select");
             //this._chatUiInertDCM.scheduleDelayedCall(() => {
+                this.logger.logInfo("Making ChatUI non-inert");
                 elChatUi.inert = false;
             //});
         }
