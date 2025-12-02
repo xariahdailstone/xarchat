@@ -384,7 +384,7 @@ jobs:
       run: |
         PREPDIR=preproot
         mkdir $PREPDIR
-        cp host/linux-photino/XarChatLinuxPhotino/bin/Release/net10.0/linux-x64/publish/XarChat $PREPDIR/.
+        cp host/linux-photino/XarChatLinuxPhotino/bin/Release/net10.0/linux-x64/publish/xarchat $PREPDIR/.
         chmod +x $PREPDIR/XarChat
 
     - id: create_deb_package
@@ -398,10 +398,10 @@ jobs:
         mkdir -p $OUTROOT
         cp -r host/linux/DebRoot/. $PKGROOT/.
         mkdir -p $PKGROOT/usr/local/bin
-        cp host/linux-photino/XarChatLinuxPhotino/bin/Release/net10.0/linux-x64/publish/XarChat $PKGROOT/usr/local/bin/xarchat
+        cp host/linux-photino/XarChatLinuxPhotino/bin/Release/net10.0/linux-x64/publish/xarchat $PKGROOT/usr/local/bin/xarchat
         chmod +x $PKGROOT/usr/local/bin/xarchat
         perl -i -pe 's/0\.0\.0\.0/${{ needs.generate_build_branding.outputs.timestamp }}/g' $PKGROOT/DEBIAN/control
-        dpkg-deb --build $PKGROOT/xarchat/. $OUTROOT/xarchat-${{ needs.generate_build_branding.outputs.timestamp }}.deb
+        dpkg-deb --build $PKGROOT/. $OUTROOT/xarchat-${{ needs.generate_build_branding.outputs.timestamp }}.deb
 
     - id: publish_artifact_preproot
       name: "Publish Preproot Artifact"
