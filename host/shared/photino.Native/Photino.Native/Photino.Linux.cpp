@@ -184,6 +184,7 @@ Photino::Photino(PhotinoInitParams *initParams) : _webview(nullptr)
 	g_signal_connect(_application, "activate", G_CALLBACK(on_activate), NULL);
 
 	_window = gtk_application_window_new(GTK_APPLICATION(_application));
+	gtk_window_set_wmclass(GTK_WINDOW(_window), "xarchat-main-window", "net.xariah.xarchat");
 	
 	_dialog = new PhotinoDialog();
 
