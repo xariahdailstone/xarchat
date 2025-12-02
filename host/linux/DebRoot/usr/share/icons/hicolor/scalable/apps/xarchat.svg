@@ -2,19 +2,40 @@
 <!-- Created with Inkscape (http://www.inkscape.org/) -->
 
 <svg
-   width="155.3774mm"
-   height="155.37743mm"
-   viewBox="0 0 155.3774 155.37743"
+   width="155.43922mm"
+   height="155.02109mm"
+   viewBox="0 0 155.43922 155.02109"
    version="1.1"
    id="svg1"
    xmlns:xlink="http://www.w3.org/1999/xlink"
    xmlns="http://www.w3.org/2000/svg"
    xmlns:svg="http://www.w3.org/2000/svg">
   <defs
-     id="defs1" />
+     id="defs1">
+    <linearGradient
+       id="linearGradient2">
+      <stop
+         style="stop-color:#822aae;stop-opacity:1;"
+         offset="0"
+         id="stop2" />
+      <stop
+         style="stop-color:#2a094a;stop-opacity:1;"
+         offset="1"
+         id="stop3" />
+    </linearGradient>
+    <linearGradient
+       xlink:href="#linearGradient2"
+       id="linearGradient3"
+       x1="132.60686"
+       y1="112.93735"
+       x2="226.15254"
+       y2="237.07669"
+       gradientUnits="userSpaceOnUse"
+       gradientTransform="translate(-74.943922,-48.574766)" />
+  </defs>
   <g
      id="layer1"
-     transform="translate(-26.420575,-48.682345)">
+     transform="translate(-26.716121,-48.921738)">
     <image
        y="48.682339"
        x="26.420576"
@@ -22,7 +43,17 @@
        height="155.37741"
        width="155.37741"
        preserveAspectRatio="none"
-       id="image1" />
+       id="image1"
+       style="display:none" />
+    <rect
+       style="fill:url(#linearGradient3);stroke-width:1.45448"
+       id="rect1"
+       width="155.43924"
+       height="155.02109"
+       x="26.716122"
+       y="48.921734"
+       rx="35.737148"
+       ry="35.737148" />
     <g
        id="g5"
        transform="translate(1.1214951e-7,0.34696187)"
