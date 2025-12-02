@@ -387,6 +387,23 @@ jobs:
         cp host/linux-photino/XarChatLinuxPhotino/bin/Release/net10.0/linux-x64/publish/XarChat $PREPDIR/.
         chmod +x $PREPDIR/XarChat
 
+    - id: create_deb_package
+      name: "Create .deb package"
+      shell: bash
+      working-directory: ${{ github.workspace }}
+      run: |
+        mkdir preproot-deb
+        mkdir preproot-deb/xarchat
+        mkdir preproot-deb/out
+        PKGROOT=preproot-deb/xarchat
+        cp -r host/linux/DebRoot/. $PKGROOT/.
+        rm $PKGROOT/usr/local/bin/.placeholder
+        cp host/linux-photino/XarChatLinuxPhotino/bin/Release/net10.0/linux-x64/publish/XarChat $PKGROOT/usr/local/bin/xarchat
+        chmod +x $PKGROOT/usr/local/bin/xarchat
+        perl -i -pe 's/0\.0\.0\.0/${{ needs.generate_build_branding.outputs.timestamp }}/g' $PKGROOT/DEBIAN/control
+        cd preproot-deb
+        dpkg-deb --build xarchat out/xarchat-${{ needs.generate_build_branding.outputs.timestamp }}.deb
+
     - id: publish_artifact_preproot
       name: "Publish Preproot Artifact"
       if: ${{ env.should_produce_artifacts == 'true' }}
@@ -394,4 +411,13 @@ jobs:
       with:
         name: linux-exe
         path: ${{ github.workspace }}/preproot
+        retention-days: 5
+
+    - id: publish_artifact_deb
+      name: "Publish .deb Artifact"
+      if: ${{ env.should_produce_artifacts == 'true' }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: linux-deb
+        path: ${{ github.workspace }}/preproot-deb/out
         retention-days: 5
