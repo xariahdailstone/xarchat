@@ -385,7 +385,7 @@ jobs:
         PREPDIR=preproot
         mkdir $PREPDIR
         cp host/linux-photino/XarChatLinuxPhotino/bin/Release/net10.0/linux-x64/publish/xarchat $PREPDIR/.
-        chmod +x $PREPDIR/XarChat
+        chmod +x $PREPDIR/xarchat
 
     - id: create_deb_package
       name: "Create .deb package"
