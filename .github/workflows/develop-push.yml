@@ -392,17 +392,16 @@ jobs:
       shell: bash
       working-directory: ${{ github.workspace }}
       run: |
-        mkdir preproot-deb
-        mkdir preproot-deb/xarchat
-        mkdir preproot-deb/out
         PKGROOT=preproot-deb/xarchat
+        OUTROOT=preproot-deb/out
+        mkdir -p $PKGROOT
+        mkdir -p $OUTROOT
         cp -r host/linux/DebRoot/. $PKGROOT/.
-        rm $PKGROOT/usr/local/bin/.placeholder
+        mkdir -p $PKGROOT/usr/local/bin
         cp host/linux-photino/XarChatLinuxPhotino/bin/Release/net10.0/linux-x64/publish/XarChat $PKGROOT/usr/local/bin/xarchat
         chmod +x $PKGROOT/usr/local/bin/xarchat
         perl -i -pe 's/0\.0\.0\.0/${{ needs.generate_build_branding.outputs.timestamp }}/g' $PKGROOT/DEBIAN/control
-        cd preproot-deb
-        dpkg-deb --build xarchat out/xarchat-${{ needs.generate_build_branding.outputs.timestamp }}.deb
+        dpkg-deb --build $PKGROOT/xarchat $OUTROOT/xarchat-${{ needs.generate_build_branding.outputs.timestamp }}.deb
 
     - id: publish_artifact_preproot
       name: "Publish Preproot Artifact"
