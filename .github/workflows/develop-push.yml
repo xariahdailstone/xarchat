@@ -68,7 +68,7 @@ jobs:
       name: "Generate Build Timestamp"
       shell: bash
       run: |
-        echo "timestamp=$(date +'%Y.%m%d.%H%M.%S')" >> $GITHUB_OUTPUT
+        echo "timestamp=$(date +'%Y.%-m%d.%-H%M.%-S')" >> $GITHUB_OUTPUT
         echo "year=$(date +'%Y')" >> $GITHUB_OUTPUT
 
     - id: generate_buildid
@@ -384,8 +384,24 @@ jobs:
       run: |
         PREPDIR=preproot
         mkdir $PREPDIR
-        cp host/linux-photino/XarChatLinuxPhotino/bin/Release/net10.0/linux-x64/publish/XarChat $PREPDIR/.
-        chmod +x $PREPDIR/XarChat
+        cp host/linux-photino/XarChatLinuxPhotino/bin/Release/net10.0/linux-x64/publish/xarchat $PREPDIR/.
+        chmod +x $PREPDIR/xarchat
+
+    - id: create_deb_package
+      name: "Create .deb package"
+      shell: bash
+      working-directory: ${{ github.workspace }}
+      run: |
+        PKGROOT=preproot-deb/xarchat
+        OUTROOT=preproot-deb/out
+        mkdir -p $PKGROOT
+        mkdir -p $OUTROOT
+        cp -r host/linux/DebRoot/. $PKGROOT/.
+        mkdir -p $PKGROOT/usr/local/bin
+        cp host/linux-photino/XarChatLinuxPhotino/bin/Release/net10.0/linux-x64/publish/xarchat $PKGROOT/usr/local/bin/xarchat
+        chmod +x $PKGROOT/usr/local/bin/xarchat
+        perl -i -pe 's/0\.0\.0\.0/${{ needs.generate_build_branding.outputs.timestamp }}/g' $PKGROOT/DEBIAN/control
+        dpkg-deb --build $PKGROOT/. $OUTROOT/xarchat-${{ needs.generate_build_branding.outputs.timestamp }}.deb
 
     - id: publish_artifact_preproot
       name: "Publish Preproot Artifact"
@@ -394,4 +410,13 @@ jobs:
       with:
         name: linux-exe
         path: ${{ github.workspace }}/preproot
+        retention-days: 5
+
+    - id: publish_artifact_deb
+      name: "Publish .deb Artifact"
+      if: ${{ env.should_produce_artifacts == 'true' }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: linux-deb
+        path: ${{ github.workspace }}/preproot-deb/out
         retention-days: 5

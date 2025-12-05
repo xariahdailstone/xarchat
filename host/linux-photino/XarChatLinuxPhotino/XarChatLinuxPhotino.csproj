@@ -16,7 +16,7 @@
 
     <AssemblyTitle>XarChat</AssemblyTitle>
 
-    <AssemblyName>XarChat</AssemblyName>
+    <AssemblyName>xarchat</AssemblyName>
   </PropertyGroup>
   <PropertyGroup Condition="$(AzureBuildNumber)==''">
     <AzureBuildNumber>none</AzureBuildNumber>
