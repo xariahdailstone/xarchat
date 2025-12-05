@@ -1,0 +1,16 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RuntimeIdentifier>linux-x64</RuntimeIdentifier>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="GirCore.Gtk-4.0" Version="0.7.0-preview.3" />
+    <PackageReference Include="GirCore.WebKit-6.0" Version="0.7.0-preview.3" />
+    <PackageReference Include="GirCore.WebKitWebProcessExtension-6.0" Version="0.7.0-preview.3" />
+  </ItemGroup>
+
+</Project>

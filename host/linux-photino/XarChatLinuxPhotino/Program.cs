@@ -114,7 +114,7 @@ namespace XarChatLinuxPhotino
 #endif
 #if MAC
             var windowTitle = "XarChat";
-#endif            
+#endif
 
             window
                 .SetDevToolsEnabled(false)
@@ -129,10 +129,10 @@ namespace XarChatLinuxPhotino
                 .SetTitlebarColor(0, 0, 0)
                 .SetIconFile(iconFileName)
                 .SetBrowserControlInitParameters("{\"set_enable_developer_extras\":true,\"set_disable_web_security\":true}")
-                #endif
-                #if MAC
+#endif
+#if MAC
                 .SetBrowserControlInitParameters("{\"developerExtrasEnabled\":true}")
-                #endif
+#endif
                 ;
             
 
