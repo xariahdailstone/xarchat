@@ -15,5 +15,7 @@
         BackgroundForegroundColors? TitlebarColor { get; set; }
 
         void Show();
+
+        event EventHandler<EventArgs>? Shown;
     }
 }

@@ -10,6 +10,10 @@ namespace XarChat.UI.Gtk4
 
         public Gtk4Application(string applicationId)
         {
+            Gtk.Module.Initialize();
+            Gdk.Module.Initialize();
+            WebKit.Module.Initialize();
+
             _uiThread = Thread.CurrentThread;
             _gtkApp = Gtk.Application.New(applicationId, Gio.ApplicationFlags.FlagsNone);
             _gtkApp.OnActivate += (o, e) =>
@@ -45,6 +49,8 @@ namespace XarChat.UI.Gtk4
         public bool NeedInvoke => Thread.CurrentThread != _uiThread;
 
         public event EventHandler<EventArgs>? OnRunning;
+
+        public bool SupportsMultipleWindows => true;
 
         public IWebViewWindow CreateWebViewWindow()
         {

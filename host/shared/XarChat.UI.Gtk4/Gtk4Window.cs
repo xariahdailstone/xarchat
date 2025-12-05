@@ -23,7 +23,13 @@ namespace XarChat.UI.Gtk4
             _win.GetStyleContext().AddProvider(_cssProvider, GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
 
             _headerBar = Gtk.HeaderBar.New();
+            _headerBar.GetStyleContext().AddProvider(_cssProvider, GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
             _win.Titlebar = _headerBar;
+
+            _win.OnShow += (o, e) =>
+            {
+                this.Shown?.Invoke(this, EventArgs.Empty);
+            };
         }
 
         public Gtk4Application Application => _app;
@@ -146,29 +152,26 @@ namespace XarChat.UI.Gtk4
                 cssStrBuilder.Append($"window {{ ");
                 if (bgColor.BackgroundColor is not null)
                 {
-                    cssStrBuilder.Append($" background: {ToHtmlColor(bgColor.BackgroundColor)}; }}");
+                    cssStrBuilder.Append($" background: {ToHtmlColor(bgColor.BackgroundColor)}; ");
                 }
                 if (bgColor.ForegroundColor is not null)
                 {
-                    cssStrBuilder.Append($" color: {ToHtmlColor(bgColor.ForegroundColor)}; }}");
+                    cssStrBuilder.Append($" color: {ToHtmlColor(bgColor.ForegroundColor)}; ");
                 }
                 cssStrBuilder.AppendLine($" }}");
             }
 
             var titlebarColor = this.TitlebarColor;
-            if (titlebarColor is not null)
+            cssStrBuilder.Append($"headerbar {{ ");
+            if (titlebarColor.BackgroundColor is not null)
             {
-                cssStrBuilder.Append($"headerbar {{ ");
-                if (titlebarColor.BackgroundColor is not null)
-                {
-                    cssStrBuilder.Append($" background: {ToHtmlColor(titlebarColor.BackgroundColor)}; }}");
-                }
-                if (titlebarColor.ForegroundColor is not null)
-                {
-                    cssStrBuilder.Append($" color: {ToHtmlColor(titlebarColor.ForegroundColor)}; }}");
-                }
-                cssStrBuilder.AppendLine($" }}");
+                cssStrBuilder.Append($" background: {ToHtmlColor(titlebarColor.BackgroundColor)}; ");
             }
+            if (titlebarColor.ForegroundColor is not null)
+            {
+                cssStrBuilder.Append($" color: {ToHtmlColor(titlebarColor.ForegroundColor)}; ");
+            }
+            cssStrBuilder.AppendLine($" box-shadow: none; border: none; }}");
 
             _cssProvider.LoadFromString(cssStrBuilder.ToString());
         }
@@ -186,5 +189,7 @@ namespace XarChat.UI.Gtk4
             ThrowIfNotUiThread();
             _win.Show();
         }
+
+        public event EventHandler<EventArgs>? Shown;
     }
 }

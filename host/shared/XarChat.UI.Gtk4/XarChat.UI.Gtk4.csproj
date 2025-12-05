@@ -13,4 +13,8 @@
     <PackageReference Include="GirCore.WebKitWebProcessExtension-6.0" Version="0.7.0-preview.3" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="../XarChat.UI.Abstractions/XarChat.UI.Abstractions.csproj" />
+  </ItemGroup>
+
 </Project>

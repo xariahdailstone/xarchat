@@ -6,6 +6,10 @@
         bool WebSecurityEnabled { get; set; }
         bool IgnoreLocalhostCertificateErrors { get; set; }
 
+        bool CanLoadBeforeShow { get; }
+        
         void NavigateTo(Uri uri);
+
+        event EventHandler<EventArgs>? LoadCompleted;
     }
 }

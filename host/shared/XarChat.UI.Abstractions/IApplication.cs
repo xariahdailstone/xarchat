@@ -4,6 +4,8 @@
     {
         event EventHandler<EventArgs>? OnRunning;
 
+        bool SupportsMultipleWindows { get; }
+        
         IWebViewWindow CreateWebViewWindow();
 
         SynchronizationContext SynchronizationContext { get; }

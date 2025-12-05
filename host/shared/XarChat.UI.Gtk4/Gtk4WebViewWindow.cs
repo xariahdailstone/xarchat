@@ -1,4 +1,5 @@
 ﻿using System.Runtime.Versioning;
+using Gdk;
 using WebKit;
 using XarChat.UI.Abstractions;
 
@@ -26,9 +27,30 @@ namespace XarChat.UI.Gtk4
                 }
                 return false;
             };
+            _webView.OnLoadChanged += (o, e) =>
+            {
+                switch (e.LoadEvent)
+                {
+                    case LoadEvent.Started:
+                        Console.WriteLine("load started");
+                        break;
+                    case LoadEvent.Redirected:
+                        Console.WriteLine("load redirected");
+                        break;
+                    case LoadEvent.Committed:
+                        Console.WriteLine("load committed");
+                        break;
+                    case LoadEvent.Finished:
+                        Console.WriteLine("load finished");
+                        this.LoadCompleted?.Invoke(this, EventArgs.Empty);
+                        break;
+                }
+            };
             
             this.GtkWindow.Child = _webView;
         }
+
+        public bool CanLoadBeforeShow => true;
 
         public void NavigateTo(Uri uri)
         {
@@ -74,5 +96,7 @@ namespace XarChat.UI.Gtk4
             
             return s;
         }
+
+        public event EventHandler<EventArgs>? LoadCompleted;
     }
 }
