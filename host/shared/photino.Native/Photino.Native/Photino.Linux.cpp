@@ -57,6 +57,11 @@ gboolean on_webview_context_menu(WebKitWebView *web_view,
 								 gpointer user_data);
 gboolean on_permission_request(WebKitWebView *web_view, WebKitPermissionRequest *request, gpointer user_data);
 
+
+static void on_activate(GApplication *app, gpointer user_data)
+{
+}
+
 Photino::Photino(PhotinoInitParams *initParams) : _webview(nullptr)
 {
 	// It makes xlib thread safe.
@@ -175,7 +180,12 @@ Photino::Photino(PhotinoInitParams *initParams) : _webview(nullptr)
 
 	_parent = initParams->ParentInstance;
 
-	_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+	_application = gtk_application_new("net.xariah.xarchat", G_APPLICATION_FLAGS_NONE);
+	g_signal_connect(_application, "activate", G_CALLBACK(on_activate), NULL);
+
+	_window = gtk_application_window_new(GTK_APPLICATION(_application));
+	gtk_window_set_wmclass(GTK_WINDOW(_window), "xarchat-main-window", "net.xariah.xarchat");
+	
 	_dialog = new PhotinoDialog();
 
 	_headerbar = gtk_header_bar_new();

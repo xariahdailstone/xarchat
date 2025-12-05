@@ -178,6 +178,7 @@ private:
 	void AttachWebView();
 #elif __linux__
 	// GtkWidget* _window;
+	GtkApplication* _application;
 	GtkWidget *_webview;
 	GtkWidget *_headerbar;
 	GtkCssProvider *_cssprovider;
