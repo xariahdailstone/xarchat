@@ -4,7 +4,7 @@ namespace XarChat.Backend.Linux.NotificationBadgeManager
 {
     public class LinuxNotificationBadgeManager : INotificationBadgeManager
     {
-        public void SetNotificationBadge(int pingCount, int unseenCount)
+        public async Task SetNotificationBadge(int pingCount, int unseenCount)
         {
             // TODO:
         }
