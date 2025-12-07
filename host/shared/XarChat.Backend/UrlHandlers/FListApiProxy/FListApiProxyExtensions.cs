@@ -223,7 +223,7 @@ namespace XarChat.Backend.UrlHandlers.FListApiProxy
                     Friends = resultWFC.Value.Friends,
                     Characters = resultWFC.Value.Characters,
                     DefaultCharacter = resultWFC.Value.DefaultCharacter,
-                    Ticket = fctm.GetFalsifiedClientTicket(account)
+                    Ticket = resultWFC.Value.Ticket, // fctm.GetFalsifiedClientTicket(account)
                 };
                 return CustomResults.NewtonsoftJsonResult(resTicket, SourceGenerationContext.Default.ApiTicket);
             });

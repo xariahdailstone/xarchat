@@ -1,88 +1,95 @@
 ﻿using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using System.Security.Cryptography.X509Certificates;
-using System.Security.Cryptography;
-using Microsoft.Extensions.DependencyInjection;
-using XarChat.Backend.Features.LocalDataCache;
-using XarChat.Backend.Features.LocalDataCache.Sqlite;
-using XarChat.Backend.Features.FListApi.CachingImpl;
-using XarChat.Backend.Features.FListApi.Impl;
-using XarChat.Backend.Features.FListApi;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
-using Microsoft.AspNetCore.Http.Features;
-using XarChat.Backend.Features.AppFileServer;
-using XarChat.Backend.Features.AppFileServer.FileSystem;
-using Microsoft.AspNetCore.Mvc;
-using XarChat.Backend.Features.MimeTypeMapper;
-using XarChat.Backend.Features.MimeTypeMapper.Impl;
 using Microsoft.AspNetCore.Http;
-using XarChat.Backend.UrlHandlers.FListApiProxy;
-using XarChat.Backend.UrlHandlers.ChatSocket;
+using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using System.Diagnostics;
+using System.Net;
+using System.Net.Sockets;
+using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
+using XarChat.Backend.Bridge1to2;
+using XarChat.Backend.Bridge1to2.Implementation;
+using XarChat.Backend.Bridge1to2.Messages.Client;
+using XarChat.Backend.Bridge1to2.Messages.Server;
 using XarChat.Backend.Features.AppConfiguration;
 using XarChat.Backend.Features.AppConfiguration.Impl;
-using XarChat.Backend.UrlHandlers.LaunchUrl;
-using XarChat.Backend.UrlHandlers.ImageProxy;
+using XarChat.Backend.Features.AppDataFolder;
+using XarChat.Backend.Features.AppFileServer;
+using XarChat.Backend.Features.AppFileServer.ContentZip;
+using XarChat.Backend.Features.AppFileServer.FileSystem;
 using XarChat.Backend.Features.AppSettings;
 using XarChat.Backend.Features.AppSettings.AppDataFile;
-using XarChat.Backend.Features.AppFileServer.ContentZip;
-using XarChat.Backend.UrlHandlers.AppSettings;
-using XarChat.Backend.UrlHandlers.XCHostFunctions;
-using XarChat.Backend.Features.CommandLine;
 using XarChat.Backend.Features.ChatLogging;
 using XarChat.Backend.Features.ChatLogging.Sqlite;
-using XarChat.Backend.Network;
-using XarChat.Backend.Network.Impl;
-using XarChat.Backend.Features.EIconIndexing;
-using XarChat.Backend.Features.EIconIndexing.XariahNet;
-using XarChat.Backend.Features.NewAppSettings;
-using XarChat.Backend.Features.NewAppSettings.Sqlite;
-using XarChat.Backend.UrlHandlers.Logs;
-using XarChat.Backend.Features.UpdateChecker;
-using System.Diagnostics;
-using XarChat.Backend.UrlHandlers.EIconLoader;
-using Microsoft.Extensions.Logging;
-using XarChat.Backend.Features.EIconUpdateSubmitter;
-using XarChat.Backend.Features.EIconUpdateSubmitter.Impl;
-using System.Net.Sockets;
-using System.Net;
-using XarChat.Backend.Features.CommandableWindows;
-using XarChat.Backend.UrlHandlers.WIndowCommands;
-using XarChat.Backend.Features.MemoryHinter;
-using XarChat.Backend.Features.MemoryHinter.Impl;
-using XarChat.Backend.Features.StartupTasks;
 using XarChat.Backend.Features.ChatLogging.Sqlite.Search;
-using XarChat.Backend.UrlHandlers.FileChooser;
-using XarChat.Backend.Features.EIconLoader;
+using XarChat.Backend.Features.CommandableWindows;
+using XarChat.Backend.Features.CommandLine;
 using XarChat.Backend.Features.CrashLogWriter;
 using XarChat.Backend.Features.CrashLogWriter.Impl;
+using XarChat.Backend.Features.EIconFavoriteManager;
+using XarChat.Backend.Features.EIconIndexing;
+using XarChat.Backend.Features.EIconIndexing.XariahNet;
+using XarChat.Backend.Features.EIconLoader;
 using XarChat.Backend.Features.EIconLoader.Impl;
+using XarChat.Backend.Features.EIconUpdateSubmitter;
+using XarChat.Backend.Features.EIconUpdateSubmitter.Impl;
+using XarChat.Backend.Features.FileChooser;
+using XarChat.Backend.Features.FListApi;
+using XarChat.Backend.Features.FListApi.CachingImpl;
+using XarChat.Backend.Features.FListApi.FList2Impl;
+using XarChat.Backend.Features.FListApi.Impl;
+using XarChat.Backend.Features.IdleDetection;
+using XarChat.Backend.Features.LocalDataCache;
+using XarChat.Backend.Features.LocalDataCache.Sqlite;
+using XarChat.Backend.Features.LocaleList;
+using XarChat.Backend.Features.MemoryHinter;
+using XarChat.Backend.Features.MemoryHinter.Impl;
+using XarChat.Backend.Features.MimeTypeMapper;
+using XarChat.Backend.Features.MimeTypeMapper.Impl;
+using XarChat.Backend.Features.NewAppSettings;
+using XarChat.Backend.Features.NewAppSettings.Sqlite;
+using XarChat.Backend.Features.NotificationBadge;
+using XarChat.Backend.Features.StartupTasks;
+using XarChat.Backend.Features.StyleUpdateWatcher;
 using XarChat.Backend.Features.TimingSet;
 using XarChat.Backend.Features.TimingSet.Impl;
+using XarChat.Backend.Features.UpdateChecker;
+using XarChat.Backend.Features.WindowControl;
+using XarChat.Backend.Logging;
+using XarChat.Backend.Network;
+using XarChat.Backend.Network.Impl;
+using XarChat.Backend.UrlHandlers.AppSettings;
+using XarChat.Backend.UrlHandlers.ChatSocket;
+using XarChat.Backend.UrlHandlers.EIconLoader;
+using XarChat.Backend.UrlHandlers.FileChooser;
+using XarChat.Backend.UrlHandlers.FListApiProxy;
+using XarChat.Backend.UrlHandlers.ImageProxy;
+using XarChat.Backend.UrlHandlers.LaunchUrl;
+using XarChat.Backend.UrlHandlers.Logs;
+using XarChat.Backend.UrlHandlers.WIndowCommands;
+using XarChat.Backend.UrlHandlers.XCHostFunctions;
 using XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.AppReady;
-using XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.ShowDevTools;
-using XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.WindowStateControl;
+using XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.AppSettings;
 using XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.ChatLogging;
-using XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.UpdateAppBadge;
-using XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.IdleMonitor;
-using XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.UpdateChecking;
-using XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.GetFileData;
 using XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.ConfigData;
 using XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.EIconSearch;
-using XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.ZoomLevel;
-using XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.GetMemo;
-using XarChat.Backend.Features.StyleUpdateWatcher;
-using XarChat.Backend.Features.EIconFavoriteManager;
-using XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.GetLocaleList;
-using XarChat.Backend.Logging;
-using XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.AppSettings;
 using XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.FlashWindow;
-using XarChat.Backend.Features.WindowControl;
-using XarChat.Backend.Features.AppDataFolder;
-using XarChat.Backend.Features.IdleDetection;
-using XarChat.Backend.Features.NotificationBadge;
-using XarChat.Backend.Features.FileChooser;
-using XarChat.Backend.Features.LocaleList;
+using XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.GetFileData;
+using XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.GetLocaleList;
+using XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.GetMemo;
+using XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.IdleMonitor;
+using XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.ShowDevTools;
+using XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.UpdateAppBadge;
+using XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.UpdateChecking;
+using XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.WindowStateControl;
+using XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.ZoomLevel;
+using XarChat.FList2.FList2Api;
+using XarChat.FList2.FList2Api.Implementation;
 
 namespace XarChat.Backend
 {
@@ -292,14 +299,24 @@ namespace XarChat.Backend
             SetupXCHostCommandHandlers(services);
 
             services.AddSingleton<FListApiImpl>();
+            //services.AddSingleton<IFListApi>(sp =>
+            //{
+            //    var innerApi = sp.GetRequiredService<FListApiImpl>();
+            //    var localDataCache = sp.GetRequiredService<ILocalDataCache>();
+
+            //    var result = new CachingFListApiImpl(innerApi, localDataCache);
+            //    return result;
+            //});
+
+            services.AddSingleton<FList2ApiImpl>();
             services.AddSingleton<IFListApi>(sp =>
             {
-                var innerApi = sp.GetRequiredService<FListApiImpl>();
+                var innerApi = sp.GetRequiredService<FList2ApiImpl>();
                 var localDataCache = sp.GetRequiredService<ILocalDataCache>();
-
                 var result = new CachingFListApiImpl(innerApi, localDataCache);
                 return result;
             });
+
             services.AddSingleton<IFalsifiedClientTicketManager, FalsifiedClientTicketManager>();
 
             services.AddSingleton<ICommandLineOptions>(_commandLineOptions);
@@ -349,6 +366,19 @@ namespace XarChat.Backend
 
             services.AddSingleton<IEIconFavoriteBlockManager, 
                 XarChat.Backend.Features.EIconFavoriteBlockManager.Impl.EIconFavoriteBlockManager>();
+
+            services.AddSingleton<IFList2ApiFactory, DefaultFList2ApiFactory>();
+            services.AddSingleton<IFList2ApiInstanceManager, DefaultFList2ApiInstanceManager>();
+            services.AddSingleton<IBridge1to2Manager, DefaultBridge1to2Manager>();
+            services.AddSingleton<IFChatMessageSerializer<FChatServerMessage>>(
+                new FChatMessageSerializer<FChatServerMessage>(
+                    DefaultServerMessageCodeMap.Instance,
+                    ServerMessageJsonSerializerContext.Default));
+            services.AddSingleton<IFChatMessageDeserializer<FChatClientMessage>>(
+                new FChatMessageDeserializer<FChatClientMessage>(
+                    DefaultClientMessageCodeMap.Instance,
+                    ClientMessageJsonSerializerContext.Default,
+                    (code, body) => new UnknownClientMessage() { Code = code, Body = body }));
         }
 
         private void SetupXCHostCommandHandlers(IServiceCollection services)

@@ -12,6 +12,9 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Threading.Tasks;
+using XarChat.Backend.Bridge1to2;
+using XarChat.Backend.Bridge1to2.Messages.Client;
+using XarChat.Backend.Bridge1to2.Messages.Server;
 using XarChat.Backend.Common;
 using XarChat.Backend.Features.AppConfiguration;
 using XarChat.Backend.Features.FListApi;
@@ -24,7 +27,95 @@ namespace XarChat.Backend.UrlHandlers.ChatSocket
     {
         public static void UseChatSocketProxy(this WebApplication app, string urlBase)
         {
-            app.Map(urlBase, ChatSocketAsyncNew);
+            //app.Map(urlBase, ChatSocketAsyncNew);
+            app.Map(urlBase, ChatSocketFL2Async);
+        }
+
+        private static async Task<IResult> ChatSocketFL2Async(
+            HttpContext context,
+            [FromServices] IBridge1to2Manager bridge1to2Manager,
+            [FromServices] IFChatMessageSerializer<FChatServerMessage> srvMsgSerializer,
+            [FromServices] IFChatMessageDeserializer<FChatClientMessage> cliMsgDeserializer,
+            [FromServices] IFListApi flistApi,
+            [FromServices] IAppConfiguration appConfiguration,
+            [FromServices] IHostApplicationLifetime hostApplicationLifetime,
+            [FromServices] ILogger<ChatSocketExtensionsClass> logger,
+            CancellationToken cancellationToken)
+        {
+            Guid connectionGuid = Guid.NewGuid();
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(
+                cancellationToken, hostApplicationLifetime.ApplicationStopping);
+            cancellationToken = cts.Token;
+
+            try
+            {
+                if (context.WebSockets.IsWebSocketRequest)
+                {
+                    try
+                    {
+                        using var clientWebSocket = await context.WebSockets.AcceptWebSocketAsync();
+                        try
+                        {
+                            logger.LogInformation("Chat proxy connection from UI opened (guid={guid})", connectionGuid);
+
+                            using var connectionCTS = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+
+                            await using var bridgeConn = await bridge1to2Manager.CreateConnectionAsync(cancellationToken);
+                            var outgoingLoopTask = bridgeConn.RunOutgoingMessageLoopAsync(async (msg, cancellationToken) =>
+                            {
+                                try
+                                {
+                                    var serMsg = srvMsgSerializer.Serialize(msg);
+                                    await clientWebSocket.SendAsync(System.Text.Encoding.UTF8.GetBytes(serMsg),
+                                        WebSocketMessageType.Text, true, cancellationToken);
+                                }
+                                catch (Exception ex)
+                                {
+                                    Console.WriteLine(ex.ToString());
+                                    throw;
+                                }
+                            }, connectionCTS.Token);
+                            var incomingLoopTask = Task.Run(async () =>
+                            {
+                                var cancellationToken = connectionCTS.Token;
+                                try
+                                {
+                                    while (!cancellationToken.IsCancellationRequested)
+                                    {
+                                        var buf = new byte[65536];
+                                        var recvResult = await clientWebSocket.ReceiveAsync(buf, cancellationToken);
+                                        var bufStr = System.Text.Encoding.UTF8.GetString(buf, 0, recvResult.Count);
+                                        var cliMsg = cliMsgDeserializer.Deserialize(bufStr);
+                                        await bridgeConn.IngestIncomingMessageAsync(cliMsg, cancellationToken);
+                                    }
+                                }
+                                catch when (cancellationToken.IsCancellationRequested) { }
+                            });
+
+                            await Task.WhenAny(outgoingLoopTask, incomingLoopTask);
+                            connectionCTS.Cancel();
+                            await Task.WhenAll(outgoingLoopTask, incomingLoopTask);
+                        }
+                        catch when (cancellationToken.IsCancellationRequested) { }
+                        catch (Exception ex)
+                        {
+                            logger.LogError(ex, "Error during chat proxy connection (guid={guid}, msg={msg}", connectionGuid, ex.Message);
+                        }
+
+                        logger.LogInformation("Chat proxy connection closed (guid={guid})", connectionGuid);
+                    }
+                    catch { }
+                    return EmptyHttpResult.Instance;
+                }
+                else
+                {
+                    return Results.BadRequest();
+                }
+            }
+            catch
+            {
+                return Results.StatusCode(500);
+            }
         }
 
         private static async Task<IResult> ChatSocketAsyncNew(
@@ -231,55 +322,6 @@ namespace XarChat.Backend.UrlHandlers.ChatSocket
                         }
                         break;
                 }
-            }
-        }
-
-        private static async Task<IResult> ChatSocketAsync(
-            HttpContext context,
-            [FromServices] IAppConfiguration appConfiguration,
-            [FromServices] IHostApplicationLifetime hostApplicationLifetime,
-            [FromServices] ILogger<ChatSocketExtensionsClass> logger,
-            CancellationToken cancellationToken)
-        {
-            using var cts = CancellationTokenSource.CreateLinkedTokenSource(
-                cancellationToken, hostApplicationLifetime.ApplicationStopping);
-            cancellationToken = cts.Token;
-
-            try
-            {
-                if (context.WebSockets.IsWebSocketRequest)
-                {
-                    using var fchatWebSocket = new ClientWebSocket();
-                    await fchatWebSocket.ConnectAsync(new Uri(appConfiguration.WebSocketPath), cancellationToken);
-
-                    using var clientWebSocket = await context.WebSockets.AcceptWebSocketAsync();
-                    try
-                    {
-                        using var connectionCTS = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-
-                        var stcLoop = SocketToSocketLoop(fchatWebSocket, clientWebSocket, "S2C", logger, connectionCTS.Token);
-                        var ctsLoop = SocketToSocketLoop(clientWebSocket, fchatWebSocket, "C2S", logger, connectionCTS.Token);
-
-                        await Task.WhenAny(stcLoop, ctsLoop);
-
-                        connectionCTS.Cancel();
-
-                        await Task.WhenAll(stcLoop, ctsLoop);
-                    }
-                    catch
-                    {
-                    }
-
-                    return EmptyHttpResult.Instance;
-                }
-                else
-                {
-                    return Results.BadRequest();
-                }
-            }
-            catch
-            {
-                return Results.StatusCode(500);
             }
         }
 

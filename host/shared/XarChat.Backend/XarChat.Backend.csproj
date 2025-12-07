@@ -54,4 +54,8 @@
     <Folder Include="Features\HttpClientProvider\" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\XarChat.Backend.Bridge1to2\XarChat.Backend.Bridge1to2.csproj" />
+  </ItemGroup>
+
 </Project>

@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.7.34031.279
+# Visual Studio Version 18
+VisualStudioVersion = 18.0.11205.157 d18.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "XarChat.Backend", "host\shared\XarChat.Backend\XarChat.Backend.csproj", "{344B1953-0472-4B25-AC87-E14C80679FE1}"
 EndProject
@@ -29,6 +29,12 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		CHANGELOG.md = CHANGELOG.md
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "XarChat.Backend.Bridge1to2", "host\shared\XarChat.Backend.Bridge1to2\XarChat.Backend.Bridge1to2.csproj", "{0AE6B82A-A763-4484-9BBF-4CC88C643C29}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "XarChat.FList2", "host\shared\XarChat.FList2\XarChat.FList2.csproj", "{09365D15-F167-4977-87D4-6B3DB7329770}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "XarChat.Backend.Bridge1to2.Tests", "host\shared\XarChat.Backend.Bridge1to2.Tests\XarChat.Backend.Bridge1to2.Tests.csproj", "{77880849-2648-4D65-B23B-459F93158D72}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -55,6 +61,18 @@ Global
 		{03F75260-4093-45F9-9D64-1E2364CFB94A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{03F75260-4093-45F9-9D64-1E2364CFB94A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{03F75260-4093-45F9-9D64-1E2364CFB94A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0AE6B82A-A763-4484-9BBF-4CC88C643C29}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0AE6B82A-A763-4484-9BBF-4CC88C643C29}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0AE6B82A-A763-4484-9BBF-4CC88C643C29}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0AE6B82A-A763-4484-9BBF-4CC88C643C29}.Release|Any CPU.Build.0 = Release|Any CPU
+		{09365D15-F167-4977-87D4-6B3DB7329770}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{09365D15-F167-4977-87D4-6B3DB7329770}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{09365D15-F167-4977-87D4-6B3DB7329770}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{09365D15-F167-4977-87D4-6B3DB7329770}.Release|Any CPU.Build.0 = Release|Any CPU
+		{77880849-2648-4D65-B23B-459F93158D72}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{77880849-2648-4D65-B23B-459F93158D72}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{77880849-2648-4D65-B23B-459F93158D72}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{77880849-2648-4D65-B23B-459F93158D72}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -66,6 +84,9 @@ Global
 		{078FB68E-338C-4B39-91DF-593D57830604} = {CA1D338D-F7E2-446C-BEF6-AE2C3B09F217}
 		{C797C835-3487-41E1-B26E-EAF018486EC3} = {078FB68E-338C-4B39-91DF-593D57830604}
 		{03F75260-4093-45F9-9D64-1E2364CFB94A} = {7E64E588-8B95-45B8-BB84-209F8E0FDB45}
+		{0AE6B82A-A763-4484-9BBF-4CC88C643C29} = {7E64E588-8B95-45B8-BB84-209F8E0FDB45}
+		{09365D15-F167-4977-87D4-6B3DB7329770} = {7E64E588-8B95-45B8-BB84-209F8E0FDB45}
+		{77880849-2648-4D65-B23B-459F93158D72} = {7E64E588-8B95-45B8-BB84-209F8E0FDB45}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {F5224F39-1BBF-4BB2-91EE-CFCC7008E89B}
