@@ -8,6 +8,18 @@ namespace XarChat.Backend.Bridge1to2
 {
     public abstract class DefaultMessageCodeMapBase : IMessageCodeClassMap
     {
+        public static IEnumerable<FChatMessageDefinitionMetadata> EnumerateMetadataFromTypeList(IEnumerable<Type> types)
+        {
+            foreach (var msgType in types)
+            {
+                var mca = msgType.GetCustomAttribute<MessageCodeAttribute>();
+                if (mca is not null)
+                {
+                    yield return new FChatMessageDefinitionMetadata(mca.Code, msgType, mca.HasBody);
+                }
+            }
+        }
+
         public static IEnumerable<FChatMessageDefinitionMetadata> EnumerateMetadataFromJsonSerializerContext(JsonSerializerContext jsc)
         {
             var propQuery =

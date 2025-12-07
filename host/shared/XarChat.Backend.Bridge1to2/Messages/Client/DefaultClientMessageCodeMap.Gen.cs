@@ -1,11 +1,36 @@
-﻿using System.Text.Json.Serialization;
+﻿
+using System.Text.Json.Serialization;
 
 namespace XarChat.Backend.Bridge1to2.Messages.Client
 {
     public class DefaultClientMessageCodeMap : DefaultMessageCodeMapBase
     {
         private static IReadOnlyList<FChatMessageDefinitionMetadata> Metadatas =
-            [.. DefaultMessageCodeMapBase.EnumerateMetadataFromJsonSerializerContext(ClientMessageJsonSerializerContext.Default)];
+            [.. DefaultMessageCodeMapBase.EnumerateMetadataFromTypeList([
+            
+                typeof(CHAClientMessage),
+            
+                typeof(IDNClientMessage),
+            
+                typeof(JCHClientMessage),
+            
+                typeof(LCHClientMessage),
+            
+                typeof(MSGClientMessage),
+            
+                typeof(ORSClientMessage),
+            
+                typeof(PRIClientMessage),
+            
+                typeof(STAClientMessage),
+            
+                typeof(TPNClientMessage),
+            
+                typeof(XPMClientMessage),
+            
+                typeof(XSNClientMessage),
+                  
+            ])];
 
         public static DefaultClientMessageCodeMap Instance { get; } = new DefaultClientMessageCodeMap();
 

@@ -10,4 +10,32 @@
     <ProjectReference Include="..\XarChat.FList2\XarChat.FList2.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="Messages\Client\DefaultClientMessageCodeMap.Gen.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <LastGenOutput>DefaultClientMessageCodeMap.Gen.cs</LastGenOutput>
+    </None>
+    <None Update="Messages\Server\DefaultServerMessageCodeMap.Gen.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <LastGenOutput>DefaultServerMessageCodeMap.Gen.cs</LastGenOutput>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Service Include="{508349b6-6b84-4df5-91f0-309beebad82d}" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="Messages\Client\DefaultClientMessageCodeMap.Gen.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>DefaultClientMessageCodeMap.Gen.tt</DependentUpon>
+    </Compile>
+    <Compile Update="Messages\Server\DefaultServerMessageCodeMap.Gen.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>DefaultServerMessageCodeMap.Gen.tt</DependentUpon>
+    </Compile>
+  </ItemGroup>
+
 </Project>

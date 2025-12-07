@@ -1,0 +1,73 @@
+<#@ output extension=".cs" #>
+<#@ import namespace="System.Collections.Generic" #>
+<#
+	List<string> messageClassNames = new List<string>();
+    messageClassNames.Add("ADLServerMessage");
+    messageClassNames.Add("CDSServerMessage");
+    messageClassNames.Add("CHAServerMessage");
+    messageClassNames.Add("COLServerMessage");
+    messageClassNames.Add("CONServerMessage");
+    messageClassNames.Add("ERRServerMessage");
+    messageClassNames.Add("FLNServerMessage");
+    messageClassNames.Add("FRLServerMessage");
+    messageClassNames.Add("HLOServerMessage");
+    messageClassNames.Add("ICHServerMessage");
+    messageClassNames.Add("IGNServerMessage");
+    messageClassNames.Add("IDNServerMessage");
+    messageClassNames.Add("JCHServerMessage");
+    messageClassNames.Add("LCHServerMessage");
+    messageClassNames.Add("LISServerMessage");
+    messageClassNames.Add("MSGServerMessage");
+    messageClassNames.Add("NLNServerMessage");
+    messageClassNames.Add("ORSServerMessage");
+    messageClassNames.Add("PRIServerMessage");
+    messageClassNames.Add("STAServerMessage");
+    messageClassNames.Add("SYSServerMessage");
+    messageClassNames.Add("TPNServerMessage");
+    messageClassNames.Add("XHMServerMessage");
+    messageClassNames.Add("XICServerMessage");
+    messageClassNames.Add("XNNServerMessage");
+    messageClassNames.Add("XPMServerMessage");
+    messageClassNames.Add("XPUServerMessage");
+#>
+
+using System.Text.Json.Serialization;
+
+namespace XarChat.Backend.Bridge1to2.Messages.Server
+{
+    public class DefaultServerMessageCodeMap : DefaultMessageCodeMapBase
+    {
+        private static readonly IReadOnlyList<FChatMessageDefinitionMetadata> Metadatas =
+            [.. DefaultMessageCodeMapBase.EnumerateMetadataFromTypeList([
+<# foreach (var mclassname in messageClassNames) { #>            
+                typeof(<#= mclassname #>),
+<# } #>            
+            ])];
+
+        public static DefaultServerMessageCodeMap Instance { get; } = new DefaultServerMessageCodeMap();
+
+        public DefaultServerMessageCodeMap()
+            : base(Metadatas)
+        {
+        }
+    }
+
+<# foreach (var mclassname in messageClassNames) { #>
+    [JsonSerializable(typeof(<#= mclassname #>))]
+<# } #>
+    public partial class ServerMessageJsonSerializerContext : JsonSerializerContext
+    {
+    }
+
+    public class DefaultServerMessageSerializer : FChatMessageDeserializer<FChatServerMessage>
+    {
+        public DefaultServerMessageSerializer()
+            : base(
+                  DefaultServerMessageCodeMap.Instance, 
+                  ServerMessageJsonSerializerContext.Default,
+                  (code, body) => throw new InvalidOperationException($"Unknown message code: {code}"))
+        {
+            
+        }
+    }
+}

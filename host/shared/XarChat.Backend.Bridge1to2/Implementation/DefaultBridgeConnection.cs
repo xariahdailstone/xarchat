@@ -150,6 +150,7 @@ namespace XarChat.Backend.Bridge1to2.Implementation
                 .FirstOrDefault();
             if (chatEnabledChar is null)
             {
+                Console.WriteLine("could not find chatenabledchar");
                 await WriteMessageFunc(ServerError.CharNotChatEnabled.ERRMessage, cancellationToken);
                 return;
             }

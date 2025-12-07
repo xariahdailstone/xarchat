@@ -28,7 +28,7 @@ namespace XarChat.Backend.Win32.AppDataFolder
             else
             {
                 var baseDir = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-                result = Path.Combine(baseDir, "XarChatz");
+                result = Path.Combine(baseDir, "XarChatz-FList2");
             }
 
             if (!Directory.Exists(result))

@@ -1,23 +1,70 @@
-﻿using System.Text.Json.Serialization;
+
+using System.Text.Json.Serialization;
 
 namespace XarChat.Backend.Bridge1to2.Messages.Server
 {
     public class DefaultServerMessageCodeMap : DefaultMessageCodeMapBase
     {
         private static readonly IReadOnlyList<FChatMessageDefinitionMetadata> Metadatas =
-            [.. DefaultMessageCodeMapBase.EnumerateMetadataFromJsonSerializerContext(ServerMessageJsonSerializerContext.Default)];
+            [.. DefaultMessageCodeMapBase.EnumerateMetadataFromTypeList([
+            
+                typeof(ADLServerMessage),
+            
+                typeof(CDSServerMessage),
+            
+                typeof(CHAServerMessage),
+            
+                typeof(COLServerMessage),
+            
+                typeof(CONServerMessage),
+            
+                typeof(ERRServerMessage),
+            
+                typeof(FLNServerMessage),
+            
+                typeof(FRLServerMessage),
+            
+                typeof(HLOServerMessage),
+            
+                typeof(ICHServerMessage),
+            
+                typeof(IGNServerMessage),
+            
+                typeof(IDNServerMessage),
+            
+                typeof(JCHServerMessage),
+            
+                typeof(LCHServerMessage),
+            
+                typeof(LISServerMessage),
+            
+                typeof(MSGServerMessage),
+            
+                typeof(NLNServerMessage),
+            
+                typeof(ORSServerMessage),
+            
+                typeof(PRIServerMessage),
+            
+                typeof(STAServerMessage),
+            
+                typeof(SYSServerMessage),
+            
+                typeof(TPNServerMessage),
+            
+                typeof(XHMServerMessage),
+            
+                typeof(XICServerMessage),
+            
+                typeof(XNNServerMessage),
+            
+                typeof(XPMServerMessage),
+            
+                typeof(XPUServerMessage),
+            
+            ])];
 
         public static DefaultServerMessageCodeMap Instance { get; } = new DefaultServerMessageCodeMap();
-
-        //    [
-        //    new("ADL", typeof(ADLServerMessage), true),
-        //    new("CON", typeof(CONServerMessage), true),
-        //    new("FRL", typeof(FRLServerMessage), true),
-        //    new("HLO", typeof(HLOServerMessage), true),
-        //    new("IGN", typeof(IGNServerMessage), true),
-        //    new("IDN", typeof(IDNServerMessage), true),
-        //    new("XNN", typeof(XNNServerMessage), false)
-        //];
 
         public DefaultServerMessageCodeMap()
             : base(Metadatas)

@@ -1,0 +1,56 @@
+﻿<#@ output extension=".cs" #>
+<#@ import namespace="System.Collections.Generic" #>
+<#
+	List<string> messageClassNames = new List<string>();
+    messageClassNames.Add("CHAClientMessage");
+    messageClassNames.Add("IDNClientMessage");
+    messageClassNames.Add("JCHClientMessage");
+    messageClassNames.Add("LCHClientMessage");
+    messageClassNames.Add("MSGClientMessage");
+    messageClassNames.Add("ORSClientMessage");
+    messageClassNames.Add("PRIClientMessage");
+    messageClassNames.Add("STAClientMessage");
+    messageClassNames.Add("TPNClientMessage");
+    messageClassNames.Add("XPMClientMessage");
+    messageClassNames.Add("XSNClientMessage");
+#>
+
+using System.Text.Json.Serialization;
+
+namespace XarChat.Backend.Bridge1to2.Messages.Client
+{
+    public class DefaultClientMessageCodeMap : DefaultMessageCodeMapBase
+    {
+        private static IReadOnlyList<FChatMessageDefinitionMetadata> Metadatas =
+            [.. DefaultMessageCodeMapBase.EnumerateMetadataFromTypeList([
+<# foreach (var mclassname in messageClassNames) { #>            
+                typeof(<#= mclassname #>),
+<# } #>                  
+            ])];
+
+        public static DefaultClientMessageCodeMap Instance { get; } = new DefaultClientMessageCodeMap();
+
+        public DefaultClientMessageCodeMap()
+            : base(Metadatas)
+        {
+        }
+    }
+
+<# foreach (var mclassname in messageClassNames) { #>
+    [JsonSerializable(typeof(<#= mclassname #>))]
+<# } #>
+    public partial class ClientMessageJsonSerializerContext : JsonSerializerContext
+    {
+    }
+
+    public class DefaultClientMessageDeserializer : FChatMessageDeserializer<FChatClientMessage>
+    {
+        public DefaultClientMessageDeserializer()
+            : base(
+                  DefaultClientMessageCodeMap.Instance, 
+                  ClientMessageJsonSerializerContext.Default,
+                  (code, body) => throw new InvalidOperationException($"Unknown message code: {code}"))
+        {
+        }
+    }
+}
