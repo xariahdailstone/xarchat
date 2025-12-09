@@ -202,7 +202,7 @@ export class LoginViewModel extends DialogViewModel<boolean> {
 
             this.characters = new CharacterNameSet();
             for (let c of Object.getOwnPropertyNames(apiTicket.characters)) {
-                const cn = CharacterName.create(c);
+                const cn = CharacterName.createCanonical(c);
                 if (!isAlreadyLoggedIn(cn)) {
                     this.characters.add(cn);
                 }
