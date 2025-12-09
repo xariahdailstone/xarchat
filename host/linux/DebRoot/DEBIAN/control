@@ -1,0 +1,7 @@
+Package: xarchat
+Version: 0.0.0.0
+Architecture: amd64
+Depends: libwebkit2gtk-4.1-0
+Maintainer: Xariah Dailstone <xariah@xariah.net>
+Description: Chat with other deviants online!
+Homepage: https://xariah.net/xarchat/

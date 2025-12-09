@@ -606,7 +606,12 @@ void Photino::GetZoom(int* zoom)
 	*zoom = (int)rawValue;
 }
 
-
+void Photino::GetTitlebarColor(int *r, int *g, int *b)
+{
+	*r = _titlebarR;
+	*g = _titlebarG;
+	*b = _titlebarB;
+}
 
 void Photino::NavigateToString(AutoString content)
 {
@@ -781,7 +786,13 @@ void Photino::SetZoom(int zoom)
 	//MessageBox(nullptr, msg, L"Setter", MB_OK);
 }
 
-
+void Photino::SetTitlebarColor(int r, int g, int b)
+{
+	_titlebarR = r;
+	_titlebarG = g;
+	_titlebarB = b;
+	// TODO:
+}
 
 void Photino::ShowNotification(AutoString title, AutoString body)
 {

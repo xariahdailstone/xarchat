@@ -251,14 +251,27 @@ export class MainInterface extends ComponentBase<AppViewModel> {
 
     private _chatUiInertDCM = new DelayedCallManager(DelayedCallStyle.RUN_LAST, DelayedCallScheduler.SET_TIMEOUT_1MS);
 
+    private _shouldBeInert: boolean = false;
     private setChatUiInert(inert: boolean) {
+        this._shouldBeInert = inert;
+        
+        const setInertStatus = () => {
+            if (this._shouldBeInert) {
+                this.logger.logInfo("Making ChatUI inert");
+            }
+            else {
+                this.logger.logInfo("Making ChatUI non-inert");
+            }
+            elChatUi.inert = this._shouldBeInert;
+        }
+
         const elChatUi = this.$("elChatUi") as HTMLDivElement;
         if (inert) {
             // This performs better when devtools is open for some reason?
             elChatUi.style.pointerEvents = "none";
             elChatUi.style.userSelect = "none";
             this._chatUiInertDCM.scheduleDelayedCall(() => {
-                elChatUi.inert = true;
+                setInertStatus();
             });
         }
         else {
@@ -266,7 +279,7 @@ export class MainInterface extends ComponentBase<AppViewModel> {
             elChatUi.style.removeProperty("-webkit-user-select");
             elChatUi.style.removeProperty("user-select");
             //this._chatUiInertDCM.scheduleDelayedCall(() => {
-                elChatUi.inert = false;
+                setInertStatus();
             //});
         }
     }

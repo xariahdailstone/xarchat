@@ -16,7 +16,7 @@
 
     <AssemblyTitle>XarChat</AssemblyTitle>
 
-    <AssemblyName>XarChat</AssemblyName>
+    <AssemblyName>xarchat</AssemblyName>
   </PropertyGroup>
   <PropertyGroup Condition="$(AzureBuildNumber)==''">
     <AzureBuildNumber>none</AzureBuildNumber>
@@ -26,6 +26,7 @@
     <!-- <PackageReference Include="Photino.NET" Version="3.0.14" /> -->
     <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.7" />
     <PackageReference Include="Mono.Posix" Version="7.1.0-final.1.21458.1" />
+    <PackageReference Include="Wacton.Unicolour" Version="6.3.0" />
   </ItemGroup>
 
   <ItemGroup>
