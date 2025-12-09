@@ -35,6 +35,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "XarChat.FList2", "host\shar
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "XarChat.Backend.Bridge1to2.Tests", "host\shared\XarChat.Backend.Bridge1to2.Tests\XarChat.Backend.Bridge1to2.Tests.csproj", "{77880849-2648-4D65-B23B-459F93158D72}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tools", "tools", "{1CB61D28-493C-4194-B61E-1829797F4645}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EIconEnumerate", "tools\EIconEnumerate\EIconEnumerate.csproj", "{9C89501B-F3F6-3B69-4D86-4B61E1A15E19}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -73,6 +77,10 @@ Global
 		{77880849-2648-4D65-B23B-459F93158D72}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{77880849-2648-4D65-B23B-459F93158D72}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{77880849-2648-4D65-B23B-459F93158D72}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9C89501B-F3F6-3B69-4D86-4B61E1A15E19}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9C89501B-F3F6-3B69-4D86-4B61E1A15E19}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9C89501B-F3F6-3B69-4D86-4B61E1A15E19}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9C89501B-F3F6-3B69-4D86-4B61E1A15E19}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -87,6 +95,7 @@ Global
 		{0AE6B82A-A763-4484-9BBF-4CC88C643C29} = {7E64E588-8B95-45B8-BB84-209F8E0FDB45}
 		{09365D15-F167-4977-87D4-6B3DB7329770} = {7E64E588-8B95-45B8-BB84-209F8E0FDB45}
 		{77880849-2648-4D65-B23B-459F93158D72} = {7E64E588-8B95-45B8-BB84-209F8E0FDB45}
+		{9C89501B-F3F6-3B69-4D86-4B61E1A15E19} = {1CB61D28-493C-4194-B61E-1829797F4645}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {F5224F39-1BBF-4BB2-91EE-CFCC7008E89B}
