@@ -599,34 +599,34 @@ export class ChatConnectionImpl implements ChatConnection {
     }
 
     private handleAOPMessage(msg: HandleableTypedChatMessage<ServerAOPMessage>) {
-        this.sink.serverOpsAdded([ CharacterName.create(msg.body.character) ], false);
+        this.sink.serverOpsAdded([ CharacterName.createCanonical(msg.body.character) ], false);
         msg.handled = true;
     }
 
     private handleDOPMessage(msg: HandleableTypedChatMessage<ServerAOPMessage>) {
-        this.sink.serverOpsRemoved([ CharacterName.create(msg.body.character) ]);
+        this.sink.serverOpsRemoved([ CharacterName.createCanonical(msg.body.character) ]);
         msg.handled = true;
     }
 
     // friends list
     private handleFRLMessage(msg: HandleableTypedChatMessage<ServerFRLMessage>) {
-        this.sink.bookmarkCharactersAdded(msg.body.characters.map(n => CharacterName.create(n)), true);
+        this.sink.bookmarkCharactersAdded(msg.body.characters.map(n => CharacterName.createCanonical(n)), true);
         msg.handled = true;
     }
 
     // ignore list
     private handleIGNMessage(msg: HandleableTypedChatMessage<ServerIGNMessage>) {
         if (msg.body.action == "init") {
-            this.sink.ignoredCharactersAdded(msg.body.characters!.map(n => CharacterName.create(n)), true);
+            this.sink.ignoredCharactersAdded(msg.body.characters!.map(n => CharacterName.createCanonicalUpgradeOnly(n)), true);
             msg.handled = true;
         }
         else if (msg.body.action == "add") {
-            const char = CharacterName.create(msg.body.character!);
+            const char = CharacterName.createCanonical(msg.body.character!);
             this.sink.ignoredCharactersAdded([ char ], false);
             msg.handled = true;
         }
         else if (msg.body.action == "delete") {
-            const char = CharacterName.create(msg.body.character!);
+            const char = CharacterName.createCanonical(msg.body.character!);
             this.sink.ignoredCharactersRemoved([ char ]);
             msg.handled = true;
         }
@@ -635,14 +635,14 @@ export class ChatConnectionImpl implements ChatConnection {
 
     // server ops list
     private handleADLMessage(msg: HandleableTypedChatMessage<ServerADLMessage>) {
-        this.sink.serverOpsAdded(msg.body.ops.map(x => CharacterName.create(x)), true);
+        this.sink.serverOpsAdded(msg.body.ops.map(x => CharacterName.createCanonical(x)), true);
         msg.handled = true;
     }
 
     // initial character list
     private handleLISMessage(msg: HandleableTypedChatMessage<ServerLISMessage>) {
         const mappedStatuses = msg.body.characters.map(f => {
-            const name = CharacterName.create(f[0]);
+            const name = CharacterName.createCanonical(f[0]);
             const gender = CharacterGenderConvert.toCharacterGender(f[1]);
             const stat = OnlineStatusConvert.toOnlineStatus(f[2]);
             const statMsg = this.unescapeHTML(f[3]);
@@ -672,7 +672,7 @@ export class ChatConnectionImpl implements ChatConnection {
     // character came online
     private handleNLNMessage(msg: HandleableTypedChatMessage<ServerNLNMessage>) {
         const x: Partial<CharacterStatus> = {
-            characterName: CharacterName.create(msg.body.identity),
+            characterName: CharacterName.createCanonical(msg.body.identity),
             gender: CharacterGenderConvert.toCharacterGender(msg.body.gender) ?? undefined,
             status: OnlineStatusConvert.toOnlineStatus(msg.body.status) ?? undefined,
             typingStatus: TypingStatus.NONE
@@ -686,7 +686,7 @@ export class ChatConnectionImpl implements ChatConnection {
     // character went offline
     private handleFLNMessage(msg: HandleableTypedChatMessage<ServerFLNMessage>) {
         const x: Partial<CharacterStatus> = {
-            characterName: CharacterName.create(msg.body.character),
+            characterName: CharacterName.createCanonical(msg.body.character),
             gender: CharacterGender.NONE,
             status: OnlineStatus.OFFLINE,
             statusMessage: "",
@@ -701,7 +701,7 @@ export class ChatConnectionImpl implements ChatConnection {
     // character joined channel
     private handleJCHMessage(msg: HandleableTypedChatMessage<ServerJCHMessage>) {
         const chanName = ChannelName.create(msg.body.channel);
-        const charName = CharacterName.create(msg.body.character.identity);
+        const charName = CharacterName.createCanonical(msg.body.character.identity);
         if (CharacterName.equals(this._identifiedCharacter, charName)) {
             this.sink.joinedChannel(chanName, this.unescapeHTML(msg.body.title));
             msg.handled = true;
@@ -715,7 +715,7 @@ export class ChatConnectionImpl implements ChatConnection {
     // character left channel
     private handleLCHMessage(msg: HandleableTypedChatMessage<ServerLCHMessage>) {
         const chanName = ChannelName.create(msg.body.channel);
-        const charName = CharacterName.create(msg.body.character);
+        const charName = CharacterName.createCanonical(msg.body.character);
         if (CharacterName.equals(this._identifiedCharacter, charName)) {
             this.sink.leftChannel(chanName);
             msg.handled = true;
@@ -729,11 +729,11 @@ export class ChatConnectionImpl implements ChatConnection {
     // channel op list
     private handleCOLMessage(msg: HandleableTypedChatMessage<ServerCOLMessage>) {
         const chanName = ChannelName.create(msg.body.channel);
-        this.sink.channelOwnerChanged(chanName, msg.body.oplist[0] != "" ? CharacterName.create(msg.body.oplist[0]) : null, true);
+        this.sink.channelOwnerChanged(chanName, msg.body.oplist[0] != "" ? CharacterName.createCanonical(msg.body.oplist[0]) : null, true);
 
         const z: CharacterName[] = [];
         for (let i = 1; i < msg.body.oplist.length; i++) {
-            z.push(CharacterName.create(msg.body.oplist[i]));
+            z.push(CharacterName.createCanonical(msg.body.oplist[i]));
         }
         this.sink.channelOpsAdded(chanName, z, true);
 
@@ -742,21 +742,21 @@ export class ChatConnectionImpl implements ChatConnection {
 
     private handleCOAMessage(msg: HandleableTypedChatMessage<ServerCOAMessage>) {
         const chanName = ChannelName.create(msg.body.channel);
-        const char = CharacterName.create(msg.body.character);
+        const char = CharacterName.createCanonical(msg.body.character);
         this.sink.channelOpsAdded(chanName, [ char ], false);
         msg.handled = true;
     }
 
     private handleCORMessage(msg: HandleableTypedChatMessage<ServerCORMessage>) {
         const chanName = ChannelName.create(msg.body.channel);
-        const char = CharacterName.create(msg.body.character);
+        const char = CharacterName.createCanonical(msg.body.character);
         this.sink.channelOpRemoved(chanName, char);
         msg.handled = true;
     }
 
     private handleCSOMessage(msg: HandleableTypedChatMessage<ServerCSOMessage>) {
         const chanName = ChannelName.create(msg.body.channel);
-        const char = CharacterName.create(msg.body.character);
+        const char = CharacterName.createCanonical(msg.body.character);
         this.sink.channelOwnerChanged(chanName, char, false);
         msg.handled = true;
     }
@@ -767,7 +767,7 @@ export class ChatConnectionImpl implements ChatConnection {
         const chanName = ChannelName.create(msg.body.channel);
         this.sink.channelModeChanged(chanName, ChatChannelMessageModeConvert.toMode(msg.body.mode) ?? ChatChannelMessageMode.BOTH);
 
-        const u = msg.body.users.map(x => CharacterName.create(x.identity));
+        const u = msg.body.users.map(x => CharacterName.createCanonical(x.identity));
         this.sink.channelCharactersJoined(chanName, u, true);
 
         msg.handled = true;
@@ -791,7 +791,7 @@ export class ChatConnectionImpl implements ChatConnection {
 
     // character status changed
     private handleSTAMessage(msg: HandleableTypedChatMessage<ServerSTAMessage>) {
-        const staCharacter = CharacterName.create(msg.body.character);
+        const staCharacter = CharacterName.createCanonical(msg.body.character);
         const x: Partial<CharacterStatus> = {
             characterName: staCharacter,
             status: OnlineStatusConvert.toOnlineStatus(msg.body.status) ?? undefined,
@@ -808,19 +808,19 @@ export class ChatConnectionImpl implements ChatConnection {
     }
 
     private handleTPNMessage(msg: HandleableTypedChatMessage<ServerTPNMessage>) {
-        if (CharacterName.equals(CharacterName.create(msg.body.character), this._identifiedCharacter)) {
+        if (CharacterName.equals(CharacterName.createCanonical(msg.body.character), this._identifiedCharacter)) {
             // We skip updating our own typing status, since we use it as a messaging flag and don't want that to get exposed in the UI.
         }
         else {
             this.sink.charactersStatusUpdated([
-                { characterName: CharacterName.create(msg.body.character), typingStatus: TypingStatusConvert.toTypingStatus(msg.body.status) ?? TypingStatus.NONE }
+                { characterName: CharacterName.createCanonical(msg.body.character), typingStatus: TypingStatusConvert.toTypingStatus(msg.body.status) ?? TypingStatus.NONE }
             ], false, false);
         }
         msg.handled = true;
     }
 
     private handlePRIMessage(msg: HandleableTypedChatMessage<ServerPRIMessage>) {
-        const convoCharacter = CharacterName.create(msg.body!.character);
+        const convoCharacter = CharacterName.createCanonical(msg.body!.character);
         const speakingCharacter = convoCharacter;
         this.sink.pmConvoMessageReceived(convoCharacter, {
                 isAd: false,
@@ -841,7 +841,7 @@ export class ChatConnectionImpl implements ChatConnection {
     // channel message received
     private handleMSGMessage(msg: HandleableTypedChatMessage<ServerMSGMessage>) {
         const chanName = ChannelName.create(msg.body.channel);
-        const charName = CharacterName.create(msg.body.character);
+        const charName = CharacterName.createCanonical(msg.body.character);
         this.sink.channelMessageReceived(chanName, {
             isAd: false,
             message: this.unescapeHTML(msg.body.message),
@@ -855,7 +855,7 @@ export class ChatConnectionImpl implements ChatConnection {
     // channel ad received
     private handleLRPMessage(msg: HandleableTypedChatMessage<ServerLRPMessage>) {
         const chanName = ChannelName.create(msg.body.channel);
-        const charName = CharacterName.create(msg.body.character);
+        const charName = CharacterName.createCanonical(msg.body.character);
         this.sink.channelMessageReceived(chanName, {
             isAd: true,
             message: this.unescapeHTML(msg.body.message),
@@ -870,7 +870,7 @@ export class ChatConnectionImpl implements ChatConnection {
     private handleRLLMessage(msg: HandleableTypedChatMessage<ServerRLLMessage>) {
         if (msg.body.type == "dice") {
             const rollData: RollData = {
-                rollingCharacter: CharacterName.create(msg.body.character),
+                rollingCharacter: CharacterName.createCanonical(msg.body.character),
                 endResult: msg.body.endresult!,
                 individualResults: msg.body.results!,
                 individualRolls: msg.body.rolls!,
@@ -881,8 +881,8 @@ export class ChatConnectionImpl implements ChatConnection {
                 msg.handled = true;
             }
             else {
-                const char = CharacterName.create(msg.body.character);
-                const recipient = CharacterName.create(msg.body.recipient!);
+                const char = CharacterName.createCanonical(msg.body.character);
+                const recipient = CharacterName.createCanonical(msg.body.recipient!);
                 const convoChar = this._identifiedCharacter == char ? recipient : char;
                 this.sink.pmConvoRollReceived(convoChar, rollData);
                 if (char != this._identifiedCharacter) {
@@ -895,8 +895,8 @@ export class ChatConnectionImpl implements ChatConnection {
         }
         else if (msg.body.type == "bottle") {
             const spinData: BottleSpinData = {
-                spinningCharacter: CharacterName.create(msg.body.character),
-                targetCharacter: CharacterName.create(msg.body.target!)
+                spinningCharacter: CharacterName.createCanonical(msg.body.character),
+                targetCharacter: CharacterName.createCanonical(msg.body.target!)
             };
             this.sink.channelSpinReceived(ChannelName.create(msg.body.channel!), spinData);
             msg.handled = true;
@@ -906,7 +906,7 @@ export class ChatConnectionImpl implements ChatConnection {
     private handleCIUMessage(msg: HandleableTypedChatMessage<ServerCIUMessage>) {
         this.sink.channelInviteReceived(
             ChannelName.create(msg.body.name),
-            CharacterName.create(msg.body.sender),
+            CharacterName.createCanonical(msg.body.sender),
             msg.body.title
         );
         msg.handled = true;
@@ -917,21 +917,21 @@ export class ChatConnectionImpl implements ChatConnection {
         switch (msg.body.type) {
             case "trackadd":
                 {
-                    const charName = CharacterName.create(msg.body.name!);
+                    const charName = CharacterName.createCanonical(msg.body.name!);
                     this.sink.bookmarkCharactersAdded([charName], false);
                     msg.handled = true;
                 }
                 break;
             case "trackrem":
                 {
-                    const charName = CharacterName.create(msg.body.name!);
+                    const charName = CharacterName.createCanonical(msg.body.name!);
                     this.sink.bookmarkCharactersRemoved([charName]);
                     msg.handled = true;
                 }
                 break;
             case "note":
                 {
-                    const senderChar = CharacterName.create(msg.body.sender!);
+                    const senderChar = CharacterName.createCanonical(msg.body.sender!);
                     const subject = msg.body.subject!;
                     const id = msg.body.id!;
                     this.sink.noteReceived(senderChar, subject, id);
@@ -940,21 +940,21 @@ export class ChatConnectionImpl implements ChatConnection {
                 break;
             case "friendadd":
                 {
-                    const name = CharacterName.create(msg.body.name!);
+                    const name = CharacterName.createCanonical(msg.body.name!);
                     this.sink.friendAdded(name);
                     msg.handled = true;
                 }
                 break;
             case "friendremove":
                 {
-                    const name = CharacterName.create(msg.body.name!);
+                    const name = CharacterName.createCanonical(msg.body.name!);
                     this.sink.friendRemoved(name);
                     msg.handled = true;
                 }
                 break;
             case "friendrequest":
                 {
-                    const name = CharacterName.create(msg.body.name!);
+                    const name = CharacterName.createCanonical(msg.body.name!);
                     this.sink.friendRequestReceived(name);
                     msg.handled = true;
                 }
@@ -965,8 +965,8 @@ export class ChatConnectionImpl implements ChatConnection {
 
     private handleCKUMessage(msg: HandleableTypedChatMessage<ServerCKUMessage>) {
         const chan = ChannelName.create(msg.body.channel);
-        const op = CharacterName.create(msg.body.operator);
-        const kickedChar = CharacterName.create(msg.body.character);
+        const op = CharacterName.createCanonical(msg.body.operator);
+        const kickedChar = CharacterName.createCanonical(msg.body.character);
         if (kickedChar != this._identifiedCharacter) {
             this.sink.channelCharacterKicked(chan, op, kickedChar);
         }
@@ -978,8 +978,8 @@ export class ChatConnectionImpl implements ChatConnection {
 
     private handleCBUMessage(msg: HandleableTypedChatMessage<ServerCBUMessage>) {
         const chan = ChannelName.create(msg.body.channel);
-        const op = CharacterName.create(msg.body.operator);
-        const kickedChar = CharacterName.create(msg.body.character);
+        const op = CharacterName.createCanonical(msg.body.operator);
+        const kickedChar = CharacterName.createCanonical(msg.body.character);
         if (kickedChar != this._identifiedCharacter) {
             this.sink.channelCharacterBanned(chan, op, kickedChar);
         }
@@ -991,8 +991,8 @@ export class ChatConnectionImpl implements ChatConnection {
 
     private handleCTUMessage(msg: HandleableTypedChatMessage<ServerCTUMessage>) {
         const chan = ChannelName.create(msg.body.channel);
-        const op = CharacterName.create(msg.body.operator);
-        const kickedChar = CharacterName.create(msg.body.character);
+        const op = CharacterName.createCanonical(msg.body.operator);
+        const kickedChar = CharacterName.createCanonical(msg.body.character);
         if (kickedChar != this._identifiedCharacter) {
             this.sink.channelCharacterTimedOut(chan, op, kickedChar, msg.body.length);
         }
@@ -1286,7 +1286,7 @@ export class ChatConnectionImpl implements ChatConnection {
             await ms.readMessage((msg) => {
                 if (msg.code == "IDN") {
                     this._identified = true;
-                    this._identifiedCharacter = CharacterName.create(msg.body!.character);
+                    this._identifiedCharacter = CharacterName.createCanonical(msg.body!.character);
                     this._logger.enterScope(`ch=${this._identifiedCharacter.value}`);
                     ms.dispose();
                     this.sink.identified(this._identifiedCharacter);
@@ -1378,7 +1378,7 @@ export class ChatConnectionImpl implements ChatConnection {
                 const opliststrs = message.substring(colonPos + 1).split(", ");
                 for (let opstr of opliststrs) {
                     if (!StringUtils.isNullOrWhiteSpace(opstr)) {
-                        result.bans.push(CharacterName.create(opstr.trim()));
+                        result.bans.push(CharacterName.createCanonical(opstr.trim()));
                     }
                 }
                 rmsg.handled = true;
@@ -1409,7 +1409,7 @@ export class ChatConnectionImpl implements ChatConnection {
                 const opliststrs = message.substring(colonPos + 1).split(", ");
                 for (let opstr of opliststrs) {
                     if (!StringUtils.isNullOrWhiteSpace(opstr)) {
-                        result.ops.push(CharacterName.create(opstr.trim()));
+                        result.ops.push(CharacterName.createCanonical(opstr.trim()));
                     }
                 }
                 rmsg.handled = true;
@@ -1542,7 +1542,7 @@ export class ChatConnectionImpl implements ChatConnection {
                 if (recvMsg.code == "FKS") {
                     result = { characters: [] };
                     for (let c of recvMsg.body!.characters) {
-                        result.characters.push(CharacterName.create(c));
+                        result.characters.push(CharacterName.createCanonical(c));
                     }
                 }
                 else if (recvMsg.code == "ERR") {
