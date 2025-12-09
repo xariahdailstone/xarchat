@@ -102,7 +102,9 @@ export class CharacterName {
     get value() { return this._displayValue; }
 
     private setCanonically(name: string) {
-        this._displayValue = StringUtils.discardUnseen(name);
+        if (this._displayValue != name) {
+            this._displayValue = StringUtils.discardUnseen(name);
+        }
         this._isUpgraded = true;
     }
 
