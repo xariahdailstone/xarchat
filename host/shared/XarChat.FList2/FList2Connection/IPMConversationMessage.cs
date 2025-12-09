@@ -6,11 +6,11 @@ namespace XarChat.FList2.FList2Connection
     {
         IOpenPMConversation OpenPMConversation { get; }
 
-        string Id { get; }
+        Guid Id { get; }
 
         DateTime Timestamp { get; }
 
-        string OptimisticId { get; }
+        Guid OptimisticId { get; }
 
         CharacterInfo Author { get; }
 

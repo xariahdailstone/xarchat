@@ -7,6 +7,18 @@ namespace XarChat.FList2.FList2Api.Implementation.Firehose.Messages.Incoming
     [IncomingMessage(Target = "CHANNEL", Type = "MESSAGE")]
     public class ChannelMessageReceived : IFirehoseIncomingMessage
     {
+        [JsonPropertyName("id")]
+        public required Guid Id { get; set; }
+
+        [JsonPropertyName("ts")]
+        public required DateTimeOffset Timestamp { get; set; }
+
+        [JsonPropertyName("optimisticId")]
+        public required Guid OptimisticId { get; set; }
+
+        [JsonPropertyName("cursorId")]
+        public required string CursorId { get; set; }
+
         [JsonPropertyName("channelId")]
         public required ChannelId ChannelId { get; set; }
 

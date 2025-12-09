@@ -7,13 +7,13 @@ namespace XarChat.FList2.FList2Api.Implementation.Firehose.Messages.Incoming
     public class PMConvoMessageReceived : IFirehoseIncomingMessage
     {
         [JsonPropertyName("id")]
-        public required string Id { get; set; }
+        public required Guid Id { get; set; }
 
         [JsonPropertyName("ts")]
         public required DateTimeOffset Timestamp { get; set; }
 
         [JsonPropertyName("optimisticId")]
-        public required string OptimisticId { get; set; }
+        public required Guid OptimisticId { get; set; }
 
         [JsonPropertyName("body")]
         public required string Body { get; set; }

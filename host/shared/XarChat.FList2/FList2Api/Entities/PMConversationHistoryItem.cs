@@ -5,10 +5,10 @@ namespace XarChat.FList2.FList2Api.Entities
     public class PMConversationHistoryItem
     {
         [JsonPropertyName("cursorUuid")]
-        public string? CursorUuid { get; set; }
+        public Guid? CursorUuid { get; set; }
 
         [JsonPropertyName("id")]
-        public string Id { get; set; }
+        public Guid Id { get; set; }
 
         [JsonPropertyName("ts")]
         public DateTimeOffset Timestamp { get; set; }

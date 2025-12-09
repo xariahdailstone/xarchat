@@ -6,7 +6,9 @@ namespace XarChat.FList2.FList2Api.Implementation.Firehose
     {
         Task WriteAsync(IFirehoseOutgoingMessage message, CancellationToken cancellationToken);
 
-        Task<IFirehoseIncomingMessage?> ReadAsync(CancellationToken cancellationToken);
+        //Task<IFirehoseIncomingMessage?> ReadAsync(CancellationToken cancellationToken);
+
+        Task<IFirehoseReader> CreateReader(CancellationToken cancellationToken);
 
         FirehoseStatus FirehoseStatus { get; }
 
@@ -14,4 +16,9 @@ namespace XarChat.FList2.FList2Api.Implementation.Firehose
     }
 
     public record struct OldNew<T>(T PreviousValue, T NewValue);
+
+    public interface IFirehoseReader : IDisposable
+    {
+        Task<IFirehoseIncomingMessage?> ReadAsync(CancellationToken cancellationToken);
+    }
 }

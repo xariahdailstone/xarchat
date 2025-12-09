@@ -6,7 +6,7 @@ namespace XarChat.FList2.FList2Connection.Implementation
     {
         public DefaultPMConversationMessage(
             DefaultOpenPMConversation openPMConversation,
-            string id, DateTime timestamp, string optimisticId, CharacterInfo author, string body, bool isMeMessage, string genderColor)
+            Guid id, DateTime timestamp, Guid optimisticId, CharacterInfo author, string body, bool isMeMessage, string genderColor)
         {
             this.OpenPMConversation = openPMConversation;
             this.Id = id;   
@@ -22,11 +22,11 @@ namespace XarChat.FList2.FList2Connection.Implementation
 
         IOpenPMConversation IPMConversationMessage.OpenPMConversation => this.OpenPMConversation;
 
-        public string Id { get; }
+        public Guid Id { get; }
 
         public DateTime Timestamp { get; }
 
-        public string OptimisticId { get; }
+        public Guid OptimisticId { get; }
 
         public CharacterInfo Author { get; }
 

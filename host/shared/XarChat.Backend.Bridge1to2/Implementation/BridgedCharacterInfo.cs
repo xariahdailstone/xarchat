@@ -159,7 +159,6 @@ namespace XarChat.Backend.Bridge1to2.Implementation
 
         public bool HasOpenPMConversation { get; set; }
 
-
         public BridgedCharacterInfoCollection? Owner { get; set; }
 
         public CharacterStatus LastSentCharacterStatus { get; set; } = CharacterStatus.OFFLINE;

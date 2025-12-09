@@ -179,9 +179,11 @@ namespace XarChat.FList2.FList2Connection.Implementation
         {
             try
             {
+                using var firehoseReader = await _api.Firehose.CreateReader(cancellationToken);
+
                 while (!cancellationToken.IsCancellationRequested)
                 {
-                    var incomingMsg = await _api.Firehose.ReadAsync(cancellationToken);
+                    var incomingMsg = await firehoseReader.ReadAsync(cancellationToken);
                     if (incomingMsg is FirehoseBrokenMessage fbm)
                     {
                         await HandleFirehoseBrokenMessageReceivedAsync(fbm, cancellationToken);

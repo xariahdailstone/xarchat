@@ -9,6 +9,117 @@ using XarChat.FList2.Common.StrongTypes;
 
 namespace XarChat.Backend.Bridge1to2.Implementation
 {
+    internal class BridgedPMConvoInfoCollection
+    {
+        private List<BridgedPMConvoInfo> _pmConvoInfos = new List<BridgedPMConvoInfo>();
+        private ReaderWriterLock _channelInfosRWLock = new ReaderWriterLock();
+
+        public void Add(BridgedPMConvoInfo bci)
+        {
+            _channelInfosRWLock.AcquireWriterLock(-1);
+            try
+            {
+                _pmConvoInfos.Add(bci);
+            }
+            finally
+            {
+                _channelInfosRWLock.ReleaseWriterLock();
+            }
+        }
+
+        public bool TryGetBridgedPMConvoInfo(
+            Func<BridgedPMConvoInfo, bool> predicate, [NotNullWhen(true)] out BridgedPMConvoInfo? bridgedPmConvoInfo)
+        {
+            _channelInfosRWLock.AcquireReaderLock(-1);
+            try
+            {
+                foreach (var bci in _pmConvoInfos)
+                {
+                    if (predicate(bci))
+                    {
+                        bridgedPmConvoInfo = bci;
+                        return true;
+                    }
+                }
+                bridgedPmConvoInfo = null;
+                return false;
+            }
+            finally
+            {
+                _channelInfosRWLock.ReleaseReaderLock();
+            }
+        }
+
+        public bool TryGetBridgedPMConvoInfo(CharacterId characterId, [NotNullWhen(true)] out BridgedPMConvoInfo? bridgedPmConvoInfo)
+            => TryGetBridgedPMConvoInfo(bci => bci.InterlocutorCharacterId == characterId, out bridgedPmConvoInfo);
+
+        public bool TryGetBridgedPMConvoInfo(CharacterName characterName, [NotNullWhen(true)] out BridgedPMConvoInfo? bridgedPmConvoInfo)
+            => TryGetBridgedPMConvoInfo(bci => bci.InterlocutorCharacterName == characterName, out bridgedPmConvoInfo);
+    }
+
+    internal class BridgedPMConvoInfo
+    {
+        public required CharacterId InterlocutorCharacterId { get; init; }
+        public required CharacterName InterlocutorCharacterName { get; init; }
+
+        private ReaderWriterLock _recentMessageIdsRWLock = new ReaderWriterLock();
+        private HashSet<Guid> _recentMessageIds = new HashSet<Guid>();
+
+        public void AbortClearTimers()
+        {
+            _recentMessageIdsRWLock.AcquireWriterLock(-1);
+            try
+            {
+                _recentMessageIds = new HashSet<Guid>();
+            }
+            finally
+            {
+                _recentMessageIdsRWLock.ReleaseWriterLock();
+            }
+        }
+        public bool HasRecentMessageId(Guid messageId)
+        {
+            _recentMessageIdsRWLock.AcquireReaderLock(-1);
+            try
+            {
+                return _recentMessageIds.Contains(messageId);
+            }
+            finally
+            {
+                _recentMessageIdsRWLock.ReleaseReaderLock();
+            }
+        }
+        public void AddRecentMessageId(Guid messageId)
+        {
+            _recentMessageIdsRWLock.AcquireWriterLock(-1);
+            try
+            {
+                var rmids = _recentMessageIds;
+                rmids.Add(messageId);
+                _ = Task.Run(async () =>
+                {
+                    await Task.Delay(60_000);
+                    _recentMessageIdsRWLock.AcquireWriterLock(-1);
+                    try
+                    {
+                        if (_recentMessageIds == rmids)
+                        {
+                            rmids.Remove(messageId);
+                        }
+                    }
+                    finally
+                    {
+                        _recentMessageIdsRWLock.ReleaseLock();
+                    }
+                });
+            }
+            finally
+            {
+                _recentMessageIdsRWLock.ReleaseWriterLock();
+            }
+        }
+    }
+
 
     internal class BridgedChannelInfoCollection
     {
@@ -76,5 +187,65 @@ namespace XarChat.Backend.Bridge1to2.Implementation
         public CharacterName? ChannelOwner { get; set; }
 
         public ISet<CharacterName> KnownChannelOps { get; } = new HashSet<CharacterName>();
+
+        private ReaderWriterLock _recentMessageIdsRWLock = new ReaderWriterLock();
+        private HashSet<Guid> _recentMessageIds = new HashSet<Guid>();
+        
+        public void AbortClearTimers()
+        {
+            _recentMessageIdsRWLock.AcquireWriterLock(-1);
+            try
+            {
+                _recentMessageIds = new HashSet<Guid>();
+            }
+            finally
+            {
+                _recentMessageIdsRWLock.ReleaseWriterLock();
+            }
+        }
+        public bool HasRecentMessageId(Guid messageId)
+        {
+            _recentMessageIdsRWLock.AcquireReaderLock(-1);
+            try
+            {
+                return _recentMessageIds.Contains(messageId);
+            }
+            finally
+            {
+                _recentMessageIdsRWLock.ReleaseReaderLock();
+            }
+        }
+        public void AddRecentMessageId(Guid messageId)
+        {
+            _recentMessageIdsRWLock.AcquireWriterLock(-1);
+            try
+            {
+                var rmids = _recentMessageIds;
+                rmids.Add(messageId);
+                _ = Task.Run(async () =>
+                {
+                    await Task.Delay(60_000);
+                    _recentMessageIdsRWLock.AcquireWriterLock(-1);
+                    try
+                    {
+                        if (_recentMessageIds == rmids)
+                        {
+                            rmids.Remove(messageId);
+                        }
+                    }
+                    finally
+                    {
+                        _recentMessageIdsRWLock.ReleaseLock();
+                    }
+                });
+            }
+            finally
+            {
+                _recentMessageIdsRWLock.ReleaseWriterLock();
+            }
+        }
+
+
+
     }
 }

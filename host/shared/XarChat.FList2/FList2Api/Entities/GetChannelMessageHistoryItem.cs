@@ -6,10 +6,10 @@ namespace XarChat.FList2.FList2Api.Entities
     public class GetChannelMessageHistoryItem
     {
         [JsonPropertyName("cursorId")]
-        public string CursorId { get; set; }
+        public Guid CursorId { get; set; }
 
         [JsonPropertyName("id")]
-        public string Id { get; set; }
+        public Guid Id { get; set; }
 
         [JsonPropertyName("ts")]
         public DateTimeOffset Timestamp { get; set; }

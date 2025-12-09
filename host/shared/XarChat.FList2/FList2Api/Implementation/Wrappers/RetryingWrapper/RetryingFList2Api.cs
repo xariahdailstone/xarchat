@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Text;
 using System.Threading;
+using System.Threading.Channels;
 using XarChat.FList2.Common;
 using XarChat.FList2.FList2Api.Implementation.Firehose;
 using XarChat.FList2.FList2Api.Implementation.Firehose.Messages;
@@ -176,6 +177,7 @@ namespace XarChat.FList2.FList2Api.Implementation.Wrappers.RetryingWrapper
         private bool _disposed = false;
         private IFirehose? _innerFirehose;
         private IDisposable? _innerFirehoseStatusChangeHandlerRegistration;
+        private CancellationTokenSource? _innerFirehoseReaderLoopCTS;
 
         private CancellationTokenSource _firehoseChangeCTS = new CancellationTokenSource();
 
@@ -189,6 +191,8 @@ namespace XarChat.FList2.FList2Api.Implementation.Wrappers.RetryingWrapper
                 }
 
                 _innerFirehoseStatusChangeHandlerRegistration?.Dispose();
+                _innerFirehoseReaderLoopCTS?.Cancel();
+                _innerFirehoseReaderLoopCTS?.Dispose();
 
                 _innerFirehoseStatusChangeHandlerRegistration = null;
                 _innerFirehose = innerFirehose;
@@ -208,8 +212,39 @@ namespace XarChat.FList2.FList2Api.Implementation.Wrappers.RetryingWrapper
                         this.FirehoseStatus = oldNew.NewValue;
                     });
 
+                    _innerFirehoseReaderLoopCTS = new CancellationTokenSource();
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            using var innerReader = await _innerFirehose.CreateReader(_innerFirehoseReaderLoopCTS.Token);
+                            await DistributeToFirehoseReaders(new FirehoseBrokenMessage(), _innerFirehoseReaderLoopCTS.Token);
+                            while (true)
+                            {
+                                var msg = await innerReader.ReadAsync(_innerFirehoseReaderLoopCTS.Token);
+                                if (msg is null) { break; }
+                                await DistributeToFirehoseReaders(msg, _innerFirehoseReaderLoopCTS.Token);
+                            }
+                        }
+                        catch when (_innerFirehoseReaderLoopCTS.IsCancellationRequested) { }
+                    });
+
                     this.FirehoseStatus = _innerFirehose.FirehoseStatus;
                 }
+            }
+        }
+
+        private async Task DistributeToFirehoseReaders(IFirehoseIncomingMessage message, CancellationToken cancellationToken)
+        {
+            List<RetryingFirehoseReader> fhReaders;
+            lock (_firehoseReaders)
+            {
+                fhReaders = _firehoseReaders.Values.ToList();
+            }
+            foreach (var reader in fhReaders)
+            {
+                try { await reader.EnqueueMessage(message, cancellationToken); }
+                catch { }
             }
         }
 
@@ -220,7 +255,7 @@ namespace XarChat.FList2.FList2Api.Implementation.Wrappers.RetryingWrapper
             {
                 if (field != value)
                 {
-                    var oldValue = value;
+                    var oldValue = field;
                     field = value;
                     InvokeStatusChangeHandlers(oldValue, value);
                 }
@@ -300,20 +335,58 @@ namespace XarChat.FList2.FList2Api.Implementation.Wrappers.RetryingWrapper
             }
         }
 
-        public async Task<IFirehoseIncomingMessage?> ReadAsync(CancellationToken cancellationToken)
+        private class RetryingFirehoseReader : IFirehoseReader
         {
-            var result = await WithCurrentFirehoseAsync(
-                cancellationToken: cancellationToken,
-                asyncFunc: async (fh, isFirstTry, cancellationToken) =>
-                {
-                    if (!isFirstTry)
-                    {
-                        return new FirehoseBrokenMessage();
-                    }
-                    var result = await fh.ReadAsync(cancellationToken);
-                    return result;
-                });
+            private readonly Action _onDisposeFunc;
+            private readonly CancellationTokenSource _disposeCTS = new CancellationTokenSource();
 
+            private readonly Channel<IFirehoseIncomingMessage> _messageBufferChannel = Channel.CreateUnbounded<IFirehoseIncomingMessage>();
+
+            public RetryingFirehoseReader(Action onDisposeFunc)
+            {
+                _onDisposeFunc = onDisposeFunc;
+            }
+
+            public void Dispose()
+            {
+                if (!_disposeCTS.IsCancellationRequested)
+                {
+                    _disposeCTS.Cancel();
+                    _onDisposeFunc();
+                }
+            }
+
+            public async Task EnqueueMessage(IFirehoseIncomingMessage message, CancellationToken cancellationToken)
+            {
+                await _messageBufferChannel.Writer.WriteAsync(message, cancellationToken);
+            }
+
+            public async Task<IFirehoseIncomingMessage?> ReadAsync(CancellationToken cancellationToken)
+            {
+                using var combinedCTS = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _disposeCTS.Token);
+                var result = await _messageBufferChannel.Reader.ReadAsync(combinedCTS.Token);
+                return result;
+            }
+        }
+
+        private readonly Dictionary<object, RetryingFirehoseReader> _firehoseReaders
+            = new Dictionary<object, RetryingFirehoseReader>();
+
+        public async Task<IFirehoseReader> CreateReader(CancellationToken cancellationToken)
+        {
+            var myKey = new object();
+            var result = new RetryingFirehoseReader(() =>
+            {
+                lock (_firehoseReaders)
+                { 
+                    _firehoseReaders.Remove(myKey);
+                }
+            });
+
+            lock (_firehoseReaders)
+            {
+                _firehoseReaders.Add(myKey, result);
+            }
             return result;
         }
 

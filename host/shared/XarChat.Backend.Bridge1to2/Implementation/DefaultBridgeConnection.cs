@@ -105,6 +105,7 @@ namespace XarChat.Backend.Bridge1to2.Implementation
 
         private readonly BridgedChannelInfoCollection _bridgedChannelInfoCollection = new BridgedChannelInfoCollection();
         private readonly BridgedCharacterInfoCollection _bridgedCharacterInfoCollection = new BridgedCharacterInfoCollection();
+        private readonly BridgedPMConvoInfoCollection _bridgedPMConvoInfoCollection = new BridgedPMConvoInfoCollection();
 
         //private readonly SemaphoreSlim _channelIdToTitleSem = new SemaphoreSlim(1);
         //private Dictionary<ChannelId, ChannelName> _channelIdToTitle = new Dictionary<ChannelId, ChannelName>();
@@ -183,6 +184,7 @@ namespace XarChat.Backend.Bridge1to2.Implementation
 
             var loopTasks = new List<Task>()
             {
+                RunFirehoseStatusWatcherLoopAsync(cargs),
                 RunFirehoseReceiveLoopAsync(cargs),
                 RunClientMessageProcessLoopAsync(cargs, ReadMessageFunc)
             };
@@ -419,6 +421,7 @@ namespace XarChat.Backend.Bridge1to2.Implementation
                     IsMeMessage = msgMsg.Message.StartsWith("/me "),
                     Body = msgMsg.Message.StartsWith("/me ") ? msgMsg.Message.Substring(3) : msgMsg.Message,
                 };
+                bci.AddRecentMessageId(scm.OptimisticId);
                 await args.Firehose.WriteAsync(scm, args.CancellationToken);
             }
         }
@@ -448,25 +451,45 @@ namespace XarChat.Backend.Bridge1to2.Implementation
         {
             var bci = await GetOrCreateBridgedCharacterInfoByCharacterName(args.FList2Api, priMsg.Recipient, args.CancellationToken);
 
+            if (!_bridgedPMConvoInfoCollection.TryGetBridgedPMConvoInfo(priMsg.Recipient, out var pci))
+            {
+                pci = new BridgedPMConvoInfo()
+                {
+                    InterlocutorCharacterId = bci.CharacterId,
+                    InterlocutorCharacterName = bci.CharacterName
+                };
+                _bridgedPMConvoInfoCollection.Add(pci);
+            }
+
+            var a1 = new CharacterInfo()
+            {
+                Id = args.MyCharacterId,
+                Name = args.MyCharacterName,
+                AvatarPath = args.MyAvatarPath,
+            };
+            var a2 = new CharacterInfo()
+            {
+                Id = bci.CharacterId,
+                Name = bci.CharacterName,
+                AvatarPath = bci.AvatarUrlPath ?? ""  // TODO: use default value
+            };
+            var type = "SELF_AUTHORED";
+            //if (a1.Id > a2.Id)
+            //{
+            //    (a1, a2) = (a2, a1);
+            //    type = "RECIPIENT_AUTHORED";
+            //}
+
             var smsg = new SendPrivateMessageMessage()
             {
-                Author = new CharacterInfo()
-                {
-                    Id = args.MyCharacterId,
-                    Name = args.MyCharacterName,
-                    AvatarPath = args.MyAvatarPath,
-                },
-                Recipient = new CharacterInfo()
-                {
-                    Id = bci.CharacterId,
-                    Name = bci.CharacterName,
-                    AvatarPath = bci.AvatarUrlPath ?? ""  // TODO: use default value
-                },
+                Author = a1,
+                Recipient = a2,
                 Body = priMsg.Message.StartsWith("/me ") ? priMsg.Message.Substring(4) : priMsg.Message,
                 IsMeMessage = priMsg.Message.StartsWith("/me "),
                 GenderColor = args.MyGenderColor,
-                Type = "SELF_AUTHORED"
+                Type = type
             };
+            pci.AddRecentMessageId(smsg.OptimisticId);
             await args.Firehose.WriteAsync(smsg, args.CancellationToken);
         }
 
@@ -533,14 +556,41 @@ namespace XarChat.Backend.Bridge1to2.Implementation
             await cargs.WriteMessageFunc(respMsg, cancellationToken);
         }
 
+        private async Task RunFirehoseStatusWatcherLoopAsync(
+            ClientMessageProcessingArgs cargs)
+        {
+            try
+            {
+                Task NotifyStatusAsync(OldNew<FirehoseStatus> oldNew)
+                {
+                    return cargs.WriteMessageFunc(new SYSServerMessage() 
+                    { 
+                        Message = $"DEBUG: Firehose status changed from {oldNew.PreviousValue} to {oldNew.NewValue}."
+                    }, cargs.CancellationToken);
+                }
+
+                using var fsch = cargs.Firehose.AddFirehoseStatusChangedHandler(oldNew =>
+                {
+                    _ = NotifyStatusAsync(oldNew);
+                });
+
+                await NotifyStatusAsync(new OldNew<FirehoseStatus>(FirehoseStatus.Disconnected, cargs.Firehose.FirehoseStatus));
+
+                await Task.Delay(-1, cargs.CancellationToken);
+            }
+            catch when (cargs.CancellationToken.IsCancellationRequested) { }
+        }
+
         private async Task RunFirehoseReceiveLoopAsync(
             ClientMessageProcessingArgs cargs)
         {
             try
             {
+                using var firehoseReader = await cargs.Firehose.CreateReader(cargs.CancellationToken);
+
                 while (!cargs.CancellationToken.IsCancellationRequested)
                 {
-                    var fhIncomingMsg = await cargs.Firehose.ReadAsync(cargs.CancellationToken);
+                    var fhIncomingMsg = await firehoseReader.ReadAsync(cargs.CancellationToken);
                     if (fhIncomingMsg is null)
                     {
                         break;
@@ -565,12 +615,18 @@ namespace XarChat.Backend.Bridge1to2.Implementation
         {
             if (_bridgedChannelInfoCollection.TryGetBridgedChannelInfo(msg.ChannelId, out var bci) && bci.WeAreInChannel)
             {
-                await args.WriteMessageFunc(new MSGServerMessage()
+                if (!bci.HasRecentMessageId(msg.OptimisticId) && !bci.HasRecentMessageId(msg.Id))
                 {
-                    Character = msg.Author.Name,
-                    Channel = bci.FL1ChannelName,
-                    Message = msg.IsMeMessage ? $"/me {msg.Body}" : msg.Body
-                }, args.CancellationToken);
+                    bci.AddRecentMessageId(msg.Id);
+                    bci.AddRecentMessageId(msg.OptimisticId);
+
+                    await args.WriteMessageFunc(new MSGServerMessage()
+                    {
+                        Character = msg.Author.Name,
+                        Channel = bci.FL1ChannelName,
+                        Message = msg.IsMeMessage ? $"/me {msg.Body}" : msg.Body
+                    }, args.CancellationToken);
+                }
             }
         }
 
@@ -583,33 +639,49 @@ namespace XarChat.Backend.Bridge1to2.Implementation
                 ? msg.Author
                 : msg.Recipient;
 
-            if (msg.Type == "RECIPIENT_AUTHORED") // this means this message is for *receiving* a private message
+            if (!_bridgedPMConvoInfoCollection.TryGetBridgedPMConvoInfo(interlocutor.Id, out var pci))
             {
-                if (msg.Recipient.Name != args.MyCharacterName) { return; }
-
-                await args.WriteMessageFunc(new PRIServerMessage()
+                pci = new BridgedPMConvoInfo()
                 {
-                    Character = interlocutor.Name,
-                    Message = msg.IsMeMessage ? $"/me {msg.Body}" : msg.Body,
-                    Recipient = args.MyCharacterName
-                }, args.CancellationToken);
+                    InterlocutorCharacterId = interlocutor.Id,
+                    InterlocutorCharacterName = interlocutor.Name
+                };
+                _bridgedPMConvoInfoCollection.Add(pci);
             }
-            else if (msg.Type == "SELF_AUTHORED") // this means the message is for *sending* a private message
-            {
-                if (msg.Author.Name != args.MyCharacterName) { return; }
 
-                if (_bridgedCharacterInfoCollection.TryGetBridgedCharacterInfo(msg.Author.Name, out var bci))
+            if (!pci.HasRecentMessageId(msg.Id) && !pci.HasRecentMessageId(msg.OptimisticId))
+            {
+                pci.AddRecentMessageId(msg.Id);
+                pci.AddRecentMessageId(msg.OptimisticId);
+
+                if (msg.Type == "RECIPIENT_AUTHORED") // this means this message is for *receiving* a private message
                 {
-                    await args.WriteMessageFunc(new XHMServerMessage()
+                    if (msg.Recipient.Name != args.MyCharacterName) { return; }
+
+                    await args.WriteMessageFunc(new PRIServerMessage()
                     {
-                        Channel = "pm:" + interlocutor.Name.Value,
-                        Character = bci.CharacterName,
-                        CharacterGender = CharacterGender.Parse(bci.GenderColor ?? CharacterGender.UnknownGenderColor),
-                        CharacterStatus = bci.CharacterStatus.ToFL1CharacterStatus(),
-                        Seen = true,
-                        MessageType = "MSG",
-                        Message = msg.IsMeMessage ? $"/me {msg.Body}" : msg.Body
+                        Character = interlocutor.Name,
+                        Message = msg.IsMeMessage ? $"/me {msg.Body}" : msg.Body,
+                        Recipient = args.MyCharacterName
                     }, args.CancellationToken);
+                }
+                else if (msg.Type == "SELF_AUTHORED") // this means the message is for *sending* a private message
+                {
+                    if (msg.Author.Name != args.MyCharacterName) { return; }
+
+                    if (_bridgedCharacterInfoCollection.TryGetBridgedCharacterInfo(msg.Author.Name, out var bci))
+                    {
+                        await args.WriteMessageFunc(new XHMServerMessage()
+                        {
+                            Channel = "pm:" + interlocutor.Name.Value,
+                            Character = bci.CharacterName,
+                            CharacterGender = CharacterGender.Parse(bci.GenderColor ?? CharacterGender.UnknownGenderColor),
+                            CharacterStatus = bci.CharacterStatus.ToFL1CharacterStatus(),
+                            Seen = true,
+                            MessageType = "MSG",
+                            Message = msg.IsMeMessage ? $"/me {msg.Body}" : msg.Body
+                        }, args.CancellationToken);
+                    }
                 }
             }
         }
@@ -824,27 +896,34 @@ namespace XarChat.Backend.Bridge1to2.Implementation
                         {
                             ChannelId = openChanInfo.ChannelId
                         }, cancellationToken);
+
                         await writeMessageFunc(new XHMServerMessage()
                         {
                             Channel = "ch:" + bci.FL1ChannelName.Value,
                             MessageType = "CLR"
                         }, cancellationToken);
+                        bci.AbortClearTimers();
+
                         foreach (var msg in cmHistResp.List)
                         {
                             await UpdateBridgedCharacterInfoAsync(msg.Author.Id, msg.Author.Name, msg.GenderColor,
                                 msg.Author.AvatarPath, null, null, cancellationToken);
 
-                            await writeMessageFunc(new XHMServerMessage()
+                            if (!bci.HasRecentMessageId(msg.Id))
                             {
-                                Channel = "ch:" + bci.FL1ChannelName.Value,
-                                MessageType = "MSG",
-                                AsOf = msg.Timestamp.ToUnixTimeMilliseconds(),
-                                Character = msg.Author.Name,
-                                CharacterGender = CharacterGender.Parse(msg.GenderColor),
-                                CharacterStatus = CharacterStatus.OFFLINE.ToFL1CharacterStatus(), // XXX:
-                                Seen = true,
-                                Message = msg.IsMeMessage ? $"/me {msg.Body}" : msg.Body
-                            }, cancellationToken);
+                                bci.AddRecentMessageId(msg.Id);
+                                await writeMessageFunc(new XHMServerMessage()
+                                {
+                                    Channel = "ch:" + bci.FL1ChannelName.Value,
+                                    MessageType = "MSG",
+                                    AsOf = msg.Timestamp.ToUnixTimeMilliseconds(),
+                                    Character = msg.Author.Name,
+                                    CharacterGender = CharacterGender.Parse(msg.GenderColor),
+                                    CharacterStatus = CharacterStatus.OFFLINE.ToFL1CharacterStatus(), // XXX:
+                                    Seen = true,
+                                    Message = msg.IsMeMessage ? $"/me {msg.Body}" : msg.Body
+                                }, cancellationToken);
+                            }
                         }
                     }
                 }
@@ -986,6 +1065,16 @@ namespace XarChat.Backend.Bridge1to2.Implementation
                         var interlocutorName = pmConvoInfo.RecipientName;
                         var interlocutorId = pmConvoInfo.RecipientId;
 
+                        if (!_bridgedPMConvoInfoCollection.TryGetBridgedPMConvoInfo(interlocutorId, out var pci))
+                        {
+                            pci = new BridgedPMConvoInfo()
+                            {
+                                InterlocutorCharacterId = interlocutorId,
+                                InterlocutorCharacterName = interlocutorName
+                            };
+                            _bridgedPMConvoInfoCollection.Add(pci);
+                        }
+
                         var bci = await UpdateBridgedCharacterInfoAsync(pmConvoInfo.RecipientId, pmConvoInfo.RecipientName,
                             null, pmConvoInfo.RecipientAvatarPath, pmConvoInfo.Presence.PublicStatusView.Status,
                             pmConvoInfo.Presence.StatusMessage, cancellationToken);
@@ -1003,6 +1092,7 @@ namespace XarChat.Backend.Bridge1to2.Implementation
                         }, cancellationToken);
                         foreach (var msg in pmHistResp.List)
                         {
+                            pci.AddRecentMessageId(msg.Id);
                             await writeMessageFunc(new XHMServerMessage()
                             {
                                 Channel = "pm:" + interlocutorName.Value,

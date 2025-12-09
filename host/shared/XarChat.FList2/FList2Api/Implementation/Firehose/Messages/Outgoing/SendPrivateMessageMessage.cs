@@ -10,7 +10,7 @@ namespace XarChat.FList2.FList2Api.Implementation.Firehose.Messages.Outgoing
         public string MqDestination => $"/app/privatemessage";
 
         [JsonPropertyName("optimisticId")]
-        public string OptimisticId { get; set; } = Guid.NewGuid().ToString();
+        public Guid OptimisticId { get; set; } = Guid.NewGuid();
 
         [JsonPropertyName("optimisticTs")]
         public DateTimeOffset OptimisticTs { get; set; } = DateTimeOffset.UtcNow;

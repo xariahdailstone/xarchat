@@ -557,6 +557,7 @@ namespace XarChat.FList2.FList2Api.Implementation
     [JsonSerializable(typeof(JoinChannelArgs))]
     [JsonSerializable(typeof(LeaveChannelArgs))]
     [JsonSerializable(typeof(SetChatEnabledCharactersArgs))]
+    [JsonSerializable(typeof(SearchEIconsResponse))]
     public partial class FList2ApiEntityJsonSerializerContext : JsonSerializerContext
     {
 

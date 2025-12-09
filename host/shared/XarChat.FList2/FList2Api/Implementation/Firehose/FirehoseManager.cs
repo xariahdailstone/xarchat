@@ -117,7 +117,7 @@ namespace XarChat.FList2.FList2Api.Implementation.Firehose
                         if (newSessionId != previousSessionId)
                         {
                             // new session, need to emit firehose break message
-                            await _incomingMessageChannel.Writer.WriteAsync(new FirehoseBrokenMessage(), cancellationToken);
+                            await DistributeToReadersAsync(new FirehoseBrokenMessage(), cancellationToken);
 
                             // issue subscriptions
                             await sc.WriteAsync(new StompFrame()
@@ -158,7 +158,8 @@ namespace XarChat.FList2.FList2Api.Implementation.Firehose
                         RunStompHeartbeatLoop(sc, thisClientCTS.Token),
                         RunFChatHeartbeatLoop(sc, thisClientCTS.Token),
                         RunStompReceiveLoop(sc, thisClientCTS.Token),
-                        RunStompSendLoop(sc, thisClientCTS.Token)
+                        RunStompSendLoop(sc, thisClientCTS.Token),
+                        RunFirehoseReceiveLoop(thisClientCTS.Token),
                     };
 
                     await Task.WhenAny(tasks);
@@ -263,6 +264,21 @@ namespace XarChat.FList2.FList2Api.Implementation.Firehose
 
         private T JsonDeserialize<T>(string json, JsonSerializerOptions? jso = null)
             => (T)JsonDeserialize(json, typeof(T), jso);
+
+        private async Task RunFirehoseReceiveLoop(CancellationToken cancellationToken)
+        {
+            try
+            {
+                while (true)
+                {
+                    var msg = await _incomingMessageChannel.Reader.ReadAsync(cancellationToken);
+                    if (msg is null) { break; }
+                    await DistributeToReadersAsync(msg, cancellationToken);
+                }
+
+            }
+            catch when (cancellationToken.IsCancellationRequested) { }
+        }
 
         private async Task RunStompReceiveLoop(StompClient sc, CancellationToken cancellationToken)
         {
@@ -397,27 +413,97 @@ namespace XarChat.FList2.FList2Api.Implementation.Firehose
             }
         }
 
-        public async Task<IFirehoseIncomingMessage?> ReadAsync(CancellationToken cancellationToken)
+        private class MyFirehoseReader : IFirehoseReader
         {
-            using var combinedCTS = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _disposeCTS.Token);
-            cancellationToken = combinedCTS.Token;
+            private readonly Action _onDispose;
+            private readonly CancellationTokenSource _disposeCTS = new CancellationTokenSource();
 
-            ThrowIfDisposed();
-            try
+            private readonly Channel<IFirehoseIncomingMessage> _messageBuffer = Channel.CreateUnbounded<IFirehoseIncomingMessage>();
+
+            public MyFirehoseReader(Action onDispose)
             {
-                var result = await _incomingMessageChannel.Reader.ReadAsync(cancellationToken);
+                _onDispose = onDispose;
+            }
+
+            public void Dispose()
+            {
+                if (!_disposeCTS.IsCancellationRequested)
+                {
+                    _disposeCTS.Cancel();
+                    _onDispose();
+                }
+            }
+
+            public async Task EnqueueMessageAsync(IFirehoseIncomingMessage message, CancellationToken cancellationToken)
+            {
+                using var combinedCTS = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _disposeCTS.Token);
+                await _messageBuffer.Writer.WriteAsync(message, combinedCTS.Token);
+            }
+
+            public async Task<IFirehoseIncomingMessage?> ReadAsync(CancellationToken cancellationToken)
+            {
+                using var combinedCTS = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _disposeCTS.Token);
+                var result = await _messageBuffer.Reader.ReadAsync(combinedCTS.Token);
                 return result;
             }
-            catch when (_disposeCTS.IsCancellationRequested)
+        }
+
+        private Dictionary<object, MyFirehoseReader> _firehoseReaders = new Dictionary<object, MyFirehoseReader>();
+
+        public async Task<IFirehoseReader> CreateReader(CancellationToken cancellationToken)
+        {
+            var myKey = new object();
+            var reader = new MyFirehoseReader(() =>
             {
-                throw new ObjectDisposedException(GetType().Name);
+                lock (_firehoseReaders)
+                {
+                    _firehoseReaders.Remove(myKey);
+                }
+            });
+            lock (_firehoseReaders)
+            {
+                _firehoseReaders.Add(myKey, reader);
             }
-            catch
+            return reader;
+        }
+
+        private async Task DistributeToReadersAsync(IFirehoseIncomingMessage message, CancellationToken cancellationToken)
+        {
+            List<MyFirehoseReader> readers;
+
+            lock (_firehoseReaders)
             {
-                _ = this.DisposeAsync();
-                throw;
+                readers = _firehoseReaders.Values.ToList();
+            }
+
+            foreach (var r in readers)
+            {
+                try { await r.EnqueueMessageAsync(message, cancellationToken); }
+                catch { }
             }
         }
+
+        //public async Task<IFirehoseIncomingMessage?> ReadAsync(CancellationToken cancellationToken)
+        //{
+        //    using var combinedCTS = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _disposeCTS.Token);
+        //    cancellationToken = combinedCTS.Token;
+
+        //    ThrowIfDisposed();
+        //    try
+        //    {
+        //        var result = await _incomingMessageChannel.Reader.ReadAsync(cancellationToken);
+        //        return result;
+        //    }
+        //    catch when (_disposeCTS.IsCancellationRequested)
+        //    {
+        //        throw new ObjectDisposedException(GetType().Name);
+        //    }
+        //    catch
+        //    {
+        //        _ = this.DisposeAsync();
+        //        throw;
+        //    }
+        //}
     }
 
     public class MessageAckResponse
