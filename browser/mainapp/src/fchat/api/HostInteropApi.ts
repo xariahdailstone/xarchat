@@ -159,6 +159,7 @@ export class HostInteropAuthenticatedApi implements FListAuthenticatedApi {
 
     async getCharacterProfileAsync(name: CharacterName, cancellationToken: CancellationToken): Promise<ProfileInfo> {
         const result = await this.owner.getFromHostInteropAsync<ProfileInfo>(`${this.account}/profile/${name.value}`, cancellationToken);
+        const cn = CharacterName.createCanonical(result.name);
         return result;
     }
 

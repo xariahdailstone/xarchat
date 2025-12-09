@@ -62,3 +62,4 @@
     there was an error where XarChat would not properly drop you back onto the login dialog. That
     has been fixed.
 * Fixed an issue where XarChat might hang on Windows when suspending/resume the OS
+* Fixed an issue where character with all lowercase profile names might not be able to log into chat.

@@ -6,6 +6,12 @@ const freg = new FinalizationRegistry<string>((heldValue) => {
     cachedNames.delete(heldValue);
 });
 
+export enum CanonicalType {
+    NonCanonical,
+    CanonicalUpgradeOnly,
+    FullyCanonical
+}
+
 export class CharacterName {
     static isValidCharacterName(characterNameString: string): boolean {
         if (characterNameString == null || characterNameString.length == 0 || characterNameString.length > 38) {
@@ -17,14 +23,31 @@ export class CharacterName {
         return true;
     }
 
-    static create(characterNameString: string): CharacterName {
+    static createCanonical(characterNameString: string): CharacterName {
+        return CharacterName.create(characterNameString, CanonicalType.FullyCanonical);
+    }
+
+    static createCanonicalUpgradeOnly(characterNameString: string): CharacterName {
+        return CharacterName.create(characterNameString, CanonicalType.CanonicalUpgradeOnly);
+    }
+
+    static create(characterNameString: string, canonicalType: CanonicalType = CanonicalType.NonCanonical): CharacterName {
         characterNameString = StringUtils.discardUnseen(characterNameString);
         const canonical = characterNameString.toLowerCase();
         
         const cachedRef = cachedNames.get(canonical);
         const ref = cachedRef ? cachedRef.deref() : undefined;
         if (ref) {
-            ref.maybeUpgrade(characterNameString);
+            switch (canonicalType) {
+                case CanonicalType.FullyCanonical:
+                    ref.setCanonically(characterNameString);
+                    break;
+                case CanonicalType.CanonicalUpgradeOnly:
+                    ref.maybeUpgrade(characterNameString);
+                    break;
+                case CanonicalType.NonCanonical:
+                    break;
+            }
             return ref;
         }
 
@@ -77,6 +100,13 @@ export class CharacterName {
     get canonicalValue() { return this._canonicalValue; }
 
     get value() { return this._displayValue; }
+
+    private setCanonically(name: string) {
+        if (this._displayValue != name) {
+            this._displayValue = StringUtils.discardUnseen(name);
+        }
+        this._isUpgraded = true;
+    }
 
     private maybeUpgrade(name: string) {
         if (!this._isUpgraded) {
