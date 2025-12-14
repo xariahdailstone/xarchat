@@ -22,7 +22,7 @@ export class XCSelectElement extends HTMLElement {
         HTMLUtils.assignStaticHTMLFragment(this._sroot, `
             <div class="container" id="elContainer">
                 <div class="title" id="elTitle"><slot name="selected"></slot></div>
-                <div class="title-invis" id="elTitleInvis"><slot></slot></div>
+                <div class="title-invis" id="elTitleInvis"><x-xcoption style="visibility: hidden;">X</x-xcoption><slot></slot></div>
                 <div class="icon" id="elIcon"><x-iconimage src="assets/ui/dropdown-arrow.svg" id="elIconInner" tabindex="-1"></x-iconimage></div>
                 <input type="text" class="focus-btn" id="elFocusBtn" />
             </div>
@@ -210,6 +210,8 @@ export class XCSelectElement extends HTMLElement {
 
     private _selectedOption: (XCOptionElement | null) = null;
 
+    private _heldInvalidValue: string | null = null;
+
     get value(): (string) {
         return this._selectedOption?.effectiveValue ?? "";
     }
@@ -219,6 +221,7 @@ export class XCSelectElement extends HTMLElement {
         this._mutatingValue = true;
         try {
             if (v != this.value) {
+                this._heldInvalidValue = null;
                 let newSelectedOption: XCOptionElement | null = null;
                 if (v == null) {
                     newSelectedOption = null;
@@ -229,6 +232,7 @@ export class XCSelectElement extends HTMLElement {
                         newSelectedOption = option;
                     }
                     else {
+                        this._heldInvalidValue = v;
                         newSelectedOption = null;
                     }
                 }
@@ -296,6 +300,9 @@ export class XCSelectElement extends HTMLElement {
 
     private handleAddedOptionChild(n: XCOptionElement) {
         n.parent = this;
+        if (n.effectiveValue == this._heldInvalidValue) {
+            n.selected = true;
+        }
         if (n.selected) {
             this.value = n.effectiveValue ?? "";
         }

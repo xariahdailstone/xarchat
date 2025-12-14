@@ -11,7 +11,7 @@ import { IObservable, ObservableValue } from "../../Observable";
 import { UpdateCheckerState } from "../../UpdateCheckerClient";
 import { LogMessageType, LogChannelMessage, LogPMConvoMessage, HostWindowState, EIconSearchResults, ConfigKeyValue, ChooseLocalFileOptions, HostLocaleInfo } from "../HostInterop";
 import { HostInteropLogFileMaintenance } from "../HostInteropLogFileMaintenance";
-import { DateAnchor, HostInteropLogSearch, LogSearchKind, LogSearchResult, RecentConversationResult } from "../HostInteropLogSearch";
+import { DateAnchor, ExplicitDate, HostInteropLogSearch, LogSearchKind, LogSearchResult, LogSearchResultChannelMessage, LogSearchResultPMConvoMessage, RecentConversationResult } from "../HostInteropLogSearch";
 import { HostInteropLogSearch2, LogSearch2Results, PerformSearchOptions } from "../HostInteropLogSearch2";
 import { ChatWebSocket, HostInteropBase, IHostInterop, NoCorsFetchArgs, NoCorsFetchResult, UrlLaunchedEventArgs } from "../IHostInterop";
 
@@ -263,6 +263,33 @@ class NullHostInteropLogSearch implements HostInteropLogSearch {
         return [];
     }
     async getRecentConversationsAsync(logsFor: CharacterName, resultLimit: number, cancellationToken: CancellationToken): Promise<RecentConversationResult[]> {
+        return [];
+    }
+
+    async getHintsForChannelTitle(titlePartial: string, cancellationToken: CancellationToken): Promise<string[]> {
+        return [];
+    }
+    async getHintsForMyCharacterName(myCharNamePartial: string, cancellationToken: CancellationToken): Promise<string[]> {
+        return [];
+    }
+    async getHintsForInterlocutorCharacterName(myCharName: string, interlocutorCharNamePartial: string, cancellationToken: CancellationToken): Promise<string[]> {
+        return [];
+    }
+    async searchChannelMessageDatesAsync(title: string, cancellationToken: CancellationToken): Promise<ExplicitDate[]> {
+        return [];
+    }
+    async searchPMConversationDatesAsync(myCharName: string, interlocutorCharName: string, cancellationToken: CancellationToken): Promise<ExplicitDate[]> {
+        return [];
+    }
+
+    async getChannelMessagesAsync(
+        title: string,
+        fromDate: ExplicitDate, toDate: ExplicitDate, cancellationToken: CancellationToken): Promise<LogSearchResultChannelMessage[]> {
+        return [];
+    }
+    async getPMConversationMessagesAsync(
+        myCharName: string, interlocutorCharName: string,
+        fromDate: ExplicitDate, toDate: ExplicitDate, cancellationToken: CancellationToken): Promise<LogSearchResultPMConvoMessage[]> {
         return [];
     }
 }

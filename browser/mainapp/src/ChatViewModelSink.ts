@@ -8,7 +8,7 @@ import { CharacterStatus } from "./shared/CharacterSet";
 import { OnlineStatus, OnlineStatusConvert } from "./shared/OnlineStatus";
 import { TypingStatus } from "./shared/TypingStatus";
 import { SnapshottableMap } from "./util/collections/SnapshottableMap";
-import { DateUtils } from "./util/DateTimeUtils";
+import { DateUtils } from "./util/DateUtils";
 import { IDisposable, tryDispose } from "./util/Disposable";
 import { HostInterop } from "./util/hostinterop/HostInterop";
 import { Logger, Logging } from "./util/Logger";

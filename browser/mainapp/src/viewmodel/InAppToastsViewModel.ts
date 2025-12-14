@@ -1,6 +1,6 @@
 import { BBCodeParseResult, ChatBBCodeParser } from "../util/bbcode/BBCode";
 import { ReadOnlyStdObservableCollection, StdObservableCollectionChangeType } from "../util/collections/ReadOnlyStdObservableCollection";
-import { TimeSpanUtils } from "../util/DateTimeUtils";
+import { TimeSpanUtils } from "../util/TimeSpanUtils";
 import { DateUtils } from "../util/DateUtils";
 import { asDisposable, EmptyDisposable, IDisposable } from "../util/Disposable";
 import { ObjectUniqueId } from "../util/ObjectUniqueId";

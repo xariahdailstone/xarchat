@@ -4,7 +4,8 @@ import { jsx, Fragment, VNode, init, propsModule, styleModule, eventListenersMod
 import { CharacterLinkUtils } from "../util/CharacterLinkUtils";
 import { KeyValuePair } from "../util/collections/KeyValuePair";
 import { ReadOnlyStdObservableCollection } from "../util/collections/ReadOnlyStdObservableCollection";
-import { DateUtils, TimeSpanUtils } from "../util/DateTimeUtils";
+import { DateUtils } from "../util/DateUtils";
+import { TimeSpanUtils } from "../util/TimeSpanUtils";
 import { asDisposable, asNamedDisposable, DisposableOwnerField, IDisposable } from "../util/Disposable";
 import { HTMLUtils } from "../util/HTMLUtils";
 import { IterableUtils } from "../util/IterableUtils";

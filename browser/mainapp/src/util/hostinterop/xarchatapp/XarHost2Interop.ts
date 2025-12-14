@@ -29,7 +29,7 @@ import { XarHost2HostInteropLogSearch2Impl } from "./XarHost2HostInteropLogSearc
 import { IXarHost2HostInterop } from "./IXarHost2HostInterop";
 import { ChatWebSocket, NoCorsFetchArgs, NoCorsFetchResult, UrlLaunchedEventArgs } from "../IHostInterop";
 import { IObservable, Observable, ObservableValue } from "../../Observable";
-import { DateUtils } from "../../DateTimeUtils";
+import { DateUtils } from "../../DateUtils";
 import { HostInteropLogFileMaintenance } from "../HostInteropLogFileMaintenance";
 import { XarHost2InteropLogFileMaintenance } from "./XarHost2InteropLogFileMaintenance";
 import { XarHost2InteropNoCorsSession } from "./XarHost2InteropNoCorsSession";

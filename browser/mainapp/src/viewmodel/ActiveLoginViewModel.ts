@@ -53,6 +53,7 @@ import { RecentConversationsViewModel } from "./RecentConversationsViewModel.js"
 import { CharacterGender } from "../shared/CharacterGender.js";
 import { NotificationManagerViewModel } from "./NotificationManagerViewModel.js";
 import { CallbackSet } from "../util/CallbackSet.js";
+import { LogSearch3ViewModel } from "./logsearch/LogSearchViewModel.js";
 
 declare const XCHost: any;
 
@@ -92,6 +93,10 @@ export class ActiveLoginViewModel extends ObservableBase implements IDisposable 
         this._logSearchViewModel2 = new LogSearch2ViewModel(this, this.appViewModel, savedChatState.characterName);
         // TODO:
         //this.miscTabs.push(new MiscTabViewModel(this, "Log Viewer 2", this._logSearchViewModel2));
+
+        this._logSearchViewModel3 = new LogSearch3ViewModel(this);
+        this.miscTabs.push(new MiscTabViewModel(this, "Log Viewer (3)", this._logSearchViewModel3));
+
         this.miscTabs.push(new MiscTabViewModel(this, "Partner Search", this.partnerSearch));
         this.miscTabs.push(new MiscTabViewModel(this, "Recent Conversations", this.recentConversations));
         this.miscTabs.push(new MiscTabViewModel(this, "Recent Notifications", this.recentNotifications));
@@ -266,6 +271,8 @@ export class ActiveLoginViewModel extends ObservableBase implements IDisposable 
     eIconFavoriteBlockViewModel: EIconFavoriteBlockViewModel;
 
     private readonly _logSearchViewModel2: LogSearch2ViewModel;
+
+    private readonly _logSearchViewModel3: LogSearch3ViewModel;
 
     get appViewModel() { return this.parent; }
 
@@ -1294,7 +1301,7 @@ export class ActiveLoginViewModel extends ObservableBase implements IDisposable 
     }
 }
 
-export type SelectedChannel = ChannelViewModel | AddChannelsViewModel | LogSearchViewModel | LogSearch2ViewModel;
+export type SelectedChannel = ChannelViewModel | AddChannelsViewModel | LogSearchViewModel | LogSearch2ViewModel | LogSearch3ViewModel;
 
 export type SelectableTab = SelectedChannel | PartnerSearchViewModel | RecentConversationsViewModel | NotificationManagerViewModel;
 
