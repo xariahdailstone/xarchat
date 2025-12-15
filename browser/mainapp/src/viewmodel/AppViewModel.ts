@@ -38,8 +38,6 @@ import { UIZoomNotifyPopupViewModel } from "./popups/UIZoomNotifyPopupViewModel.
 import { PlatformUtils } from "../util/PlatformUtils.js";
 import { InAppToastsViewModel, ToastInfo } from "./InAppToastsViewModel.js";
 import { Scheduler } from "../util/Scheduler.js";
-import { CharacterGender } from "../shared/CharacterGender.js";
-import { OnlineStatus } from "../shared/OnlineStatus.js";
 
 export class AppViewModel extends ObservableBase {
     constructor(configBlock: ConfigBlock) {

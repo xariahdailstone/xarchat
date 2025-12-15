@@ -95,6 +95,7 @@ export class ActiveLoginViewModel extends ObservableBase implements IDisposable 
         //this.miscTabs.push(new MiscTabViewModel(this, "Log Viewer 2", this._logSearchViewModel2));
 
         this._logSearchViewModel3 = new LogSearch3ViewModel(this);
+        this._disposeActions.push(() => this._logSearchViewModel3.dispose());
         this.miscTabs.push(new MiscTabViewModel(this, "Log Viewer (3)", this._logSearchViewModel3));
 
         this.miscTabs.push(new MiscTabViewModel(this, "Partner Search", this.partnerSearch));

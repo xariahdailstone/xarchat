@@ -12,12 +12,16 @@ export const BBCodeTagIcon = new BBCodeTag("icon", true, false,
             return document.createTextNode(content.rawOpenTag + contentText);
         }
         
+        const imageAttrs: any = { 
+            title: contentText, 
+            src: `https://static.f-list.net/images/avatar/${encodeURIComponent(contentText.toLowerCase())}.png`,
+            "data-copycontent": `${content.rawOpenTag}${contentText}${content.rawCloseTag}`
+        };
+        if (context.parseOptions.lazyLoadImages) {
+            imageAttrs["loading"] = "lazy";
+        }
         const el = EL("span", { class: "bbcode-icon", href: `http://www.f-list.net/c/${encodeURIComponent(contentText)}` }, [
-            EL("img", { 
-                title: contentText, 
-                src: `https://static.f-list.net/images/avatar/${encodeURIComponent(contentText.toLowerCase())}.png`,
-                "data-copycontent": `${content.rawOpenTag}${contentText}${content.rawCloseTag}`
-            })
+            EL("img", imageAttrs)
         ]);
 
         if (context.parseOptions.sink?.userClick) {

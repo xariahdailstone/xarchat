@@ -78,6 +78,7 @@ export interface BBCodeParseOptions {
     inlineImageData?: { [id: string]: InlineInfo };
     parseAsStatus?: boolean;
     eiconsUniqueLoadTag?: string;
+    lazyLoadImages?: boolean;
 }
 
 export interface BBCodeParseContext {

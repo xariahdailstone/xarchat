@@ -2,19 +2,120 @@ import { CharacterName } from "../../shared/CharacterName";
 import { CancellationToken, CancellationTokenSource } from "../../util/CancellationTokenSource";
 import { KeyValuePair } from "../../util/collections/KeyValuePair";
 import { DateUtils } from "../../util/DateUtils";
-import { HostInterop } from "../../util/hostinterop/HostInterop";
+import { IDisposable, maybeDispose } from "../../util/Disposable";
+import { HostInterop, LogChannelMessage, LogPMConvoMessage } from "../../util/hostinterop/HostInterop";
 import { ExplicitDate } from "../../util/hostinterop/HostInteropLogSearch";
 import { ObservableValue } from "../../util/Observable";
 import { ObservableBase, observableProperty } from "../../util/ObservableBase";
 import { PromiseSource } from "../../util/PromiseSource";
+import { StringUtils } from "../../util/StringUtils";
 import { ActiveLoginViewModel } from "../ActiveLoginViewModel";
-import { ChannelViewModel, TransientChannelStreamViewModel } from "../ChannelViewModel";
+import { ChannelMessageViewModel, ChannelViewModel, TransientChannelStreamViewModel } from "../ChannelViewModel";
+import { SuggestTextBoxViewModel } from "../SuggestTextBoxViewModel";
 
-export class LogSearch3ViewModel extends ObservableBase {
+export class LogSearch3ViewModel extends ObservableBase implements IDisposable {
     constructor(
         public readonly session: ActiveLoginViewModel) {
 
         super();
+
+        this._channelTitleSuggest = this._setupChannelTitleSuggest();
+
+        const suggests = this._setupCharacterNameSuggests();
+        this._myCharacterNameSuggest = suggests.myCharacterNameSuggest;
+        this._interlocutorCharacterNameSuggest = suggests.interlocutorCharacterNameSuggest;
+    }
+
+    private _isDisposed: boolean = false;
+    get isDisposed() { return this._isDisposed; }
+    dispose() {
+        maybeDispose(this.results);
+    }
+    [Symbol.dispose]() { this.dispose(); }    
+
+    private _setupChannelTitleSuggest() {
+        let currentHints: string[] = [];
+        const result = new SuggestTextBoxViewModel(this.session.appViewModel,
+            async (txt: string, cancellationToken: CancellationToken) => {
+                this.channelTitleValid = false;
+                this._updateCanSearch();
+                const hints: string[] = await HostInterop.logSearch.getHintsForChannelTitle(txt, cancellationToken);
+                if (this._containsCaseInsensitive(txt, hints)) {
+                    this.channelTitleValid = true;
+                    this._updateCanSearch();
+                }
+                currentHints = hints;
+                return hints;
+            }
+        );
+        result.onValueChangedFunc = (v: string) => {
+            const isValid = this._containsCaseInsensitive(v, currentHints);
+            if (isValid != this.channelTitleValid) {
+                this.channelTitleValid = isValid;
+                this._updateCanSearch();
+            }
+        };
+        return result;
+    }
+
+    private _setupCharacterNameSuggests(): { myCharacterNameSuggest: SuggestTextBoxViewModel, interlocutorCharacterNameSuggest: SuggestTextBoxViewModel } {
+        let currentMyCharHints: string[] = [];
+        let currentInterlocutorHints: string[] = [];
+
+        const recheckPairing = async () => {
+            const myCharName = myCharSuggest.value;
+            const interlocutorCharName = interlocutorCharSuggest.value;
+            const xx: string[] = !StringUtils.isNullOrWhiteSpace(myCharName) && !StringUtils.isNullOrWhiteSpace(interlocutorCharName)
+                ? await HostInterop.logSearch.getHintsForInterlocutorCharacterName(myCharName, interlocutorCharName, true, CancellationToken.NONE)
+                : [];
+
+            if (myCharSuggest.value == myCharName && interlocutorCharSuggest.value == interlocutorCharName) {
+                if (this._containsCaseInsensitive(interlocutorCharName, xx)) {
+                    this.myCharacterNameValid = true;
+                    this.interlocutorCharacterNameValid = true;
+                    this._updateCanSearch();
+                }
+            }
+        };
+
+        const myCharSuggest = new SuggestTextBoxViewModel(this.session.appViewModel,
+            async (txt: string, cancellationToken: CancellationToken) => {
+                this.myCharacterNameValid = false;
+                this._updateCanSearch();
+                const hints: string[] = await HostInterop.logSearch.getHintsForMyCharacterName(txt, cancellationToken);
+                if (this._containsCaseInsensitive(txt, hints)) {
+                    this.myCharacterNameValid = true;
+                    this._updateCanSearch();
+                }
+                currentMyCharHints = hints;
+                return hints;
+            }
+        );
+        myCharSuggest.onValueChangedFunc = (v: string) => {
+            this.myCharacterNameValid = this._containsCaseInsensitive(v, currentMyCharHints);
+            recheckPairing();
+        };
+
+        const interlocutorCharSuggest = new SuggestTextBoxViewModel(this.session.appViewModel,
+            async (txt: string, cancellationToken: CancellationToken) => {
+                this.interlocutorCharacterNameValid = false;
+                this._updateCanSearch();
+                this.logger.logInfo("showing suggestions for interlocutor", myCharSuggest.value, txt);
+                const hints: string[] = await HostInterop.logSearch.getHintsForInterlocutorCharacterName(
+                    myCharSuggest.value, txt, false, cancellationToken);
+                if (this._containsCaseInsensitive(txt, hints)) {
+                    this.interlocutorCharacterNameValid = true;
+                    this._updateCanSearch();
+                }
+                currentInterlocutorHints = hints;
+                return hints;
+            }
+        );
+        interlocutorCharSuggest.onValueChangedFunc = (v: string) => {
+            recheckPairing();
+        };
+
+        return { myCharacterNameSuggest: myCharSuggest, interlocutorCharacterNameSuggest: interlocutorCharSuggest };
     }
 
     @observableProperty
@@ -34,52 +135,23 @@ export class LogSearch3ViewModel extends ObservableBase {
         }
     }
 
-    private readonly _channelTitle: ObservableValue<string> = new ObservableValue("");
+    private readonly _channelTitleSuggest: SuggestTextBoxViewModel;
+    get channelTitleSuggest() { return this._channelTitleSuggest; }
 
-    get channelTitle(): string { return this._channelTitle.value; }
-    set channelTitle(value: string) {
-        if (value != this._channelTitle.value) {
-            this._channelTitle.value = value;
-            this._channelTitleChanged(value);
-        }
-    }
+    private readonly _myCharacterNameSuggest: SuggestTextBoxViewModel;
+    get myCharacterNameSuggest() { return this._myCharacterNameSuggest; }
+
+    private readonly _interlocutorCharacterNameSuggest: SuggestTextBoxViewModel;
+    get interlocutorCharacterNameSuggest() { return this._interlocutorCharacterNameSuggest; }
 
     @observableProperty
     channelTitleValid: boolean = false;
 
     @observableProperty
-    channelTitleSuggestionsPromise: Promise<string[]> | null = null;
-
-    private readonly _myCharacterName: ObservableValue<string> = new ObservableValue("");
-    private readonly _interlocutorCharacterName: ObservableValue<string> = new ObservableValue("");
-
-    get myCharacterName(): string { return this._myCharacterName.value; }
-    set myCharacterName(value: string) {
-        if (value != this._myCharacterName.value) {
-            this._myCharacterName.value = value;
-            this._characterNamesChanged();
-        }
-    }
-
-    @observableProperty
     myCharacterNameValid: boolean = false;
 
     @observableProperty
-    myCharacterNameSuggestionsPromise: Promise<string[]> | null = null;
-
-    get interlocutorCharacterName(): string { return this._interlocutorCharacterName.value; }
-    set interlocutorCharacterName(value: string) {
-        if (value != this._interlocutorCharacterName.value) {
-            this._interlocutorCharacterName.value = value;
-            this._characterNamesChanged();
-        }
-    }
-
-    @observableProperty
     interlocutorCharacterNameValid: boolean = false;
-
-    @observableProperty
-    interlocutorCharacterNameSuggestionsPromise: Promise<string[]> | null = null;
 
     @observableProperty
     canSearch: boolean = false;
@@ -103,32 +175,31 @@ export class LogSearch3ViewModel extends ObservableBase {
             switch (this.logSearchType) {
                 case LogSearchType.CHANNEL:
                     {
-                        const channelTitle = this.channelTitle;
+                        const channelTitle = this.channelTitleSuggest.value;
                         const x: ExplicitDate[] = await HostInterop.logSearch.searchChannelMessageDatesAsync(channelTitle, myCTS.token);
+                        maybeDispose(this.results);
                         this.results = new LogSearchResultsViewModel(
                             this, this.session, x,
                             async (date, cancellationToken) => {
                                 const searchResults = await HostInterop.logSearch.getChannelMessagesAsync(channelTitle, 
                                     date,
                                     this.addDay(date), cancellationToken);
-                                const csvm = new TransientChannelStreamViewModel(this.session, channelTitle);
+                                const messages: LogChannelMessage[] = [];
                                 for (let lm of searchResults) {
                                     const lcm = HostInterop.convertFromApiChannelLoggedMessage(lm);
-                                    const mvm = ChannelViewModel.convertFromLoggedMessage(csvm, this.session, this.session.appViewModel, lcm);
-                                    if (mvm) {
-                                        csvm.messages.push(new KeyValuePair(mvm, mvm));
-                                    }
+                                    messages.push(lcm);
                                 }
-                                return csvm;
+                                return { title: channelTitle, messages: messages };
                             }
                         );
                     }
                     break;
                 case LogSearchType.PRIVATE_MESSAGE:
                     {
-                        const myCharacterName = this.myCharacterName;
-                        const interlocutorCharacterName = this.interlocutorCharacterName;
+                        const myCharacterName = this.myCharacterNameSuggest.value
+                        const interlocutorCharacterName = this.interlocutorCharacterNameSuggest.value;
                         const x: ExplicitDate[] = await HostInterop.logSearch.searchPMConversationDatesAsync(myCharacterName, interlocutorCharacterName, myCTS.token);
+                        maybeDispose(this.results);
                         this.results = new LogSearchResultsViewModel(
                             this, this.session, x,
                             async (date, cancellationToken) => {
@@ -136,15 +207,18 @@ export class LogSearch3ViewModel extends ObservableBase {
                                     myCharacterName, interlocutorCharacterName, 
                                     date,
                                     this.addDay(date), cancellationToken);
-                                const csvm = new TransientChannelStreamViewModel(this.session, CharacterName.create(interlocutorCharacterName).value);
+                                const messages: LogPMConvoMessage[] = [];
+                                // const csvm = new TransientChannelStreamViewModel(this.session, CharacterName.create(interlocutorCharacterName).value);
+                                // csvm.lazyLoadImages = true;
                                 for (let lm of searchResults) {
                                     const lcm = HostInterop.convertFromApiPMConvoLoggedMessage(lm);
-                                    const mvm = ChannelViewModel.convertFromLoggedMessage(csvm, this.session, this.session.appViewModel, lcm);
-                                    if (mvm) {
-                                        csvm.messages.push(new KeyValuePair(mvm, mvm));
-                                    }
+                                    messages.push(lcm);
+                                    // const mvm = ChannelViewModel.convertFromLoggedMessage(csvm, this.session, this.session.appViewModel, lcm);
+                                    // if (mvm) {
+                                    //     csvm.messages.push(new KeyValuePair(mvm, mvm));
+                                    // }
                                 }
-                                return csvm;
+                                return { title: CharacterName.create(interlocutorCharacterName).value, messages: messages };
                             }
                         );
                     }
@@ -175,79 +249,6 @@ export class LogSearch3ViewModel extends ObservableBase {
         return false;
     }
 
-    private _channelTitleSuggestCTS: CancellationTokenSource = new CancellationTokenSource();
-
-    private async _channelTitleChanged(value: string) {
-        const myCTS = new CancellationTokenSource();
-        const myPS = new PromiseSource<string[]>();
-        this._channelTitleSuggestCTS.cancel();
-        this._channelTitleSuggestCTS = myCTS;
-
-        this.channelTitleValid = false;
-        this.channelTitleSuggestionsPromise = myPS.promise;
-        this._updateCanSearch();
-        try {
-            const hints: string[] = await HostInterop.logSearch.getHintsForChannelTitle(value, myCTS.token);
-            if (this._channelTitleSuggestCTS == myCTS) {
-                myPS.tryResolve(hints);
-                if (this._containsCaseInsensitive(value, hints)) {
-                    this.channelTitleValid = true;
-                    this._updateCanSearch();
-                }
-            }
-            else {
-                myPS.tryResolve([]);
-            }
-        }
-        catch (e) {
-            myPS.reject(e);
-        }
-    }
-
-    private _characterNamesSuggestCTS: CancellationTokenSource = new CancellationTokenSource();
-
-    private async _characterNamesChanged() {
-        const myCTS = new CancellationTokenSource();
-        const myPS = new PromiseSource<string[]>();
-        const interlocutorPS = new PromiseSource<string[]>();
-        this._characterNamesSuggestCTS.cancel();
-        this._characterNamesSuggestCTS = myCTS;
-
-        this.myCharacterNameValid = false;
-        this.myCharacterNameSuggestionsPromise = myPS.promise;
-        this.interlocutorCharacterNameSuggestionsPromise = interlocutorPS.promise;
-        this._updateCanSearch();
-        try {
-            const myHintsPromise: Promise<string[]> = HostInterop.logSearch.getHintsForMyCharacterName(this.myCharacterName, myCTS.token);
-            const interlocutorHintsPromise: Promise<string[]> =  HostInterop.logSearch.getHintsForInterlocutorCharacterName(this.myCharacterName, this.interlocutorCharacterName, myCTS.token);
-
-            const myHints = await myHintsPromise;
-            const interlocutorHints = await interlocutorHintsPromise;
-
-            if (this._characterNamesSuggestCTS == myCTS) {
-                myPS.tryResolve(myHints);
-                interlocutorPS.tryResolve(interlocutorHints);
-
-                if (this._containsCaseInsensitive(this.myCharacterName, myHints)) {
-                    this.myCharacterNameValid = true;
-                }
-                if (this._containsCaseInsensitive(this.interlocutorCharacterName, interlocutorHints)) {
-                    this.interlocutorCharacterNameValid = true;
-                }
-
-                this._updateCanSearch();
-            }
-            else {
-                myPS.tryResolve([]);
-                interlocutorPS.tryReject([]);
-            }
-        }
-        catch (e) {
-            myPS.reject(e);
-            interlocutorPS.reject(e);
-        }
-    }
-
     private _updateCanSearch() {
         if (this.logSearchType == LogSearchType.CHANNEL) {
             this.canSearch = this.channelTitleValid;
@@ -271,9 +272,9 @@ export enum LogSearchStatus {
     SEARCHING
 }
 
-type MessageLoadFunc = (date: ExplicitDate, cancellationToken: CancellationToken) => Promise<TransientChannelStreamViewModel>;
+type MessageLoadFunc = (date: ExplicitDate, cancellationToken: CancellationToken) => Promise<{ title: string, messages: (LogChannelMessage[] | LogPMConvoMessage[]) }>;
 
-export class LogSearchResultsViewModel extends ObservableBase {
+export class LogSearchResultsViewModel extends ObservableBase implements IDisposable {
     constructor(
         public readonly logSearch: LogSearch3ViewModel,
         public readonly session: ActiveLoginViewModel,
@@ -298,6 +299,13 @@ export class LogSearchResultsViewModel extends ObservableBase {
         this.hasYears = hasYears;
     }
 
+    private _isDisposed: boolean = false;
+    get isDisposed() { return this._isDisposed; }
+    dispose() {
+        maybeDispose(this.messageSet);
+    }
+    [Symbol.dispose]() { this.dispose(); }    
+
     @observableProperty
     hasYears: number[];
 
@@ -319,7 +327,7 @@ export class LogSearchResultsViewModel extends ObservableBase {
     loadingMessages: number = 0;
 
     @observableProperty
-    messages: (TransientChannelStreamViewModel | null) = null;
+    messageSet: (LogSearchResultsMessageGroupSetViewModel | null) = null;
 
     private _hasDates: Set<number> = new Set();
 
@@ -335,15 +343,101 @@ export class LogSearchResultsViewModel extends ObservableBase {
         this._performMessageLoadCTS = myCTS;
 
         this.loadingMessages++;
-        this.messages = null;
+        maybeDispose(this.messageSet);
+        this.messageSet = null;
         try {
             if (d) {
                 const res = await this.performMessageLoadAsync(d, myCTS.token);
-                this.messages = res;
+                const setvm = new LogSearchResultsMessageGroupSetViewModel(this, res.title, res.messages);
+                maybeDispose(this.messageSet);
+                this.messageSet = setvm;
             }
         }
         finally {
             this.loadingMessages--;
         }
     }
+}
+
+const MAX_MESSAGES_PER_SET = 500;
+
+export class LogSearchResultsMessageGroupSetViewModel extends ObservableBase implements IDisposable {
+    constructor(
+        public readonly results: LogSearchResultsViewModel,
+        channelTitle: string,
+        messages: (LogChannelMessage[] | LogPMConvoMessage[])) {
+
+        super();
+
+        let curStart = "";
+        let curChannel: TransientChannelStreamViewModel = new TransientChannelStreamViewModel(results.session, channelTitle);
+        curChannel.lazyLoadImages = true;
+        const completeArray = () => {
+            const lastMsg = curChannel.messages[curChannel.messages.length - 1]!.value;
+            const curEnd = lastMsg.timestamp.getHours().toString() + ":" + StringUtils.leftPad(lastMsg.timestamp.getMinutes().toString(), "0", 2);
+            this.groups.push(new LogSearchResultsMessageGroupViewModel(
+                `${curStart}-${curEnd}`, this, curChannel));
+            
+            curStart = "";
+            curChannel = new TransientChannelStreamViewModel(results.logSearch.session, channelTitle);
+            curChannel.lazyLoadImages = true;
+        };
+
+        for (let msg of messages) {
+            if (curChannel.messages.length == 0) {
+                curStart = msg.timestamp.getHours().toString() + ":" + StringUtils.leftPad(msg.timestamp.getMinutes().toString(), "0", 2);
+            }
+            if ((msg as any).myCharacterName) {
+                // LogPMConvoMessage
+                const lpcm = msg as LogPMConvoMessage;
+                const mvm = ChannelViewModel.convertFromLoggedMessage(curChannel, results.session, results.session.appViewModel, lpcm)!;
+                curChannel.messages.add(new KeyValuePair(mvm, mvm));
+            }
+            else {
+                // LogChannelMessage
+                const lcm = msg as LogChannelMessage;
+                const mvm = ChannelViewModel.convertFromLoggedMessage(curChannel, results.session, results.session.appViewModel, lcm)!;
+                curChannel.messages.add(new KeyValuePair(mvm, mvm));
+            }
+            if (curChannel.messages.length >= MAX_MESSAGES_PER_SET) {
+                completeArray();
+            }
+        }
+        if (curChannel.messages.length > 0) {
+            completeArray();
+        }
+
+        this.selectedGroup = this.groups[this.groups.length - 1];
+    }
+
+    private _isDisposed: boolean = false;
+    get isDisposed() { return this._isDisposed; }
+    dispose() {
+        for (let g of this.groups) {
+            g.dispose();
+        }
+    }
+    [Symbol.dispose]() { this.dispose(); }    
+
+    readonly groups: LogSearchResultsMessageGroupViewModel[] = [];
+
+    @observableProperty
+    selectedGroup: (LogSearchResultsMessageGroupViewModel | null) = null;
+}
+
+export class LogSearchResultsMessageGroupViewModel extends ObservableBase implements IDisposable {
+    constructor(
+        public readonly timeRangeString: string,
+        public readonly groupSet: LogSearchResultsMessageGroupSetViewModel,
+        public readonly channel: TransientChannelStreamViewModel) {
+
+        super();
+    }
+
+    private _isDisposed: boolean = false;
+    get isDisposed() { return this._isDisposed; }
+    dispose() {
+        this.channel.dispose();
+    }
+    [Symbol.dispose]() { this.dispose(); }
 }

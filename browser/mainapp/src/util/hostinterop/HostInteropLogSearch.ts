@@ -14,7 +14,7 @@ export interface HostInteropLogSearch {
 
     getHintsForChannelTitle(titlePartial: string, cancellationToken: CancellationToken): Promise<string[]>;
     getHintsForMyCharacterName(myCharNamePartial: string, cancellationToken: CancellationToken): Promise<string[]>;
-    getHintsForInterlocutorCharacterName(myCharName: string, interlocutorCharNamePartial: string, cancellationToken: CancellationToken): Promise<string[]>;
+    getHintsForInterlocutorCharacterName(myCharName: string, interlocutorCharNamePartial: string, exact: boolean, cancellationToken: CancellationToken): Promise<string[]>;
     searchChannelMessageDatesAsync(title: string, cancellationToken: CancellationToken): Promise<ExplicitDate[]>;
     searchPMConversationDatesAsync(myCharName: string, interlocutorCharName: string, cancellationToken: CancellationToken): Promise<ExplicitDate[]>;
     getChannelMessagesAsync(title: string, fromDate: ExplicitDate, toDate: ExplicitDate, cancellationToken: CancellationToken): Promise<LogSearchResultChannelMessage[]>;

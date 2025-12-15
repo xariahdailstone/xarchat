@@ -183,8 +183,10 @@ export abstract class SettingsDialogSettingViewModel extends ObservableBase impl
     protected prepareSettings(source: ConfigSchemaItemDefinition[] | null | undefined, target: Collection<ISettingsDialogSettingViewModel>) {
         if (source) {
             for (let x of source) {
-                if (x.scope && x.scope.includes(this.scope.scopeString)) {
-                    this.settings.add(this.includeSetting(x, target));
+                if (!(x.hidden ?? false)) {
+                    if (x.scope && x.scope.includes(this.scope.scopeString)) {
+                        this.settings.add(this.includeSetting(x, target));
+                    }
                 }
             }
         }

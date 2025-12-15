@@ -384,7 +384,10 @@ class ChannelStreamMessageViewRendererFChat implements MessageRenderer {
 
         let elIcon: VNode | null = null;
         if (displayStyle == ChannelMessageDisplayStyle.DISCORD) {
-            elIcon = <img classList={["icon"]} attr-src={URLUtils.getAvatarImageUrl(vm.characterStatus.characterName)} />;
+            elIcon = <img classList={["icon"]} attrs={{ 
+                "src": URLUtils.getAvatarImageUrl(vm.characterStatus.characterName),
+                "loading": (vm.channelViewModel?.lazyLoadImages) ? "lazy" : false
+            }} />;
         }
 
         const vmtimestamp = vm.timestamp;
@@ -676,7 +679,8 @@ class ChannelStreamMessageViewRendererDiscord implements MessageRenderer {
         }
         else {
             const elIcon = <img key={`msg-${uniqueMessageId}-icon`} classList={["icon"]} attr-src={URLUtils.getAvatarImageUrl(vm.characterStatus.characterName)} attrs={{
-                    "data-copycontent": ""
+                    "data-copycontent": "",
+                    "loading": vm.channelViewModel?.lazyLoadImages ? "lazy" : false
                 }} />;
 
             const vmtimestamp = vm.timestamp;

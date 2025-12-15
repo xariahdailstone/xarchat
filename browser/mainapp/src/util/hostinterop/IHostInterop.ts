@@ -152,7 +152,7 @@ export abstract class HostInteropBase {
             messageType: x.messageType,
             messageText: x.messageText,
             timestamp: new Date(x.timestamp),
-            speakingCharacterGender: (x.gender as CharacterGender) ?? CharacterGender.NONE,
+            speakingCharacterGender: CharacterGender.create(x.gender) ?? CharacterGender.NONE,
             speakingCharacterOnlineStatus: (x.status as OnlineStatus) ?? OnlineStatus.OFFLINE,
         };
     }
@@ -165,7 +165,7 @@ export abstract class HostInteropBase {
             messageType: x.messageType,
             messageText: x.messageText,
             timestamp: new Date(x.timestamp),
-            speakingCharacterGender: (x.gender as CharacterGender) ?? CharacterGender.NONE,
+            speakingCharacterGender: CharacterGender.create(x.gender) ?? CharacterGender.NONE,
             speakingCharacterOnlineStatus: (x.status as OnlineStatus) ?? OnlineStatus.OFFLINE,
         };
     }

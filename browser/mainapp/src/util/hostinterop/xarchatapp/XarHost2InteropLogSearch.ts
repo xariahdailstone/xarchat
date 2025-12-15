@@ -139,10 +139,10 @@ export class XarHost2InteropLogSearch extends XarHost2InteropSession implements 
                 cancellationToken);
         return result;
     }
-    async getHintsForInterlocutorCharacterName(myCharName: string, interlocutorCharNamePartial: string, cancellationToken: CancellationToken): Promise<string[]> {
+    async getHintsForInterlocutorCharacterName(myCharName: string, interlocutorCharNamePartial: string, exact: boolean, cancellationToken: CancellationToken): Promise<string[]> {
         const result = await this.sendAndReceiveWithResultAsync<string[]>(
                 "getHintsForInterlocutorCharacterName", 
-                { myName: myCharName, interlocutorName: interlocutorCharNamePartial }, 
+                { myName: myCharName, interlocutorName: interlocutorCharNamePartial, exact: exact }, 
                 "gotHintsForInterlocutorCharacterName",
                 "gotHintsForInterlocutorCharacterNameError",
                 cancellationToken);

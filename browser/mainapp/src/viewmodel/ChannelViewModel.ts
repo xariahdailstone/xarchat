@@ -43,6 +43,7 @@ export interface IChannelStreamViewModel {
     readonly appViewModel: AppViewModel;
     readonly activeLoginViewModel: ActiveLoginViewModel;
     readonly parent: ActiveLoginViewModel;
+    readonly lazyLoadImages: boolean;
     readonly messages: ReadOnlyStdObservableCollection<KeyValuePair<ChannelMessageViewModel, ChannelMessageViewModel>>;
     scrolledTo: ChannelViewScrollPositionModel | null;
     newMessagesBelowNotify: boolean;
@@ -90,6 +91,8 @@ export class TransientChannelStreamViewModel extends ObservableBase implements I
 
     get appViewModel() { return this.activeLoginViewModel.appViewModel; }
     get parent() { return this.activeLoginViewModel; }
+
+    lazyLoadImages: boolean = false;
 
     readonly messages: Collection<KeyValuePair<ChannelMessageViewModel, ChannelMessageViewModel>> = new Collection();
 
@@ -187,6 +190,8 @@ export abstract class ChannelViewModel extends ObservableBase implements IDispos
     get appViewModel() { return this.parent.appViewModel; }
 
     readonly isHistoricalView: boolean = false;
+
+    readonly lazyLoadImages: boolean = false;
 
     @observableProperty
     get title(): string { return this.channelState.title; }
@@ -638,8 +643,8 @@ export abstract class ChannelViewModel extends ObservableBase implements IDispos
                         isFriend: activeLoginViewModel.friends.has(loggedMessage.speakingCharacter),
                         isBookmark: activeLoginViewModel.bookmarks.has(loggedMessage.speakingCharacter),
                         isInterest: activeLoginViewModel.interests.has(loggedMessage.speakingCharacter),
-                        gender: (loggedMessage.speakingCharacterGender as CharacterGender) ?? CharacterGender.NONE,
-                        status: (loggedMessage.speakingCharacterOnlineStatus as OnlineStatus) ?? OnlineStatus.OFFLINE,
+                        gender: loggedMessage.speakingCharacterGender ?? CharacterGender.NONE,
+                        status: loggedMessage.speakingCharacterOnlineStatus ?? OnlineStatus.OFFLINE,
                         statusMessage: "",
                         typingStatus: TypingStatus.IDLE,
                         nickname: activeLoginViewModel.nicknameSet.get(loggedMessage.speakingCharacter)
@@ -654,8 +659,8 @@ export abstract class ChannelViewModel extends ObservableBase implements IDispos
                     text: loggedMessage.messageText,
                     characterStatus: {
                         characterName: loggedMessage.speakingCharacter,
-                        gender: (loggedMessage.speakingCharacterGender as CharacterGender) ?? CharacterGender.NONE,
-                        status: (loggedMessage.speakingCharacterOnlineStatus as OnlineStatus) ?? OnlineStatus.OFFLINE,
+                        gender: loggedMessage.speakingCharacterGender ?? CharacterGender.NONE,
+                        status: loggedMessage.speakingCharacterOnlineStatus ?? OnlineStatus.OFFLINE,
                         ignored: false,
                         isFriend: activeLoginViewModel.friends.has(loggedMessage.speakingCharacter),
                         isBookmark: activeLoginViewModel.bookmarks.has(loggedMessage.speakingCharacter),
@@ -1201,7 +1206,8 @@ export class ChannelMessageViewModel extends ObservableBase implements IDisposab
                 activeLoginViewModel: this.activeLoginViewModel,
                 channelViewModel: this.parent ?? undefined,
                 imagePreviewPopups: true,
-                eiconsUniqueLoadTag: "bbcodemsg#"
+                eiconsUniqueLoadTag: "bbcodemsg#",
+                lazyLoadImages: (this.parent?.lazyLoadImages ?? false)
             });
             //registerCleanupDispose(this, parseResult);
             this._parsedText = parseResult;

@@ -1,10 +1,12 @@
 import { jsx, Fragment, VNode, On, Attrs } from "../../snabbdom/index";
 import { TextboxBinding } from "../../util/bindings/TextboxBinding";
 import { DateUtils } from "../../util/DateUtils";
+import { IDisposable } from "../../util/Disposable";
 import { ExplicitDate } from "../../util/hostinterop/HostInteropLogSearch";
-import { LogSearchStatus, LogSearchType, LogSearch3ViewModel } from "../../viewmodel/logsearch/LogSearchViewModel";
+import { ObjectUniqueId } from "../../util/ObjectUniqueId";
+import { LogSearchStatus, LogSearchType, LogSearch3ViewModel, LogSearchResultsMessageGroupSetViewModel } from "../../viewmodel/logsearch/LogSearchViewModel";
 import { componentArea, componentElement } from "../ComponentBase";
-import { makeRenderingComponent, RenderArguments } from "../RenderingComponentBase";
+import { makeRenderingComponent, RenderArguments, RenderingComponentBase } from "../RenderingComponentBase";
 import { StageViewComponent, stageViewFor } from "../Stage";
 import { XCSelectElement } from "../XCSelect";
 
@@ -68,40 +70,27 @@ export class LogSearch3 extends StageViewComponent<LogSearch3ViewModel> {
     }
 
     private renderArgsDetailsChannel(args: RenderArguments, vm: LogSearch3ViewModel): VNode {
-        const onChange = (e: Event) => {
-            const target = e.target as HTMLInputElement;
-            vm.channelTitle = target.value;
-        };
+        // const onChange = (e: Event) => {
+        //     const target = e.target as HTMLInputElement;
+        //     vm.channelTitle = target.value;
+        // };
 
         return <>
-            <input classList={[ "logsearch-main-args-channelselect", "themed" ]} attrs={{ "type": "text" }} props={{ "value": vm.channelTitle }} on={{
+            <x-suggesttextbox attr-type="text" classList={[ "logsearch-main-args-channelselect", "themed" ]} props={{ "viewModel": vm.channelTitleSuggest }}></x-suggesttextbox>
+
+            {/* <input classList={[ "logsearch-main-args-channelselect", "themed" ]} attrs={{ "type": "text" }} props={{ "value": vm.channelTitle }} on={{
                 "input": (e) => { onChange(e); },
                 "change": (e) => { onChange(e); }
-            }}></input>
+            }}></input> */}
         </>;
     }
 
     private renderArgsDetailsPMConvo(args: RenderArguments, vm: LogSearch3ViewModel): VNode {
-        const onChangeMyChar = (e: Event) => {
-            const target = e.target as HTMLInputElement;
-            vm.myCharacterName = target.value;
-        };
-        const onChangeInterlocutorChar = (e: Event) => {
-            const target = e.target as HTMLInputElement;
-            vm.interlocutorCharacterName = target.value;
-        };
-
         return <>
             <div class={{ "logsearch-main-args-pm-mychar-label": true }}>between</div>
-            <input classList={[ "themed" ]} attrs={{ "type": "text" }} props={{ "value": vm.myCharacterName }} on={{
-                "input": (e) => { onChangeMyChar(e); },
-                "change": (e) => { onChangeMyChar(e); }
-            }}></input>
+            <x-suggesttextbox attr-type="text" classList={[ "logsearch-main-args-pm-mychar-label-select", "themed" ]} props={{ "viewModel": vm.myCharacterNameSuggest }}></x-suggesttextbox>
             <div class={{ "logsearch-main-args-pm-interlocutorchar-label": true }}>and</div>
-            <input classList={[ "themed" ]} attrs={{ "type": "text" }} props={{ "value": vm.interlocutorCharacterName }} on={{
-                "input": (e) => { onChangeInterlocutorChar(e); },
-                "change": (e) => { onChangeInterlocutorChar(e); }
-            }}></input>
+            <x-suggesttextbox attr-type="text" classList={[ "logsearch-main-args-pm-interlocutorchar-select", "themed" ]} props={{ "viewModel": vm.interlocutorCharacterNameSuggest }}></x-suggesttextbox>
         </>;
     }
 
@@ -254,10 +243,54 @@ export class LogSearch3 extends StageViewComponent<LogSearch3ViewModel> {
         if (r.loadingMessages) {
             return <div classList={[ "logsearch-main-bottom-results-stream-loading" ]}>Loading...</div>;
         }
-        else {
-            return <x-channelstream 
+        else if (r.messageSet) {
+            return <x-logsearch3setview 
                 classList={[ "logsearch-main-bottom-results-stream" ]} 
-                props={{ "viewModel": r.messages }}></x-channelstream>;
+                props={{ "viewModel": r.messageSet }}></x-logsearch3setview>;
+            // return <x-channelstream 
+            //     classList={[ "logsearch-main-bottom-results-stream" ]} 
+            //     props={{ "viewModel": r.messages }}></x-channelstream>;
         }
+        else {
+            return <div classList={[ "logsearch-main-bottom-results-stream-empty" ]}></div>;
+        }
+    }
+}
+
+
+@componentElement("x-logsearch3setview")
+@componentArea("logsearch")
+export class LogSearch3SetView extends RenderingComponentBase<LogSearchResultsMessageGroupSetViewModel> {
+    constructor() {
+        super();
+    }
+
+    protected render(args: RenderArguments): VNode {
+        const vm = this.viewModel;
+        if (!vm) { return <></>; }
+
+        const groupSelectNodes: VNode[] = [];
+        for (let g of vm.groups) {
+            const isSelectedGroup = (g == vm.selectedGroup)
+            groupSelectNodes.push(<div class={{
+                "timerange-group": true,
+                "is-selected": isSelectedGroup
+            }} on={{
+                "click": () => {
+                    vm.selectedGroup = g;
+                }
+            }}>{ g.timeRangeString }</div>);
+        }
+
+        const streamNode = vm.selectedGroup
+            ? <x-channelstream key={`stream-${ObjectUniqueId.get(vm.selectedGroup.channel)}`}
+                classList={[ "selectedgroup-stream" ]} 
+                props={{ "viewModel": vm.selectedGroup.channel }}></x-channelstream>
+            : <></>;
+
+        return <div classList={[]}>
+            <div classList={[ "timerange-group-container" ]}>{groupSelectNodes}</div>
+            {streamNode}
+        </div>;
     }
 }

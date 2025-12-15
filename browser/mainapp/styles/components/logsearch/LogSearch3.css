@@ -65,6 +65,12 @@
             .prev-year { grid-area: prev; }
             .year-select { grid-area: year; }
             .next-year { grid-area: next; }
+
+            .year-select {
+            }
+            .prev-year, .next-year {
+                margin: 2px;
+            }
         }
     }
 }
@@ -120,7 +126,9 @@
     }
 }
 
-.logsearch-main-bottom-results-stream {
+.logsearch-main-bottom-results-stream,
+.logsearch-main-bottom-results-stream-loading,
+.logsearch-main-bottom-results-stream-empty {
     background: var(--bg-level-3);
     color: var(--fg-level-4);
 }

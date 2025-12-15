@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -249,7 +250,20 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions.SessionNamespaces.LogSearc
                 var results = await _chatLogSearch.GetInterlocutorInfosAsync(args.Data!.MyName, cancellationToken);
                 foreach (var item in results)
                 {
-                    matches.Add(item.CharacterName);
+                    if (args.Data!.Exact)
+                    {
+                        if (String.Equals(item.CharacterName, args.Data.InterlocutorName, StringComparison.OrdinalIgnoreCase))
+                        {
+                            matches.Add(item.CharacterName);
+                        }
+                    }
+                    else
+                    {
+                        if (item.CharacterName.StartsWith(args.Data.InterlocutorName, StringComparison.OrdinalIgnoreCase))
+                        {
+                            matches.Add(item.CharacterName);
+                        }
+                    }
                 }
 
                 await args.WriteMessageAsync("gotHintsForInterlocutorCharacterName",
@@ -463,6 +477,9 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions.SessionNamespaces.LogSearc
 
         [JsonPropertyName("interlocutorName")]
         public required string InterlocutorName { get; set; }
+
+        [JsonPropertyName("exact")]
+        public required bool Exact { get; set; }
     }
 
     public class SearchChannelMessageDatesArgs : StreamCommandMessage

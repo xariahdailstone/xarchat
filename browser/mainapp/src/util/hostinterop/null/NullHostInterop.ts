@@ -272,7 +272,7 @@ class NullHostInteropLogSearch implements HostInteropLogSearch {
     async getHintsForMyCharacterName(myCharNamePartial: string, cancellationToken: CancellationToken): Promise<string[]> {
         return [];
     }
-    async getHintsForInterlocutorCharacterName(myCharName: string, interlocutorCharNamePartial: string, cancellationToken: CancellationToken): Promise<string[]> {
+    async getHintsForInterlocutorCharacterName(myCharName: string, interlocutorCharNamePartial: string, exact: boolean, cancellationToken: CancellationToken): Promise<string[]> {
         return [];
     }
     async searchChannelMessageDatesAsync(title: string, cancellationToken: CancellationToken): Promise<ExplicitDate[]> {
