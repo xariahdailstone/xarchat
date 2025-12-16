@@ -1,4 +1,5 @@
 import { jsx, Fragment, VNode } from "../../snabbdom/index";
+import { AnimationFrameUtils } from "../../util/AnimationFrameUtils";
 import { EmptyDisposable, IDisposable } from "../../util/Disposable";
 import { SuggestTextBoxPopupViewModel } from "../../viewmodel/popups/SuggestTextBoxPopupViewModel";
 import { SuggestionHeader, SuggestionSeparator } from "../../viewmodel/SuggestTextBoxViewModel";
@@ -19,7 +20,8 @@ const POSITION_BELOW: PositionTestFunc = (viewportSize: Size, aroundRect: Rect, 
         width: proposedWidth,
         height: proposedBottom - proposedTop,
         enforceSize: true,
-        strictWidth: true
+        strictWidth: true,
+        allowExpansion: true
     };
     return result;
 };
@@ -87,5 +89,66 @@ export class SuggestTextBoxPopup extends ContextPopupBase<SuggestTextBoxPopupVie
         </div>;
 
         return [vnode, EmptyDisposable];
+    }
+
+    protected override initializePositioningLogic(): void {
+        this.whenConnected(() => {
+            const r = AnimationFrameUtils.createPerFrame(() => {
+                this.updatePositioning(r);
+            });
+            return r;
+        });
+    }
+    
+    private updatePositioning(tickDisposable: IDisposable) {
+        tickDisposable.dispose();
+
+        const vpRect = this.getViewportRect();
+        const elRect = this.getPoparoundRect();
+        const menuHeight = this.scrollHeight;
+        const menuWidth = this.scrollWidth;
+
+        const heightBelow = vpRect.height - (elRect.y + elRect.height);
+        const heightAbove = elRect.y;
+        const widthRight = vpRect.width - elRect.x;
+        const widthLeft = elRect.x + elRect.width;
+
+        let positionAbove: boolean;
+        let positionLeft: boolean;
+
+        if (menuHeight <= heightBelow) {
+            positionAbove = false;
+        }
+        else {
+            positionAbove = (heightAbove > heightBelow);
+        }
+        if (menuWidth <= widthRight)
+        {
+            positionLeft = false;
+        }
+        else {
+            positionLeft = (widthLeft > widthRight);
+        }
+
+        if (positionAbove) {
+            this.style.bottom = `${vpRect.height - elRect.y}px`;
+            this.style.maxHeight = `${elRect.y}px`;
+            //this.style.height = `${elRect.y}px`;
+        }
+        else {
+            this.style.top = `${elRect.y + elRect.height}px`;
+            this.style.maxHeight = `${vpRect.height - (elRect.y + elRect.height)}px`;
+            //this.style.height = `${vpRect.height - (elRect.y + elRect.height)}px`;
+        }
+        if (positionLeft) {
+            this.style.right = `${vpRect.width - (elRect.x + elRect.width)}px`;
+            this.style.maxWidth = `${elRect.x + elRect.width}px`;
+            //this.style.width = `${elRect.x + elRect.width}px`;
+        }
+        else {
+            this.style.left = `${elRect.x}px`;
+            this.style.maxWidth = `${vpRect.width - elRect.x}px`;
+            //this.style.width = `${vpRect.width - elRect.x}px`;
+        }
     }
 }

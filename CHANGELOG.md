@@ -63,3 +63,6 @@
     has been fixed.
 * Fixed an issue where XarChat might hang on Windows when suspending/resume the OS
 * Fixed an issue where character with all lowercase profile names might not be able to log into chat.
+* Added a new log viewer!
+  * Available under the "..." tab on the left bar.
+  * Planning on expanding it more in the future; and adding log importing and exporting.

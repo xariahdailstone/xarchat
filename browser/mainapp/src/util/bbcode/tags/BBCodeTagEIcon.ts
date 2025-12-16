@@ -21,7 +21,8 @@ export const BBCodeTagEIcon = new BBCodeTag("eicon", true, false,
             title: arg ? `${contentText}\n@${arg}` : contentText,
             eiconname: contentText,
             charname: context.parseOptions.activeLoginViewModel?.characterName.canonicalValue,
-            "data-copycontent": `${content.rawOpenTag}${contentText}${content.rawCloseTag}`
+            "data-copycontent": `${content.rawOpenTag}${contentText}${content.rawCloseTag}`,
+            loading: (context.parseOptions.lazyLoadImages ?? false) ? "lazy" : ""
         });
         
         if (context.parseOptions.syncGifs) {

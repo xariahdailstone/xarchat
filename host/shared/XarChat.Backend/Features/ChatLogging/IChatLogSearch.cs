@@ -21,6 +21,8 @@ namespace XarChat.Backend.Features.ChatLogging
 
         Task<IReadOnlyList<string>> GetChannelNamesAsync(CancellationToken cancellationToken);
 
+        Task<IReadOnlyList<string>> GetChannelNamesAsync(string startsWith, CancellationToken cancellationToken);
+
         Task<IReadOnlyList<LogCharacterInfo>> GetInterlocutorInfosAsync(
             string? myCharacterName, CancellationToken cancellationToken);
 
@@ -31,6 +33,67 @@ namespace XarChat.Backend.Features.ChatLogging
 
         Task<IList<RecentConversationInfo>> GetRecentConversationsAsync(
             string myCharacterName, int resultLimit, CancellationToken cancellationToken);
+
+        Task<IList<ExplicitDate>> GetChannelMessageDatesAsync(
+            string channelTitle, CancellationToken cancellationToken);
+
+        Task<IList<ExplicitDate>> GetPMConversationDatesAsync(
+            string myCharName, string interlocutorCharName, CancellationToken cancellationToken);
+
+        Task<IList<LogSearchResultChannelMessage>> GetChannelMessagesAsync(
+            string channelTitle, ExplicitDate fromDate, ExplicitDate toDate, CancellationToken cancellationToken);
+
+        Task<IList<LogSearchResultPMConvoMessage>> GetPMConversationMessagesAsync(
+            string myCharName, string interlocutorCharName, ExplicitDate fromDate, ExplicitDate toDate, CancellationToken cancellationToken);
+    }
+
+    public class ExplicitDate
+    {
+        [JsonPropertyName("y")]
+        public int Year { get; set; }
+        [JsonPropertyName("m")]
+        public int Month { get; set; }
+        [JsonPropertyName("d")]
+        public int Day { get; set; }
+
+        public DateTimeOffset ToLocalDateTimeOffset()
+        {
+            var myDT = new DateTime(this.Year, this.Month, this.Day, 0, 0, 0, DateTimeKind.Local);
+            var utcDT = TimeZoneInfo.ConvertTime(myDT, TimeZoneInfo.Local, TimeZoneInfo.Utc);
+            var utcDTO = new DateTimeOffset(utcDT, TimeSpan.Zero);
+            var myDTO = TimeZoneInfo.ConvertTime(utcDTO, TimeZoneInfo.Local);
+            return myDTO;
+        }
+    }
+
+    public class LogSearchResult
+    {
+        [JsonPropertyName("gender")]
+        public required int Gender { get; set; }
+        [JsonPropertyName("messageText")]
+        public required string MessageText { get; set; }
+        [JsonPropertyName("messageType")]
+        public required int MessageType { get; set; }
+        [JsonPropertyName("speakerName")]
+        public required string SpeakerName { get; set; }
+        [JsonPropertyName("status")]
+        public required int Status { get; set; }
+        [JsonPropertyName("timestamp")]
+        public required long Timestamp { get; set; }
+    }
+    public class LogSearchResultChannelMessage : LogSearchResult
+    {
+        [JsonPropertyName("channelName")]
+        public required string ChannelName { get; set; }
+        [JsonPropertyName("channelTitle")]
+        public required string ChannelTitle { get; set; }
+    }
+    public class LogSearchResultPMConvoMessage : LogSearchResult
+    {
+        [JsonPropertyName("myCharacterName")]
+        public required string MyCharacterName { get; set; }
+        [JsonPropertyName("interlocutorName")]
+        public required string InterlocutorName { get; set; }
     }
 
     public class RecentConversationInfo

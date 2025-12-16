@@ -294,7 +294,7 @@ namespace XarChat.Backend.Features.AppSettings.AppDataFile
         public AppSettingsData GetAppSettings()
         {
             var raw = GetAppSettingsDataRaw();
-            var result = JsonSerializer.Deserialize<AppSettingsData>(raw)!;
+            var result = JsonSerializer.Deserialize<AppSettingsData>(raw, SourceGenerationContext.Default.AppSettingsData)!;
             return result;
         }
 

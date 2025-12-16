@@ -11,7 +11,6 @@ import { TypingStatus } from "../shared/TypingStatus.js";
 import { rawAttributesModule } from "../util/snabbdom/rawAttributes.js";
 import { classListNewModule } from "../util/snabbdom/classList-new.js";
 import { idModule } from "../util/snabbdom/id.js";
-import { CharacterGender } from "../shared/CharacterGender.js";
 import { HTMLUtils } from "../util/HTMLUtils.js";
 import { valueSyncModule } from "../util/snabbdom/valueSyncHook.js";
 import { Scheduler } from "../util/Scheduler.js";

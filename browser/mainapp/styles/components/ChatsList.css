@@ -190,14 +190,16 @@
     contain: layout paint;
 
     &.selected {
-        --itembgcolor: var(--bg-level-3);
-        background: var(--bg-level-3-highlight);
+        --itembgcolor: var(--bg-level-3-highlight);
+        /*background: var(--bg-level-3-highlight);*/
         color: var(--fg-level-3-highlight);
     }
 
-    &:hover {
+    &:hover:not(.selected) {
         --itembgcolor: var(--bg-level-4);
         color: var(--fg-level-4);
+    }
+    &:hover {
         padding-right: 4px;
     }
 }
@@ -281,6 +283,8 @@
     display: block;
     font-size: 10px;
     -webkit-text-stroke: 2px var(--itembgcolor);
+}
+x-litestatusdot {
     box-shadow: 0 0 0 2px var(--itembgcolor);
 }
 

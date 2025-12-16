@@ -49,6 +49,10 @@ body {
     --fg-gender-cunt-boy: #00CC66;
     --fg-gender-transgender: #EE8822;
     --fg-gender-shemale: #CC66FF;
+    --fg-gender-male-trans: #5bcefa;
+    --fg-gender-female-trans: #f5a9ba;
+    --fg-gender-intersex: #ae9487;
+    --fg-gender-nonbinary: #16b78e;
     --fg-gender-none: #FFFFBB;
 
     --fg-friend-gender-male: var(--fg-gender-male);
@@ -58,6 +62,10 @@ body {
     --fg-friend-gender-cunt-boy: var(--fg-gender-cunt-boy);
     --fg-friend-gender-transgender: var(--fg-gender-transgender);
     --fg-friend-gender-shemale: var(--fg-gender-shemale);
+    --fg-friend-gender-male-trans: var(--fg-gender-male-trans);
+    --fg-friend-gender-female-trans: var(--fg-gender-female-trans);
+    --fg-friend-gender-intersex: var(--fg-gender-intersex);
+    --fg-friend-gender-nonbinary: var(--fg-gender-nonbinary);
     --fg-friend-gender-none: var(--fg-gender-none);
 
     --fg-status-offline: #444;

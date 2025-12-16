@@ -9,3 +9,7 @@
     font-weight: bold;
     padding: 4px 4px;
 }
+
+.menu-item:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}

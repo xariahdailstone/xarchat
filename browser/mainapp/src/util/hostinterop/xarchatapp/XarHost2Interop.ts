@@ -29,7 +29,7 @@ import { XarHost2HostInteropLogSearch2Impl } from "./XarHost2HostInteropLogSearc
 import { IXarHost2HostInterop } from "./IXarHost2HostInterop";
 import { ChatWebSocket, NoCorsFetchArgs, NoCorsFetchResult, UrlLaunchedEventArgs } from "../IHostInterop";
 import { IObservable, Observable, ObservableValue } from "../../Observable";
-import { DateUtils } from "../../DateTimeUtils";
+import { DateUtils } from "../../DateUtils";
 import { HostInteropLogFileMaintenance } from "../HostInteropLogFileMaintenance";
 import { XarHost2InteropLogFileMaintenance } from "./XarHost2InteropLogFileMaintenance";
 import { XarHost2InteropNoCorsSession } from "./XarHost2InteropNoCorsSession";
@@ -632,7 +632,7 @@ export class XarHost2Interop implements IXarHost2HostInterop {
             speakingCharacter: speakingCharacter.value,
             messageType: messageType,
             messageText: messageText,
-            gender: speakingCharacterGender as number,
+            gender: speakingCharacterGender.apiNumericValue,
             status: speakingCharacterOnlineStatus as number,
         }));
     }
@@ -647,7 +647,7 @@ export class XarHost2Interop implements IXarHost2HostInterop {
             speakingCharacter: speakingCharacter.value,
             messageType: messageType,
             messageText: messageText,
-            gender: speakingCharacterGender as number,
+            gender: speakingCharacterGender.apiNumericValue,
             status: speakingCharacterOnlineStatus as number,
         }));
     }
@@ -672,7 +672,7 @@ export class XarHost2Interop implements IXarHost2HostInterop {
             messageType: x.messageType,
             messageText: x.messageText,
             timestamp: new Date(x.timestamp),
-            speakingCharacterGender: (x.gender as CharacterGender) ?? CharacterGender.NONE,
+            speakingCharacterGender: CharacterGender.create(x.gender) ?? CharacterGender.NONE,
             speakingCharacterOnlineStatus: (x.status as OnlineStatus) ?? OnlineStatus.OFFLINE,
         };
     }
@@ -685,7 +685,7 @@ export class XarHost2Interop implements IXarHost2HostInterop {
             messageType: x.messageType,
             messageText: x.messageText,
             timestamp: new Date(x.timestamp),
-            speakingCharacterGender: (x.gender as CharacterGender) ?? CharacterGender.NONE,
+            speakingCharacterGender: CharacterGender.create(x.gender) ?? CharacterGender.NONE,
             speakingCharacterOnlineStatus: (x.status as OnlineStatus) ?? OnlineStatus.OFFLINE,
         };
     }
@@ -698,7 +698,7 @@ export class XarHost2Interop implements IXarHost2HostInterop {
             messageType: x.messageType,
             messageText: x.messageText,
             timestamp: new Date(x.timestamp),
-            speakingCharacterGender: (x.gender as CharacterGender) ?? CharacterGender.NONE,
+            speakingCharacterGender: CharacterGender.create(x.gender) ?? CharacterGender.NONE,
             speakingCharacterOnlineStatus: (x.status as OnlineStatus) ?? OnlineStatus.OFFLINE,
         };
     }
@@ -711,7 +711,7 @@ export class XarHost2Interop implements IXarHost2HostInterop {
             messageType: x.messageType,
             messageText: x.messageText,
             timestamp: new Date(x.timestamp),
-            speakingCharacterGender: (x.gender as CharacterGender) ?? CharacterGender.NONE,
+            speakingCharacterGender: CharacterGender.create(x.gender) ?? CharacterGender.NONE,
             speakingCharacterOnlineStatus: (x.status as OnlineStatus) ?? OnlineStatus.OFFLINE,
         };
     }

@@ -10,6 +10,15 @@ export interface HostInteropLogSearch {
         dateAnchor: DateAnchor, date: Date, maxEntries: number, cancellationToken: CancellationToken): Promise<LogSearchResult[]>;
 
     getRecentConversationsAsync(logsFor: CharacterName, resultLimit: number, cancellationToken: CancellationToken): Promise<RecentConversationResult[]>;
+
+
+    getHintsForChannelTitle(titlePartial: string, cancellationToken: CancellationToken): Promise<string[]>;
+    getHintsForMyCharacterName(myCharNamePartial: string, cancellationToken: CancellationToken): Promise<string[]>;
+    getHintsForInterlocutorCharacterName(myCharName: string, interlocutorCharNamePartial: string, exact: boolean, cancellationToken: CancellationToken): Promise<string[]>;
+    searchChannelMessageDatesAsync(title: string, cancellationToken: CancellationToken): Promise<ExplicitDate[]>;
+    searchPMConversationDatesAsync(myCharName: string, interlocutorCharName: string, cancellationToken: CancellationToken): Promise<ExplicitDate[]>;
+    getChannelMessagesAsync(title: string, fromDate: ExplicitDate, toDate: ExplicitDate, cancellationToken: CancellationToken): Promise<LogSearchResultChannelMessage[]>;
+    getPMConversationMessagesAsync(myCharName: string, interlocutorCharName: string, fromDate: ExplicitDate, toDate: ExplicitDate, cancellationToken: CancellationToken): Promise<LogSearchResultPMConvoMessage[]>;
 }
 
 export enum LogSearchKind {
@@ -47,3 +56,16 @@ export interface LogSearchResultPMConvoMessage extends LogSearchResult {
     interlocutorName: string;
 }
 
+export interface ExplicitDate {
+    readonly y: number;
+    readonly m: number;
+    readonly d: number;
+}
+
+export class ExplicitDateUtils {
+    static equals(a: (ExplicitDate | null | undefined), b: (ExplicitDate | null | undefined)): boolean {
+        if (!a && !b) { return true; }
+        if (!a || !b) { return false; }
+        return ((a.y == b.y) && (a.m == b.m) && (a.d == b.d));
+    }
+}

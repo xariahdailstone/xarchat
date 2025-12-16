@@ -75,7 +75,7 @@ const eIconSyncManager = new EIconSyncManager();
 
 @componentElement("x-eicondisplay")
 export class EIconDisplay extends HTMLElement {
-    static get observedAttributes() { return [ 'eiconname', 'syncgroup', 'charname' ] };
+    static get observedAttributes() { return [ 'eiconname', 'syncgroup', 'charname', 'loading' ] };
 
     constructor() {
         super();
@@ -122,6 +122,9 @@ export class EIconDisplay extends HTMLElement {
         else if (name == "charname") {
             this.charName = newValue ?? null;
         }
+        else if (name == "loading") {
+            this.lazyLoad = (newValue == "lazy");
+        }
     }
 
     private connectedCallback() {
@@ -149,6 +152,19 @@ export class EIconDisplay extends HTMLElement {
     private set_isImageLoaded(value: boolean) {
         if (value !== this._isImageLoaded) {
             this._isImageLoaded = value;
+            this.updateState();
+        }
+    }
+
+    get lazyLoad() { return this.getAttribute("loading") == "lazy"; }
+    set lazyLoad(value: boolean) {
+        if (value != this.lazyLoad) {
+            if (value) {
+                this.setAttribute("loading", "lazy");
+            }
+            else {
+                this.removeAttribute("loading");
+            }
             this.updateState();
         }
     }
@@ -230,7 +246,9 @@ export class EIconDisplay extends HTMLElement {
         const lastSyncGroup = this._lastStateSyncGroup;
 
         const isConnected = this.isConnected;
-        const eiconName = this.eiconName;
+        const isIntersecting = this._isIntersecting;
+        const isLazyLoad = this.lazyLoad;
+        const eiconName = (!isLazyLoad || isIntersecting) ? this.eiconName : "";
         const syncGroup = isConnected ? this.syncGroup : null;
         const charName = this.charName ? CharacterName.create(this.charName) : null;
 

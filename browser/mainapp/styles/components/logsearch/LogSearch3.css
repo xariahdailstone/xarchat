@@ -1,0 +1,134 @@
+#elMain {
+    display: contents;
+}
+
+.logsearch-main {
+    width: 100%;
+    height: 100%;
+
+    display: grid;
+    grid-template-rows: auto 1fr;
+    grid-template-columns: 100%;
+    grid-template-areas:
+        "args"
+        "bottom";
+}
+
+.logsearch-main-args {
+    grid-area: args;
+
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+
+    padding: 7px 7px;
+    gap: 5px;
+
+    .logsearch-main-args-details-container {
+        display: contents;
+    }
+
+    .logsearch-main-args-searchbutton {
+        margin-left: auto;
+        margin-right: 5px;
+    }
+}
+
+.logsearch-main-bottom {
+    grid-area: bottom;
+    overflow: hidden;
+}
+
+.logsearch-main-bottom-results {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-rows: 100%;
+    overflow: hidden;
+
+    .logsearch-main-bottom-results-datepicker {
+        overflow-y: scroll;
+        min-width: 0;
+        max-width: 225px;
+
+        .logsearch-main-bottom-results-yearpicker {
+            position: sticky;
+            top: 0;
+            z-index: 2;
+            display: grid;
+            grid-template-rows: 100%;
+            grid-template-columns: 1fr auto auto auto 1fr;
+            grid-template-areas: ". prev year next .";
+            padding-bottom: 4px;
+            background: var(--bg-level-4);
+            opacity: 1;
+
+            .prev-year { grid-area: prev; }
+            .year-select { grid-area: year; }
+            .next-year { grid-area: next; }
+
+            .year-select {
+            }
+            .prev-year, .next-year {
+                margin: 2px;
+            }
+        }
+    }
+}
+
+
+.logsearch-main-bottom-results-months {
+    font-family: var(--chat-font-family);
+    font-size: 80%;
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+
+    & > table {
+        display: table;
+        margin-left: auto;
+        margin-right: auto;
+        background-color: rgba(0, 0, 0, 0.1);
+        padding: 4px 4px;
+        margin-bottom: 7px;
+
+        tr.month-name-row th {
+            text-align: center;
+        }
+
+        tr.week-headings-row {
+            display: none;
+            font-size: 70%;
+            th {
+                text-align: center;
+            }
+        }
+
+        tr.week-row td {
+            text-align: right;
+
+            &.empty-day {
+                opacity: 0.6;
+            }
+            &:not(.day-has-logs) {
+                opacity: 0.2;
+            }
+            &.day-has-logs {
+                cursor: pointer;
+                &:not(.selected-date):hover {
+                    background-color: rgba(255, 255, 255, 0.3);
+                }
+            }
+            &.selected-date {
+                background-color: var(--fg-level-4);
+                color: var(--bg-level-4);
+            }
+        }
+    }
+}
+
+.logsearch-main-bottom-results-stream,
+.logsearch-main-bottom-results-stream-loading,
+.logsearch-main-bottom-results-stream-empty {
+    background: var(--bg-level-3);
+    color: var(--fg-level-4);
+}
