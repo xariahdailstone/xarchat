@@ -32,6 +32,7 @@ export interface ConfigSchemaItemDefinitionItem {
     defaultValue: unknown;
     configBlockKey: string;
     items?: ConfigSchemaItemDefinition[];
+    hidden?: boolean;
     notYetImplemented?: boolean;
     notifRouteOptions?: ConfigSchemaNotifRouteItemOptions;
     actionButtons?: ActionButtonDefinition[];
@@ -80,6 +81,7 @@ export interface ConfigSchemaItemDefinitionSection {
     description?: string;
     descriptionByScope?: { [key in ConfigSchemaScopeType]: string };
     items: ConfigSchemaItemDefinition[];
+    hidden?: boolean;
 }
 
 export interface ConfigSchemaOptionDefinition {
@@ -1234,6 +1236,46 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                                     defaultValue: "#EE8822",
                                     configBlockKey: "color.gender.transgender"
                                 },
+                                {
+                                    scope: getScopeArray(["global"]),
+                                    id: "color.gender.male-trans",
+                                    title: "Male (Trans)",
+                                    description: "",
+                                    type: "color",
+                                    defaultValue: "#5bcefa",
+                                    configBlockKey: "color.gender.male-trans",
+                                    hidden: true
+                                },                                
+                                {
+                                    scope: getScopeArray(["global"]),
+                                    id: "color.gender.female-trans",
+                                    title: "Female (Trans)",
+                                    description: "",
+                                    type: "color",
+                                    defaultValue: "#f5a9ba",
+                                    configBlockKey: "color.gender.female-trans",
+                                    hidden: true
+                                },                                
+                                {
+                                    scope: getScopeArray(["global"]),
+                                    id: "color.gender.intersex",
+                                    title: "Intersex",
+                                    description: "",
+                                    type: "color",
+                                    defaultValue: "#ae9487",
+                                    configBlockKey: "color.gender.intersex",
+                                    hidden: true
+                                },                                
+                                {
+                                    scope: getScopeArray(["global"]),
+                                    id: "color.gender.nonbinary",
+                                    title: "Non-Binary",
+                                    description: "",
+                                    type: "color",
+                                    defaultValue: "#16b78e",
+                                    configBlockKey: "color.gender.nonbinary",
+                                    hidden: true
+                                },                                
                                 {
                                     scope: getScopeArray(["global"]),
                                     id: "color.gender.none",

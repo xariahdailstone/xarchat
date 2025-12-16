@@ -1,9 +1,4 @@
 
-export class DateUtils {
-    static addMilliseconds(d: Date, ms: number) {
-        return new Date(d.getTime() + ms);
-    }
-}
 
 export class TimeSpanUtils {
     static fromMilliseconds(ms: number) { return ms; }

@@ -1,3 +1,4 @@
+import { CharacterGender } from "../shared/CharacterGender";
 import { OnlineStatus, OnlineStatusConvert } from "../shared/OnlineStatus";
 import { IDisposable } from "../util/Disposable";
 import { ObservableBase } from "../util/ObservableBase";
@@ -61,14 +62,9 @@ export class ColorThemeViewModel extends ObservableBase {
             ));
         };
 
-        setupGenderColor("male");
-        setupGenderColor("female");
-        setupGenderColor("herm");
-        setupGenderColor("male-herm");
-        setupGenderColor("shemale");
-        setupGenderColor("cunt-boy");
-        setupGenderColor("transgender");
-        setupGenderColor("none");
+        for (let charGender of CharacterGender.enumerateExisting()) {
+            setupGenderColor(charGender.cssClass);
+        }
 
         const setupStatusColor = (status: OnlineStatus) => {
             const statusStr = OnlineStatusConvert.toString(status).toLowerCase();

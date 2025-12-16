@@ -1,5 +1,4 @@
 import { StringUtils } from "../util/StringUtils";
-import { CharacterGender } from "./CharacterGender";
 import { StatusLastChangeInfo } from "./CharacterSet";
 
 export enum OnlineStatus {

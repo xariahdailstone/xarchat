@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -46,6 +47,35 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions.SessionNamespaces.LogSearc
             this.RegisterTypedStreamCommandHandler<PerformRecentConversationsSearchArgs>(
                 "getRecentConversations",
                 PerformRecentConversationsSearchAsync);
+
+
+            this.RegisterTypedStreamCommandHandler<GetHintsForChannelTitleArgs>(
+                "getHintsForChannelTitle",
+                GetHintsForChannelTitleAsync);
+
+            this.RegisterTypedStreamCommandHandler<GetHintsForMyCharacterNameArgs>(
+                "getHintsForMyCharacterName",
+                GetHintsForMyCharacterNameAsync);
+
+            this.RegisterTypedStreamCommandHandler<GetHintsForInterlocutorCharacterNameArgs>(
+                "getHintsForInterlocutorCharacterName",
+                GetHintsForInterlocutorCharacterNameAsync);
+
+            this.RegisterTypedStreamCommandHandler<SearchChannelMessageDatesArgs>(
+                "searchChannelMessageDates",
+                SearchChannelMessageDatesAsync);
+
+            this.RegisterTypedStreamCommandHandler<SearchPMConversationDatesArgs>(
+                "searchPMConversationDates",
+                SearchPMConversationDatesAsync);
+
+            this.RegisterTypedStreamCommandHandler<GetChannelMessagesArgs>(
+                "getChannelMessages",
+                GetChannelMessagesAsync);
+
+            this.RegisterTypedStreamCommandHandler<GetPMConversationMessagesArgs>(
+                "getPMConversationMessages",
+                GetPMConversationMessagesAsync);
         }
 
         protected override JsonTypeInfo GetTypeInfo(Type type)
@@ -159,6 +189,177 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions.SessionNamespaces.LogSearc
                 new PerformRecentConversationsSearchResponse() { Results = new List<RecentConversationInfo>(results) },
                 cancellationToken);
         }
+
+        private async Task GetHintsForChannelTitleAsync(StreamHandlerArgs<GetHintsForChannelTitleArgs> args)
+        {
+            var cancellationToken = args.CancellationToken;
+
+            try
+            {
+                var results = await _chatLogSearch.GetChannelNamesAsync(args.Data!.Title, cancellationToken);
+
+                await args.WriteMessageAsync("gotHintsForChannelTitle",
+                    new TypedResponse<List<string>> { Result = results.ToList() },
+                    cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                await args.WriteMessageAsync("gotHintsForChannelTitleError", 
+                    new ErrorResponse { ErrorMessage = ex.Message }, 
+                    cancellationToken);
+            }
+        }
+
+        private async Task GetHintsForMyCharacterNameAsync(StreamHandlerArgs<GetHintsForMyCharacterNameArgs> args)
+        {
+            var cancellationToken = args.CancellationToken;
+
+            try
+            {
+                var matches = new List<string>();
+
+                var results = await _chatLogSearch.GetMyCharacterInfosAsync(cancellationToken);
+                foreach (var item in results)
+                {
+                    if (item.CharacterName.StartsWith(args.Data!.MyName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        matches.Add(item.CharacterName);
+                    }
+                }
+
+                await args.WriteMessageAsync("gotHintsForMyCharacterName",
+                    new TypedResponse<List<string>> { Result = matches.OrderBy(x => x, StringComparer.OrdinalIgnoreCase).ToList() },
+                    cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                await args.WriteMessageAsync("gotHintsForMyCharacterNameError",
+                    new ErrorResponse { ErrorMessage = ex.Message },
+                    cancellationToken);
+            }
+        }
+
+        private async Task GetHintsForInterlocutorCharacterNameAsync(StreamHandlerArgs<GetHintsForInterlocutorCharacterNameArgs> args)
+        {
+            var cancellationToken = args.CancellationToken;
+
+            try
+            {
+                var matches = new List<string>();
+
+                var results = await _chatLogSearch.GetInterlocutorInfosAsync(args.Data!.MyName, cancellationToken);
+                foreach (var item in results)
+                {
+                    if (args.Data!.Exact)
+                    {
+                        if (String.Equals(item.CharacterName, args.Data.InterlocutorName, StringComparison.OrdinalIgnoreCase))
+                        {
+                            matches.Add(item.CharacterName);
+                        }
+                    }
+                    else
+                    {
+                        if (item.CharacterName.StartsWith(args.Data.InterlocutorName, StringComparison.OrdinalIgnoreCase))
+                        {
+                            matches.Add(item.CharacterName);
+                        }
+                    }
+                }
+
+                await args.WriteMessageAsync("gotHintsForInterlocutorCharacterName",
+                    new TypedResponse<List<string>> { Result = matches.OrderBy(x => x, StringComparer.OrdinalIgnoreCase).ToList() },
+                    cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                await args.WriteMessageAsync("gotHintsForInterlocutorCharacterNameError",
+                    new ErrorResponse { ErrorMessage = ex.Message },
+                    cancellationToken);
+            }
+        }
+
+        private async Task SearchChannelMessageDatesAsync(StreamHandlerArgs<SearchChannelMessageDatesArgs> args)
+        {
+            var cancellationToken = args.CancellationToken;
+
+            try
+            {
+                var results = await _chatLogSearch.GetChannelMessageDatesAsync(args.Data!.Title, cancellationToken);
+                
+                await args.WriteMessageAsync("searchedChannelMessageDates",
+                    new TypedResponse<List<ExplicitDate>> { Result = new(results) },
+                    cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                await args.WriteMessageAsync("searchedChannelMessageDatesError",
+                    new ErrorResponse { ErrorMessage = ex.Message },
+                    cancellationToken);
+            }
+        }
+
+        private async Task SearchPMConversationDatesAsync(StreamHandlerArgs<SearchPMConversationDatesArgs> args)
+        {
+            var cancellationToken = args.CancellationToken;
+
+            try
+            {
+                var results = await _chatLogSearch.GetPMConversationDatesAsync(
+                    args.Data!.MyCharName, args.Data!.InterlocutorCharName, cancellationToken);
+
+                await args.WriteMessageAsync("searchedPMConversationDates",
+                    new TypedResponse<List<ExplicitDate>> { Result = new(results) },
+                    cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                await args.WriteMessageAsync("searchedPMConversationDatesError",
+                    new ErrorResponse { ErrorMessage = ex.Message },
+                    cancellationToken);
+            }
+        }
+
+        private async Task GetChannelMessagesAsync(StreamHandlerArgs<GetChannelMessagesArgs> args)
+        {
+            var cancellationToken = args.CancellationToken;
+
+            try
+            {
+                var results = await _chatLogSearch.GetChannelMessagesAsync(
+                    args.Data!.Title, args.Data.FromDate, args.Data.ToDate, cancellationToken);
+
+                await args.WriteMessageAsync("gotChannelMessages",
+                    new TypedResponse<List<LogSearchResultChannelMessage>> { Result = new(results) },
+                    cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                await args.WriteMessageAsync("gotChannelMessagesError",
+                    new ErrorResponse { ErrorMessage = ex.Message },
+                    cancellationToken);
+            }
+        }
+
+        private async Task GetPMConversationMessagesAsync(StreamHandlerArgs<GetPMConversationMessagesArgs> args)
+        {
+            var cancellationToken = args.CancellationToken;
+
+            try
+            {
+                var results = await _chatLogSearch.GetPMConversationMessagesAsync(
+                    args.Data!.MyCharName, args.Data.InterlocutorCharName, args.Data.FromDate, args.Data.ToDate, cancellationToken);
+
+                await args.WriteMessageAsync("gotPMConversationMessages",
+                    new TypedResponse<List<LogSearchResultPMConvoMessage>> { Result = new(results) },
+                    cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                await args.WriteMessageAsync("gotPMConversationMessagesError",
+                    new ErrorResponse { ErrorMessage = ex.Message },
+                    cancellationToken);
+            }
+        }
     }
 
     public class GetHintsFromTermArgs : StreamCommandMessage
@@ -257,6 +458,87 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions.SessionNamespaces.LogSearc
         public List<RecentConversationInfo> Results { get; set; } = new List<RecentConversationInfo>();
     }
 
+    public class GetHintsForChannelTitleArgs : StreamCommandMessage
+    {
+        [JsonPropertyName("title")]
+        public required string Title { get; set; }
+    }
+
+    public class GetHintsForMyCharacterNameArgs : StreamCommandMessage
+    {
+        [JsonPropertyName("myName")]
+        public required string MyName { get; set; }
+    }
+
+    public class GetHintsForInterlocutorCharacterNameArgs : StreamCommandMessage
+    {
+        [JsonPropertyName("myName")]
+        public required string MyName { get; set; }
+
+        [JsonPropertyName("interlocutorName")]
+        public required string InterlocutorName { get; set; }
+
+        [JsonPropertyName("exact")]
+        public required bool Exact { get; set; }
+    }
+
+    public class SearchChannelMessageDatesArgs : StreamCommandMessage
+    {
+        [JsonPropertyName("title")]
+        public required string Title { get; set; }
+    }
+
+    public class SearchPMConversationDatesArgs : StreamCommandMessage
+    {
+        [JsonPropertyName("myCharName")]
+        public required string MyCharName { get; set; }
+
+        [JsonPropertyName("interlocutorCharName")]
+        public required string InterlocutorCharName { get; set; }
+    }
+
+    public class GetChannelMessagesArgs : StreamCommandMessage
+    {
+        [JsonPropertyName("title")]
+        public required string Title { get; set; }
+
+        [JsonPropertyName("fromDate")]
+        public required ExplicitDate FromDate { get; set; }
+
+        [JsonPropertyName("toDate")]
+        public required ExplicitDate ToDate { get; set; }
+    }
+
+    public class GetPMConversationMessagesArgs : StreamCommandMessage
+    {
+        [JsonPropertyName("myCharName")]
+        public required string MyCharName { get; set; }
+
+        [JsonPropertyName("interlocutorCharName")]
+        public required string InterlocutorCharName { get; set; }
+
+        [JsonPropertyName("fromDate")]
+        public required ExplicitDate FromDate { get; set; }
+
+        [JsonPropertyName("toDate")]
+        public required ExplicitDate ToDate { get; set; }
+    }
+
+    public class TypedResponse<T> : StreamCommandMessage
+    {
+        [JsonPropertyName("result")]
+        public required T Result { get; set; }
+    }
+
+    public class ErrorResponse : StreamCommandMessage
+    {
+        [JsonPropertyName("message")]
+        public required string ErrorMessage { get; set; }
+    }
+
+
+
+
     [JsonSerializable(typeof(GetHintsFromTermArgs))]
     [JsonSerializable(typeof(GotHintsFromTermResponse))]
     [JsonSerializable(typeof(ValidateSearchTextArgs))]
@@ -267,6 +549,18 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions.SessionNamespaces.LogSearc
     [JsonSerializable(typeof(PerformedPMConvoSearchResponse))]
     [JsonSerializable(typeof(PerformRecentConversationsSearchArgs))]
     [JsonSerializable(typeof(PerformRecentConversationsSearchResponse))]
+    [JsonSerializable(typeof(GetHintsForChannelTitleArgs))]
+    [JsonSerializable(typeof(GetHintsForMyCharacterNameArgs))]
+    [JsonSerializable(typeof(GetHintsForInterlocutorCharacterNameArgs))]
+    [JsonSerializable(typeof(SearchChannelMessageDatesArgs))]
+    [JsonSerializable(typeof(SearchPMConversationDatesArgs))]
+    [JsonSerializable(typeof(GetChannelMessagesArgs))]
+    [JsonSerializable(typeof(GetPMConversationMessagesArgs))]
+    [JsonSerializable(typeof(TypedResponse<List<string>>))]
+    [JsonSerializable(typeof(TypedResponse<List<ExplicitDate>>))]
+    [JsonSerializable(typeof(TypedResponse<List<LogSearchResultChannelMessage>>))]
+    [JsonSerializable(typeof(TypedResponse<List<LogSearchResultPMConvoMessage>>))]
+    [JsonSerializable(typeof(ErrorResponse))]
     internal partial class LogSearchSourceGenerationContext : JsonSerializerContext
     {
     }

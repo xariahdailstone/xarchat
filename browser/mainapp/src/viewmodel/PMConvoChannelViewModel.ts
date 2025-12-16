@@ -8,8 +8,6 @@ import { CharacterDetailPopupViewModel } from "./popups/CharacterDetailPopupView
 import { SendQueue } from "../util/SendQueue.js";
 import { TaskUtils } from "../util/TaskUtils.js";
 import { AppNotifyEventType } from "./AppViewModel.js";
-import { CharacterGender } from "../shared/CharacterGender.js";
-import { OnlineStatus } from "../shared/OnlineStatus.js";
 import { TypingStatus } from "../shared/TypingStatus.js";
 import { SavedChatStatePMConvo } from "../settings/AppSettings.js";
 import { DateAnchor } from "../util/hostinterop/HostInteropLogSearch.js";

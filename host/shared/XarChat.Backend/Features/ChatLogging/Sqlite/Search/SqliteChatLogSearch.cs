@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
@@ -318,6 +319,9 @@ namespace XarChat.Backend.Features.ChatLogging.Sqlite.Search
         }
 
         public async Task<IReadOnlyList<string>> GetChannelNamesAsync(CancellationToken cancellationToken)
+            => await GetChannelNamesAsync("", cancellationToken);
+
+        public async Task<IReadOnlyList<string>> GetChannelNamesAsync(string startsWith, CancellationToken cancellationToken)
         {
             var chanTitlesSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
@@ -329,7 +333,9 @@ namespace XarChat.Backend.Features.ChatLogging.Sqlite.Search
                     cmd.CommandText = @"
                         select distinct ch.title
                         from channel ch
-                        where ch.channeltype = 'C'";
+                        where ch.channeltype = 'C' and lower(ch.title) like lower(@titlePrefix)
+                        order by lower(ch.title)";
+                    cmd.Parameters.Add("@titlePrefix", SqliteType.Text).Value = startsWith + "%";
 
                     using (var dr = await cmd.ExecuteReaderAsync(cancellationToken))
                     {
@@ -541,6 +547,233 @@ namespace XarChat.Backend.Features.ChatLogging.Sqlite.Search
                     {
                         return new List<RecentConversationInfo>();
                     }
+                });
+
+            return result;
+        }
+
+        private async IAsyncEnumerable<DateOnly> EnumerateMessageDatesForChannel(
+            SqliteConnection connection, int channelId, [EnumeratorCancellation] CancellationToken cancellationToken)
+        {
+            using var cmd = connection.CreateCommand();
+            cmd.CommandText = $@"
+                        select cm.timestamp
+                        from channelmessage cm
+                        where cm.channelid = @channelId
+                            and cm.timestamp >= @fromTimestamp
+                            and cm.messagetype <> 1
+                        order by cm.timestamp asc
+                        limit 1
+                    ";
+            cmd.Parameters.Add("@channelId", SqliteType.Integer).Value = channelId;
+            var prmFromTimestamp = cmd.Parameters.Add("@fromTimestamp", SqliteType.Integer);
+            prmFromTimestamp.Value = 0;
+            await cmd.PrepareAsync(cancellationToken);
+
+            while (true)
+            {
+                var nextTimestampObj = await cmd.ExecuteScalarAsync(cancellationToken);
+                if (nextTimestampObj is null || nextTimestampObj is DBNull)
+                {
+                    break;
+                }
+
+                var timestampValue = Convert.ToInt64(nextTimestampObj);
+                var d = DateOnly.FromDateTime(DateTimeOffset.FromUnixTimeMilliseconds(timestampValue).ToLocalTime().Date);
+                yield return d;
+                prmFromTimestamp.Value = new DateTimeOffset(
+                    TimeZoneInfo.ConvertTimeToUtc(d.AddDays(1).ToDateTime(TimeOnly.MinValue), TimeZoneInfo.Local), TimeSpan.Zero).ToUnixTimeMilliseconds();
+            }
+        }
+
+        public async Task<IList<ExplicitDate>> GetChannelMessageDatesAsync(
+            string channelTitle, CancellationToken cancellationToken)
+        {
+            var result = await RunWithDisposeCancellation(
+                cancellationToken: cancellationToken,
+                func: async (connection, cancellationToken) =>
+                {
+                    int channelId;
+                    using (var getChannelIdCommand = connection.CreateCommand())
+                    {
+                        getChannelIdCommand.CommandText = $@"
+                            select c.id
+                            from channel c
+                            where lower(c.title) = @channelTitleLower
+                        ";
+                        getChannelIdCommand.Parameters.Add("@channelTitleLower", SqliteType.Text).Value = channelTitle.ToLower();
+                        var channelIdObj = await getChannelIdCommand.ExecuteScalarAsync(cancellationToken);
+                        if (channelIdObj is null || channelIdObj is DBNull)
+                        {
+                            return [];
+                        }
+                        channelId = Convert.ToInt32(channelIdObj);
+                    }
+
+                    var result = await EnumerateMessageDatesForChannel(connection, channelId, cancellationToken).ToListAsync(cancellationToken);
+                    return result;
+                });
+
+            return result.Select(d => new ExplicitDate() { Year = d.Year, Month = d.Month, Day = d.Day }).ToList();
+        }
+
+        public async Task<IList<ExplicitDate>> GetPMConversationDatesAsync(
+            string myCharName, string interlocutorCharName, CancellationToken cancellationToken)
+        {
+            {
+                var result = await RunWithDisposeCancellation(
+                    cancellationToken: cancellationToken,
+                    func: async (connection, cancellationToken) =>
+                    {
+                        int channelId;
+                        using (var getChannelIdCommand = connection.CreateCommand())
+                        {
+                            getChannelIdCommand.CommandText = $@"
+                                select c.id
+                                from channel c
+                                where c.channeltype = 'P'
+                                    and c.mycharacterid = (select id from character c where c.namelower = @myNameLower)
+                                    and c.interlocutorcharacterid = (select id from character c where c.namelower = @interlocutorNameLower)
+                            ";
+                            getChannelIdCommand.Parameters.Add("@myNameLower", SqliteType.Text).Value = myCharName.ToLower();
+                            getChannelIdCommand.Parameters.Add("@interlocutorNameLower", SqliteType.Text).Value = interlocutorCharName.ToLower();
+
+                            var channelIdObj = await getChannelIdCommand.ExecuteScalarAsync(cancellationToken);
+                            if (channelIdObj is null || channelIdObj is DBNull)
+                            {
+                                return [];
+                            }
+                            channelId = Convert.ToInt32(channelIdObj);
+                        }
+
+                        var result = await EnumerateMessageDatesForChannel(connection, channelId, cancellationToken).ToListAsync(cancellationToken);
+                        return result;
+                    });
+
+                return result.Select(d => new ExplicitDate() { Year = d.Year, Month = d.Month, Day = d.Day }).ToList();
+            }
+        }
+
+
+        public async Task<IList<LogSearchResultChannelMessage>> GetChannelMessagesAsync(
+            string channelTitle, ExplicitDate fromDate, ExplicitDate toDate, CancellationToken cancellationToken)
+        {
+            var result = await RunWithDisposeCancellation(
+                cancellationToken: cancellationToken,
+                func: async (connection, cancellationToken) =>
+                {
+                    using var cmd = connection.CreateCommand();
+                    cmd.CommandText = $@"
+                        select cm.genderid, s.value as messagetext, cm.messagetype,
+                            speakingchar.name as speakingcharname, cm.onlinestatusid, cm.timestamp,
+                            c.name as channelname, c.title as channeltitle
+                        from channel c
+                        inner join channelmessage cm on cm.channelid = c.id
+                        inner join strings s on s.id = cm.textstringid
+                        inner join character speakingchar on speakingchar.id = cm.speakingcharacterid
+                        where lower(c.title) = @channelTitleLower and c.channeltype = 'C'
+                            and cm.timestamp >= @fromDate and cm.timestamp < @toDate
+                            and cm.messagetype <> 1
+                        order by cm.timestamp asc
+                    ";
+                    cmd.Parameters.Add("@channelTitleLower", SqliteType.Text).Value = channelTitle.ToLower();
+                    cmd.Parameters.Add("@fromDate", SqliteType.Integer).Value = fromDate.ToLocalDateTimeOffset().ToUnixTimeMilliseconds();
+                    cmd.Parameters.Add("@toDate", SqliteType.Integer).Value = toDate.ToLocalDateTimeOffset().ToUnixTimeMilliseconds();
+
+                    var result = new List<LogSearchResultChannelMessage>();
+
+                    DateTime lastReturnedDate = DateTime.MinValue;
+                    using var dr = await cmd.ExecuteReaderAsync(cancellationToken);
+                    while (await dr.ReadAsync(cancellationToken))
+                    {
+                        var genderId = Convert.ToInt32(dr["genderid"]);
+                        var messageText = Convert.ToString(dr["messagetext"])!;
+                        var messageType = Convert.ToInt32(dr["messagetype"]);
+                        var speakerName = Convert.ToString(dr["speakingcharname"])!;
+                        var onlineStatusId = Convert.ToInt32(dr["onlinestatusid"]);
+                        var timestamp = Convert.ToInt64(dr["timestamp"]);
+                        var channelName = Convert.ToString(dr["channelname"])!;
+                        var channelTitle = Convert.ToString(dr["channeltitle"])!;
+
+                        result.Add(new LogSearchResultChannelMessage()
+                        {
+                            ChannelName = channelName,
+                            ChannelTitle = channelTitle,
+                            Gender = genderId,
+                            MessageText = messageText,
+                            MessageType = messageType,
+                            SpeakerName = speakerName,
+                            Status = onlineStatusId,
+                            Timestamp = timestamp
+                        });
+                    }
+
+                    return result;
+                });
+
+            return result;
+        }
+
+        public async Task<IList<LogSearchResultPMConvoMessage>> GetPMConversationMessagesAsync(
+            string myCharName, string interlocutorCharName, ExplicitDate fromDate, ExplicitDate toDate, CancellationToken cancellationToken)
+        {
+            var result = await RunWithDisposeCancellation(
+                cancellationToken: cancellationToken,
+                func: async (connection, cancellationToken) =>
+                {
+                    using var cmd = connection.CreateCommand();
+                    cmd.CommandText = $@"
+                        select cm.genderid, s.value as messagetext, cm.messagetype,
+                            speakingchar.name as speakingcharname, cm.onlinestatusid, cm.timestamp,
+                            mychar.name as mycharname, interlocutorchar.name as interlocutorcharname
+                        from channel c
+                        inner join channelmessage cm on cm.channelid = c.id
+                        inner join strings s on s.id = cm.textstringid
+                        inner join character speakingchar on speakingchar.id = cm.speakingcharacterid
+                        inner join character mychar on mychar.id = c.mycharacterid
+                        inner join character interlocutorchar on interlocutorchar.id = c.interlocutorcharacterid
+                        where
+                            c.channeltype = 'P' and
+                            mychar.namelower = @myNameLower and
+                            interlocutorchar.namelower = @interlocutorNameLower and
+                            cm.timestamp >= @fromDate and cm.timestamp < @toDate and
+                            cm.messagetype <> 1
+                        order by cm.timestamp asc
+                    ";
+                    cmd.Parameters.Add("@myNameLower", SqliteType.Text).Value = myCharName.ToLower();
+                    cmd.Parameters.Add("@interlocutorNameLower", SqliteType.Text).Value = interlocutorCharName.ToLower();
+                    cmd.Parameters.Add("@fromDate", SqliteType.Integer).Value = fromDate.ToLocalDateTimeOffset().ToUnixTimeMilliseconds();
+                    cmd.Parameters.Add("@toDate", SqliteType.Integer).Value = toDate.ToLocalDateTimeOffset().ToUnixTimeMilliseconds();
+
+                    var result = new List<LogSearchResultPMConvoMessage>();
+
+                    DateTime lastReturnedDate = DateTime.MinValue;
+                    using var dr = await cmd.ExecuteReaderAsync(cancellationToken);
+                    while (await dr.ReadAsync(cancellationToken))
+                    {
+                        var genderId = Convert.ToInt32(dr["genderid"]);
+                        var messageText = Convert.ToString(dr["messagetext"])!;
+                        var messageType = Convert.ToInt32(dr["messagetype"]);
+                        var speakerName = Convert.ToString(dr["speakingcharname"])!;
+                        var onlineStatusId = Convert.ToInt32(dr["onlinestatusid"]);
+                        var timestamp = Convert.ToInt64(dr["timestamp"]);
+                        var myCharName = Convert.ToString(dr["mycharname"])!;
+                        var interlocutorCharName = Convert.ToString(dr["interlocutorcharname"])!;
+
+                        result.Add(new LogSearchResultPMConvoMessage()
+                        {
+                            MyCharacterName = myCharName,
+                            InterlocutorName = interlocutorCharName,
+                            Gender = genderId,
+                            MessageText = messageText,
+                            MessageType = messageType,
+                            SpeakerName = speakerName,
+                            Status = onlineStatusId,
+                            Timestamp = timestamp
+                        });
+                    }
+
+                    return result;
                 });
 
             return result;
