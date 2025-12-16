@@ -1,10 +1,14 @@
-import { jsx, Fragment, VNode, On, Attrs } from "../../snabbdom/index";
+import { jsx, Fragment, VNode, On, Attrs, Hooks } from "../../snabbdom/index";
 import { TextboxBinding } from "../../util/bindings/TextboxBinding";
 import { DateUtils } from "../../util/DateUtils";
 import { IDisposable } from "../../util/Disposable";
-import { ExplicitDate } from "../../util/hostinterop/HostInteropLogSearch";
+import { ExplicitDate, ExplicitDateUtils } from "../../util/hostinterop/HostInteropLogSearch";
 import { ObjectUniqueId } from "../../util/ObjectUniqueId";
-import { LogSearchStatus, LogSearchType, LogSearch3ViewModel, LogSearchResultsMessageGroupSetViewModel } from "../../viewmodel/logsearch/LogSearchViewModel";
+import { Scheduler } from "../../util/Scheduler";
+import { LogSearch3ViewModel } from "../../viewmodel/logsearch/LogSearch3ViewModel";
+import { LogSearchResultsMessageGroupSetViewModel } from "../../viewmodel/logsearch/LogSearchResultsMessageGroupSetViewModel";
+import { LogSearchStatus } from "../../viewmodel/logsearch/LogSearchStatus";
+import { LogSearchType } from "../../viewmodel/logsearch/LogSearchType";
 import { componentArea, componentElement } from "../ComponentBase";
 import { makeRenderingComponent, RenderArguments, RenderingComponentBase } from "../RenderingComponentBase";
 import { StageViewComponent, stageViewFor } from "../Stage";
@@ -99,7 +103,7 @@ export class LogSearch3 extends StageViewComponent<LogSearch3ViewModel> {
             return this.renderBottomLoading(args, vm);
         }
         else if (vm.results == null) {
-            return <div key="bottom-null" class={{ "logsearch-main-bottom": true }}></div>;
+            return <div key="bottom-null" class={{ "logsearch-main-bottom": true }}>No results found.</div>;
         }
         else {
             return this.renderBottomResults(args, vm);
@@ -110,7 +114,7 @@ export class LogSearch3 extends StageViewComponent<LogSearch3ViewModel> {
         return <div key="bottom-loading" class={{ 
             "logsearch-main-bottom": true,
             "logsearch-main-bottom-loading": vm.status == LogSearchStatus.SEARCHING
-        }}>TODO --- searching...</div>;
+        }}>Please wait, searching...</div>;
     }
 
     private renderBottomResults(args: RenderArguments, vm: LogSearch3ViewModel): VNode {
@@ -123,6 +127,7 @@ export class LogSearch3 extends StageViewComponent<LogSearch3ViewModel> {
         </div>;
     }
 
+    private _lastRenderedDate: (ExplicitDate | null) = null;
     private renderBottomDatePicker(args: RenderArguments, vm: LogSearch3ViewModel): VNode {
         const r = vm.results!;
 
@@ -140,7 +145,11 @@ export class LogSearch3 extends StageViewComponent<LogSearch3ViewModel> {
         const yearPicker = <div key="bottom-results-yearpicker" class={{ 
             "logsearch-main-bottom-results-yearpicker": true
         }}>
-            <button classList={[ "prev-year", "themed" ]}>&lt;</button>
+            <button classList={[ "prev-year", "themed" ]} attrs={{
+                "disabled": !r.canGoPreviousYear
+            }} on={{
+                "click": () => r.goPreviousYear()
+            }}>&lt;</button>
             <x-xcselect classList={[ "year-select" ]} props={{ "value": r.selectedYear.toString() }} on={{
                 "change": (e) => {
                     const target = e.target as XCSelectElement;
@@ -149,7 +158,11 @@ export class LogSearch3 extends StageViewComponent<LogSearch3ViewModel> {
             }}>
                 {yearOptions}
             </x-xcselect>
-            <button classList={[ "next-year", "themed" ]}>&gt;</button>
+            <button classList={[ "next-year", "themed" ]} attrs={{
+                "disabled": !r.canGoNextYear
+            }} on={{
+                "click": () => r.goNextYear()
+            }}>&gt;</button>
         </div>;
 
         const monthNodes: VNode[] = [];
@@ -168,6 +181,11 @@ export class LogSearch3 extends StageViewComponent<LogSearch3ViewModel> {
                 curWeekNodes.push(<td class={{ "empty-day": true }}></td>);
             }
             const currentlySelectedDate: ExplicitDate | null = r.selectedDate;
+            const renderDateChanged = !ExplicitDateUtils.equals(this._lastRenderedDate, currentlySelectedDate);
+            if (renderDateChanged) {
+                this.logger.logInfo("Render Date Changed", this._lastRenderedDate, currentlySelectedDate);
+            }
+
             while (true) {
                 if (curWeekNodes.length >= 7) {
                     const newWeek = <tr classList={[ "week-row" ]}></tr>;
@@ -177,19 +195,39 @@ export class LogSearch3 extends StageViewComponent<LogSearch3ViewModel> {
                 }
                 const tcurdate = { y: curDate.getUTCFullYear(), m: curDate.getUTCMonth() + 1, d: curDate.getUTCDate() };
                 const dateHasLogs = r.hasDate(tcurdate.y, tcurdate.m, tcurdate.d);
-                const isSelectedDate = 
-                    currentlySelectedDate?.y == tcurdate.y &&
-                    currentlySelectedDate?.m == tcurdate.m &&
-                    currentlySelectedDate?.d == tcurdate.d;
+                const isSelectedDate = ExplicitDateUtils.equals(currentlySelectedDate, tcurdate);
                 const dateOn: On = {};
+                const dateHooks: Hooks = {};
+                const dateVNode = <td class={{ "day": true, "day-has-logs": dateHasLogs, "selected-date": isSelectedDate }}
+                    on={dateOn} hook={dateHooks}>{ tcurdate.d.toString() }</td>;
+
                 if (dateHasLogs) {
                     dateOn["click"] = (e: Event) => {
                         r.selectedDate = tcurdate;
+                        // Set this selected date as the last rendered date so we don't autoscroll to it
+                        this._lastRenderedDate = tcurdate;
                     };
                     monthHasDayWithLog = true;
+
+                    if (isSelectedDate) {
+                        this.logger.logInfo("Rendering currently selected date", tcurdate);
+                        if (renderDateChanged) {
+                            this.logger.logInfo("Adding post hook to scroll to new date", tcurdate);
+                            dateHooks.postpatch = () => {
+                                this._lastRenderedDate = currentlySelectedDate;
+                                this.logger.logInfo("scrolling date pick into view 0");
+                                Scheduler.scheduleCallback("afterframe", () => {
+                                    this.logger.logInfo("scrolling date pick into view 1");
+                                    const el = dateVNode.elm! as HTMLTableCellElement;
+                                    this.logger.logInfo("scrolling date pick into view", el);
+                                    el.scrollIntoView({ block: "center" });
+                                });
+                            };
+                        }
+                    }
                 }
-                curWeekNodes.push(<td class={{ "day": true, "day-has-logs": dateHasLogs, "selected-date": isSelectedDate }}
-                    on={dateOn}>{ tcurdate.d.toString() }</td>);
+                
+                curWeekNodes.push(dateVNode);
                 curDate = DateUtils.addDays(curDate, 1);
                 if (curDate.getUTCMonth() != mon) {
                     break;
@@ -241,7 +279,7 @@ export class LogSearch3 extends StageViewComponent<LogSearch3ViewModel> {
         const r = vm.results!;
 
         if (r.loadingMessages) {
-            return <div classList={[ "logsearch-main-bottom-results-stream-loading" ]}>Loading...</div>;
+            return <div classList={[ "logsearch-main-bottom-results-stream-loading" ]}>Please wait, searching...</div>;
         }
         else if (r.messageSet) {
             return <x-logsearch3setview 

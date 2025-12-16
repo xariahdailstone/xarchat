@@ -61,3 +61,11 @@ export interface ExplicitDate {
     readonly m: number;
     readonly d: number;
 }
+
+export class ExplicitDateUtils {
+    static equals(a: (ExplicitDate | null | undefined), b: (ExplicitDate | null | undefined)): boolean {
+        if (!a && !b) { return true; }
+        if (!a || !b) { return false; }
+        return ((a.y == b.y) && (a.m == b.m) && (a.d == b.d));
+    }
+}

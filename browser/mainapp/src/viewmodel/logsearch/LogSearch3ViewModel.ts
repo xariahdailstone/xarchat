@@ -1,6 +1,6 @@
+import { ChannelName } from "../../shared/ChannelName";
 import { CharacterName } from "../../shared/CharacterName";
 import { CancellationToken, CancellationTokenSource } from "../../util/CancellationTokenSource";
-import { KeyValuePair } from "../../util/collections/KeyValuePair";
 import { DateUtils } from "../../util/DateUtils";
 import { IDisposable, maybeDispose } from "../../util/Disposable";
 import { HostInterop, LogChannelMessage, LogPMConvoMessage } from "../../util/hostinterop/HostInterop";
@@ -10,8 +10,11 @@ import { ObservableBase, observableProperty } from "../../util/ObservableBase";
 import { PromiseSource } from "../../util/PromiseSource";
 import { StringUtils } from "../../util/StringUtils";
 import { ActiveLoginViewModel } from "../ActiveLoginViewModel";
-import { ChannelMessageViewModel, ChannelViewModel, TransientChannelStreamViewModel } from "../ChannelViewModel";
+import { ChannelMessageViewModel } from "../ChannelViewModel";
 import { SuggestTextBoxViewModel } from "../SuggestTextBoxViewModel";
+import { LogSearchResultsViewModel } from "./LogSearchResultsViewModel";
+import { LogSearchStatus } from "./LogSearchStatus";
+import { LogSearchType } from "./LogSearchType";
 
 export class LogSearch3ViewModel extends ObservableBase implements IDisposable {
     constructor(
@@ -163,8 +166,9 @@ export class LogSearch3ViewModel extends ObservableBase implements IDisposable {
         return { y: tomorrowDate.getFullYear(), m: tomorrowDate.getMonth() + 1, d: tomorrowDate.getDate() };
     }
 
-    async search() {
-        if (!this.canSearch || this.status != LogSearchStatus.IDLE) { return; }
+    async search(forceCanSearch?: boolean) {
+        const canSearch = forceCanSearch || this.canSearch;
+        if (!canSearch || this.status != LogSearchStatus.IDLE) { return; }
 
         this.status = LogSearchStatus.SEARCHING;
         this.results = null;
@@ -260,184 +264,26 @@ export class LogSearch3ViewModel extends ObservableBase implements IDisposable {
             this.canSearch = false;
         }
     }
-}
 
-export enum LogSearchType {
-    CHANNEL = "channel",
-    PRIVATE_MESSAGE = "pmconvo"
-}
-
-export enum LogSearchStatus {
-    IDLE,
-    SEARCHING
-}
-
-type MessageLoadFunc = (date: ExplicitDate, cancellationToken: CancellationToken) => Promise<{ title: string, messages: (LogChannelMessage[] | LogPMConvoMessage[]) }>;
-
-export class LogSearchResultsViewModel extends ObservableBase implements IDisposable {
-    constructor(
-        public readonly logSearch: LogSearch3ViewModel,
-        public readonly session: ActiveLoginViewModel,
-        public readonly dates: ExplicitDate[],
-        private readonly performMessageLoadAsync: MessageLoadFunc) {
-
-        super();
-
-        this.selectedYear = dates[dates.length - 1].y;
-
-        const hasYears: number[] = [];
-        let lastSeenYear = 0;
-        for (let d of dates) {
-            const dFullYear = d.y;
-            if (dFullYear != lastSeenYear) {
-                lastSeenYear = dFullYear;
-                hasYears.push(dFullYear);
-            }
-
-            this._hasDates.add(new Date(Date.UTC(d.y, d.m - 1, d.d, 0, 0, 0, 0)).getTime());
-        }
-        this.hasYears = hasYears;
+    async openChannelSearch(channelTitle: string) {
+        this.logSearchType = LogSearchType.CHANNEL;
+        this.channelTitleSuggest.value = channelTitle;
+        await this.search(true);
+        await this.navigateToLastAsync();
+        // TODO: navigate to last year, last date, last set
     }
 
-    private _isDisposed: boolean = false;
-    get isDisposed() { return this._isDisposed; }
-    dispose() {
-        maybeDispose(this.messageSet);
-    }
-    [Symbol.dispose]() { this.dispose(); }    
-
-    @observableProperty
-    hasYears: number[];
-
-    @observableProperty
-    selectedYear: number;
-
-    private _selectedDate: ObservableValue<(ExplicitDate | null)> = new ObservableValue(null);
-
-    get selectedDate(): (ExplicitDate | null) { return this._selectedDate.value; }
-    set selectedDate(value: (ExplicitDate | null)) {
-        if (value != this._selectedDate.value) {
-            this._selectedDate.value = value;
-            this.logger.logInfo("selectedDate set", value);
-            this._performMessageLoad(value);
-        }
+    async openPMConvoSearch(myCharacterName: CharacterName, interlocutorCharacterName: CharacterName) {
+        this.logSearchType = LogSearchType.PRIVATE_MESSAGE;
+        this.myCharacterNameSuggest.value = myCharacterName.value;
+        this.interlocutorCharacterNameSuggest.value = interlocutorCharacterName.value;
+        await this.search(true);
+        await this.navigateToLastAsync();
+        // TODO: navigate to last year, last date, last set
     }
 
-    @observableProperty
-    loadingMessages: number = 0;
-
-    @observableProperty
-    messageSet: (LogSearchResultsMessageGroupSetViewModel | null) = null;
-
-    private _hasDates: Set<number> = new Set();
-
-    hasDate(year: number, month: number, day: number): boolean {
-        const d = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
-        return this._hasDates.has(d.getTime());
+    private async navigateToLastAsync() {
+        if (!this.results) { return; }
+        await this.results.navigateToLastAsync();
     }
-
-    private _performMessageLoadCTS: CancellationTokenSource = new CancellationTokenSource();
-    private async _performMessageLoad(d: (ExplicitDate | null)) {
-        const myCTS = new CancellationTokenSource();
-        this._performMessageLoadCTS.cancel();
-        this._performMessageLoadCTS = myCTS;
-
-        this.loadingMessages++;
-        maybeDispose(this.messageSet);
-        this.messageSet = null;
-        try {
-            if (d) {
-                const res = await this.performMessageLoadAsync(d, myCTS.token);
-                const setvm = new LogSearchResultsMessageGroupSetViewModel(this, res.title, res.messages);
-                maybeDispose(this.messageSet);
-                this.messageSet = setvm;
-            }
-        }
-        finally {
-            this.loadingMessages--;
-        }
-    }
-}
-
-const MAX_MESSAGES_PER_SET = 500;
-
-export class LogSearchResultsMessageGroupSetViewModel extends ObservableBase implements IDisposable {
-    constructor(
-        public readonly results: LogSearchResultsViewModel,
-        channelTitle: string,
-        messages: (LogChannelMessage[] | LogPMConvoMessage[])) {
-
-        super();
-
-        let curStart = "";
-        let curChannel: TransientChannelStreamViewModel = new TransientChannelStreamViewModel(results.session, channelTitle);
-        curChannel.lazyLoadImages = true;
-        const completeArray = () => {
-            const lastMsg = curChannel.messages[curChannel.messages.length - 1]!.value;
-            const curEnd = lastMsg.timestamp.getHours().toString() + ":" + StringUtils.leftPad(lastMsg.timestamp.getMinutes().toString(), "0", 2);
-            this.groups.push(new LogSearchResultsMessageGroupViewModel(
-                `${curStart}-${curEnd}`, this, curChannel));
-            
-            curStart = "";
-            curChannel = new TransientChannelStreamViewModel(results.logSearch.session, channelTitle);
-            curChannel.lazyLoadImages = true;
-        };
-
-        for (let msg of messages) {
-            if (curChannel.messages.length == 0) {
-                curStart = msg.timestamp.getHours().toString() + ":" + StringUtils.leftPad(msg.timestamp.getMinutes().toString(), "0", 2);
-            }
-            if ((msg as any).myCharacterName) {
-                // LogPMConvoMessage
-                const lpcm = msg as LogPMConvoMessage;
-                const mvm = ChannelViewModel.convertFromLoggedMessage(curChannel, results.session, results.session.appViewModel, lpcm)!;
-                curChannel.messages.add(new KeyValuePair(mvm, mvm));
-            }
-            else {
-                // LogChannelMessage
-                const lcm = msg as LogChannelMessage;
-                const mvm = ChannelViewModel.convertFromLoggedMessage(curChannel, results.session, results.session.appViewModel, lcm)!;
-                curChannel.messages.add(new KeyValuePair(mvm, mvm));
-            }
-            if (curChannel.messages.length >= MAX_MESSAGES_PER_SET) {
-                completeArray();
-            }
-        }
-        if (curChannel.messages.length > 0) {
-            completeArray();
-        }
-
-        this.selectedGroup = this.groups[this.groups.length - 1];
-    }
-
-    private _isDisposed: boolean = false;
-    get isDisposed() { return this._isDisposed; }
-    dispose() {
-        for (let g of this.groups) {
-            g.dispose();
-        }
-    }
-    [Symbol.dispose]() { this.dispose(); }    
-
-    readonly groups: LogSearchResultsMessageGroupViewModel[] = [];
-
-    @observableProperty
-    selectedGroup: (LogSearchResultsMessageGroupViewModel | null) = null;
-}
-
-export class LogSearchResultsMessageGroupViewModel extends ObservableBase implements IDisposable {
-    constructor(
-        public readonly timeRangeString: string,
-        public readonly groupSet: LogSearchResultsMessageGroupSetViewModel,
-        public readonly channel: TransientChannelStreamViewModel) {
-
-        super();
-    }
-
-    private _isDisposed: boolean = false;
-    get isDisposed() { return this._isDisposed; }
-    dispose() {
-        this.channel.dispose();
-    }
-    [Symbol.dispose]() { this.dispose(); }
 }

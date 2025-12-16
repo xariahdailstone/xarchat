@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
@@ -551,6 +552,40 @@ namespace XarChat.Backend.Features.ChatLogging.Sqlite.Search
             return result;
         }
 
+        private async IAsyncEnumerable<DateOnly> EnumerateMessageDatesForChannel(
+            SqliteConnection connection, int channelId, [EnumeratorCancellation] CancellationToken cancellationToken)
+        {
+            using var cmd = connection.CreateCommand();
+            cmd.CommandText = $@"
+                        select cm.timestamp
+                        from channelmessage cm
+                        where cm.channelid = @channelId
+                            and cm.timestamp >= @fromTimestamp
+                            and cm.messagetype <> 1
+                        order by cm.timestamp asc
+                        limit 1
+                    ";
+            cmd.Parameters.Add("@channelId", SqliteType.Integer).Value = channelId;
+            var prmFromTimestamp = cmd.Parameters.Add("@fromTimestamp", SqliteType.Integer);
+            prmFromTimestamp.Value = 0;
+            await cmd.PrepareAsync(cancellationToken);
+
+            while (true)
+            {
+                var nextTimestampObj = await cmd.ExecuteScalarAsync(cancellationToken);
+                if (nextTimestampObj is null || nextTimestampObj is DBNull)
+                {
+                    break;
+                }
+
+                var timestampValue = Convert.ToInt64(nextTimestampObj);
+                var d = DateOnly.FromDateTime(DateTimeOffset.FromUnixTimeMilliseconds(timestampValue).ToLocalTime().Date);
+                yield return d;
+                prmFromTimestamp.Value = new DateTimeOffset(
+                    TimeZoneInfo.ConvertTimeToUtc(d.AddDays(1).ToDateTime(TimeOnly.MinValue), TimeZoneInfo.Local), TimeSpan.Zero).ToUnixTimeMilliseconds();
+            }
+        }
+
         public async Task<IList<ExplicitDate>> GetChannelMessageDatesAsync(
             string channelTitle, CancellationToken cancellationToken)
         {
@@ -558,30 +593,24 @@ namespace XarChat.Backend.Features.ChatLogging.Sqlite.Search
                 cancellationToken: cancellationToken,
                 func: async (connection, cancellationToken) =>
                 {
-                    using var cmd = connection.CreateCommand();
-                    cmd.CommandText = $@"
-                        select cm.timestamp
-                        from channel c
-                        inner join channelmessage cm on cm.channelid = c.id
-                        where lower(c.title) = @channelTitleLower and cm.messagetype <> 1
-                        order by cm.timestamp asc
-                    ";
-                    cmd.Parameters.Add("@channelTitleLower", SqliteType.Text).Value = channelTitle.ToLower();
-
-                    var result = new List<DateOnly>();
-
-                    DateOnly lastReturnedDate = DateOnly.MinValue;
-                    using var dr = await cmd.ExecuteReaderAsync(cancellationToken);
-                    while (await dr.ReadAsync(cancellationToken))
+                    int channelId;
+                    using (var getChannelIdCommand = connection.CreateCommand())
                     {
-                        var d = DateOnly.FromDateTime(DateTimeOffset.FromUnixTimeMilliseconds((long)dr["timestamp"]).ToLocalTime().Date);
-                        if (d != lastReturnedDate)
+                        getChannelIdCommand.CommandText = $@"
+                            select c.id
+                            from channel c
+                            where lower(c.title) = @channelTitleLower
+                        ";
+                        getChannelIdCommand.Parameters.Add("@channelTitleLower", SqliteType.Text).Value = channelTitle.ToLower();
+                        var channelIdObj = await getChannelIdCommand.ExecuteScalarAsync(cancellationToken);
+                        if (channelIdObj is null || channelIdObj is DBNull)
                         {
-                            lastReturnedDate = d;
-                            result.Add(d);
+                            return [];
                         }
+                        channelId = Convert.ToInt32(channelIdObj);
                     }
 
+                    var result = await EnumerateMessageDatesForChannel(connection, channelId, cancellationToken).ToListAsync(cancellationToken);
                     return result;
                 });
 
@@ -596,35 +625,28 @@ namespace XarChat.Backend.Features.ChatLogging.Sqlite.Search
                     cancellationToken: cancellationToken,
                     func: async (connection, cancellationToken) =>
                     {
-                        using var cmd = connection.CreateCommand();
-                        cmd.CommandText = $@"
-                        select cm.timestamp
-                        from channel c
-                        inner join channelmessage cm on cm.channelid = c.id
-                        where 
-                            c.channeltype = 'P' and
-                            c.mycharacterid = (select id from character c where c.namelower = @myNameLower) and
-                            c.interlocutorcharacterid = (select id from character c where c.namelower = @interlocutorNameLower) and
-                            cm.messagetype <> 1
-                        order by cm.timestamp asc
-                    ";
-                        cmd.Parameters.Add("@myNameLower", SqliteType.Text).Value = myCharName.ToLower();
-                        cmd.Parameters.Add("@interlocutorNameLower", SqliteType.Text).Value = interlocutorCharName.ToLower();
-
-                        var result = new List<DateOnly>();
-
-                        DateOnly lastReturnedDate = DateOnly.MinValue;
-                        using var dr = await cmd.ExecuteReaderAsync(cancellationToken);
-                        while (await dr.ReadAsync(cancellationToken))
+                        int channelId;
+                        using (var getChannelIdCommand = connection.CreateCommand())
                         {
-                            var d = DateOnly.FromDateTime(DateTimeOffset.FromUnixTimeMilliseconds((long)dr["timestamp"]).ToLocalTime().Date);
-                            if (d != lastReturnedDate)
+                            getChannelIdCommand.CommandText = $@"
+                                select c.id
+                                from channel c
+                                where c.channeltype = 'P'
+                                    and c.mycharacterid = (select id from character c where c.namelower = @myNameLower)
+                                    and c.interlocutorcharacterid = (select id from character c where c.namelower = @interlocutorNameLower)
+                            ";
+                            getChannelIdCommand.Parameters.Add("@myNameLower", SqliteType.Text).Value = myCharName.ToLower();
+                            getChannelIdCommand.Parameters.Add("@interlocutorNameLower", SqliteType.Text).Value = interlocutorCharName.ToLower();
+
+                            var channelIdObj = await getChannelIdCommand.ExecuteScalarAsync(cancellationToken);
+                            if (channelIdObj is null || channelIdObj is DBNull)
                             {
-                                lastReturnedDate = d;
-                                result.Add(d);
+                                return [];
                             }
+                            channelId = Convert.ToInt32(channelIdObj);
                         }
 
+                        var result = await EnumerateMessageDatesForChannel(connection, channelId, cancellationToken).ToListAsync(cancellationToken);
                         return result;
                     });
 

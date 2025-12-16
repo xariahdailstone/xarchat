@@ -111,7 +111,7 @@ export class ChatChannelViewModel extends ChannelViewModel implements IHasRightB
                         parent.characterName,
                         DateAnchor.Before,
                         minMsg.timestamp,
-                        this.name
+                        this.title
                     );
                 }
                 else {
@@ -119,7 +119,7 @@ export class ChatChannelViewModel extends ChannelViewModel implements IHasRightB
                         parent.characterName,
                         DateAnchor.Before,
                         new Date(),
-                        this.name
+                        this.title
                     );
                 }
             });

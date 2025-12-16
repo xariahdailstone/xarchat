@@ -53,7 +53,7 @@ import { RecentConversationsViewModel } from "./RecentConversationsViewModel.js"
 import { CharacterGender } from "../shared/CharacterGender.js";
 import { NotificationManagerViewModel } from "./NotificationManagerViewModel.js";
 import { CallbackSet } from "../util/CallbackSet.js";
-import { LogSearch3ViewModel } from "./logsearch/LogSearchViewModel.js";
+import { LogSearch3ViewModel } from "./logsearch/LogSearch3ViewModel.js";
 
 declare const XCHost: any;
 
@@ -88,15 +88,14 @@ export class ActiveLoginViewModel extends ObservableBase implements IDisposable 
         this._disposeActions.push(() => this.recentNotifications.dispose());
 
         this.miscTabs.push(new MiscTabViewModel(this, "Console", this.console));
-        this._logSearchViewModel = new LogSearchViewModel(this, this.appViewModel, savedChatState.characterName);
-        this.miscTabs.push(new MiscTabViewModel(this, "Log Viewer", this._logSearchViewModel));
-        this._logSearchViewModel2 = new LogSearch2ViewModel(this, this.appViewModel, savedChatState.characterName);
-        // TODO:
+        //this._logSearchViewModel = new LogSearchViewModel(this, this.appViewModel, savedChatState.characterName);
+        //this.miscTabs.push(new MiscTabViewModel(this, "Log Viewer", this._logSearchViewModel));
+        //this._logSearchViewModel2 = new LogSearch2ViewModel(this, this.appViewModel, savedChatState.characterName);
         //this.miscTabs.push(new MiscTabViewModel(this, "Log Viewer 2", this._logSearchViewModel2));
 
         this._logSearchViewModel3 = new LogSearch3ViewModel(this);
         this._disposeActions.push(() => this._logSearchViewModel3.dispose());
-        this.miscTabs.push(new MiscTabViewModel(this, "Log Viewer (3)", this._logSearchViewModel3));
+        this.miscTabs.push(new MiscTabViewModel(this, "Log Viewer", this._logSearchViewModel3));
 
         this.miscTabs.push(new MiscTabViewModel(this, "Partner Search", this.partnerSearch));
         this.miscTabs.push(new MiscTabViewModel(this, "Recent Conversations", this.recentConversations));
@@ -267,11 +266,11 @@ export class ActiveLoginViewModel extends ObservableBase implements IDisposable 
     private readonly _viewModelId: number;
     private readonly _logger: Logger;
 
-    private readonly _logSearchViewModel: LogSearchViewModel;
+    //private readonly _logSearchViewModel: LogSearchViewModel;
 
     eIconFavoriteBlockViewModel: EIconFavoriteBlockViewModel;
 
-    private readonly _logSearchViewModel2: LogSearch2ViewModel;
+    //private readonly _logSearchViewModel2: LogSearch2ViewModel;
 
     private readonly _logSearchViewModel3: LogSearch3ViewModel;
 
@@ -1159,9 +1158,17 @@ export class ActiveLoginViewModel extends ObservableBase implements IDisposable 
         this.appViewModel.popups.push(ctxVm);
     }
 
-    openLogViewer(logsFor: CharacterName, dateAnchor: DateAnchor, date: Date, target: ChannelName | CharacterName) {
-        this._logSearchViewModel.setSearch(logsFor, dateAnchor, date, target);
-        this.selectedTab = this._logSearchViewModel;
+    openLogViewer(logsFor: CharacterName, dateAnchor: DateAnchor, date: Date, target: string | CharacterName) {
+        if (target instanceof CharacterName) {
+            this._logSearchViewModel3.openPMConvoSearch(logsFor, target);
+        }
+        else {
+            this._logSearchViewModel3.openChannelSearch(target);
+        }
+        this.selectedTab = this._logSearchViewModel3;
+
+        // this._logSearchViewModel.setSearch(logsFor, dateAnchor, date, target);
+        // this.selectedTab = this._logSearchViewModel;
     }
 
     getConfigSettingById(configSettingId: string, channel?: GetConfigSettingChannelViewModel | null) {
