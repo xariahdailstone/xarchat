@@ -1,5 +1,6 @@
 import { h } from "../snabbdom/h.js";
 import { CallbackSet, NamedCallbackSet } from "./CallbackSet.js";
+import { CancellationToken } from "./CancellationTokenSource.js";
 import { SnapshottableMap } from "./collections/SnapshottableMap.js";
 import { SnapshottableSet } from "./collections/SnapshottableSet.js";
 import { IDisposable, EmptyDisposable, asDisposable } from "./Disposable.js";
@@ -7,6 +8,7 @@ import { testEquality } from "./Equality.js";
 import { ObjectUniqueId } from "./ObjectUniqueId.js";
 import { setupValueSubscription, ValueSubscriptionImpl } from "./ObservableBase.js";
 import { ObservableExpression } from "./ObservableExpression.js";
+import { PromiseSource } from "./PromiseSource.js";
 
 export interface IObservable<T> {
     addEventListener(eventName: "propertychange", handler: PropertyChangeEventListener): IDisposable;
@@ -164,6 +166,28 @@ export class Observable {
             error = e;
         }
         return { dependencySet: depSet, result: result, error: error };
+    }
+
+    static async waitForChangeAsync<T, TCurrentlyKnownValue extends T, TResult = Exclude<T, TCurrentlyKnownValue>>(
+        expr: () => T, currentlyKnownValue: TCurrentlyKnownValue, cancellationToken: CancellationToken): Promise<TResult> {
+
+        const ps = new PromiseSource<TResult>();
+
+        using co = new CalculatedObservable<T>("waitForChangeAsync", expr);
+        using pcListener = co.addEventListener("propertychange", (e) => {
+            if (e.propertyName == "value") {
+                const propValue = e.propertyValue as T;
+                if (propValue != currentlyKnownValue) {
+                    ps.resolve(propValue as any as TResult);
+                }
+            }
+        });
+        using cancelReg = cancellationToken.register(() => {
+            ps.trySetCancelled(cancellationToken);
+        });
+
+        const result = await ps.promise;
+        return result;
     }
 }
 

@@ -11,6 +11,7 @@ import { IObservable, ObservableValue } from "../../Observable";
 import { UpdateCheckerState } from "../../UpdateCheckerClient";
 import { LogMessageType, LogChannelMessage, LogPMConvoMessage, HostWindowState, EIconSearchResults, ConfigKeyValue, ChooseLocalFileOptions, HostLocaleInfo } from "../HostInterop";
 import { HostInteropLogFileMaintenance } from "../HostInteropLogFileMaintenance";
+import { HostInteropLogImport } from "../HostInteropLogImport";
 import { DateAnchor, ExplicitDate, HostInteropLogSearch, LogSearchKind, LogSearchResult, LogSearchResultChannelMessage, LogSearchResultPMConvoMessage, RecentConversationResult } from "../HostInteropLogSearch";
 import { HostInteropLogSearch2, LogSearch2Results, PerformSearchOptions } from "../HostInteropLogSearch2";
 import { ChatWebSocket, HostInteropBase, IHostInterop, NoCorsFetchArgs, NoCorsFetchResult, UrlLaunchedEventArgs } from "../IHostInterop";
@@ -317,4 +318,16 @@ class NullHostInteropLogFileMaintenance implements HostInteropLogFileMaintenance
     readonly isClearing: boolean = false;
 
     readonly logFileSize: number = -1;
+}
+
+class NullHostInteropLogImport implements HostInteropLogImport {
+
+    async getAvailableImportersAsync(cancellationToken: CancellationToken): Promise<string[]> {
+        return [];
+    }
+
+    async executeImporterFlowAsync(importerName: string, cancellationToken: CancellationToken, stepReceivedFunc: (stepName: string, stepBody: any) => Promise<any>): Promise<void> {
+        return;
+    }
+
 }

@@ -13,6 +13,7 @@ import { UpdateCheckerState } from "../UpdateCheckerClient";
 import { LogMessageType, LogChannelMessage, LogPMConvoMessage, HostWindowState, EIconSearchResults, ConfigKeyValue, ChooseLocalFileOptions, HostLocaleInfo } from "./HostInterop";
 import { IObservable, ObservableValue } from "../Observable";
 import { HostInteropLogFileMaintenance } from "./HostInteropLogFileMaintenance";
+import { HostInteropLogImport } from "./HostInteropLogImport";
 
 export interface UrlLaunchedEventArgs {
     url: string;
@@ -86,6 +87,8 @@ export interface IHostInterop {
     readonly logSearch2: HostInteropLogSearch2;
 
     readonly logFileMaintenance: HostInteropLogFileMaintenance;
+
+    readonly logImport: HostInteropLogImport;
 
     chooseLocalFileAsync(options?: ChooseLocalFileOptions): Promise<string | null>;
     getLocalFileUrl(fn: string): string;

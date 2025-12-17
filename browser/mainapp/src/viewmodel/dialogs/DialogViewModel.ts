@@ -71,7 +71,10 @@ export abstract class DialogViewModel<TResult> extends ObservableBase {
         this.closed = true;
 
         this._closeHandlers2.invoke(result);
+        this.onClosed();
     }
+
+    onClosed() { }
 
     private readonly _closeHandlers2: CallbackSet<CloseHandler<TResult>> = new CallbackSet("DialogViewModel-closeHandlers");
     addCloseListener(callback: CloseHandler<TResult>): IDisposable {

@@ -67,8 +67,42 @@ class CancellationTokenImpl implements CancellationToken {
 export class CancellationTokenSource implements IDisposable {
     static readonly DefaultToken: CancellationToken = new NoneCancellationTokenImpl();
 
+    static createLinkedSource(...cancellationTokens: CancellationToken[]): CancellationTokenSource {
+        const result = new CancellationTokenSource();
+
+        const resultReg = result.token.register(() => {
+            unlinkRegistrations();
+        });
+
+        let registrations: IDisposable[] = [];
+
+        const unlinkRegistrations = () => {
+            for (let xreg of registrations) {
+                xreg.dispose();
+            }
+            registrations = [];
+            resultReg.dispose();
+        };
+        const linkedTokenCancelled = () => {
+            unlinkRegistrations();
+            result.cancel();
+        };
+
+        result._onDisposeFunc = () => { unlinkRegistrations(); };
+
+        for (let ltoken of cancellationTokens) {
+            if (result.isCancellationRequested) { break; }
+
+            registrations.push(ltoken.register(linkedTokenCancelled));
+        }
+
+        return result;
+    }
+
     constructor() {
     }
+
+    private _onDisposeFunc: ((() => void) | null) = null;
 
     private _disposed: boolean = false;
     private _cancelAfterHandler: IDisposable | null = null;
@@ -81,6 +115,9 @@ export class CancellationTokenSource implements IDisposable {
             if (this._cancelAfterHandler) {
                 this._cancelAfterHandler.dispose();
                 this._cancelAfterHandler = null;
+            }
+            if (this._onDisposeFunc) {
+                this._onDisposeFunc();
             }
         }
     }

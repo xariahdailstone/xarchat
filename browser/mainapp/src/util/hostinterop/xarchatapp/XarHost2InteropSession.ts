@@ -1,4 +1,4 @@
-import { CancellationToken } from "../../CancellationTokenSource";
+import { CancellationToken, CancellationTokenSource } from "../../CancellationTokenSource";
 import { Logger, Logging } from "../../Logger";
 import { PromiseSource } from "../../PromiseSource";
 
@@ -19,30 +19,49 @@ export abstract class XarHost2InteropSession {
         }
     }
 
+    protected async sendWithoutReceiveAsync(cmd: string, dat: object, cancellationToken: CancellationToken) {
+        this.writeMessage(`${cmd} ${JSON.stringify(dat)}`);
+    }
+
     private _nextId: number = 1;
     private _msgResponseHandlers: Map<number, (cmd: string, data: object) => void> = new Map();
-    protected sendAndReceiveAsync(cmd: string, data: object, cancellationToken: CancellationToken, onReply: (cmd: string, data: any) => void) {
-        const ps = new PromiseSource<void>();
-
+    protected async sendAndReceiveAsync(cmd: string, data: object, cancellationToken: CancellationToken, onReply: (cmd: string, data: any) => void) {
         const myId = this._nextId++;
         (data as any)["msgid"] = myId;
         this.writeMessage(`${cmd} ${JSON.stringify(data)}`);
 
-        const ctreg = cancellationToken.register(() => {
+        using combinedCTS = CancellationTokenSource.createLinkedSource(cancellationToken);
+
+        using ctreg = cancellationToken.register(() => {
             this.writeMessage(`cancel ${JSON.stringify({ msgid: myId })}`);
         });
 
+        let responseEndedNormally = false;
+        const ps = new PromiseSource<void>();
         this._msgResponseHandlers.set(myId, (cmd: string, data: object) => {
             if (cmd == "endresponse") {
-                ctreg.dispose();
+                responseEndedNormally = true;
                 ps.resolve();
             }
             else {
-                onReply(cmd, data);
+                try {
+                    onReply(cmd, data);
+                }
+                catch (e) {
+                    responseEndedNormally = false;
+                    ps.reject(e);
+                }
             }
         });
 
-        return ps.promise;
+        try {
+            await ps.promise;
+        }
+        finally {
+            if (!responseEndedNormally) {
+                this.writeMessage(`cancel ${JSON.stringify({ msgid: myId })}`);
+            }
+        }
     }
 
     writeMessage: (message: string) => void = (m) => { };

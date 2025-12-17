@@ -33,6 +33,7 @@ using XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.ConfigData;
 using XarChat.Backend.UrlHandlers.XCHostFunctions.SessionAdapters;
 using XarChat.Backend.UrlHandlers.XCHostFunctions.SessionAdapters.OldNewAppSettings;
 using XarChat.Backend.UrlHandlers.XCHostFunctions.SessionNamespaces;
+using XarChat.Backend.UrlHandlers.XCHostFunctions.SessionNamespaces.ChatLogImport;
 using XarChat.Backend.UrlHandlers.XCHostFunctions.SessionNamespaces.EIconData;
 using XarChat.Backend.UrlHandlers.XCHostFunctions.SessionNamespaces.LogFileMaintenance;
 using XarChat.Backend.UrlHandlers.XCHostFunctions.SessionNamespaces.LogSearch;
@@ -104,6 +105,10 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions
             this.AddSessionNamespace("nocorsproxy", w =>
             {
                 return ActivatorUtilities.CreateInstance<NoCorsProxySessionNamespace>(sp, w);
+            });
+            this.AddSessionNamespace("logimport", w =>
+            {
+                return ActivatorUtilities.CreateInstance<ChatLogImportSessionNamespace>(sp, w);
             });
         }
 

@@ -83,6 +83,8 @@ using XarChat.Backend.Features.IdleDetection;
 using XarChat.Backend.Features.NotificationBadge;
 using XarChat.Backend.Features.FileChooser;
 using XarChat.Backend.Features.LocaleList;
+using XarChat.Backend.Features.ChatLogImport;
+using XarChat.Backend.Features.ChatLogImport.Factory;
 
 namespace XarChat.Backend
 {
@@ -349,6 +351,8 @@ namespace XarChat.Backend
 
             services.AddSingleton<IEIconFavoriteBlockManager, 
                 XarChat.Backend.Features.EIconFavoriteBlockManager.Impl.EIconFavoriteBlockManager>();
+
+            services.AddSingleton<IChatLogImporterFactory, DefaultChatLogImporterFactory>();
         }
 
         private void SetupXCHostCommandHandlers(IServiceCollection services)

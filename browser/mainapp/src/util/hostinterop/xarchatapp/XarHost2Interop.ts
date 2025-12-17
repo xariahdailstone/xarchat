@@ -33,6 +33,7 @@ import { DateUtils } from "../../DateUtils";
 import { HostInteropLogFileMaintenance } from "../HostInteropLogFileMaintenance";
 import { XarHost2InteropLogFileMaintenance } from "./XarHost2InteropLogFileMaintenance";
 import { XarHost2InteropNoCorsSession } from "./XarHost2InteropNoCorsSession";
+import { XarHost2InteropLogImport } from "./XarHost2InteropLogImport";
 
 
 
@@ -76,6 +77,8 @@ export class XarHost2Interop implements IXarHost2HostInterop {
         this.noCorsProxy = new XarHost2InteropNoCorsSession();
 
         this.logFileMaintenance = new XarHost2InteropLogFileMaintenance();
+
+        this.logImport = new XarHost2InteropLogImport();
         
         this.doClientResize(window.innerWidth, window.innerHeight, true);
 
@@ -87,7 +90,8 @@ export class XarHost2Interop implements IXarHost2HostInterop {
             this._hostInteropEIconLoader,
             this.logFileMaintenance,
             this.logSearch,
-            this.noCorsProxy
+            this.noCorsProxy,
+            this.logImport
         ];
         for (let sess of this.sessions) {
             sess.writeMessage = (msg) => this.writeToXCHostSocket(sess.prefix + msg);
@@ -180,6 +184,7 @@ export class XarHost2Interop implements IXarHost2HostInterop {
     readonly logSearch: XarHost2InteropLogSearch;
     readonly logSearch2: HostInteropLogSearch2;
     readonly logFileMaintenance: XarHost2InteropLogFileMaintenance;
+    readonly logImport: XarHost2InteropLogImport;
 
     readonly sessions: XarHost2InteropSession[];
     private _windowCommandSession: XarHost2InteropWindowCommand;
