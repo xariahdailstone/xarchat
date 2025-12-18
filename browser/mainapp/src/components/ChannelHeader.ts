@@ -1,6 +1,7 @@
 import { CharacterStatus } from "../shared/CharacterSet.js";
 import { OnlineStatusConvert } from "../shared/OnlineStatus.js";
 import { BBCodeParseOptions, ChatBBCodeParser } from "../util/bbcode/BBCode.js";
+import { ContextMenuUtils } from "../util/ContextMenuUtils.js";
 import { asDisposable, IDisposable } from "../util/Disposable.js";
 import { HTMLUtils } from "../util/HTMLUtils.js";
 import { ResizeObserverNice } from "../util/ResizeObserverNice.js";
@@ -57,7 +58,7 @@ export class ChannelHeader extends ComponentBase<ChannelViewModel> {
 
         const elDescriptionShowMore = this.$("elDescriptionShowMore") as HTMLButtonElement;
 
-        this.elMain.addEventListener("contextmenu", (e: MouseEvent) => {
+        this.elMain.addEventListener("contextmenu", (e: PointerEvent) => {
             const vm = this.viewModel;
             if (vm instanceof ChatChannelViewModel) {
                 const menuvm = new ContextMenuPopupViewModel<() => any>(vm.appViewModel, new DOMRect(e.clientX, e.clientY, 1, 1));
@@ -150,7 +151,7 @@ export class ChannelHeader extends ComponentBase<ChannelViewModel> {
                 menuvm.onValueSelected = (v) => v();
                 vm.appViewModel.popups.push(menuvm);
             }
-            e.preventDefault();
+            ContextMenuUtils.preventDefault(e);
         });
         this.watchViewModel(v => {
             const elMain = this.elMain;

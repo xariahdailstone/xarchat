@@ -10,6 +10,7 @@ import { Attrs, Fragment, jsx, On, VNode } from "../snabbdom/index.js";
 import { AnimationFrameUtils } from "../util/AnimationFrameUtils.js";
 import { AutohideElementsManager } from "../util/AutohideElementsManager.js";
 import { addCharacterGenderListenerLightweight, addCharacterOnlineStatusListenerLightweight } from "../util/CharacterOnlineStatusListenerLightweight.js";
+import { ContextMenuUtils } from "../util/ContextMenuUtils.js";
 import { ConvertibleToDisposable, IDisposable, asDisposable, disposeWithThis } from "../util/Disposable.js";
 import { EL } from "../util/EL.js";
 import { EventListenerUtil, MouseButton } from "../util/EventListenerUtil.js";
@@ -735,6 +736,7 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
                     "contextmenu": (e: MouseEvent) => {
                         if (cvm instanceof PMConvoChannelViewModel) {
                             cvm.showCharacterContextPopup(e.target as HTMLElement);
+                            ContextMenuUtils.preventDefault(e);
                         }
                     }
                 };

@@ -1,4 +1,5 @@
 import { CollapseButton } from "../../../components/CollapseButton";
+import { restartEIconsWithin } from "../../../components/EIconDisplay";
 import { EL } from "../../EL";
 import { BBCodeTag } from "../BBCodeTag";
 
@@ -45,6 +46,7 @@ export const BBCodeTagCollapse = new BBCodeTag("collapse", true, true, (options,
 
     titleTextEl.addEventListener("click", () => {
         elCollapseButton.collapsed = !elCollapseButton.collapsed;
+        restartEIconsWithin(el);
     });
 
     return el;

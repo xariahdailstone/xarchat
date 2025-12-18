@@ -9,6 +9,7 @@ import { ChatChannelViewModel } from "../viewmodel/ChatChannelViewModel";
 import { CharacterDetailPopupViewModel } from "../viewmodel/popups/CharacterDetailPopupViewModel";
 import { CallbackSet } from "./CallbackSet";
 import { EffectiveCharacterNameInfo, EffectiveCharacterNameInfoProvider, getEffectiveCharacterNameInfo, getEffectiveCharacterNameVNodes, getEffectiveCharacterNameVNodes2 } from "./CharacterNameIcons";
+import { ContextMenuUtils } from "./ContextMenuUtils";
 import { ConvertibleToDisposable, IDisposable, asDisposable } from "./Disposable";
 import { EventListenerUtil } from "./EventListenerUtil";
 import { ObjectUniqueId } from "./ObjectUniqueId";
@@ -33,10 +34,10 @@ export class CharacterLinkUtils {
                         return false;
                     }
                 },
-                "contextmenu": (ev: MouseEvent) => {
+                "contextmenu": (ev: PointerEvent) => {
                     if (!ev.defaultPrevented) {
                         sess.bbcodeSink.userClick(char, { rightClick: true, channelContext: channelContext, targetElement: vnode.elm as HTMLElement });
-                        ev.preventDefault();
+                        ContextMenuUtils.preventDefault(ev);
                         return false;
                     }
                 }
@@ -54,14 +55,14 @@ export class CharacterLinkUtils {
         const clickListener = EventListenerUtil.addDisposableEventListener(el, "click", (ev: MouseEvent) => {
             if (!ev.defaultPrevented) {
                 sess.bbcodeSink.userClick(char, { rightClick: false, channelContext: channelContext, targetElement: el });
-                ev.preventDefault();
+                ContextMenuUtils.preventDefault(ev);
                 return false;
             }
         });
-        const contextMenuListener = EventListenerUtil.addDisposableEventListener(el, "contextmenu", (ev: MouseEvent) => {
+        const contextMenuListener = EventListenerUtil.addDisposableEventListener(el, "contextmenu", (ev: PointerEvent) => {
             if (!ev.defaultPrevented) {
                 sess.bbcodeSink.userClick(char, { rightClick: true, channelContext: channelContext, targetElement: el });
-                ev.preventDefault();
+                ContextMenuUtils.preventDefault(ev);
                 return false;
             }
         });

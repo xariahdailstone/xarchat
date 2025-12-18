@@ -1,3 +1,4 @@
+import { ContextMenuUtils } from "../util/ContextMenuUtils.js";
 import { HostInterop, HostWindowState } from "../util/hostinterop/HostInterop.js";
 import { HTMLUtils } from "../util/HTMLUtils.js";
 import { UpdateCheckerState } from "../util/UpdateCheckerClient.js";
@@ -60,7 +61,7 @@ export class TitleBar extends ComponentBase<AppViewModel> {
         elMinimize.addEventListener("click", () => HostInterop.minimizeWindow());
         elMinimize.addEventListener("contextmenu", (ev) => {
             HostInterop.showDevTools();
-            ev.preventDefault();
+            ContextMenuUtils.preventDefault(ev);
             return false;
         });
         elMaximize.addEventListener("click", () => {

@@ -1,6 +1,7 @@
 import { CharacterName } from "../shared/CharacterName";
 import { BBCodeParser } from "../util/bbcode/BBCode";
 import { CancellationTokenSource } from "../util/CancellationTokenSource";
+import { ContextMenuUtils } from "../util/ContextMenuUtils";
 import { asDisposable, IDisposable } from "../util/Disposable";
 import { EIconLoadManager } from "../util/EIconLoadManager";
 import { EventListenerUtil } from "../util/EventListenerUtil";
@@ -17,12 +18,64 @@ import { componentElement, StyleLoader } from "./ComponentBase";
 
 const emptyImageUrl = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
 
-const io = new IntersectionObserver((entries) => {
-    for (let entry of entries) {
-        const ed = (entry.target as EIconDisplay);
-        ed.set_isIntersecting(entry.isIntersecting);
+// const io = new IntersectionObserver((entries) => {
+//     for (let entry of entries) {
+//         const ed = (entry.target as EIconDisplay);
+//         ed.set_isIntersecting(entry.isIntersecting);
+//     }
+// });
+
+export function restartEIconsWithin(element: Element | ShadowRoot) {
+    if (element instanceof EIconDisplay) {
+        element.restartAnimation();
     }
-});
+    else {
+        const children = element.children;
+        for (let idx = 0; idx < children.length; idx++) {
+            const ch = children.item(idx);
+            if (ch) {
+                restartEIconsWithin(ch as Element);
+            }
+        }
+        if ((element as any)._sroot) {
+            const sroot = (element as any)._sroot as ShadowRoot;
+            restartEIconsWithin(sroot);
+        }
+    }
+}
+
+function getScrollParent(element: HTMLElement, includeHidden: boolean) {
+    let style = getComputedStyle(element);
+    let excludeStaticParent = style.position === "absolute";
+    const overflowRegex = includeHidden ? /(auto|scroll|hidden)/ : /(auto|scroll)/;
+
+    if (style.position === "fixed") return document.body;
+    for (let parent: (HTMLElement | null) = element; (parent = parent.parentElement);) {
+        style = getComputedStyle(parent);
+        if (excludeStaticParent && style.position === "static") {
+            continue;
+        }
+        if (overflowRegex.test(style.overflow + style.overflowY + style.overflowX)) return parent;
+    }
+
+    return document.body;
+}
+
+const SYM_IO = Symbol();
+function getOrCreateIntersectionObserver(el: HTMLElement) {
+    const scrollParent = getScrollParent(el, true);
+    let io = (scrollParent as any)[SYM_IO];
+    if (!io) {
+        io = new IntersectionObserver((entries) => {
+            for (let entry of entries) {
+                const ed = (entry.target as EIconDisplay);
+                ed.set_isIntersecting(entry.isIntersecting);
+            }            
+        }, { root: el });
+        (scrollParent as any)[SYM_IO] = io;
+    }
+    return io;
+}
 
 class EIconSyncManager {
     private readonly _logger = Logging.createLogger(`EIconSyncManager#${ObjectUniqueId.get(this)}`);
@@ -80,31 +133,16 @@ export class EIconDisplay extends HTMLElement {
     constructor() {
         super();
 
-        // this._sroot = ShadowRootsManager.elementAttachShadow(this, { mode: 'closed' });
-        // HTMLUtils.assignStaticHTMLFragment(this._sroot, `
-        //     <div id="elMain">
-        //     </div>
-        // `);
-    
-        // this._styleLoader = new StyleLoader(ss => {
-        //     //setStylesheetAdoption(this._sroot, ss);
-        //     //(this._sroot as any).adoptedStyleSheets = [...ss];
-        // });  
-        // this._styleLoader.addLoad("styles/components/EIconDisplay.css");
-
-        // this._sroot.addEventListener("copy", (e: ClipboardEvent) => {
-        //     BBCodeParser.performCopy(e);
-        // });
-
-        //this._logger.logInfo("Created EIconDisplay");
+        this.addEventListener("contextmenu", (ev) => {
+            ContextMenuUtils.add({ title: "Copy EIcon BBCode", onSelect: () => { alert("hi"); }});
+            ContextMenuUtils.addSeparator();
+            ContextMenuUtils.add({ title: "Favorite this EIcon", onSelect: () => { alert("hi"); }});
+            ContextMenuUtils.add({ title: "Block this EIcon", onSelect: () => { alert("hi"); }});
+        });
     }
 
     private readonly _logger = Logging.createLogger(`EIconDisplay#${ObjectUniqueId.get(this)}`);
 
-    //private readonly _styleLoader: StyleLoader;
-
-    //private readonly _sroot: ShadowRoot;
-    //private get elMain() { return this._sroot.getElementById("elMain") as HTMLDivElement; }
     private get elMain() { return this; }
 
     private get imgEl() {
@@ -225,7 +263,7 @@ export class EIconDisplay extends HTMLElement {
     private _lastStateIsConnected: boolean = false;
     private _lastStateSyncGroup: string | null = null;
     private _lastIsCompletedLoaded = false;
-    private _isInIntersectObserver = false;
+    private _isInIntersectObserver: (IDisposable | null) = null;
 
     private _eiconBlockWCM: WhenChangeManager = new WhenChangeManager();
 
@@ -295,7 +333,10 @@ export class EIconDisplay extends HTMLElement {
 
         if (isConnected) {
             if (!this._isInIntersectObserver) {
-                this._isInIntersectObserver = true;
+                const io = getOrCreateIntersectionObserver(this);
+                this._isInIntersectObserver = asDisposable(() => {
+                    io.unobserve(this);
+                });
                 io.observe(this);
             }
 
@@ -352,8 +393,8 @@ export class EIconDisplay extends HTMLElement {
             }
             
             if (this._isInIntersectObserver) {
-                this._isInIntersectObserver = false;
-                io.unobserve(this);
+                this._isInIntersectObserver.dispose();
+                this._isInIntersectObserver = null;
             }
         }
     }

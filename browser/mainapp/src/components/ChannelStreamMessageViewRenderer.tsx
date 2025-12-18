@@ -19,6 +19,7 @@ import { ChannelMessageDisplayStyle, ChannelMessageType, ChannelMessageViewModel
 import { LocaleViewModel } from "../viewmodel/LocaleViewModel";
 import { RenderingComponentBase } from "./RenderingComponentBase";
 import { StatusDotVNodeBuilder } from "./StatusDot";
+import { restartEIconsWithin } from "./EIconDisplay";
 
 function areSameDate(a: Date, b: Date) {
     const aDate = a.getFullYear().toString() + '-' + a.getMonth().toString() + '-' + a.getDate().toString();
@@ -36,47 +37,6 @@ function createMessageContainerVNode(options: {
 
     const collapseAds = vm.type == ChannelMessageType.AD && (vm.channelViewModel?.getConfigSettingById("collapseAds") ?? false);
     if (collapseAds) {
-        // const collapseHostStyles: string[] = [];
-        // let collapseBtnEl: VNode;
-        // if (vm.isOversized) {
-        //     collapseHostStyles.push("is-oversized");
-        //     if (vm.collapsed) {
-        //         collapseHostStyles.push("collapsed");
-        //         collapseBtnEl = <div classList={["collapse-button-container"]} attrs={{
-        //                 "data-copycontent": ""
-        //             }}><button classList={["collapse-button"]} attrs={{
-        //                 "data-copycontent": "",
-        //                 "data-iscollapsebutton": "true"
-        //             }} on={{
-        //                 "click": () => {
-        //                     vm.collapsed = false;
-        //                 }
-        //             }}>Expand</button></div>;  
-        //     }
-        //     else {
-        //         collapseHostStyles.push("expanded");
-        //         collapseBtnEl = <div classList={["collapse-button-container"]} attrs={{
-        //                 "data-copycontent": ""
-        //             }}><button classList={["collapse-button"]} attrs={{
-        //                 "data-copycontent": "",
-        //                 "data-iscollapsebutton": "true"
-        //             }} on={{
-        //                 "click": () => {
-        //                     vm.collapsed = true;
-        //                 }
-        //             }}>Collapse</button></div>;  
-        //     }
-        // }
-        // else {
-        //     collapseHostStyles.push("collapsed");
-        //     collapseBtnEl = <div classList={["collapse-button-container"]} attrs={{
-        //         "data-copycontent": ""
-        //     }}><button classList={["collapse-button"]} attrs={{
-        //         "data-copycontent": "",
-        //         "data-iscollapsebutton": "true"
-        //     }}>Expand</button></div>;  
-        // }
-
         let outerEl = <div key={`msg-${uniqueMessageId}`} class={{
                 "collapse-host": true,
                 "collapsible": true,
@@ -96,8 +56,15 @@ function createMessageContainerVNode(options: {
                     <div classList={["collapse-host-expandcollapsecontainer"]} attrs={{ "data-copycontent": "" }}>
                         <button classList={[ "collapse-host-collapsebutton", "collapse-button-appearance" ]} attrs={{ "data-copycontent": "" }}
                             on={{
-                                "click": () => {
+                                "click": (e) => {
+                                    const target = e.target as HTMLElement;
                                     vm.collapsed = !vm.collapsed;
+                                    Scheduler.scheduleCallback("afterframe", () => {
+                                        const ch = target.closest(".collapse-host");
+                                        if (ch) {
+                                            restartEIconsWithin(ch);
+                                        }
+                                    });
                                 }
                             }}><div classList={[ "collapse-host-collapsebutton-content" ]}></div></button>
                     </div>

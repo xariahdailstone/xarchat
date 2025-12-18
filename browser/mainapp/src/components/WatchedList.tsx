@@ -4,6 +4,7 @@ import { CharacterStatus } from "../shared/CharacterSet";
 import { OnlineStatusConvert } from "../shared/OnlineStatus";
 import { jsx, Fragment, VNode } from "../snabbdom/index";
 import { AutohideElementsManager } from "../util/AutohideElementsManager";
+import { ContextMenuUtils } from "../util/ContextMenuUtils";
 import { IDisposable, asDisposable } from "../util/Disposable";
 import { EL } from "../util/EL";
 import { MouseButton } from "../util/EventListenerUtil";
@@ -204,7 +205,7 @@ export class CharactersCollectionView extends CollectionViewLightweight<KeyValue
         });
         el.addEventListener("contextmenu", (e) => {
             this.showCharacterDetailPopup(vm, el);
-            e.preventDefault();
+            ContextMenuUtils.preventDefault(e);
             return false;
         });
 

@@ -1,5 +1,6 @@
 import { TypingStatus } from "../shared/TypingStatus.js";
 import { BBCodeUtils } from "../util/BBCodeUtils.js";
+import { ContextMenuUtils } from "../util/ContextMenuUtils.js";
 import { asDisposable } from "../util/Disposable.js";
 import { EL } from "../util/EL.js";
 import { EventListenerUtil } from "../util/EventListenerUtil.js";
@@ -337,7 +338,7 @@ export class ChannelTextBox extends ComponentBase<ChannelViewModel> {
             if (this.viewModel && this.viewModel instanceof ChatChannelViewModel) {
                 this.viewModel.showSendAdContextMenu(elSendAd);
 
-                e.preventDefault();
+                ContextMenuUtils.preventDefault(e);
                 return false;
             }
         });

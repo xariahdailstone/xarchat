@@ -1,5 +1,6 @@
 import { CharacterGenderConvert } from "../../../shared/CharacterGender";
 import { CharacterName } from "../../../shared/CharacterName";
+import { ContextMenuUtils } from "../../ContextMenuUtils";
 import { EL } from "../../EL";
 import { StringUtils } from "../../StringUtils";
 import { getContentText } from "../BBCode";
@@ -62,7 +63,7 @@ export const BBCodeTagUser = new BBCodeTag("user", true, false, (context, arg, c
                 channelContext: context.parseOptions.channelViewModel,
                 targetElement: x
             });
-            ev.preventDefault();
+            ContextMenuUtils.preventDefault(ev);
             return false;
         });
     }
