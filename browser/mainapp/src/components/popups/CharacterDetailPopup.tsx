@@ -17,6 +17,7 @@ import { HTMLUtils } from "../../util/HTMLUtils";
 import { StringUtils } from "../../util/StringUtils";
 import { makeRenderingComponent } from "../RenderingComponentBase";
 import { jsx, Fragment, VNode } from "../../snabbdom/index";
+import { setupTooltipHandling } from "../../viewmodel/popups/TooltipPopupViewModel";
 
 @componentArea("popups")
 @componentElement("x-characterdetailpopup")
@@ -32,10 +33,12 @@ export class CharacterDetailPopup extends ContextPopupBase<CharacterDetailPopupV
 
         this.whenConnectedWithViewModel(() => {
             this.logInfo("connected");
+            const ttdisposable = setupTooltipHandling(this._sroot, this.viewModel!.appViewModel);
             return asDisposable(() => {
                 this.logInfo("no longer connected");
                 this._currentBBCodeParseResult.value = null;
-            });
+            }, ttdisposable);
+            
         });
     }
 
@@ -143,7 +146,7 @@ export class CharacterDetailPopup extends ContextPopupBase<CharacterDetailPopupV
                 <div classList="character-buttonbar">
                     <button classList="theme-button char-detail-button character-button-pm" id="elPrivateMessage" on={{
                             "click": () => { vm.session.activatePMConvo(vm.char); vm.dismissed(); }
-                        }}>Private Message</button>
+                        }} data-tooltip="Private Message"><x-iconimage src="assets/ui/openpm-icon.svg"></x-iconimage></button>
                     <button classList="theme-button char-detail-button character-button-flist" id="elFList" on={{
                             "click": (e: Event) => {
                                 vm.session.bbcodeSink.userClick(vm.char, {
@@ -153,18 +156,18 @@ export class CharacterDetailPopup extends ContextPopupBase<CharacterDetailPopupV
                                 });
                                 vm.dismissed();
                             }
-                        }}>Profile</button>
+                        }} data-tooltip="Profile"><x-iconimage src="assets/ui/profile-icon.svg"></x-iconimage></button>
                     <button classList="theme-button char-detail-button character-button-ignore" id="elIgnore" on={{
                             "click": () => {
                                 vm.toggleIgnore();
                             }
-                        }}>{cs.ignored ? "Unignore" : "Ignore"}</button>
+                        }} data-tooltip={cs.ignored ? "Unignore" : "Ignore"}><x-iconimage src={cs.ignored ? "assets/ui/unignore-icon.svg" : "assets/ui/ignore-icon.svg"}></x-iconimage></button>
                     <button classList="theme-button theme-button-warning char-detail-button character-button-report" id="elReport" on={{
                             "click": () => {
                                 vm.submitReport();
                                 vm.dismissed();
                             }
-                        }}>Report</button>
+                        }} data-tooltip="Report"><x-iconimage src="assets/ui/report-icon.svg"></x-iconimage></button>
                 </div>
 
                 <div classList="channelop-buttonbar">

@@ -54,6 +54,7 @@ import { CharacterGender } from "../shared/CharacterGender.js";
 import { NotificationManagerViewModel } from "./NotificationManagerViewModel.js";
 import { CallbackSet } from "../util/CallbackSet.js";
 import { LogSearch3ViewModel } from "./logsearch/LogSearch3ViewModel.js";
+import { FriendsAndBookmarksViewModel } from "./FriendsAndBookmarksViewModel.js";
 
 declare const XCHost: any;
 
@@ -87,6 +88,8 @@ export class ActiveLoginViewModel extends ObservableBase implements IDisposable 
         this.recentNotifications = new NotificationManagerViewModel(this);
         this._disposeActions.push(() => this.recentNotifications.dispose());
 
+        this.friendAndBookmarksTab = new FriendsAndBookmarksViewModel(this);
+
         this.miscTabs.push(new MiscTabViewModel(this, "Console", this.console));
         //this._logSearchViewModel = new LogSearchViewModel(this, this.appViewModel, savedChatState.characterName);
         //this.miscTabs.push(new MiscTabViewModel(this, "Log Viewer", this._logSearchViewModel));
@@ -100,6 +103,7 @@ export class ActiveLoginViewModel extends ObservableBase implements IDisposable 
         this.miscTabs.push(new MiscTabViewModel(this, "Partner Search", this.partnerSearch));
         this.miscTabs.push(new MiscTabViewModel(this, "Recent Conversations", this.recentConversations));
         this.miscTabs.push(new MiscTabViewModel(this, "Recent Notifications", this.recentNotifications));
+        this.miscTabs.push(new MiscTabViewModel(this, "Friends & Bookmarks", this.friendAndBookmarksTab));
 
         this.leftTabs = new LeftSidebarTabContainerViewModel(this);
         this.rightTabs = new RightSidebarTabContainerViewModel(this);
@@ -512,6 +516,8 @@ export class ActiveLoginViewModel extends ObservableBase implements IDisposable 
 
     readonly recentNotifications: NotificationManagerViewModel;
 
+    readonly friendAndBookmarksTab: FriendsAndBookmarksViewModel;
+
     get pingWords() { return this.savedChatState.pingWords; };
 
     private readonly _unseenCount: ObservableValue<number> = new ObservableValue(0);
@@ -830,13 +836,13 @@ export class ActiveLoginViewModel extends ObservableBase implements IDisposable 
         if (value !== this._selectedTab) {
             const prevSelectedTab = this._selectedTab;
             if (this._selectedTab){
-                if (this._selectedTab instanceof ChannelViewModel) {
+                //if (this._selectedTab instanceof ChannelViewModel) {
                     this._selectedTab.isTabActive = false;
-                }
+                //}
             }
             this._selectedTab = value;
+            this._selectedTab.isTabActive = this.appViewModel.isWindowActive;
             if (this._selectedTab && this._selectedTab instanceof ChannelViewModel) {
-                this._selectedTab.isTabActive = this.appViewModel.isWindowActive;
                 this.pushToSelectedChannelHistory(this._selectedTab);
                 this.savedChatState.selectedChannel = this._selectedTab.collectiveName;
                 if (this._selectedTab instanceof ChatChannelViewModel) {
@@ -900,8 +906,11 @@ export class ActiveLoginViewModel extends ObservableBase implements IDisposable 
     }
 
     appWindowActiveChanged() {
-        if (this.selectedChannel) {
-            this.selectedChannel.isTabActive = this.isSelectedSession && this.appViewModel.isWindowActive;
+        // if (this.selectedChannel) {
+        //     this.selectedChannel.isTabActive = this.isSelectedSession && this.appViewModel.isWindowActive;
+        // }
+        if (this.selectedTab) {
+            this.selectedTab.isTabActive = this.isSelectedSession && this.appViewModel.isWindowActive;
         }
     }
 
@@ -1311,7 +1320,10 @@ export class ActiveLoginViewModel extends ObservableBase implements IDisposable 
 
 export type SelectedChannel = ChannelViewModel | AddChannelsViewModel | LogSearchViewModel | LogSearch2ViewModel | LogSearch3ViewModel;
 
-export type SelectableTab = SelectedChannel | PartnerSearchViewModel | RecentConversationsViewModel | NotificationManagerViewModel;
+export interface SelectableTab {
+    isTabActive: boolean;
+}
+//export type SelectableTab = SelectedChannel | PartnerSearchViewModel | RecentConversationsViewModel | NotificationManagerViewModel | FriendsAndBookmarksViewModel;
 
 export type CharactersEventListener = (characters: CharacterName[]) => void;
 

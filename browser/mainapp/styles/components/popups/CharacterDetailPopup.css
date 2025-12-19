@@ -61,13 +61,16 @@
 .character-buttonbar {
     margin-top: 8px;
 
-    display: grid;
-    grid-template-rows: auto;
+    display: flex;
+    flex-direction: row;
+    /*grid-template-rows: auto;
     grid-template-columns: auto auto auto auto;
     grid-template-areas:
-        "button-pm button-flist button-ignore button-report";
+        "button-pm button-flist button-ignore button-report";*/
 
     gap: 4px;
+
+    & > * { flex-grow: 1; }
 }
 .character-button-pm { grid-area: button-pm; }
 .character-button-flist { grid-area: button-flist; }
@@ -79,6 +82,14 @@
     font-size: 80%;
     padding: 6px 6px;
     cursor: pointer;
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+
+    x-iconimage {
+        width: 16px;
+        height: 16px;
+    }
 }
 
 .character-alsoinchannels {

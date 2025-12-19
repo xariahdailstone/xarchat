@@ -36,6 +36,8 @@ export class LogSearch3ViewModel extends ObservableBase implements IDisposable {
     }
     [Symbol.dispose]() { this.dispose(); }    
 
+    isTabActive: boolean = false;
+
     private _setupChannelTitleSuggest() {
         let currentHints: string[] = [];
         const result = new SuggestTextBoxViewModel(this.session.appViewModel,
