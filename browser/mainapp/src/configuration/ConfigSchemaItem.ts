@@ -236,6 +236,19 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     configBlockKey: "autoUrlPaste"
                 },
                 {
+                    id: "sendMessageShortcut",
+                    scope: getScopeArray(["global"]),
+                    title: "Send Message Shortcut",
+                    description: "Choose whether Enter or Shift+Enter sends the currently entered message.",
+                    type: "select",
+                    selectOptions: [
+                        { value: "enter", displayValue: "Enter (Default)" },
+                        { value: "shiftenter", displayValue: "Shift+Enter" }
+                    ],
+                    defaultValue: "enter",
+                    configBlockKey: "sendMessageShortcut"
+                },                
+                {
                     id: "eiconSearch.enabled",
                     scope: getScopeArray(["global"]),
                     title: "EIcon Search",

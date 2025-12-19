@@ -66,3 +66,6 @@
 * Added a new log viewer!
   * Available under the "..." tab on the left bar.
   * Planning on expanding it more in the future; and adding log importing and exporting.
+* Added an option to swap the behavior of Enter and Shift+Enter in the chat text entry textbox.
+  * Default, pre-existing behavior is that Shift+Enter adds a line break into the chat message, and
+	Enter sends the message.
