@@ -383,5 +383,13 @@ namespace XarChat.FList2.FList2Api.Implementation.Wrappers
                 (api, arg0) => api.UploadInlineImageAsync(arg0, cancellationToken),
                 cancellationToken);
         }
+
+        public virtual Task<GetCharacterNameResponse> GetCharacterNameAsync(GetCharacterNameArgs args, CancellationToken cancellationToken)
+        {
+            return InvokeInnerApiAsync(
+                args,
+                (api, arg0) => api.GetCharacterNameAsync(arg0, cancellationToken),
+                cancellationToken);
+        }
     }
 }

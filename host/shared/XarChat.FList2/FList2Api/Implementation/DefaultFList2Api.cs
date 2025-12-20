@@ -306,7 +306,7 @@ namespace XarChat.FList2.FList2Api.Implementation
             {
                 var dirStr = args.CursorDirection == CursorDirection.Newer ? "newer" : "older";
                 var resp = await this.PerformGetAsync<PMConversationHistoryResponse>(
-                    $"/api/private-message-history/{args.MyCharacterId}/{args.InterlocutorCharacterId}?cursor={HttpUtility.UrlEncode(args.CursorLocation)}&order={HttpUtility.UrlEncode(dirStr)}", cancellationToken);
+                    $"/api/private-message-history/{args.MyCharacterId}/{args.InterlocutorCharacterId}?cursor={UrlEncode(args.CursorLocation)}&order={UrlEncode(dirStr)}", cancellationToken);
                 return resp;
             }
             else
@@ -363,13 +363,13 @@ namespace XarChat.FList2.FList2Api.Implementation
             {
                 var dirStr = args.CursorDirection == CursorDirection.Newer ? "newer" : "older";
                 var resp = await this.PerformGetAsync<GetChannelMessageHistoryResponse>(
-                    $"/api/message-history/{HttpUtility.UrlEncode(args.ChannelId.Value)}?cursor={HttpUtility.UrlEncode(args.CursorLocation)}&direction={HttpUtility.UrlEncode(dirStr)}", cancellationToken);
+                    $"/api/message-history/{UrlEncode(args.ChannelId.Value)}?cursor={UrlEncode(args.CursorLocation)}&direction={UrlEncode(dirStr)}", cancellationToken);
                 return resp;
             }
             else 
             {
                 var resp = await this.PerformGetAsync<GetChannelMessageHistoryResponse>(
-                    $"/api/message-history/{HttpUtility.UrlEncode(args.ChannelId.Value)}", cancellationToken);
+                    $"/api/message-history/{UrlEncode(args.ChannelId.Value)}", cancellationToken);
                 return resp;
             }
 
@@ -391,7 +391,7 @@ namespace XarChat.FList2.FList2Api.Implementation
             GetChannelActiveCharactersArgs args, CancellationToken cancellationToken)
         {
             var resp = await this.PerformGetAsync<GetChannelActiveCharactersResponse>(
-                $"/api/channel/{HttpUtility.UrlEncode(args.ChannelId.Value)}/active-characters", cancellationToken);
+                $"/api/channel/{UrlEncode(args.ChannelId.Value)}/active-characters", cancellationToken);
             return resp;
         }
 
@@ -454,7 +454,7 @@ namespace XarChat.FList2.FList2Api.Implementation
 
         public async Task RenameEIconAsync(RenameEIconArgs args, CancellationToken cancellationToken)
         {
-            var resp = await this.PerformJsonPatchAsync<RenameEIconArgs, GenericResponse>($"/api/icon/{HttpUtility.UrlEncode(args.ExistingName)}", args, cancellationToken);
+            var resp = await this.PerformJsonPatchAsync<RenameEIconArgs, GenericResponse>($"/api/icon/{UrlEncode(args.ExistingName)}", args, cancellationToken);
         }
 
         public async Task DeleteEIconAsync(DeleteEIconArgs args, CancellationToken cancellationToken)
@@ -473,7 +473,7 @@ namespace XarChat.FList2.FList2Api.Implementation
         public async Task<SearchEIconsResponse> SearchEIconsAsync(SearchEIconsArgs args, CancellationToken cancellationToken)
         {
             var resp = await this.PerformGetAsync<SearchEIconsResponse>(
-                $"/api/icon/search?searchTerm={HttpUtility.UrlEncode(args.SearchTerm)}&page={args.Page}", cancellationToken);
+                $"/api/icon/search?searchTerm={UrlEncode(args.SearchTerm)}&page={args.Page}", cancellationToken);
             return resp;
         }
 
@@ -500,8 +500,20 @@ namespace XarChat.FList2.FList2Api.Implementation
         public async Task<GetCharacterProfileResponse> GetCharacterProfileAsync(GetCharacterProfileArgs args, CancellationToken cancellationToken)
         {
             var resp = await this.PerformGetAsync<GetCharacterProfileResponse>(
-                $"/api/character/{HttpUtility.UrlEncode(args.CharacterName.Value)}/profile", cancellationToken);
+                $"/api/character/{UrlEncode(args.CharacterName.Value)}/profile", cancellationToken);
             return resp;
+        }
+
+        public async Task<GetCharacterNameResponse> GetCharacterNameAsync(GetCharacterNameArgs args, CancellationToken cancellationToken)
+        {
+            var resp = await this.PerformGetAsync<GetCharacterNameResponse>(
+                $"/api/character/{args.CharacterId}", cancellationToken);
+            return resp;
+        }
+
+        private string UrlEncode(string str)
+        {
+            return HttpUtility.UrlEncode(str).Replace("+", "%20");
         }
     }
 
@@ -558,6 +570,7 @@ namespace XarChat.FList2.FList2Api.Implementation
     [JsonSerializable(typeof(LeaveChannelArgs))]
     [JsonSerializable(typeof(SetChatEnabledCharactersArgs))]
     [JsonSerializable(typeof(SearchEIconsResponse))]
+    [JsonSerializable(typeof(GetCharacterNameResponse))]
     public partial class FList2ApiEntityJsonSerializerContext : JsonSerializerContext
     {
 

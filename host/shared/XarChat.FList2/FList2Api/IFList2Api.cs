@@ -101,6 +101,8 @@ namespace XarChat.FList2.FList2Api
         // TODO: get published profile
         Task<GetCharacterProfileResponse> GetCharacterProfileAsync(GetCharacterProfileArgs args, CancellationToken cancellationToken);
 
+        Task<GetCharacterNameResponse> GetCharacterNameAsync(GetCharacterNameArgs args, CancellationToken cancellationToken);
+
         #endregion
 
         #region ProfileInfo
