@@ -1,7 +1,8 @@
 import { CharacterName } from "../shared/CharacterName";
 import { jsx, Fragment, VNode } from "../snabbdom/index";
 import { CharacterLinkUtils } from "../util/CharacterLinkUtils";
-import { FriendsAndBookmarksViewModel, LoadingOrValueOrError } from "../viewmodel/FriendsAndBookmarksViewModel";
+import { FriendsAndBookmarksViewModel } from "../viewmodel/FriendsAndBookmarksViewModel";
+import { LoadingOrValueOrError } from "../viewmodel/LoadingOrValueOrError";
 import { componentElement } from "./ComponentBase";
 import { makeRenderingComponent, RenderArguments } from "./RenderingComponentBase";
 import { StageViewComponent, stageViewFor } from "./Stage";
@@ -64,11 +65,17 @@ export class FriendsAndBookmarks extends StageViewComponent<FriendsAndBookmarksV
             for (let c of children) {
                 const isSelected = vm.selectedFriend?.myCharacterName == k && vm.selectedFriend?.interlocutorCharacterName == c;
                 const cstatus = vm.session.characterSet.getCharacterStatus(c);
-                const charVNode = CharacterLinkUtils.createStaticCharacterLinkVNode(vm.session, c, cstatus, null);
+                const charVNode = CharacterLinkUtils.createStaticCharacterLinkVNode(vm.session, c, cstatus, null, { disallowLeftClick: true });
 
                 childNodes.push(<div class={{
                     "friends-list-item": true,
                     "selected": isSelected
+                }} on={{
+                    "click": (e: PointerEvent) => {
+                        if (e.button == 0) {
+                            vm.selectedFriend = { myCharacterName: k, interlocutorCharacterName: c };
+                        }
+                    }
                 }}>{charVNode}</div>)
             }
 
@@ -89,7 +96,7 @@ export class FriendsAndBookmarks extends StageViewComponent<FriendsAndBookmarksV
             </div>
             <div classList={[ "section-buttons", "friends-buttons" ]}>
                 <button classList={[ "friends-buttons-button", "button-removefriend", "themed" ]} attrs={{
-                    "disabled": (vm.selectedFriend == null)
+                    "disabled": (!vm.isValidSelectedFriend())
                 }}>Remove Friend</button>
             </div>
         </>;
@@ -103,11 +110,17 @@ export class FriendsAndBookmarks extends StageViewComponent<FriendsAndBookmarksV
         for (let bm of bookmarksList) {
             const isSelected = vm.selectedBookmark == bm;
             const cstatus = vm.session.characterSet.getCharacterStatus(bm);
-            const charVNode = CharacterLinkUtils.createStaticCharacterLinkVNode(vm.session, bm, cstatus, null);
+            const charVNode = CharacterLinkUtils.createStaticCharacterLinkVNode(vm.session, bm, cstatus, null, { disallowLeftClick: true });
             bmNodes.push(<div class={{
-                "bookmarks-list-item": true,
-                "selected": isSelected
-            }}>{charVNode}</div>);
+                    "bookmarks-list-item": true,
+                    "selected": isSelected
+                }} on={{
+                    "click": (e: PointerEvent) => {
+                        if (e.button == 0) {
+                            vm.selectedBookmark = bm;
+                        }
+                    }
+                }}>{charVNode}</div>);
         }
 
         return <>
@@ -116,7 +129,7 @@ export class FriendsAndBookmarks extends StageViewComponent<FriendsAndBookmarksV
             </div>
             <div classList={[ "section-buttons", "bookmarks-buttons" ]}>
                 <button classList={[ "bookmarks-buttons-button", "button-removebookmark", "themed" ]} attrs={{
-                    "disabled": (vm.selectedBookmark == null)
+                    "disabled": (!vm.isValidSelectedBookmark())
                 }}>Remove Bookmark</button>
             </div>
         </>;

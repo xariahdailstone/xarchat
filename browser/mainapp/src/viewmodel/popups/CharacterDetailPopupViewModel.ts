@@ -14,6 +14,8 @@ import { ChatChannelViewModel } from "../ChatChannelViewModel";
 import { DialogButtonStyle } from "../dialogs/DialogViewModel";
 import { ReportSource, ReportViewModel } from "../dialogs/ReportViewModel";
 import { ContextPopupViewModel, PopupViewModel } from "./PopupViewModel";
+import { LoadingOrValueOrError } from "../LoadingOrValueOrError";
+import { ProfileInfo } from "../../fchat/api/FListApi";
 
 export class CharacterDetailPopupViewModel extends ContextPopupViewModel {
     constructor(
@@ -45,7 +47,19 @@ export class CharacterDetailPopupViewModel extends ContextPopupViewModel {
             const memoText = await HostInterop.getMemoAsync(session.authenticatedApi.account, char, CancellationToken.NONE);
             this._memoText.value = memoText;
         })();
+
+        this.isFriend = LoadingOrValueOrError.value(session.friends.has(char));
+
+        const cpip = session.authenticatedApi.getCharacterProfileAsync(char, CancellationToken.NONE);
+        this._charProfileInfoPromise = cpip;
+        (async () => {
+            const profInfo = await cpip;
+            this.canBookmark = LoadingOrValueOrError.value(!profInfo.settings.prevent_bookmarks);
+        })();
     }
+
+    private _charProfileInfoPromise: Promise<ProfileInfo>;
+    get charProfileInfoPromise() { return this._charProfileInfoPromise; }
 
     private readonly _memoText: ObservableValue<string | null> = new ObservableValue(null);
     get memoText() { return this._memoText.value; }
@@ -53,6 +67,48 @@ export class CharacterDetailPopupViewModel extends ContextPopupViewModel {
     private readonly _alsoInChannels = new Collection<AlsoInChannelLineItem>();
     @observableProperty
     get alsoInChannels(): ReadOnlyStdObservableCollection<AlsoInChannelLineItem> { return this._alsoInChannels; }
+
+    private _updatingBookmarkStatus = false;
+
+    @observableProperty
+    get isBookmark(): LoadingOrValueOrError<boolean> {
+        if (this._updatingBookmarkStatus) {
+            return LoadingOrValueOrError.loading();
+        }
+        else {
+            return LoadingOrValueOrError.value(this.session.bookmarks.has(this.char));
+        }
+    }
+
+    @observableProperty
+    isFriend: LoadingOrValueOrError<boolean> = LoadingOrValueOrError.loading();
+
+    @observableProperty
+    canBookmark: LoadingOrValueOrError<boolean> = LoadingOrValueOrError.loading();
+
+    async toggleBookmarkAsync() {
+        this._updatingBookmarkStatus = true;
+        try {
+            if (this.session.bookmarks.has(this.char)) {
+                await this.session.authenticatedApi.removeBookmarkAsync(this.char, CancellationToken.NONE);
+            }
+            else {
+                await this.session.authenticatedApi.addBookmarkAsync(this.char, CancellationToken.NONE);
+            }
+        }
+        finally {
+            this._updatingBookmarkStatus = false;
+        }
+    }
+
+    async sendFriendRequestAsync() {
+    }
+
+    async cancelFriendRequestAsync() {
+    }
+
+    async unfriendAsync() {
+    }
 
     async toggleIgnore() {
         if (!this.session.ignoredChars.has(this.char)) {

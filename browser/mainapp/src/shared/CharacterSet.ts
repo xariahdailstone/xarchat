@@ -2,7 +2,7 @@ import { h } from "../snabbdom/h.js";
 import { CallbackSet, NamedCallbackSet } from "../util/CallbackSet.js";
 import { SnapshottableMap } from "../util/collections/SnapshottableMap.js";
 import { SnapshottableSet } from "../util/collections/SnapshottableSet.js";
-import { asDisposable, IDisposable, ObjectDisposedError } from "../util/Disposable.js";
+import { asDisposable, ConvertibleToDisposable, IDisposable, ObjectDisposedError } from "../util/Disposable.js";
 import { Observable, ObservableValue, PropertyChangeEvent, PropertyChangeEventListener, ValueSubscription } from "../util/Observable.js";
 import { observableProperty, setupValueSubscription } from "../util/ObservableBase.js";
 import { DictionaryChangeType } from "../util/ObservableKeyedLinkedList.js";
@@ -14,7 +14,7 @@ import { NicknameSet } from "./NicknameSet.js";
 import { OnlineStatus } from "./OnlineStatus.js";
 import { TypingStatus } from "./TypingStatus.js";
 
-export class CharacterSet {
+export class CharacterSet implements IDisposable {
 
     static emptyStatus(
         name: CharacterName, 
@@ -40,63 +40,88 @@ export class CharacterSet {
             nicknameSet ? nicknameSet.get(name) : null);
     }
 
-    constructor(ignoreSet: CharacterNameSet, friendSet: CharacterNameSet, bookmarkSet: CharacterNameSet, interestsSet: CharacterNameSet, nicknameSet: NicknameSet) {
+    constructor() {
+    }
+
+    private _disposeActions: ConvertibleToDisposable[] = [];
+    private _isDisposed = false;
+    get isDisposed() { return this._isDisposed; }
+    dispose() {
+        if (!this._isDisposed) {
+            this._isDisposed = true;
+            asDisposable(...this._disposeActions).dispose();
+        }
+    }
+    [Symbol.dispose]() { this.dispose(); }
+
+
+    private _ignoreSet: CharacterNameSet | undefined;
+    private _friendSet: CharacterNameSet | undefined;
+    private _bookmarkSet: CharacterNameSet | undefined;
+    private _interestsSet: CharacterNameSet | undefined;
+    private _nicknameSet: NicknameSet | undefined ;
+
+    initializeSets(ignoreSet: CharacterNameSet, friendSet: CharacterNameSet, bookmarkSet: CharacterNameSet, interestsSet: CharacterNameSet, nicknameSet: NicknameSet) {
         this._ignoreSet = ignoreSet;
         this._friendSet = friendSet;
         this._bookmarkSet = bookmarkSet;
         this._interestsSet = interestsSet;
         this._nicknameSet = nicknameSet;
 
-        ignoreSet.addEventListener("dictionarychange", (dce) => {
-            switch (dce.type) {
-                case DictionaryChangeType.ITEM_ADDED:
-                    this.setCharacterStatus(dce.item, { ignored: true });
-                    break;
-                case DictionaryChangeType.ITEM_REMOVED:
-                    this.setCharacterStatus(dce.item, { ignored: false });
-                    break;
-            }
-        });
-        friendSet.addEventListener("dictionarychange", (dce) => {
-            switch (dce.type) {
-                case DictionaryChangeType.ITEM_ADDED:
-                    this.setCharacterStatus(dce.item, { isFriend: true });
-                    break;
-                case DictionaryChangeType.ITEM_REMOVED:
-                    this.setCharacterStatus(dce.item, { isFriend: false });
-                    break;
-            }
-        });
-        bookmarkSet.addEventListener("dictionarychange", (dce) => {
-            switch (dce.type) {
-                case DictionaryChangeType.ITEM_ADDED:
-                    this.setCharacterStatus(dce.item, { isBookmark: true });
-                    break;
-                case DictionaryChangeType.ITEM_REMOVED:
-                    this.setCharacterStatus(dce.item, { isBookmark: false });
-                    break;
-            }
-        });
-        interestsSet.addEventListener("dictionarychange", (dce) => {
-            switch (dce.type) {
-                case DictionaryChangeType.ITEM_ADDED:
-                    this.setCharacterStatus(dce.item, { isInterest: true });
-                    break;
-                case DictionaryChangeType.ITEM_REMOVED:
-                    this.setCharacterStatus(dce.item, { isInterest: false });
-                    break;
-            }
-        });
-        nicknameSet.addEventListener("propertychange", (pce) => {
-            this.setCharacterStatus(CharacterName.create(pce.propertyName), { nickname: pce.propertyValue as (string | null) });
-        });
+        this._disposeActions.push(
+            ignoreSet.addEventListener("dictionarychange", (dce) => {
+                switch (dce.type) {
+                    case DictionaryChangeType.ITEM_ADDED:
+                        this.setCharacterStatus(dce.item, { ignored: true });
+                        break;
+                    case DictionaryChangeType.ITEM_REMOVED:
+                        this.setCharacterStatus(dce.item, { ignored: false });
+                        break;
+                }
+            })
+        );
+        this._disposeActions.push(
+            friendSet.addEventListener("dictionarychange", (dce) => {
+                switch (dce.type) {
+                    case DictionaryChangeType.ITEM_ADDED:
+                        this.setCharacterStatus(dce.item, { isFriend: true });
+                        break;
+                    case DictionaryChangeType.ITEM_REMOVED:
+                        this.setCharacterStatus(dce.item, { isFriend: false });
+                        break;
+                }
+            })
+        );
+        this._disposeActions.push(
+            bookmarkSet.addEventListener("dictionarychange", (dce) => {
+                switch (dce.type) {
+                    case DictionaryChangeType.ITEM_ADDED:
+                        this.setCharacterStatus(dce.item, { isBookmark: true });
+                        break;
+                    case DictionaryChangeType.ITEM_REMOVED:
+                        this.setCharacterStatus(dce.item, { isBookmark: false });
+                        break;
+                }
+            })
+        );
+        this._disposeActions.push(
+            interestsSet.addEventListener("dictionarychange", (dce) => {
+                switch (dce.type) {
+                    case DictionaryChangeType.ITEM_ADDED:
+                        this.setCharacterStatus(dce.item, { isInterest: true });
+                        break;
+                    case DictionaryChangeType.ITEM_REMOVED:
+                        this.setCharacterStatus(dce.item, { isInterest: false });
+                        break;
+                }
+            })
+        );
+        this._disposeActions.push(
+            nicknameSet.addEventListener("propertychange", (pce) => {
+                this.setCharacterStatus(CharacterName.create(pce.propertyName), { nickname: pce.propertyValue as (string | null) });
+            })
+        );
     }
-
-    private readonly _ignoreSet: CharacterNameSet;
-    private readonly _friendSet: CharacterNameSet;
-    private readonly _bookmarkSet: CharacterNameSet;
-    private readonly _interestsSet: CharacterNameSet;
-    private readonly _nicknameSet: NicknameSet;
 
     private readonly _statuses: SnapshottableMap<CharacterName, CharacterStatusImpl> = new SnapshottableMap();
     private readonly _statusListeners2: NamedCallbackSet<CharacterName, CharacterStatusChangeHandler> = new NamedCallbackSet("CharacterSet");
@@ -183,7 +208,7 @@ export class CharacterSet {
         }
         else {
             const lingeringGender = this._lingeringGenders.tryGet(characterName);
-            const fresult = CharacterSet.emptyStatus(characterName, this._ignoreSet, this._friendSet, this._bookmarkSet, this._interestsSet, this._nicknameSet, lingeringGender);
+            const fresult = CharacterSet.emptyStatus(characterName, this._ignoreSet, this._friendSet!, this._bookmarkSet, this._interestsSet, this._nicknameSet, lingeringGender);
             return fresult;
         }
     }
@@ -209,7 +234,7 @@ export class CharacterSet {
         this._activeSubSets.forEachValueSnapshotted(subsetRef => {
             const subset = subsetRef.deref();
             if (subset) {
-                if (subset.watchedChars.has(newStatus.characterName)) {
+                if (subset.hasChar(newStatus.characterName)) {
                     subset.characterStatusUpdated(newStatus);
                 }
             }
@@ -219,7 +244,7 @@ export class CharacterSet {
         });
     }
 
-    private _activeSubSets: SnapshottableSet<WeakRef<CharacterSubSetImpl>> = new SnapshottableSet();
+    private _activeSubSets: SnapshottableSet<WeakRef<IMinimalCharacterSubSet>> = new SnapshottableSet();
     createSubSet(chars: Iterable<CharacterName>): CharacterSubSet {
         const cses: CharacterStatus[] = [];
         for (let c of chars) {
@@ -227,17 +252,21 @@ export class CharacterSet {
             cses.push(cs);
         }
         const subset = new CharacterSubSetImpl(this, cses);
-        subset.weakRef = new WeakRef(subset);
         this._activeSubSets.add(subset.weakRef);
         return subset;
     }
-    dropSubSet(subset: CharacterSubSetImpl) {
+    dropSubSet(subset: IMinimalCharacterSubSet) {
         const wr = subset.weakRef;
         if (wr) {
-            subset.weakRef = null;
             this._activeSubSets.delete(wr);
             subset.dispose();
         }
+    }
+
+    createAllSubset(): IMinimalCharacterSubSet {
+        const subset = new AllCharacterSubSetImpl(this);
+        this._activeSubSets.add(subset.weakRef);
+        return subset;
     }
 }
 
@@ -378,21 +407,70 @@ class LingeringGenderSet {
 
 
 
-export interface CharacterSubSet extends IDisposable {
-    readonly watchedChars: ReadonlySet<CharacterName>;
+interface IMinimalCharacterSubSet extends IDisposable {
+    hasChar(char: CharacterName): boolean;
+    characterStatusUpdated(cs: CharacterStatus): void;
+    addStatusUpdateListener(callback: (cs: CharacterStatus) => any): IDisposable;
+    readonly weakRef: WeakRef<IMinimalCharacterSubSet>;
+}
+
+export interface CharacterSubSet extends IMinimalCharacterSubSet {
+    //readonly watchedChars: ReadonlySet<CharacterName>;
     readonly version: number;
     readonly length: number;
     addChar(characterName: CharacterName): CharacterStatus;
     rawAddChar(characterName: CharacterName): CharacterStatus;
     removeChar(characterName: CharacterName): void;
-    addStatusUpdateListener(callback: (cs: CharacterStatus) => any): IDisposable;
 
     iterateStatuses(): Iterable<CharacterStatus>;
 }
 
-class CharacterSubSetImpl implements IDisposable {
+
+class AllCharacterSubSetImpl implements IMinimalCharacterSubSet {
+    constructor(
+        private readonly characterSet: CharacterSet) {
+
+        this.weakRef = new WeakRef(this);
+    }
+
+    private _isDisposed = false;
+    get isDisposed(): boolean { return this._isDisposed; }
+    dispose(): void {
+        if (!this._isDisposed) {
+            this._isDisposed = true;
+            this.characterSet.dropSubSet(this);
+            this._cbSet.clear();
+        }
+    }
+    [Symbol.dispose](): void { this.dispose(); }
+
+    weakRef: WeakRef<IMinimalCharacterSubSet>;
+
+    hasChar(char: CharacterName): boolean {
+        return true;
+    }
+
+    characterStatusUpdated(cs: CharacterStatus): void {
+        if (!this._isDisposed) {
+            this._cbSet.invoke(cs);
+        }
+    }
+
+    private readonly _cbSet: CallbackSet<(cs: CharacterStatus) => any> = new CallbackSet("AllCharacterSubSetImpl");
+    addStatusUpdateListener(callback: (cs: CharacterStatus) => any): IDisposable {
+        if (this._isDisposed) {
+            throw new ObjectDisposedError(this);
+        }
+
+        return this._cbSet.add(callback);
+    }
+}
+
+
+class CharacterSubSetImpl implements IDisposable, CharacterSubSet {
 
     constructor(characterSet: CharacterSet, initialChars: CharacterStatus[]) {
+        this.weakRef = new WeakRef(this);
         this._characterSet = characterSet;
         this._watchedChars = new Set(initialChars.map(cs => cs.characterName));
         for (let cs of initialChars.values()) {
@@ -404,7 +482,7 @@ class CharacterSubSetImpl implements IDisposable {
         return (this === other);
     }
 
-    weakRef: WeakRef<CharacterSubSetImpl> | null = null;
+    weakRef: WeakRef<CharacterSubSetImpl>;
 
     private _characterSet: CharacterSet | null;
 
@@ -431,7 +509,9 @@ class CharacterSubSetImpl implements IDisposable {
     private readonly _watchedChars;
     private readonly _charStatuses: Map<CharacterName, CharacterStatus> = new Map();
 
-    get watchedChars(): ReadonlySet<CharacterName> { return this._watchedChars; }
+    hasChar(char: CharacterName) {
+        return this._watchedChars.has(char);
+    }
 
     private _statusUpdateListeners: CallbackSet<(cs: CharacterStatus) => any> = new CallbackSet("statusUpdateListener");
     addStatusUpdateListener(callback: (cs: CharacterStatus) => any): IDisposable {

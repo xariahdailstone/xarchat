@@ -25,60 +25,69 @@
 }
 
 .section {
-        flex-grow: 1;
+    flex-grow: 1;
 
-        max-height: 100%;
-        overflow: clip;
+    max-height: 100%;
+    overflow: clip;
 
-        display: grid;
-        grid-template-columns: 100%;
-        grid-template-rows: auto 1fr auto;
-        grid-template-areas:
-            "title"
-            "list"
-            "buttons";
-        gap: 8px;
-        padding: 8px;
+    display: grid;
+    grid-template-columns: 100%;
+    grid-template-rows: auto 1fr auto;
+    grid-template-areas:
+        "title"
+        "list"
+        "buttons";
+    gap: 8px;
+    padding: 8px;
 
-        .section-title { 
-            grid-area: title; 
-            font-weight: bold;
-            font-size: 120%;
-        }
-        .section-list {
-            overflow-y: scroll;
-            background-color: var(--bg-level-3);
-            padding: 5px 5px;
+    .section-title { 
+        grid-area: title; 
+        font-weight: bold;
+        font-size: 120%;
+    }
+    .section-list {
+        overflow-y: scroll;
+        background-color: var(--bg-level-3);
+        padding: 5px 5px;
 
-            .friends-list-group {
-                margin-bottom: 10px;
-                &:last-child { margin-bottom: 0; }
+        .friends-list-group {
+            margin-bottom: 10px;
+            &:last-child { margin-bottom: 0; }
 
-                .friends-list-group-title {
-                    display: grid;
-                    grid-template-rows: auto;
-                    grid-template-columns: auto 1fr;
-                    align-items: center;
-                    gap: 7px;
-                    .friends-list-group-title-text {
-                        font-weight: bold;
-                    }
-                    .friends-list-group-title-line {
-                        border-bottom: 1px solid currentColor;
-                        opacity: 0.2;
-                    }
+            .friends-list-group-title {
+                display: grid;
+                grid-template-rows: auto;
+                grid-template-columns: auto 1fr;
+                align-items: center;
+                gap: 7px;
+                .friends-list-group-title-text {
+                    font-weight: bold;
                 }
-
-                .friends-list-group-items {
-                    .friends-list-item {
-                        padding: 6px;
-                        &:hover {
-                            background-color: rgba(255, 255, 255, 0.1);
-                        }
-                    }
+                .friends-list-group-title-line {
+                    border-bottom: 1px solid currentColor;
+                    opacity: 0.2;
                 }
             }
-        }
-        .section-buttons {
+
+            .friends-list-group-items {
+            }
         }
     }
+    .section-buttons {
+    }
+}
+
+.friends-list-item,
+.bookmarks-list-item  {
+    .character-link {
+        display: block;
+        padding: 6px;
+    }
+
+    &:hover:not(.selected) {
+        background-color: rgba(255, 255, 255, 0.05);
+    }
+    &.selected {
+        background-color: rgba(255, 255, 255, 0.1);
+    }
+}

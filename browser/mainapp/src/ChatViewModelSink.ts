@@ -754,7 +754,7 @@ export class ChatViewModelSink implements ChatConnectionSink {
                 // });
             }
         }
-        ns.updateWatchedCharsSet();
+        //ns.updateWatchedCharsSet();
         ns.expireMyFriendsListInfo()
     }
 
@@ -782,7 +782,7 @@ export class ChatViewModelSink implements ChatConnectionSink {
             //     targetCharacter: char
             // });
         }
-        ns.updateWatchedCharsSet();
+        //ns.updateWatchedCharsSet();
         ns.expireMyFriendsListInfo()
     }
 
@@ -862,7 +862,7 @@ export class ChatViewModelSink implements ChatConnectionSink {
         //     targetCharacter: character
         // });
 
-        ns.updateWatchedCharsSet();
+        //ns.updateWatchedCharsSet();
         ns.expireMyFriendsListInfo();
     }
 
@@ -889,7 +889,7 @@ export class ChatViewModelSink implements ChatConnectionSink {
         //     targetCharacter: character
         // });
 
-        ns.updateWatchedCharsSet();
+        //ns.updateWatchedCharsSet();
         ns.expireMyFriendsListInfo();
     }
 
@@ -938,7 +938,7 @@ export class ChatViewModelSink implements ChatConnectionSink {
         //     targetCharacter: character
         // });
 
-        ns.updateWatchedCharsSet();
+        //ns.updateWatchedCharsSet();
         ns.expireMyFriendsListInfo();
     }
 
@@ -965,7 +965,7 @@ export class ChatViewModelSink implements ChatConnectionSink {
         //     targetCharacter: character
         // });
 
-        ns.updateWatchedCharsSet();
+        //ns.updateWatchedCharsSet();
         ns.expireMyFriendsListInfo();
     }
 

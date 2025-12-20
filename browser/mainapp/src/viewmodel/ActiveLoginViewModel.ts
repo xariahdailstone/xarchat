@@ -12,7 +12,7 @@ import { Collection, CollectionChangeEvent, CollectionChangeType, ObservableColl
 import { DictionaryChangeType, ObservableKeyExtractedOrderedDictionary, ObservableOrderedDictionaryImpl, ObservableOrderedSet } from "../util/ObservableKeyedLinkedList.js";
 import { AppNotifyEventType, AppViewModel, AppViewModelBBCodeSink, GetConfigSettingChannelViewModel } from "./AppViewModel.js";
 import { ChannelMessageViewModel, ChannelViewModel } from "./ChannelViewModel.js";
-import { CharacterNameSet, FilteredWatchedCharsCharacterNameSet, OnlineWatchedCharsCharacterNameSet } from "./CharacterNameSet.js";
+import { CharacterNameSet, CharacterNameSetImpl } from "./CharacterNameSet.js";
 import { ChatChannelPresenceState, ChatChannelViewModel, ChatChannelViewModelSortKey } from "./ChatChannelViewModel.js";
 import { ConsoleChannelViewModel } from "./ConsoleChannelViewModel.js";
 import { PMConvoChannelViewModel, PMConvoChannelViewModelSortKey } from "./PMConvoChannelViewModel.js";
@@ -24,7 +24,7 @@ import { TaskUtils } from "../util/TaskUtils.js";
 import { AddChannelsViewModel } from "./AddChannelsViewModel.js";
 import { StdObservableCollectionChangeType } from "../util/collections/ReadOnlyStdObservableCollection.js";
 import { LoginUtils } from "../util/LoginUtils.js";
-import { OperationCancelledError } from "../util/PromiseSource.js";
+import { OperationCancelledError, PromiseSource } from "../util/PromiseSource.js";
 import { IterableUtils } from "../util/IterableUtils.js";
 import { SavedChatState } from "../settings/AppSettings.js";
 import { CharacterStatusEditorPopupViewModel } from "./popups/CharacterStatusEditorPopupViewModel.js";
@@ -55,6 +55,7 @@ import { NotificationManagerViewModel } from "./NotificationManagerViewModel.js"
 import { CallbackSet } from "../util/CallbackSet.js";
 import { LogSearch3ViewModel } from "./logsearch/LogSearch3ViewModel.js";
 import { FriendsAndBookmarksViewModel } from "./FriendsAndBookmarksViewModel.js";
+import { SessionFriendsAndBookmarksViewModel } from "./AccountsFriendsAndBookmarksViewModel.js";
 
 declare const XCHost: any;
 
@@ -70,6 +71,13 @@ export class ActiveLoginViewModel extends ObservableBase implements IDisposable 
 
         this._nicknameSet = new NicknameSet(this);
         this._disposeActions.push(() => this._nicknameSet.dispose());
+
+        this.characterSet = new CharacterSet();
+        this.sessionFriendsAndBookmarks = this.appViewModel.accountsFriendsAndBookmarks.getOrCreate(this.authenticatedApi.account).createForSession(this);
+        this.characterSet.initializeSets(this.ignoredChars, this.friends, this.bookmarks, this.interests, this.nicknameSet)
+
+        this._disposeActions.push(this.sessionFriendsAndBookmarks);
+        this._disposeActions.push(this.characterSet);        
 
         this.addPropertyListener("pmConvosCollapsed", (e) => {
             this.logger.logWarn("pmConvosCollapsed changed", e.propertyName, e.propertyValue);
@@ -115,26 +123,24 @@ export class ActiveLoginViewModel extends ObservableBase implements IDisposable 
         //this.serverOps.addEventListener("collectionchange", (ev) => { this.notifyChannelsOfCharacterChange(this.serverOps, ev); });
         //this.watchedChars.addEventListener("collectionchange", (ev) => { this.notifyChannelsOfCharacterChange(this.watchedChars, ev); });
 
-        this.serverOps.addEventListener("dictionarychange", (dce) => {
-            const chars = [ dce.item ];
-            this.notifyChannelsOfCharacterChange(chars);
-        });
-        this.watchedChars.addEventListener("dictionarychange", (dce) => {
-            const chars = [ dce.item ];
-            this.notifyChannelsOfCharacterChange(chars);
-        });
-        this.ignoredChars.addEventListener("dictionarychange", (dce) => {
-            const chars = [ dce.item ];
-            this.notifyChannelsOfCharacterChange(chars);
-        });
-
-        this.characterSet = new CharacterSet(this.ignoredChars, this.friends, this.bookmarks, this.interests, this.nicknameSet);
-        this.onlineWatchedChars = new FilteredWatchedCharsCharacterNameSet(this, this.watchedChars, cs => cs.status != OnlineStatus.OFFLINE);
-        this.onlineFriends = new FilteredWatchedCharsCharacterNameSet(this, this.friends, cs => cs.status != OnlineStatus.OFFLINE);
-        this.onlineBookmarks = new FilteredWatchedCharsCharacterNameSet(this, this.bookmarks, cs => cs.status != OnlineStatus.OFFLINE);
-        this.lookingWatchedChars = new FilteredWatchedCharsCharacterNameSet(this, this.watchedChars, cs => cs.status == OnlineStatus.LOOKING);
-        this.lookingFriends = new FilteredWatchedCharsCharacterNameSet(this, this.friends, cs => cs.status == OnlineStatus.LOOKING);
-        this.lookingBookmarks = new FilteredWatchedCharsCharacterNameSet(this, this.bookmarks, cs => cs.status == OnlineStatus.LOOKING);
+        this._disposeActions.push(
+            this.serverOps.addEventListener("dictionarychange", (dce) => {
+                const chars = [ dce.item ];
+                this.notifyChannelsOfCharacterChange(chars);
+            })
+        );
+        this._disposeActions.push(
+            this.watchedChars.addEventListener("dictionarychange", (dce) => {
+                const chars = [ dce.item ];
+                this.notifyChannelsOfCharacterChange(chars);
+            })
+        );
+        this._disposeActions.push(
+            this.ignoredChars.addEventListener("dictionarychange", (dce) => {
+                const chars = [ dce.item ];
+                this.notifyChannelsOfCharacterChange(chars);
+            })
+        );
 
         this.openChannels.addCollectionObserver(changes => {
             for (let change of changes) {
@@ -444,64 +450,38 @@ export class ActiveLoginViewModel extends ObservableBase implements IDisposable 
         this._autoAdManager = null;
     }
 
-    readonly serverOps: CharacterNameSet = new CharacterNameSet();
+    readonly sessionFriendsAndBookmarks: SessionFriendsAndBookmarksViewModel;
 
-    // watchedChars = superset of friends + bookmarks + interests
-    readonly watchedChars: CharacterNameSet = new CharacterNameSet();
-    updateWatchedCharsSet() {
-        let toRemove: CharacterName[] | null = null;
-        for (let n of this.watchedChars.iterateValues()) {
-            if (!this.friends.has(n.key) && !this.bookmarks.has(n.key) && !this.interests.has(n.key)) {
-                toRemove ??= [];
-                toRemove.push(n.key);
-            }
-        }
-        if (toRemove) {
-            for (let n of toRemove) {
-                this.watchedChars.delete(n);
-            }
-        }
+    get serverOps(): CharacterNameSet { return this.sessionFriendsAndBookmarks.serverOps; }
 
-        for (let coll of [this.friends, this.bookmarks, this.interests]) {
-            for (let n of coll.iterateValues()) {
-                if (!this.watchedChars.has(n.key)) {
-                    this.watchedChars.add(n.key);
-                }
-            }
-        }
-    }
+    get friends(): CharacterNameSet { return this.sessionFriendsAndBookmarks.friends; }
 
-    readonly friends: CharacterNameSet = new CharacterNameSet();
+    get bookmarks(): CharacterNameSet { return this.sessionFriendsAndBookmarks.bookmarks; }
 
-    readonly bookmarks: CharacterNameSet = new CharacterNameSet();
+    get interests(): CharacterNameSet { return this.sessionFriendsAndBookmarks.interests; }
 
-    readonly interests: CharacterNameSet = new CharacterNameSet();
+    get watchedChars(): CharacterNameSet { return this.sessionFriendsAndBookmarks.watchedChars; }
 
-    @observableProperty
-    readonly onlineWatchedChars: CharacterNameSet;
+    get ignoredChars(): CharacterNameSet { return this.sessionFriendsAndBookmarks.ignored; }
 
-    @observableProperty
-    readonly onlineFriends: CharacterNameSet;
+    get onlineFriends(): CharacterNameSet { return this.sessionFriendsAndBookmarks.onlineFriends; }
 
-    @observableProperty
-    readonly onlineBookmarks: CharacterNameSet;
+    get onlineBookmarks(): CharacterNameSet { return this.sessionFriendsAndBookmarks.onlineBookmarks; }
 
-    @observableProperty
-    readonly lookingWatchedChars: CharacterNameSet;
+    get onlineInterests(): CharacterNameSet { return this.sessionFriendsAndBookmarks.onlineInterests; }
 
-    @observableProperty
-    readonly lookingFriends: CharacterNameSet;
+    get onlineWatchedChars(): CharacterNameSet { return this.sessionFriendsAndBookmarks.watchedChars; }
 
-    @observableProperty
-    readonly lookingBookmarks: CharacterNameSet;
+    get lookingFriends(): CharacterNameSet { return this.sessionFriendsAndBookmarks.onlineFriends; }
 
-    // @observableProperty
-    // showOnlineWatchedOnly: boolean = true;
+    get lookingBookmarks(): CharacterNameSet { return this.sessionFriendsAndBookmarks.onlineBookmarks; }
+
+    get lookingInterests(): CharacterNameSet { return this.sessionFriendsAndBookmarks.onlineInterests; }
+
+    get lookingWatchedChars(): CharacterNameSet { return this.sessionFriendsAndBookmarks.watchedChars; }
 
     @observableProperty
     watchedListFilter: WatchedListFilterType = WatchedListFilterType.ONLINE;
-
-    readonly ignoredChars: CharacterNameSet = new CharacterNameSet();
 
     @observableProperty
     readonly openChannels: Collection<ChatChannelViewModel> = new Collection();
@@ -927,56 +907,35 @@ export class ActiveLoginViewModel extends ObservableBase implements IDisposable 
         return this._cachedMyProfileInfo;
     }
 
-    private _cachedMyFriendsListInfo: FriendsList | null = null;
-    private _cachedMyFriendsListInfoExpires: Date = new Date();
+    get friendsList() { return this.sessionFriendsAndBookmarks.friendsList; }
+
     async getMyFriendsListInfo(cancellationToken: CancellationToken): Promise<FriendsList> {
-        if (this._cachedMyFriendsListInfo == null || this._cachedMyFriendsListInfoExpires < new Date()) {
-            this._cachedMyFriendsListInfo = await this.authenticatedApi.getFriendsListAsync(cancellationToken);
-            this.syncFriendsListData(this._cachedMyFriendsListInfo);
-            this._cachedMyFriendsListInfoExpires = new Date(new Date().getTime() + (1000 * 60 * 60));
-        }
-        return this._cachedMyFriendsListInfo;
+        const ps = new PromiseSource<FriendsList>();
+
+        using cancelReg = cancellationToken.register(() => {
+            ps.trySetCancelled(cancellationToken);
+        });
+
+        const oe = new ObservableExpression(
+            () => this.sessionFriendsAndBookmarks.friendsList,
+            (fl) => {
+                if (fl?.isError) {
+                    ps.tryReject(fl.error!);
+                }
+                else if (fl?.isValue) {
+                    ps.tryResolve(fl.value!);
+                }
+            },
+            (err) => {
+                ps.tryReject(err);
+            }
+        );
+
+        const result = await ps.promise;
+        return result;
     }
     expireMyFriendsListInfo() {
-        this._cachedMyFriendsListInfo = null;
-        this._cachedMyFriendsListInfoExpires = new Date();
-    }
-
-    private syncFriendsListData(friendsList: FriendsList) {
-        // Sync friends
-        const flFriends = new Set<CharacterName>();
-        for (let flf of friendsList.friendlist) {
-            const destChar = CharacterName.create(flf.dest);
-            const srcChar = CharacterName.create(flf.source);
-
-            const targetChar = this.characterName.equals(destChar) ? srcChar : destChar;
-            if (!this.friends.has(targetChar)) {
-                this.friends.add(targetChar);
-            }
-            flFriends.add(destChar);
-            flFriends.add(srcChar);
-        }
-
-        for (let c of [...this.friends.values()]) {
-            if (!flFriends.has(c)) {
-                this.friends.delete(c);
-            }
-        }
-
-        // Sync bookmarks
-        const flBookmarks = new Set<CharacterName>();
-        for (let flb of friendsList.bookmarklist) {
-            const targetChar = CharacterName.create(flb);
-            if (!this.bookmarks.has(targetChar)) {
-                this.bookmarks.add(targetChar);
-            }
-            flBookmarks.add(targetChar);
-        }
-        for (let c of [...this.bookmarks.values()]) {
-            if (!flBookmarks.has(c)) {
-                this.bookmarks.delete(c);
-            }
-        }
+        this.sessionFriendsAndBookmarks.expireFriendsList();
     }
 
     showAddChannels() {
