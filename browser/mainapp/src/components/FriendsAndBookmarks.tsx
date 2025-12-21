@@ -1,7 +1,7 @@
 import { CharacterName } from "../shared/CharacterName";
 import { jsx, Fragment, VNode } from "../snabbdom/index";
 import { CharacterLinkUtils } from "../util/CharacterLinkUtils";
-import { FriendsAndBookmarksViewModel } from "../viewmodel/FriendsAndBookmarksViewModel";
+import { FriendRequestSet, FriendsAndBookmarksViewModel } from "../viewmodel/FriendsAndBookmarksViewModel";
 import { LoadingOrValueOrError } from "../viewmodel/LoadingOrValueOrError";
 import { componentElement } from "./ComponentBase";
 import { makeRenderingComponent, RenderArguments } from "./RenderingComponentBase";
@@ -24,14 +24,14 @@ export class FriendsAndBookmarks extends StageViewComponent<FriendsAndBookmarksV
 
         return <>
             <div classList={[ "friends-column" ]}>
-                <div classList={[ "friendrequests-section" ]}></div>
-                <div classList={[ "section", "friends-section" ]}>
+                { this.renderFriendRequestsSection(args, vm, vm.incomingRequests) }
+                <div key="friends-section" classList={[ "section", "friends-section" ]}>
                     <div classList={[ "section-title", "friends-section-title" ]}>Friends</div>
                     { this.renderLoadable(args, vm.friends, this.renderFriendsSection.bind(this)) }
                 </div>
             </div>
             <div classList={[ "bookmarks-column" ]}>
-                <div classList={[ "section", "bookmarks-section" ]}>
+                <div key="bookmarks-section" classList={[ "section", "bookmarks-section" ]}>
                     <div classList={[ "section-title", "bookmarks-section-title" ]}>Bookmarks</div>
                     { this.renderLoadable(args, vm.bookmarks, this.renderBookmarksSection.bind(this)) }
                 </div>
@@ -49,6 +49,47 @@ export class FriendsAndBookmarks extends StageViewComponent<FriendsAndBookmarksV
         else {
             return innerRender(args, mvalue.value!);
         }
+    }
+
+    renderFriendRequestsSection(args: RenderArguments, vm: FriendsAndBookmarksViewModel, mvalue: LoadingOrValueOrError<FriendRequestSet>): VNode {
+        if (mvalue.isLoading || mvalue.isError) { return <></>; }
+
+        const v = mvalue.value!;
+
+        const freqNodes: VNode[] = [];
+        for (let myChar of v.keys()) {
+            const children = v.get(myChar)!;
+
+            const childNodes: VNode[] = [];
+            for (let c of children) {
+                const cstatus = vm.session.characterSet.getCharacterStatus(c.interlocutorCharacterName);
+                const charVNode = CharacterLinkUtils.createStaticCharacterLinkVNode(vm.session, c.interlocutorCharacterName, cstatus, null, { disallowLeftClick: true });
+
+                childNodes.push(<div key={`req-${c.myCharacterName.canonicalValue}#${c.interlocutorCharacterName.canonicalValue}`} classList={[ "friendrequests-list-item"]}>
+                    <div classList={[ "friendrequests-list-item-name" ]}>{charVNode}</div>
+                    <button classList={[ "friendrequests-list-item-accept" ]} on={{ "click": () => { vm.acceptIncomingRequest(c); } }}>Accept</button>
+                    <button classList={[ "friendrequests-list-item-reject" ]} on={{ "click": () => { vm.rejectIncomingRequest(c); } }}>Ignore</button>
+                </div>);
+            }
+
+            const tnode =
+                <div key={`group-${myChar.canonicalValue}`} classList={[ "friendrequests-list-group" ]}>
+                    <div classList={[ "friendrequests-list-group-title" ]}>
+                        <div classList={[ "friendrequests-list-group-title-text"]}>{myChar.value}</div>
+                        <div classList={[ "friendrequests-list-group-title-line"]}></div>
+                    </div>
+                    <div classList={[ "friendrequests-list-group-items" ]}>{childNodes}</div>
+                </div>
+            freqNodes.push(tnode);
+        }
+
+        const result = <div key="friendrequests-section" classList={[ "section", "friendrequests-section" ]}>
+            <div classList={[ "section-title", "friends-section-title" ]}>Incoming Friend Requests</div>
+            <div classList={[ "section-list", "friends-list" ]}>
+                {freqNodes}
+            </div>
+        </div>;
+        return result;
     }
 
     renderFriendsSection(args: RenderArguments, friendMap: Map<CharacterName, CharacterName[]>): VNode {
@@ -97,6 +138,10 @@ export class FriendsAndBookmarks extends StageViewComponent<FriendsAndBookmarksV
             <div classList={[ "section-buttons", "friends-buttons" ]}>
                 <button classList={[ "friends-buttons-button", "button-removefriend", "themed" ]} attrs={{
                     "disabled": (!vm.isValidSelectedFriend())
+                }} on={{
+                    "click": () => {
+                        vm.removeSelectedFriend();
+                    }
                 }}>Remove Friend</button>
             </div>
         </>;
@@ -130,6 +175,10 @@ export class FriendsAndBookmarks extends StageViewComponent<FriendsAndBookmarksV
             <div classList={[ "section-buttons", "bookmarks-buttons" ]}>
                 <button classList={[ "bookmarks-buttons-button", "button-removebookmark", "themed" ]} attrs={{
                     "disabled": (!vm.isValidSelectedBookmark())
+                }} on={{
+                    "click": () => {
+                        vm.removeSelectedBookmark();
+                    }
                 }}>Remove Bookmark</button>
             </div>
         </>;

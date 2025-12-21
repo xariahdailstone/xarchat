@@ -16,4 +16,35 @@ namespace XarChat.Backend.Features.FListApi
         [JsonPropertyName("requestpending")]
         public required List<FriendsListRequest> RequestPending { get; set; }
     }
+
+
+    public class SendFriendRequestResponse
+    {
+        [JsonPropertyName("request")]
+        public required FriendRequest Request { get; set; }
+    }
+
+    public class FriendRequest
+    {
+        [JsonPropertyName("id")]
+        public required int Id { get; set; }
+
+        [JsonPropertyName("source")]
+        public required CharacterIdName Source { get; set; }
+
+        [JsonPropertyName("target")]
+        public required CharacterIdName Target { get; set; }
+
+        [JsonPropertyName("createdAt")]
+        public required long CreatedAt { get; set; }
+    }
+
+    public class CharacterIdName
+    {
+        [JsonPropertyName("id")]
+        public required int Id { get; set; }
+
+        [JsonPropertyName("name")]
+        public required string Name { get; set; }
+    }
 }

@@ -142,6 +142,80 @@ namespace XarChat.Backend.UrlHandlers.FListApiProxy
                     return CustomResults.NewtonsoftJsonResult(new JsonObject(), SourceGenerationContext.Default.JsonObject);
                 });
             });
+
+            app.MapPost(urlBase + "{account}/addFriendRequest", async (
+                HttpRequest request,
+                [FromRoute] string account,
+                CancellationToken cancellationToken) =>
+            {
+                return await CallFListApi(async () =>
+                {
+                    var myCharName = request.Form["myCharName"].First()!.ToString();
+                    var theirCharName = request.Form["theirCharName"].First()!.ToString();
+
+                    var authApi = await flistApi.GetAlreadyAuthenticatedFListApiAsync(account, cancellationToken);
+                    var result = await authApi.AddFriendRequestAsync(myCharName, theirCharName, cancellationToken);
+                    return CustomResults.NewtonsoftJsonResult(result, SourceGenerationContext.Default.SendFriendRequestResponse);
+                });
+            });
+            app.MapPost(urlBase + "{account}/cancelFriendRequest", async (
+                            HttpRequest request,
+                            [FromRoute] string account,
+                            CancellationToken cancellationToken) =>
+            {
+                return await CallFListApi(async () =>
+                {
+                    var requestId = Convert.ToInt32(request.Form["request_id"].First()!);
+                    
+                    var authApi = await flistApi.GetAlreadyAuthenticatedFListApiAsync(account, cancellationToken);
+                    await authApi.CancelFriendRequestAsync(requestId, cancellationToken);
+                    return CustomResults.NewtonsoftJsonResult(new JsonObject(), SourceGenerationContext.Default.JsonObject);
+                });
+            });
+            app.MapPost(urlBase + "{account}/acceptIncomingFriendRequest", async (
+                            HttpRequest request,
+                            [FromRoute] string account,
+                            CancellationToken cancellationToken) =>
+            {
+                return await CallFListApi(async () =>
+                {
+                    var requestId = Convert.ToInt32(request.Form["request_id"].First()!);
+
+                    var authApi = await flistApi.GetAlreadyAuthenticatedFListApiAsync(account, cancellationToken);
+                    await authApi.AcceptIncomingFriendRequestAsync(requestId, cancellationToken);
+                    return CustomResults.NewtonsoftJsonResult(new JsonObject(), SourceGenerationContext.Default.JsonObject);
+                });
+            });
+            app.MapPost(urlBase + "{account}/rejectIncomingFriendRequest", async (
+                            HttpRequest request,
+                            [FromRoute] string account,
+                            CancellationToken cancellationToken) =>
+            {
+                return await CallFListApi(async () =>
+                {
+                    var requestId = Convert.ToInt32(request.Form["request_id"].First()!);
+
+                    var authApi = await flistApi.GetAlreadyAuthenticatedFListApiAsync(account, cancellationToken);
+                    await authApi.RejectIncomingFriendRequestAsync(requestId, cancellationToken);
+                    return CustomResults.NewtonsoftJsonResult(new JsonObject(), SourceGenerationContext.Default.JsonObject);
+                });
+            });
+            app.MapPost(urlBase + "{account}/removeFriend", async (
+                HttpRequest request,
+                [FromRoute] string account,
+                CancellationToken cancellationToken) =>
+            {
+                return await CallFListApi(async () =>
+                {
+                    var myCharName = request.Form["myCharName"].First()!.ToString();
+                    var theirCharName = request.Form["theirCharName"].First()!.ToString();
+
+                    var authApi = await flistApi.GetAlreadyAuthenticatedFListApiAsync(account, cancellationToken);
+                    await authApi.RemoveFriendAsync(myCharName, theirCharName, cancellationToken);
+                    return CustomResults.NewtonsoftJsonResult(new JsonObject(), SourceGenerationContext.Default.JsonObject);
+                });
+            });
+
             app.MapGet(urlBase + "{account}/getMemo/{target}", async (
                 HttpRequest request,
                 [FromRoute] string account,

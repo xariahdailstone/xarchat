@@ -1,10 +1,16 @@
 import { CharacterName } from "../shared/CharacterName";
 import { CancellationToken, CancellationTokenSource } from "../util/CancellationTokenSource";
 import { IDisposable } from "../util/Disposable";
+import { KeyCodes } from "../util/KeyCodes";
 import { ObservableBase, observableProperty } from "../util/ObservableBase";
 import { Scheduler } from "../util/Scheduler";
 import { ActiveLoginViewModel } from "./ActiveLoginViewModel";
+import { DialogButtonStyle } from "./dialogs/DialogViewModel";
 import { LoadingOrValueOrError } from "./LoadingOrValueOrError";
+
+export type FriendRequestEntry = { id: number, myCharacterName: CharacterName, interlocutorCharacterName: CharacterName };
+
+export type FriendRequestSet = Map<CharacterName, FriendRequestEntry[]>;
 
 export class FriendsAndBookmarksViewModel extends ObservableBase {
     constructor(
@@ -36,6 +42,29 @@ export class FriendsAndBookmarksViewModel extends ObservableBase {
         if (this.selectedBookmark == null) { return false; }
         const bl = this.bookmarks.value!;
         return (bl.indexOf(this.selectedBookmark) != -1);
+    }
+
+    @observableProperty
+    removingBookmark: boolean = false;
+
+    async removeSelectedBookmark() {
+        if (this.isValidSelectedBookmark()) {
+            this.removingBookmark = true;
+            try {
+                try {
+                    await this.session.authenticatedApi.removeBookmarkAsync(this.selectedBookmark!, CancellationToken.NONE);
+                }
+                finally {
+                    this.removingBookmark = false;
+                }
+            }
+            catch (e) {
+                await this.session.appViewModel.alertAsync(
+                    "An unexpected error occurred while removing the bookmark.",
+                    "Bookmark Remove Failed"
+                );
+            }
+        }
     }
 
     get friends(): LoadingOrValueOrError<Map<CharacterName, CharacterName[]>> {
@@ -70,7 +99,54 @@ export class FriendsAndBookmarksViewModel extends ObservableBase {
         return l.indexOf(this.selectedFriend.interlocutorCharacterName) != -1;
     }
 
-    get incomingRequests(): LoadingOrValueOrError<Map<CharacterName, CharacterName[]>> {
+    @observableProperty
+    removingFriend: boolean = false;
+
+    async removeSelectedFriend() {
+        if (this.isValidSelectedFriend()) {
+            const myCharName = this.selectedFriend!.myCharacterName;
+            const theirCharName = this.selectedFriend!.interlocutorCharacterName;
+            const confirmResult = await this.session.appViewModel.promptAsync<boolean>({
+                title: "Remove Friend",
+                message: `Are you sure you want to end your friendship between <b>${myCharName.value}</b> and <b>${theirCharName.value}</b>?`,
+                messageAsHtml: true,
+                closeBoxResult: false,
+                buttons: [
+                    {
+                        title: "Yes, Remove Friend",
+                        resultValue: true,
+                        style: DialogButtonStyle.NORMAL,
+                        shortcutKeyCode: KeyCodes.KEY_Y
+                    },
+                    {
+                        title: "No, Cancel",
+                        resultValue: false,
+                        style: DialogButtonStyle.CANCEL,
+                        shortcutKeyCode: KeyCodes.KEY_N
+                    }
+                ]
+            });
+            if (!confirmResult) { return; }
+
+            try {
+                this.removingFriend = true;
+                try {
+                    await this.session.authenticatedApi.removeFriendAsync(myCharName, theirCharName, CancellationToken.NONE);
+                }
+                finally {
+                    this.removingFriend = false;
+                }
+            }
+            catch (e) {
+                await this.session.appViewModel.alertAsync(
+                    "An unexpected error occurred while removing the friendship.",
+                    "Friend Remove Failed"
+                );
+            }
+        }
+    }
+
+    get incomingRequests(): LoadingOrValueOrError<FriendRequestSet> {
         if (this.session.friendsList.isError) {
             return LoadingOrValueOrError.error(this.session.friendsList.error!);
         }
@@ -79,25 +155,28 @@ export class FriendsAndBookmarksViewModel extends ObservableBase {
         }
         else {
             const v = this.session.friendsList.value!;
-            const res = new Map<CharacterName, CharacterName[]>();
+            const res = new Map<CharacterName, FriendRequestEntry[]>();
             for (let tf of v.requestlist) {
                 const myChar = CharacterName.create(tf.dest);
                 const interlocutorChar = CharacterName.create(tf.source);
                 const farray = res.get(myChar) ?? [];
-                farray.push(interlocutorChar);
+                farray.push({ id: tf.id, myCharacterName: myChar, interlocutorCharacterName: interlocutorChar });
                 res.set(myChar, farray);
             }
             for (let farray of res.values()) {
-                farray.sort(CharacterName.compare);
+                farray.sort((a, b) => CharacterName.compare(a.interlocutorCharacterName, b.interlocutorCharacterName));
             }
             return LoadingOrValueOrError.value(res);
         } 
     }
 
-    @observableProperty
-    selectedIncomingRequest: { myCharacterName: CharacterName, interlocutorCharacterName: CharacterName } | null = null;
+    acceptIncomingRequest(entry: FriendRequestEntry) {
+    }
 
-    get outgoingRequests(): LoadingOrValueOrError<Map<CharacterName, CharacterName[]>> {
+    rejectIncomingRequest(entry: FriendRequestEntry) {
+    }
+
+    get outgoingRequests(): LoadingOrValueOrError<FriendRequestSet> {
         if (this.session.friendsList.isError) {
             return LoadingOrValueOrError.error(this.session.friendsList.error!);
         }
@@ -106,21 +185,18 @@ export class FriendsAndBookmarksViewModel extends ObservableBase {
         }
         else {
             const v = this.session.friendsList.value!;
-            const res = new Map<CharacterName, CharacterName[]>();
+            const res = new Map<CharacterName, FriendRequestEntry[]>();
             for (let tf of v.requestpending) {
                 const myChar = CharacterName.create(tf.source);
                 const interlocutorChar = CharacterName.create(tf.dest);
                 const farray = res.get(myChar) ?? [];
-                farray.push(interlocutorChar);
+                farray.push({ id: tf.id, myCharacterName: myChar, interlocutorCharacterName: interlocutorChar });
                 res.set(myChar, farray);
             }
             for (let farray of res.values()) {
-                farray.sort(CharacterName.compare);
+                farray.sort((a, b) => CharacterName.compare(a.interlocutorCharacterName, b.interlocutorCharacterName));
             }
             return LoadingOrValueOrError.value(res);
         } 
     }
-
-    @observableProperty
-    selectedOutgoingRequest: { myCharacterName: CharacterName, interlocutorCharacterName: CharacterName } | null = null;
 }

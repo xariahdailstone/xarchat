@@ -17,11 +17,21 @@
     display: flex;
     flex-direction: column;
 
+    max-height: 100%;
+    overflow: clip;
+
     .friendrequests-section {
-        flex-shrink: 1;
         flex-grow: 1;
+        justify-self: start;
+        height: auto;
+        max-height: 50%;
     }
-    
+    .friends-section {
+        flex-shrink: 1;
+        justify-self: stretch;
+        height: auto;
+        overflow: hidden;
+    }   
 }
 
 .section {
@@ -50,26 +60,27 @@
         background-color: var(--bg-level-3);
         padding: 5px 5px;
 
-        .friends-list-group {
+        .friends-list-group,
+        .friendrequests-list-group {
             margin-bottom: 10px;
             &:last-child { margin-bottom: 0; }
 
-            .friends-list-group-title {
+            .friends-list-group-title,
+            .friendrequests-list-group-title {
                 display: grid;
                 grid-template-rows: auto;
                 grid-template-columns: auto 1fr;
                 align-items: center;
                 gap: 7px;
-                .friends-list-group-title-text {
+                .friends-list-group-title-text,
+                .friendrequests-list-group-title-text {
                     font-weight: bold;
                 }
-                .friends-list-group-title-line {
+                .friends-list-group-title-line,
+                .friendrequests-list-group-title-line {
                     border-bottom: 1px solid currentColor;
                     opacity: 0.2;
                 }
-            }
-
-            .friends-list-group-items {
             }
         }
     }
@@ -90,4 +101,19 @@
     &.selected {
         background-color: rgba(255, 255, 255, 0.1);
     }
+}
+
+.friendrequests-list-item {
+    display: flex;
+    flex-direction: row;
+    gap: 7px;
+    padding: 6px;
+
+    .friendrequests-list-item-name {
+        flex-grow: 1;
+    }
+
+    &:hover:not(.selected) {
+        background-color: rgba(255, 255, 255, 0.05);
+    }    
 }

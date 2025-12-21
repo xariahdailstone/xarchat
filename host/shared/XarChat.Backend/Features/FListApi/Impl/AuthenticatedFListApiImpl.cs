@@ -213,6 +213,70 @@ namespace XarChat.Backend.Features.FListApi.Impl
                 SourceGenerationContext.Default.JsonObject, cancellationToken);
         }
 
+        public async Task<SendFriendRequestResponse> AddFriendRequestAsync(
+            string myCharName, string theirCharName, CancellationToken cancellationToken)
+        {
+            var formData = new Dictionary<string, string>
+            {
+                { "source", myCharName },
+                { "target", theirCharName },
+            };
+
+            System.Diagnostics.Debug.WriteLine($"addfriendrequest {myCharName} -> {theirCharName}");
+            var result = await PerformAuthenticatedRequest<SendFriendRequestResponse>("api/request-send2.php", formData,
+                SourceGenerationContext.Default.SendFriendRequestResponse, cancellationToken);
+            return result;
+        }
+
+        public async Task CancelFriendRequestAsync(int friendRequestId, CancellationToken cancellationToken)
+        {
+            var formData = new Dictionary<string, string>
+            {
+                { "request_id", friendRequestId.ToString() }
+            };
+
+            System.Diagnostics.Debug.WriteLine($"cancelfriendrequest {friendRequestId}");
+            await PerformAuthenticatedRequest<JsonObject>("api/request-cancel.php", formData,
+                SourceGenerationContext.Default.JsonObject, cancellationToken);
+        }
+
+        public async Task AcceptIncomingFriendRequestAsync(int friendRequestId, CancellationToken cancellationToken)
+        {
+            var formData = new Dictionary<string, string>
+            {
+                { "request_id", friendRequestId.ToString() }
+            };
+
+            System.Diagnostics.Debug.WriteLine($"acceptfriendrequest {friendRequestId}");
+            await PerformAuthenticatedRequest<JsonObject>("api/request-accept.php", formData,
+                SourceGenerationContext.Default.JsonObject, cancellationToken);
+        }
+
+        public async Task RejectIncomingFriendRequestAsync(int friendRequestId, CancellationToken cancellationToken)
+        {
+            var formData = new Dictionary<string, string>
+            {
+                { "request_id", friendRequestId.ToString() }
+            };
+
+            System.Diagnostics.Debug.WriteLine($"denyfriendrequest {friendRequestId}");
+            await PerformAuthenticatedRequest<JsonObject>("api/request-deny.php", formData,
+                SourceGenerationContext.Default.JsonObject, cancellationToken);
+        }
+
+        public async Task RemoveFriendAsync(string myCharName, string theirCharName, CancellationToken cancellationToken)
+        {
+            var formData = new Dictionary<string, string>
+            {
+                { "source_name", myCharName },
+                { "dest_name", theirCharName },
+            };
+
+            System.Diagnostics.Debug.WriteLine($"removefriend {myCharName} / {theirCharName}");
+            await PerformAuthenticatedRequest<JsonObject>("api/friend-remove.php", formData,
+                SourceGenerationContext.Default.JsonObject, cancellationToken);
+        }
+
         public async Task<SaveMemoResponse> SaveMemoAsync(string name, string memo, CancellationToken cancellationToken)
         {
             var formData = new Dictionary<string, string>
