@@ -27,6 +27,8 @@ const CLASS_ISBOOKMARK = "char-is-bookmark";
 const CLASS_ISWATCH = "char-is-watch";
 const CLASS_IGNORED = "char-is-ignored";
 
+export type CharacterLinkIconType = "serverop" | "channelop" | "channelmod" | "friend" | "bookmark" | "watch" | "ignore";
+
 export interface EffectiveCharacterNameInfo {
     modType: "none" | "chanop" | "chanowner" | "serverop";
     watchType: "none" | "watch" | "bookmark" | "friend";
@@ -41,9 +43,13 @@ export interface EffectiveCharacterNameInfo {
 
     wrapperClasses: { [any: string]: boolean };
     additionalWrapperClasses: string[];
-    displayIcons: { title: string, iconText: string }[];
+    displayIcons: { iconType: CharacterLinkIconType, title: string, iconText: string }[];
 
     nickname: string | null;
+}
+
+export interface CharacterNameOptions {
+    suppressIcons?: CharacterLinkIconType[];
 }
 
 export type EffectiveCharacterNameInfoProvider = (charOrStatus: CharacterName | CharacterStatusNoEquals, vm: ChannelViewModel | ActiveLoginViewModel) => EffectiveCharacterNameInfo;
@@ -116,15 +122,15 @@ export function getEffectiveCharacterNameInfo(
 
     switch (res.modType) {
         case "serverop":
-            res.displayIcons.push({ title: "Server Op", iconText: ICON_SERVEROP });
+            res.displayIcons.push({ iconType: "serverop", title: "Server Op", iconText: ICON_SERVEROP });
             res.additionalWrapperClasses.push("is-serverop");
             break;
         case "chanowner":
-            res.displayIcons.push({ title: "Channel Owner", iconText: ICON_CHANOWNER });
+            res.displayIcons.push({ iconType: "channelop", title: "Channel Owner", iconText: ICON_CHANOWNER });
             res.additionalWrapperClasses.push("is-chanowner");
             break;
         case "chanop":
-            res.displayIcons.push({ title: "Channel Moderator", iconText: ICON_CHANOP });
+            res.displayIcons.push({ iconType: "channelmod", title: "Channel Moderator", iconText: ICON_CHANOP });
             res.additionalWrapperClasses.push("is-chanop");
             break;
         default:
@@ -132,22 +138,22 @@ export function getEffectiveCharacterNameInfo(
     }
     switch (res.watchType) {
         case "friend":
-            res.displayIcons.push({ title: "Friend", iconText: ICON_FRIEND });
+            res.displayIcons.push({ iconType: "friend", title: "Friend", iconText: ICON_FRIEND });
             res.additionalWrapperClasses.push("is-friend");
             break;
         case "bookmark":
-            res.displayIcons.push({ title: "Bookmark", iconText: ICON_BOOKMARK });
+            res.displayIcons.push({ iconType: "bookmark", title: "Bookmark", iconText: ICON_BOOKMARK });
             res.additionalWrapperClasses.push("is-bookmark");
             break;
         case "watch":
-            res.displayIcons.push({ title: "Watched", iconText: ICON_WATCHED });
+            res.displayIcons.push({ iconType: "watch", title: "Watched", iconText: ICON_WATCHED });
             res.additionalWrapperClasses.push("is-watch");
             break;
         default:
             break;
     }
     if (res.isIgnored) {
-        res.displayIcons.push({ title: "Ignored", iconText: ICON_IGNORED });
+        res.displayIcons.push({ iconType: "ignore", title: "Ignored", iconText: ICON_IGNORED });
         res.additionalWrapperClasses.push("is-ignored");
     }
 
@@ -171,13 +177,19 @@ export function getEffectiveCharacterNameVNodes(charOrStatus: CharacterName | Ch
     return getEffectiveCharacterNameVNodes2(character, ecni);
 }
 
-export function getEffectiveCharacterNameVNodes2(character: CharacterName, ecni: EffectiveCharacterNameInfo): JsxVNodeChildren {
+export function getEffectiveCharacterNameVNodes2(character: CharacterName, ecni: EffectiveCharacterNameInfo, options?: CharacterNameOptions): JsxVNodeChildren {
     const nodes: JsxVNodeChild[] = [];
 
     const wrapperClasses = ecni.wrapperClasses;
 
     for (let icon of ecni.displayIcons) {
-        nodes.push(<span title={icon.title}>{icon.iconText}</span>);
+        let showIcon = true;
+        if (options?.suppressIcons) {
+            showIcon = (options.suppressIcons.indexOf(icon.iconType) == -1);
+        }
+        if (showIcon) {
+            nodes.push(<span title={icon.title}>{icon.iconText}</span>);
+        }
     }
 
     if (nodes.length > 0) {

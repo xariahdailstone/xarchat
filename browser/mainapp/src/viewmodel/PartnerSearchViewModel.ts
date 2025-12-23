@@ -19,6 +19,8 @@ export class PartnerSearchViewModel extends ObservableBase {
 
     get appViewModel() { return this.activeLoginViewModel.appViewModel; }
 
+    isTabActive: boolean = false;
+
     @observableProperty
     currentState: PartnerSearchState = PartnerSearchState.Uninitialized;
 

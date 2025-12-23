@@ -236,6 +236,19 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     configBlockKey: "autoUrlPaste"
                 },
                 {
+                    id: "sendMessageShortcut",
+                    scope: getScopeArray(["global"]),
+                    title: "Send Message Shortcut",
+                    description: "Choose whether Enter or Shift+Enter sends the currently entered message.",
+                    type: "select",
+                    selectOptions: [
+                        { value: "enter", displayValue: "Enter (Default)" },
+                        { value: "shiftenter", displayValue: "Shift+Enter" }
+                    ],
+                    defaultValue: "enter",
+                    configBlockKey: "sendMessageShortcut"
+                },                
+                {
                     id: "eiconSearch.enabled",
                     scope: getScopeArray(["global"]),
                     title: "EIcon Search",
@@ -424,7 +437,8 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                                 1: (v) => { 
                                     return addNotifRoutes(v, [ "toast", "notification" ]);
                                 }
-                            }
+                            },
+                            hidden: true
                         },
                         {
                             scope: getScopeArray(["global", "char"]),
@@ -440,7 +454,8 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                                 1: (v) => { 
                                     return addNotifRoutes(v, [ "toast", "notification" ]);
                                 }
-                            }
+                            },
+                            hidden: true
                         },
                         {
                             scope: getScopeArray(["global", "char"]),
@@ -456,7 +471,8 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                                 1: (v) => { 
                                     return addNotifRoutes(v, [ "toast", "notification" ]);
                                 }
-                            }
+                            },
+                            hidden: true
                         },
                         {
                             scope: getScopeArray(["global", "char"]),
@@ -1515,7 +1531,7 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                 },
                 {
                     id: "logFileSize",
-                    scope: getScopeArray(["global", "char", "chan", "convo"]),
+                    scope: getScopeArray(["global"]),
                     title: "Total Log Size",
                     description: "The current total size of your entire chat log file, including all channels and PM conversations.",
                     type: "displaytext",

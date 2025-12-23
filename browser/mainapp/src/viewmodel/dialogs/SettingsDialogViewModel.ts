@@ -227,6 +227,26 @@ export abstract class SettingsDialogSettingViewModel extends ObservableBase impl
             return res;
         }
     }
+
+    private _viewSettings: Map<string, ObservableValue<any>> = new Map();
+
+    private getViewSettingObservableByName(settingName: string) {
+        let result = this._viewSettings.get(settingName);
+        if (!result) {
+            result = new ObservableValue<any>(null);
+            this._viewSettings.set(settingName, result);
+        }
+        return result;
+    }
+
+    getViewSetting(settingName: string): any {
+        return this.getViewSettingObservableByName(settingName).value;
+    }
+
+    setViewSetting(settingName: string, value: any): any {
+        this.getViewSettingObservableByName(settingName).value = value;
+        return value;
+    }
 }
 
 export abstract class SettingsDialogTabViewModel extends SettingsDialogSettingViewModel {
@@ -321,6 +341,9 @@ export interface ISettingsDialogSettingViewModel extends IDisposable {
     readonly title: string;
     readonly description: string | undefined;
     readonly settings: Collection<ISettingsDialogSettingViewModel>;
+
+    getViewSetting(settingName: string): any;
+    setViewSetting(settingName: string, value: any): any;
 }
 export interface ISettingsDialogItemViewModel extends ISettingsDialogSettingViewModel {
     readonly isItem: true;

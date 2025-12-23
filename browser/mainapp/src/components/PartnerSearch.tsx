@@ -7,6 +7,7 @@ import { asDisposable, IDisposable } from "../util/Disposable";
 import { HTMLUtils } from "../util/HTMLUtils";
 import { Collection } from "../util/ObservableCollection";
 import { URLUtils } from "../util/URLUtils";
+import { VNodeUtils } from "../util/VNodeUtils";
 import { PartnerSearchState, PartnerSearchViewModel } from "../viewmodel/PartnerSearchViewModel";
 import { componentElement } from "./ComponentBase";
 import { RenderingStageViewComponent, stageViewFor } from "./Stage";
@@ -82,7 +83,7 @@ export class PartnerSearch extends RenderingStageViewComponent<PartnerSearchView
             return [result, asDisposable(...renderDisposables)];
         }
         else {
-            return <></>;
+            return VNodeUtils.createEmptyFragment();
         }
     }
 
@@ -104,7 +105,7 @@ export class PartnerSearch extends RenderingStageViewComponent<PartnerSearchView
         }
 
         if (!vm.searchResults) {
-            return <></>;
+            return VNodeUtils.createEmptyFragment();
         }
 
         const resultRows: VNode[] = [];

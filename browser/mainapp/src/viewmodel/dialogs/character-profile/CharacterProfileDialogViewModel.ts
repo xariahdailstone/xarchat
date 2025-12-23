@@ -1,3 +1,4 @@
+import { ProfileInfo } from "../../../fchat/api/FListApi";
 import { CharacterName } from "../../../shared/CharacterName";
 import { CancellationTokenSource } from "../../../util/CancellationTokenSource";
 import { CatchUtils } from "../../../util/CatchUtils";
@@ -17,7 +18,8 @@ export class CharacterProfileDialogViewModel extends DialogViewModel<number> {
     constructor(
         parent: AppViewModel,
         public readonly activeLoginViewModel: ActiveLoginViewModel,
-        name: CharacterName) {
+        name: CharacterName,
+        charProfileInfoLoadPromise?: Promise<ProfileInfo>) {
 
         super(parent);
 
@@ -32,7 +34,7 @@ export class CharacterProfileDialogViewModel extends DialogViewModel<number> {
         this.loading = true;
         (async () => {
             try {
-                const detailInfo =  await CharacterProfileDetailViewModel.createAsync(this, activeLoginViewModel, name, this._cts.token);
+                const detailInfo =  await CharacterProfileDetailViewModel.createAsync(this, activeLoginViewModel, name, charProfileInfoLoadPromise, this._cts.token);
                 this.profileDetails = detailInfo;
 
                 // let isBookmarked = false;

@@ -11,6 +11,7 @@ import { WhenChangeManager } from "../../../util/WhenChange.js";
 import { getEffectiveCharacterNameVNodes } from "../../../util/CharacterNameIcons.js";
 import { CharacterGenderConvert } from "../../../shared/CharacterGender.js";
 import { CharacterLinkUtils } from "../../../util/CharacterLinkUtils.js";
+import { VNodeUtils } from "../../../util/VNodeUtils.js";
 
 @componentArea("dialogs/character-profile")
 @componentElement("x-characterguestbookpane")
@@ -21,7 +22,7 @@ export class CharacterGuestbookPane extends RenderingComponentBase<CharacterGues
 
     render(): (VNode | [VNode, IDisposable]) {
         if (!this.viewModel) {
-            return <></>;
+            return VNodeUtils.createEmptyFragment();
         }
         else if (this.viewModel.loadingStatus == GuestbookLoadingStatus.LOADING) {
             return <div classList="guestbook-loading">Loading...</div>;
@@ -79,7 +80,7 @@ export class CharacterGuestbookPane extends RenderingComponentBase<CharacterGues
                         <div classList="guestbook-reply-intro">Reply by <b>{selfChar}</b>:</div>
                         <div classList="guestbook-reply"><x-bbcodedisplay props={{ "viewModel": post.reply, parseOptions: po, parser: "profilenoimg" }} ></x-bbcodedisplay></div>
                       </div>
-                    : <></> }
+                    : VNodeUtils.createEmptyFragment() }
             </div>);
         }
         return result;
@@ -90,12 +91,12 @@ export class CharacterGuestbookPane extends RenderingComponentBase<CharacterGues
             { vm.hasPrevPage
                 ? <button classList="guestbook-page-navbar-prev"
                     on={{ "click": (e) => { vm.navigateToPageAsync(vm.page - 1, CancellationToken.NONE); } }}>&lt; Previous Page</button>
-                : <></> }
+                : VNodeUtils.createEmptyFragment() }
             <div classList="guestbook-page-navbar-current">Page <span>{vm.page + 1}</span></div>
             { vm.hasNextPage
                 ? <button classList="guestbook-page-navbar-next"
                     on={{ "click": (e) => { vm.navigateToPageAsync(vm.page + 1, CancellationToken.NONE); } }}>Next Page &gt;</button>
-                : <></> }
+                : VNodeUtils.createEmptyFragment() }
         </div>;
     }
 }

@@ -38,6 +38,7 @@ import { UIZoomNotifyPopupViewModel } from "./popups/UIZoomNotifyPopupViewModel.
 import { PlatformUtils } from "../util/PlatformUtils.js";
 import { InAppToastsViewModel, ToastInfo } from "./InAppToastsViewModel.js";
 import { Scheduler } from "../util/Scheduler.js";
+import { AccountsFriendsAndBookmarksViewModel } from "./AccountsFriendsAndBookmarksViewModel.js";
 
 export class AppViewModel extends ObservableBase {
     constructor(configBlock: ConfigBlock) {
@@ -49,6 +50,8 @@ export class AppViewModel extends ObservableBase {
         this.bbcodeParseSink = new AppViewModelBBCodeSink(this);
 
         this.toasts = new InAppToastsViewModel(this);
+
+        this.accountsFriendsAndBookmarks = new AccountsFriendsAndBookmarksViewModel(this);
 
         //this.flistApi = new FListApiImpl();
         this.flistApi = new HostInteropApi();
@@ -164,6 +167,8 @@ export class AppViewModel extends ObservableBase {
     private _updateCheckerClient: UpdateCheckerClient | null = null;
 
     readonly toasts: InAppToastsViewModel;
+
+    readonly accountsFriendsAndBookmarks: AccountsFriendsAndBookmarksViewModel;
 
     @observableProperty
     updateCheckerState: UpdateCheckerState = UpdateCheckerState.Unknown;

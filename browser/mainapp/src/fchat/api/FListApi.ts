@@ -19,6 +19,11 @@ export interface FListAuthenticatedApi extends FListApi {
     getFriendsListAsync(cancellationToken: CancellationToken): Promise<FriendsList>;
     addBookmarkAsync(name: CharacterName, cancellationToken: CancellationToken): Promise<void>;
     removeBookmarkAsync(name: CharacterName, cancellationToken: CancellationToken): Promise<void>;
+    addFriendRequestAsync(myCharName: CharacterName, theirCharName: CharacterName, cancellationToken: CancellationToken): Promise<void>;
+    cancelFriendRequestAsync(friendRequestId: number, cancellationToken: CancellationToken): Promise<void>;
+    acceptIncomingFriendRequestAsync(friendRequestId: number, cancellationToken: CancellationToken): Promise<void>;
+    rejectIncomingFriendRequestAsync(friendRequestId: number, cancellationToken: CancellationToken): Promise<void>;
+    removeFriendAsync(myCharName: CharacterName, theirCharName: CharacterName, cancellationToken: CancellationToken): Promise<void>;
 
     getCharacterProfileAsync(name: CharacterName, cancellationToken: CancellationToken): Promise<ProfileInfo>;
     getCharacterFriendsAsync(name: CharacterName, cancellationToken: CancellationToken): Promise<ProfileFriendsInfo | null>;

@@ -725,14 +725,15 @@ export class ChatViewModelSink implements ChatConnectionSink {
 
     bookmarkCharactersAdded(characters: CharacterName[], isInitial: boolean): void {
         const ns = this.viewModel;
+
         if (isInitial) {
             //ns.watchedChars.clear();
-            ns.bookmarks.clear();
+            //ns.bookmarks.clear();
         }
 
         for (let char of characters) {
             //ns.watchedChars.add(char);
-            ns.bookmarks.add(char);
+            ns.sessionFriendsAndBookmarks.bookmarks.add(char);
             if (!isInitial) {
                 const msg = `[user]${char.value}[/user] was added to your bookmarks.`;
 
@@ -754,15 +755,16 @@ export class ChatViewModelSink implements ChatConnectionSink {
                 // });
             }
         }
-        ns.updateWatchedCharsSet();
+        //ns.updateWatchedCharsSet();
         ns.expireMyFriendsListInfo()
+        ns.sessionFriendsAndBookmarks.forceGetFriendsList();
     }
 
     bookmarkCharactersRemoved(characters: CharacterName[]): void {
         const ns = this.viewModel;
         for (let char of characters) {
             //ns.watchedChars.delete(char);
-            ns.bookmarks.delete(char);
+            ns.sessionFriendsAndBookmarks.bookmarks.delete(char);
 
             const msg = `[user]${char.value}[/user] was removed from your bookmarks.`;
 
@@ -782,17 +784,22 @@ export class ChatViewModelSink implements ChatConnectionSink {
             //     targetCharacter: char
             // });
         }
-        ns.updateWatchedCharsSet();
+        //ns.updateWatchedCharsSet();
         ns.expireMyFriendsListInfo()
+        ns.sessionFriendsAndBookmarks.forceGetFriendsList();
     }
 
     ignoredCharactersAdded(characters: CharacterName[], isInitial: boolean): void {
         const ns = this.viewModel;
         if (isInitial) {
-            ns.ignoredChars.clear();
+            //ns.sessionFriendsAndBookmarks.forceGetIgnores();
+            ns.sessionFriendsAndBookmarks.setIgnoreList(characters);
+            return;
+            //ns.ignoredChars.clear();
         }
         for (let ch of characters) {
-            ns.ignoredChars.add(ch);
+            ns.sessionFriendsAndBookmarks.addIgnore(ch);
+            //ns.ignoredChars.add(ch);
 
             if (!isInitial) {
                 const msg = `[user]${ch.value}[/user] was added to your ignore list.`;
@@ -818,7 +825,8 @@ export class ChatViewModelSink implements ChatConnectionSink {
     ignoredCharactersRemoved(characters: CharacterName[]): void {
         const ns = this.viewModel;
         for (let ch of characters) {
-            ns.ignoredChars.delete(ch);
+            ns.sessionFriendsAndBookmarks.removeIgnore(ch);
+            //ns.ignoredChars.delete(ch);
 
             const msg = `[user]${ch.value}[/user] was removed from your ignore list.`;
             this.sendRoutedNotification({
@@ -842,7 +850,7 @@ export class ChatViewModelSink implements ChatConnectionSink {
     friendAdded(character: CharacterName): void {
         const ns = this.viewModel;
         //ns.watchedChars.add(character);
-        ns.friends.add(character);
+        ns.sessionFriendsAndBookmarks.friends.add(character);
 
         const msg = `[user]${character.value}[/user] was added as a friend.`;
 
@@ -862,14 +870,15 @@ export class ChatViewModelSink implements ChatConnectionSink {
         //     targetCharacter: character
         // });
 
-        ns.updateWatchedCharsSet();
+        //ns.updateWatchedCharsSet();
         ns.expireMyFriendsListInfo();
+        ns.sessionFriendsAndBookmarks.forceGetFriendsList();
     }
 
     friendRemoved(character: CharacterName): void {
         const ns = this.viewModel;
         //ns.watchedChars.delete(character);
-        ns.friends.delete(character);
+        ns.sessionFriendsAndBookmarks.friends.delete(character);
 
         const msg = `[user]${character.value}[/user] is no longer a friend.`;
 
@@ -889,8 +898,9 @@ export class ChatViewModelSink implements ChatConnectionSink {
         //     targetCharacter: character
         // });
 
-        ns.updateWatchedCharsSet();
+        //ns.updateWatchedCharsSet();
         ns.expireMyFriendsListInfo();
+        ns.sessionFriendsAndBookmarks.forceGetFriendsList();
     }
 
     friendRequestReceived(character: CharacterName): void {
@@ -918,7 +928,7 @@ export class ChatViewModelSink implements ChatConnectionSink {
     interestAdded(character: CharacterName): void {
         const ns = this.viewModel;
         //ns.watchedChars.add(character);
-        ns.interests.add(character);
+        ns.sessionFriendsAndBookmarks.interests.add(character);
 
         const msg = `[user]${character.value}[/user] was added as an interest.`;
 
@@ -938,14 +948,14 @@ export class ChatViewModelSink implements ChatConnectionSink {
         //     targetCharacter: character
         // });
 
-        ns.updateWatchedCharsSet();
+        //ns.updateWatchedCharsSet();
         ns.expireMyFriendsListInfo();
     }
 
     interestRemoved(character: CharacterName): void {
         const ns = this.viewModel;
         //ns.watchedChars.delete(character);
-        ns.interests.delete(character);
+        ns.sessionFriendsAndBookmarks.interests.delete(character);
 
         const msg = `[user]${character.value}[/user] is no longer an interest.`;
 
@@ -965,17 +975,19 @@ export class ChatViewModelSink implements ChatConnectionSink {
         //     targetCharacter: character
         // });
 
-        ns.updateWatchedCharsSet();
+        //ns.updateWatchedCharsSet();
         ns.expireMyFriendsListInfo();
     }
 
     serverOpsAdded(characters: CharacterName[], isInitial: boolean): void {
         const ns = this.viewModel;
         if (isInitial) {
-            ns.serverOps.clear();
+            ns.sessionFriendsAndBookmarks.serverOps.clear();
+            //ns.serverOps.clear();
         }
         for (let char of characters) {
-            ns.serverOps.add(char);
+            ns.sessionFriendsAndBookmarks.serverOps.add(char);
+            //ns.serverOps.add(char);
             if (!isInitial) {
                 const msg = `[user]${char.value}[/user] is now a server operator.`;
                 this.sendRoutedNotification({
@@ -1000,7 +1012,8 @@ export class ChatViewModelSink implements ChatConnectionSink {
     serverOpsRemoved(characters: CharacterName[]): void {
         const ns = this.viewModel;
         for (let ch of characters) {
-            ns.serverOps.delete(ch);
+            ns.sessionFriendsAndBookmarks.serverOps.delete(ch);
+            //ns.serverOps.delete(ch);
             const msg = `[user]${ch.value}[/user] is no longer a server operator.`;
             this.sendRoutedNotification({
                 text: msg,

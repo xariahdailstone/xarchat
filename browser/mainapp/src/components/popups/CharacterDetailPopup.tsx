@@ -15,8 +15,11 @@ import { DialogButtonStyle } from "../../viewmodel/dialogs/DialogViewModel";
 import { ChatChannelViewModel } from "../../viewmodel/ChatChannelViewModel";
 import { HTMLUtils } from "../../util/HTMLUtils";
 import { StringUtils } from "../../util/StringUtils";
-import { makeRenderingComponent } from "../RenderingComponentBase";
+import { makeRenderingComponent, RenderArguments } from "../RenderingComponentBase";
 import { jsx, Fragment, VNode } from "../../snabbdom/index";
+import { setupTooltipHandling } from "../../viewmodel/popups/TooltipPopupViewModel";
+import { CharacterProfileDialogViewModel } from "../../viewmodel/dialogs/character-profile/CharacterProfileDialogViewModel";
+import { VNodeUtils } from "../../util/VNodeUtils";
 
 @componentArea("popups")
 @componentElement("x-characterdetailpopup")
@@ -25,24 +28,26 @@ export class CharacterDetailPopup extends ContextPopupBase<CharacterDetailPopupV
     constructor() {
         super();
         makeRenderingComponent(this, {
-            render: () => this.render()
+            render: (args) => this.render(args)
         });
 
         this.clickable = true;
 
         this.whenConnectedWithViewModel(() => {
             this.logInfo("connected");
+            const ttdisposable = setupTooltipHandling(this._sroot, this.viewModel!.appViewModel);
             return asDisposable(() => {
                 this.logInfo("no longer connected");
                 this._currentBBCodeParseResult.value = null;
-            });
+            }, ttdisposable);
+            
         });
     }
 
     private readonly _statusMessageTextWCM: WhenChangeManager = new WhenChangeManager();
     private _currentBBCodeParseResult: DisposableOwnerField<BBCodeParseResult> = new DisposableOwnerField();
 
-    protected render(): (VNode | [VNode, IDisposable]) {
+    protected render(args: RenderArguments): (VNode | [VNode, IDisposable]) {
         const vm = this.viewModel;
         if (vm) {
             const disposables: IDisposable[] = [];
@@ -141,30 +146,11 @@ export class CharacterDetailPopup extends ContextPopupBase<CharacterDetailPopupV
                 </div>
 
                 <div classList="character-buttonbar">
-                    <button classList="theme-button char-detail-button character-button-pm" id="elPrivateMessage" on={{
-                            "click": () => { vm.session.activatePMConvo(vm.char); vm.dismissed(); }
-                        }}>Private Message</button>
-                    <button classList="theme-button char-detail-button character-button-flist" id="elFList" on={{
-                            "click": (e: Event) => {
-                                vm.session.bbcodeSink.userClick(vm.char, {
-                                    rightClick: false,
-                                    channelContext: vm.channelViewModel,
-                                    targetElement: e.target as HTMLElement
-                                });
-                                vm.dismissed();
-                            }
-                        }}>Profile</button>
-                    <button classList="theme-button char-detail-button character-button-ignore" id="elIgnore" on={{
-                            "click": () => {
-                                vm.toggleIgnore();
-                            }
-                        }}>{cs.ignored ? "Unignore" : "Ignore"}</button>
-                    <button classList="theme-button theme-button-warning char-detail-button character-button-report" id="elReport" on={{
-                            "click": () => {
-                                vm.submitReport();
-                                vm.dismissed();
-                            }
-                        }}>Report</button>
+                    { this.renderPMButton(args, vm) }
+                    { this.renderProfileButton(args, vm) }
+                    { this.renderBookmarkButton(args, vm) }
+                    { this.renderIgnoreButton(args, vm, cs) }
+                    { this.renderReportButton(args, vm) }
                 </div>
 
                 <div classList="channelop-buttonbar">
@@ -196,8 +182,70 @@ export class CharacterDetailPopup extends ContextPopupBase<CharacterDetailPopupV
             return [resNode, asDisposable(...disposables)];
         }
         else {
-            return <></>;
+            return VNodeUtils.createEmptyFragment();
         }
+    }
+
+    private renderPMButton(args: RenderArguments, vm: CharacterDetailPopupViewModel): VNode {
+        return <button classList="theme-button char-detail-button character-button-pm" id="elPrivateMessage" on={{
+                "click": () => { vm.session.activatePMConvo(vm.char); vm.dismissed(); }
+            }} data-tooltip="Private Message"><x-iconimage src="assets/ui/openpm-icon.svg"></x-iconimage><div classList={["button-label"]}>PM</div></button>
+    }
+
+    private renderProfileButton(args: RenderArguments, vm: CharacterDetailPopupViewModel): VNode {
+        return <button classList="theme-button char-detail-button character-button-flist" id="elFList" on={{
+                "click": (e: Event) => {
+                    const pd = new CharacterProfileDialogViewModel(vm.session.appViewModel, vm.session, vm.char, vm.charProfileInfoPromise);
+                    vm.session.appViewModel.showDialogAsync(pd);
+                    vm.dismissed();
+                }
+            }} data-tooltip="Profile"><x-iconimage src="assets/ui/profile-icon.svg"></x-iconimage><div classList={["button-label"]}>Profile</div></button>
+    }
+
+    private renderBookmarkButton(args: RenderArguments, vm: CharacterDetailPopupViewModel): VNode {
+        let node: VNode;
+
+        if (vm.isBookmark.isValue && vm.isBookmark.value) {
+            node = <button classList="theme-button char-detail-button character-button-bookmark is-bookmark" attrs={{ "disabled": false }} id="elBookmark" on={{
+                    "click": () => vm.toggleBookmarkAsync()
+                }}
+                data-tooltip="Unbookmark"><x-iconimage src="assets/ui/bookmark-remove-icon.svg"></x-iconimage></button>
+        }
+        else {
+            if (vm.isBookmark.isLoading || vm.canBookmark.isLoading) {
+                node = <button classList="theme-button char-detail-button character-button-bookmark is-loading" attrs={{ "disabled": true }} id="elBookmark" on={{}}
+                    data-tooltip="..."><x-iconimage src="assets/ui/loading-anim.svg"></x-iconimage></button>
+            }
+            else if (vm.canBookmark.value) {
+                node = <button classList="theme-button char-detail-button character-button-bookmark is-not-bookmark" attrs={{ "disabled": false }} id="elBookmark" on={{
+                        "click": () => vm.toggleBookmarkAsync()
+                    }}
+                    data-tooltip="Bookmark"><x-iconimage src="assets/ui/bookmark-add-icon.svg"></x-iconimage></button>
+            }
+            else {
+                node = <button classList="theme-button char-detail-button character-button-bookmark cant-bookmark" attrs={{ "disabled": true }} id="elBookmark" on={{}}
+                    data-tooltip="Bookmarks Disabled"><x-iconimage src="assets/ui/bookmarks-icon.svg"></x-iconimage></button>                
+            }
+        }
+
+        return node;
+    }
+
+    private renderIgnoreButton(args: RenderArguments, vm: CharacterDetailPopupViewModel, cs: CharacterStatus): VNode {
+        return <button classList="theme-button char-detail-button character-button-ignore" id="elIgnore" on={{
+                    "click": () => {
+                        vm.toggleIgnore();
+                    }
+                }} data-tooltip={cs.ignored ? "Unignore" : "Ignore"}><x-iconimage src={cs.ignored ? "assets/ui/unignore-icon.svg" : "assets/ui/ignore-icon.svg"}></x-iconimage></button>
+    }
+
+    private renderReportButton(args: RenderArguments, vm: CharacterDetailPopupViewModel): VNode {
+        return <button classList="theme-button theme-button-warning char-detail-button character-button-report" id="elReport" on={{
+                "click": () => {
+                    vm.submitReport();
+                    vm.dismissed();
+                }
+            }} data-tooltip="Report"><x-iconimage src="assets/ui/report-icon.svg"></x-iconimage></button>;
     }
 
     protected renderAlsoInChannels(vm: CharacterDetailPopupViewModel): VNode {

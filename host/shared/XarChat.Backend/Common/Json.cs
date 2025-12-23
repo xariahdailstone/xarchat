@@ -95,6 +95,7 @@ namespace XarChat.Backend.Common
     [JsonSerializable(typeof(PartnerSearchFieldsDefinitions))]
     [JsonSerializable(typeof(GetAllMemosResponse))]
     [JsonSerializable(typeof(SubmitReportResponse))]
+    [JsonSerializable(typeof(SendFriendRequestResponse))]
     internal partial class SourceGenerationContext : JsonSerializerContext
     {
     }

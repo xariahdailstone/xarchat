@@ -280,16 +280,30 @@
     margin-right: 5px;
 }
 
+.setting-item:has(.notifroute-collapse-button-collapsed) {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-rows: auto auto auto auto;
+    grid-template-areas:
+        "title collapsebutton"
+        "description collapsebutton"
+        "inheritprompt collapsebutton"
+        "actionbuttons actionbuttons";
+
+    .notifroute-collapse-button-collapsed { grid-area: collapsebutton; align-self: center; }
+}
 .setting-item:has(.setting-entry-notifroute) {
     display: grid;
-    grid-template-columns: 100%;
+    grid-template-columns: 1fr auto;
     grid-template-rows: auto auto auto auto auto;
     grid-template-areas:
-        "title"
-        "description"
-        "inheritprompt"
-        "input"
-        "actionbuttons";
+        "title collapsebutton"
+        "description collapsebutton"
+        "inheritprompt collapsebutton"
+        "input input"
+        "actionbuttons actionbuttons";
+
+    .notifroute-collapse-button-expanded { grid-area: collapsebutton; align-self: center; }
 }
 .setting-entry-notifroute {
     font-size: 80%;
