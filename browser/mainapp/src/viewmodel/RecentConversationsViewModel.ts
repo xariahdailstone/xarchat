@@ -18,6 +18,8 @@ export class RecentConversationsViewModel extends ObservableBase {
 
     private _lastSelectedCharacterName: CharacterName | null = null;
 
+    isTabActive: boolean = false;
+
     clear() {
         this._lastRefreshCTS.cancel();
 

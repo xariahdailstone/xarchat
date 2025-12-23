@@ -1,5 +1,6 @@
 import { jsx, Fragment, VNode } from "../../snabbdom/index";
 import { asDisposable, EmptyDisposable, IDisposable } from "../../util/Disposable";
+import { VNodeUtils } from "../../util/VNodeUtils";
 import { ReportSource, ReportViewModel } from "../../viewmodel/dialogs/ReportViewModel";
 import { PMConvoChannelViewModel } from "../../viewmodel/PMConvoChannelViewModel";
 import { componentArea, componentElement } from "../ComponentBase";
@@ -22,7 +23,7 @@ export class ReportDialog extends DialogComponentBase<ReportViewModel> {
         const disposables: IDisposable[] = [];
         const vm = this.viewModel;
         if (!vm) {
-            return [<></>, EmptyDisposable];
+            return [VNodeUtils.createEmptyFragment(), EmptyDisposable];
         }
 
         const addDisposable = (d: IDisposable) => disposables.push(d);

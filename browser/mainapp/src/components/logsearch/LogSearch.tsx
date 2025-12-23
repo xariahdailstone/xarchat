@@ -5,6 +5,7 @@ import { IDisposable } from "../../util/Disposable";
 import { ExplicitDate, ExplicitDateUtils } from "../../util/hostinterop/HostInteropLogSearch";
 import { ObjectUniqueId } from "../../util/ObjectUniqueId";
 import { Scheduler } from "../../util/Scheduler";
+import { VNodeUtils } from "../../util/VNodeUtils";
 import { LogSearch3ViewModel } from "../../viewmodel/logsearch/LogSearch3ViewModel";
 import { LogSearchResultsMessageGroupSetViewModel } from "../../viewmodel/logsearch/LogSearchResultsMessageGroupSetViewModel";
 import { LogSearchStatus } from "../../viewmodel/logsearch/LogSearchStatus";
@@ -27,7 +28,7 @@ export class LogSearch3 extends StageViewComponent<LogSearch3ViewModel> {
     }
 
     render(args: RenderArguments): VNode {
-        if (this.viewModel == null) { return <></>; }
+        if (this.viewModel == null) { return VNodeUtils.createEmptyFragment(); }
         const vm = this.viewModel;
 
         return <div class={{ "logsearch-main": true }}>
@@ -69,7 +70,7 @@ export class LogSearch3 extends StageViewComponent<LogSearch3ViewModel> {
             return this.renderArgsDetailsPMConvo(args, vm);
         }
         else {
-            return <></>;
+            return VNodeUtils.createEmptyFragment();
         }
     }
 
@@ -305,7 +306,7 @@ export class LogSearch3SetView extends RenderingComponentBase<LogSearchResultsMe
 
     protected render(args: RenderArguments): VNode {
         const vm = this.viewModel;
-        if (!vm) { return <></>; }
+        if (!vm) { return VNodeUtils.createEmptyFragment(); }
 
         const groupSelectNodes: VNode[] = [];
         for (let g of vm.groups) {
@@ -324,7 +325,7 @@ export class LogSearch3SetView extends RenderingComponentBase<LogSearchResultsMe
             ? <x-channelstream key={`stream-${ObjectUniqueId.get(vm.selectedGroup.channel)}`}
                 classList={[ "selectedgroup-stream" ]} 
                 props={{ "viewModel": vm.selectedGroup.channel }}></x-channelstream>
-            : <></>;
+            : VNodeUtils.createEmptyFragment();
 
         return <div classList={[]}>
             <div classList={[ "timerange-group-container" ]}>{groupSelectNodes}</div>

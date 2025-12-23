@@ -21,6 +21,7 @@ import { Optional } from "../util/Optional.js";
 import { StringUtils } from "../util/StringUtils.js";
 import { ISubrenderingManager } from "../util/SubrenderingManager.js";
 import { SubrenderingManager2 } from "../util/SubrenderingManager2.js";
+import { VNodeUtils } from "../util/VNodeUtils.js";
 import { WhenChangeManager } from "../util/WhenChange.js";
 import { KeyValuePair } from "../util/collections/KeyValuePair.js";
 import { ActiveLoginViewModel } from "../viewmodel/ActiveLoginViewModel.js";
@@ -405,7 +406,7 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
 
     protected render(): (VNode | [VNode, IDisposable]) {
         const vm = this.viewModel;
-        if (!vm || vm.isLoggingIn) { return <></>; }
+        if (!vm || vm.isLoggingIn) { return VNodeUtils.createEmptyFragment(); }
 
         const disposables: ConvertibleToDisposable[] = [];
         const addDisposable = (d: ConvertibleToDisposable) => disposables.push(d);

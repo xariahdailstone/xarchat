@@ -31,7 +31,7 @@
 //                 }} />
 //         }
 //         else {
-//             return <></>;
+//             return VNodeUtils.createEmptyFragment();
 //         }
 //     }
 // }

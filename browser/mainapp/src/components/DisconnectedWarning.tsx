@@ -4,6 +4,7 @@ import { ActiveLoginViewModel, ChatConnectionState } from "../viewmodel/ActiveLo
 import { ComponentBase, componentElement } from "./ComponentBase";
 import { RenderingComponentBase } from "./RenderingComponentBase";
 import { Fragment, init, jsx, VNode, styleModule, toVNode, propsModule, eventListenersModule } from "../snabbdom/index.js";
+import { VNodeUtils } from "../util/VNodeUtils";
 
 @componentElement("x-disconnectedwarning")
 export class DisconnectedWarning extends RenderingComponentBase<ActiveLoginViewModel> {
@@ -54,6 +55,6 @@ export class DisconnectedWarning extends RenderingComponentBase<ActiveLoginViewM
             return el;
         }
         
-        return <></>;
+        return VNodeUtils.createEmptyFragment();
     }
 }

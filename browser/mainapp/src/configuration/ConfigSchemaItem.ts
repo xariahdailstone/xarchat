@@ -437,7 +437,8 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                                 1: (v) => { 
                                     return addNotifRoutes(v, [ "toast", "notification" ]);
                                 }
-                            }
+                            },
+                            hidden: true
                         },
                         {
                             scope: getScopeArray(["global", "char"]),
@@ -453,7 +454,8 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                                 1: (v) => { 
                                     return addNotifRoutes(v, [ "toast", "notification" ]);
                                 }
-                            }
+                            },
+                            hidden: true
                         },
                         {
                             scope: getScopeArray(["global", "char"]),
@@ -469,7 +471,8 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                                 1: (v) => { 
                                     return addNotifRoutes(v, [ "toast", "notification" ]);
                                 }
-                            }
+                            },
+                            hidden: true
                         },
                         {
                             scope: getScopeArray(["global", "char"]),
@@ -1528,7 +1531,7 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                 },
                 {
                     id: "logFileSize",
-                    scope: getScopeArray(["global", "char", "chan", "convo"]),
+                    scope: getScopeArray(["global"]),
                     title: "Total Log Size",
                     description: "The current total size of your entire chat log file, including all channels and PM conversations.",
                     type: "displaytext",

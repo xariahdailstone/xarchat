@@ -43,6 +43,8 @@ export class NotificationManagerViewModel extends ObservableBase implements IDis
     }
     [Symbol.dispose]() { this.dispose(); }
 
+    isTabActive: boolean = false;
+
     private readonly _persistentSetState = new NotificationSetState();
     private readonly _transientSetState = new NotificationSetState();
 

@@ -4,6 +4,7 @@ import { ReadOnlyObservableCollection } from "../util/ObservableCollection";
 import { ObservableExpression } from "../util/ObservableExpression";
 import { Scheduler } from "../util/Scheduler";
 import { ScrollAnchorTo } from "../util/ScrollAnchorTo";
+import { VNodeUtils } from "../util/VNodeUtils";
 import { INotificationSetState, NotificationViewModel, NotificationManagerViewModel, NotificationSetState, NotificationButtonViewModel } from "../viewmodel/NotificationManagerViewModel";
 import { AnchorElementInfo, AnchorElementScrollTo, DefaultStreamScrollManager, ScrollSuppressionReason } from "./ChannelStream";
 import { componentElement } from "./ComponentBase";
@@ -18,7 +19,7 @@ export class NotificationManager extends RenderingComponentBase<NotificationMana
     }
 
     render(args: RenderArguments): VNode {
-        if (!this.viewModel) { return <></>; }
+        if (!this.viewModel) { return VNodeUtils.createEmptyFragment(); }
         const vm = this.viewModel;
 
         let transientNotificationsTitle = "Notifications";

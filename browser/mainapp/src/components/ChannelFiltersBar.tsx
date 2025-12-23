@@ -1,6 +1,7 @@
 import { jsx, Fragment, VNode } from "../snabbdom/index";
 import { IDisposable } from "../util/Disposable";
 import { HTMLUtils } from "../util/HTMLUtils";
+import { VNodeUtils } from "../util/VNodeUtils";
 import { ChannelFiltersViewModel } from "../viewmodel/ChannelFiltersViewModel";
 import { ChannelViewModel } from "../viewmodel/ChannelViewModel";
 import { ChatChannelMessageMode, ChatChannelViewModel } from "../viewmodel/ChatChannelViewModel";
@@ -16,7 +17,7 @@ export class ChannelFiltersBar extends RenderingComponentBase<ChannelViewModel> 
 
     override render(): (VNode | [VNode, IDisposable]) {
         const vm = this.viewModel;
-        if (!vm || !vm.channelFilters) { return <></>; }
+        if (!vm || !vm.channelFilters) { return VNodeUtils.createEmptyFragment(); }
 
         return <>
             <div classList="filtericon"><x-iconimage id="elFilterIcon" attr-src="assets/ui/filter-icon.svg"></x-iconimage></div>

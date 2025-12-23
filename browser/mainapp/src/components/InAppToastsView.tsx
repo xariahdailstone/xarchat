@@ -3,6 +3,7 @@ import { asDisposable, ConvertibleToDisposable, IDisposable } from "../util/Disp
 import { EventListenerUtil } from "../util/EventListenerUtil";
 import { ObjectUniqueId } from "../util/ObjectUniqueId";
 import { StringUtils } from "../util/StringUtils";
+import { VNodeUtils } from "../util/VNodeUtils";
 import { InAppToastsViewModel, InternalToastInfo, ToastCloseReason } from "../viewmodel/InAppToastsViewModel";
 import { ComponentBase, componentElement } from "./ComponentBase";
 import { RenderingComponentBase } from "./RenderingComponentBase";
@@ -16,11 +17,11 @@ export class InAppToastsView extends RenderingComponentBase<InAppToastsViewModel
     private readonly SYM_ALREADYSHOWN = Symbol();
 
     protected render(): (VNode | [VNode, IDisposable]) {
-        if (!this.viewModel) { return <></>; }
+        if (!this.viewModel) { return VNodeUtils.createEmptyFragment(); }
         const vm = this.viewModel;
 
         // if (vm.toasts.length == 0) {
-        //     return <></>;
+        //     return VNodeUtils.createEmptyFragment();
         // }
 
         const disposables: ConvertibleToDisposable[] = [];
