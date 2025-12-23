@@ -1,5 +1,6 @@
 import { NotificationRouting, NotificationRoutingTargetSetting } from "../../../../configuration/NotificationRouting";
 import { jsx, VNode, Fragment } from "../../../../snabbdom/index";
+import { VNodeUtils } from "../../../../util/VNodeUtils";
 import { settingsRendererFor, SettingRenderArgs } from "./SettingsTypeRenderer";
 import { SettingTypeRendererBase } from "./SettingTypeRendererBase";
 
@@ -99,12 +100,12 @@ export class NotifRoutesSettingRenderer extends SettingTypeRendererBase {
             return <div classList={["notifroute-button-container"]} attr-title={showButton ? tooltip : ""}>
                 <div classList={["notifroute-button-container-title"]}>{title}</div>
                 <div classList={["notifroute-button-container-description"]}>{tooltip}</div>
-                {showButton ? makeButton(title, curValue, id, availableOptions) : <></>}
+                {showButton ? makeButton(title, curValue, id, availableOptions) : VNodeUtils.createEmptyFragment()}
             </div>;
         };
         const makeUnavailableSelect = () => {
             return <div classList={["notifroute-button-container"]}>
-                <></>
+                { VNodeUtils.createEmptyFragment() }
             </div>;
         };
 

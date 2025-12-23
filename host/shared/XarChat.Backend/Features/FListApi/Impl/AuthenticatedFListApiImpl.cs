@@ -222,6 +222,7 @@ namespace XarChat.Backend.Features.FListApi.Impl
                 { "target", theirCharName },
             };
 
+
             System.Diagnostics.Debug.WriteLine($"addfriendrequest {myCharName} -> {theirCharName}");
             var result = await PerformAuthenticatedRequest<SendFriendRequestResponse>("api/request-send2.php", formData,
                 SourceGenerationContext.Default.SendFriendRequestResponse, cancellationToken);

@@ -7,7 +7,7 @@ import { Observable, ObservableValue, PropertyChangeEvent, PropertyChangeEventLi
 import { observableProperty, setupValueSubscription } from "../util/ObservableBase.js";
 import { DictionaryChangeType } from "../util/ObservableKeyedLinkedList.js";
 import { Scheduler } from "../util/Scheduler.js";
-import { CharacterNameSet } from "../viewmodel/CharacterNameSet.js";
+import { CharacterNameSet, ReadOnlyCharacterNameSet } from "../viewmodel/CharacterNameSet.js";
 import { CharacterGender } from "./CharacterGender.js";
 import { CharacterName } from "./CharacterName.js";
 import { NicknameSet } from "./NicknameSet.js";
@@ -18,10 +18,10 @@ export class CharacterSet implements IDisposable {
 
     static emptyStatus(
         name: CharacterName, 
-        ignoreSet?: CharacterNameSet,
-        friendsSet?: CharacterNameSet,
-        bookmarkSet?: CharacterNameSet,
-        interestsSet?: CharacterNameSet,
+        ignoreSet?: ReadOnlyCharacterNameSet,
+        friendsSet?: ReadOnlyCharacterNameSet,
+        bookmarkSet?: ReadOnlyCharacterNameSet,
+        interestsSet?: ReadOnlyCharacterNameSet,
         nicknameSet?: NicknameSet,
         lingeringGender?: (LingeringCharacterGender | null)) {
 
@@ -55,13 +55,19 @@ export class CharacterSet implements IDisposable {
     [Symbol.dispose]() { this.dispose(); }
 
 
-    private _ignoreSet: CharacterNameSet | undefined;
-    private _friendSet: CharacterNameSet | undefined;
-    private _bookmarkSet: CharacterNameSet | undefined;
-    private _interestsSet: CharacterNameSet | undefined;
+    private _ignoreSet: ReadOnlyCharacterNameSet | undefined;
+    private _friendSet: ReadOnlyCharacterNameSet | undefined;
+    private _bookmarkSet: ReadOnlyCharacterNameSet | undefined;
+    private _interestsSet: ReadOnlyCharacterNameSet | undefined;
     private _nicknameSet: NicknameSet | undefined ;
 
-    initializeSets(ignoreSet: CharacterNameSet, friendSet: CharacterNameSet, bookmarkSet: CharacterNameSet, interestsSet: CharacterNameSet, nicknameSet: NicknameSet) {
+    initializeSets(
+        ignoreSet: ReadOnlyCharacterNameSet, 
+        friendSet: ReadOnlyCharacterNameSet, 
+        bookmarkSet: ReadOnlyCharacterNameSet, 
+        interestsSet: ReadOnlyCharacterNameSet, 
+        nicknameSet: NicknameSet) {
+
         this._ignoreSet = ignoreSet;
         this._friendSet = friendSet;
         this._bookmarkSet = bookmarkSet;

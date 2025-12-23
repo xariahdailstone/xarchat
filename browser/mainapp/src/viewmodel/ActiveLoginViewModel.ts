@@ -12,7 +12,7 @@ import { Collection, CollectionChangeEvent, CollectionChangeType, ObservableColl
 import { DictionaryChangeType, ObservableKeyExtractedOrderedDictionary, ObservableOrderedDictionaryImpl, ObservableOrderedSet } from "../util/ObservableKeyedLinkedList.js";
 import { AppNotifyEventType, AppViewModel, AppViewModelBBCodeSink, GetConfigSettingChannelViewModel } from "./AppViewModel.js";
 import { ChannelMessageViewModel, ChannelViewModel } from "./ChannelViewModel.js";
-import { CharacterNameSet, CharacterNameSetImpl } from "./CharacterNameSet.js";
+import { CharacterNameSet, CharacterNameSetImpl, ReadOnlyCharacterNameSet } from "./CharacterNameSet.js";
 import { ChatChannelPresenceState, ChatChannelViewModel, ChatChannelViewModelSortKey } from "./ChatChannelViewModel.js";
 import { ConsoleChannelViewModel } from "./ConsoleChannelViewModel.js";
 import { PMConvoChannelViewModel, PMConvoChannelViewModelSortKey } from "./PMConvoChannelViewModel.js";
@@ -452,33 +452,33 @@ export class ActiveLoginViewModel extends ObservableBase implements IDisposable 
 
     readonly sessionFriendsAndBookmarks: SessionFriendsAndBookmarksViewModel;
 
-    get serverOps(): CharacterNameSet { return this.sessionFriendsAndBookmarks.serverOps; }
+    get serverOps(): ReadOnlyCharacterNameSet { return this.sessionFriendsAndBookmarks.serverOps; }
 
-    get friends(): CharacterNameSet { return this.sessionFriendsAndBookmarks.friends; }
+    get friends(): ReadOnlyCharacterNameSet { return this.sessionFriendsAndBookmarks.friends; }
 
-    get bookmarks(): CharacterNameSet { return this.sessionFriendsAndBookmarks.bookmarks; }
+    get bookmarks(): ReadOnlyCharacterNameSet { return this.sessionFriendsAndBookmarks.bookmarks; }
 
-    get interests(): CharacterNameSet { return this.sessionFriendsAndBookmarks.interests; }
+    get interests(): ReadOnlyCharacterNameSet { return this.sessionFriendsAndBookmarks.interests; }
 
-    get watchedChars(): CharacterNameSet { return this.sessionFriendsAndBookmarks.watchedChars; }
+    get watchedChars(): ReadOnlyCharacterNameSet { return this.sessionFriendsAndBookmarks.watchedChars; }
 
-    get ignoredChars(): CharacterNameSet { return this.sessionFriendsAndBookmarks.ignored; }
+    get ignoredChars(): ReadOnlyCharacterNameSet { return this.sessionFriendsAndBookmarks.ignored; }
 
-    get onlineFriends(): CharacterNameSet { return this.sessionFriendsAndBookmarks.onlineFriends; }
+    get onlineFriends(): ReadOnlyCharacterNameSet { return this.sessionFriendsAndBookmarks.onlineFriends; }
 
-    get onlineBookmarks(): CharacterNameSet { return this.sessionFriendsAndBookmarks.onlineBookmarks; }
+    get onlineBookmarks(): ReadOnlyCharacterNameSet { return this.sessionFriendsAndBookmarks.onlineBookmarks; }
 
-    get onlineInterests(): CharacterNameSet { return this.sessionFriendsAndBookmarks.onlineInterests; }
+    get onlineInterests(): ReadOnlyCharacterNameSet { return this.sessionFriendsAndBookmarks.onlineInterests; }
 
-    get onlineWatchedChars(): CharacterNameSet { return this.sessionFriendsAndBookmarks.watchedChars; }
+    get onlineWatchedChars(): ReadOnlyCharacterNameSet { return this.sessionFriendsAndBookmarks.onlineWatchedChars; }
 
-    get lookingFriends(): CharacterNameSet { return this.sessionFriendsAndBookmarks.onlineFriends; }
+    get lookingFriends(): ReadOnlyCharacterNameSet { return this.sessionFriendsAndBookmarks.lookingFriends; }
 
-    get lookingBookmarks(): CharacterNameSet { return this.sessionFriendsAndBookmarks.onlineBookmarks; }
+    get lookingBookmarks(): ReadOnlyCharacterNameSet { return this.sessionFriendsAndBookmarks.lookingBookmarks; }
 
-    get lookingInterests(): CharacterNameSet { return this.sessionFriendsAndBookmarks.onlineInterests; }
+    get lookingInterests(): ReadOnlyCharacterNameSet { return this.sessionFriendsAndBookmarks.lookingInterests; }
 
-    get lookingWatchedChars(): CharacterNameSet { return this.sessionFriendsAndBookmarks.watchedChars; }
+    get lookingWatchedChars(): ReadOnlyCharacterNameSet { return this.sessionFriendsAndBookmarks.lookingWatchedChars; }
 
     @observableProperty
     watchedListFilter: WatchedListFilterType = WatchedListFilterType.ONLINE;

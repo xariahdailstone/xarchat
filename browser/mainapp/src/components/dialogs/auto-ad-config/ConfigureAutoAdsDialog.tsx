@@ -6,6 +6,7 @@ import { asDisposable, ConvertibleToDisposable, EmptyDisposable, IDisposable } f
 import { IterableUtils } from "../../../util/IterableUtils";
 import { ObjectUniqueId } from "../../../util/ObjectUniqueId";
 import { StringUtils } from "../../../util/StringUtils";
+import { VNodeUtils } from "../../../util/VNodeUtils";
 import { ChatChannelMessageMode } from "../../../viewmodel/ChatChannelViewModel";
 import { ConfigureAutoAdsViewModel, ConfiguredAdViewModel } from "../../../viewmodel/ConfigureAutoAdsViewModel";
 import { componentArea, componentElement } from "../../ComponentBase";
@@ -29,7 +30,7 @@ export class ConfigureAutoAdsDialog extends DialogComponentBase<ConfigureAutoAds
 
     render(): [VNode, IDisposable] {
         const vm = this.viewModel;
-        if (!vm) { return [ <></>, EmptyDisposable ] };
+        if (!vm) { return [ VNodeUtils.createEmptyFragment(), EmptyDisposable ] };
 
         const disposables: ConvertibleToDisposable[] = [];
 

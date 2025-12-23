@@ -5,7 +5,7 @@ import { CallbackSet } from "../util/CallbackSet";
 import { IDisposable } from "../util/Disposable";
 import { PropertyChangeEventListener, ValueSubscription } from "../util/Observable";
 import { Collection } from "../util/ObservableCollection";
-import { DictionaryChangeEvent, ObservableKeyExtractedOrderedDictionary, ObservableOrderedDictionaryImpl } from "../util/ObservableKeyedLinkedList";
+import { DictionaryChangeEvent, ObservableKeyExtractedOrderedDictionary, ObservableOrderedDictionaryImpl, ReadOnlyObservableOrderedDictionary } from "../util/ObservableKeyedLinkedList";
 import { KeyValuePair } from "../util/collections/KeyValuePair";
 import { StdObservableCollectionChangeType, StdObservableCollectionObserver } from "../util/collections/ReadOnlyStdObservableCollection";
 import { ActiveLoginViewModel } from "./ActiveLoginViewModel";
@@ -13,6 +13,10 @@ import { ActiveLoginViewModel } from "./ActiveLoginViewModel";
 export interface CharacterNameSet extends ObservableKeyExtractedOrderedDictionary<CharacterName, CharacterName> {
     clear(): void;
 
+    rawHas(name: CharacterName): boolean;
+}
+
+export interface ReadOnlyCharacterNameSet extends ReadOnlyObservableOrderedDictionary<CharacterName, CharacterName> {
     rawHas(name: CharacterName): boolean;
 }
 

@@ -1,6 +1,7 @@
 import { CharacterName } from "../shared/CharacterName";
 import { jsx, Fragment, VNode } from "../snabbdom/index";
 import { CharacterLinkUtils } from "../util/CharacterLinkUtils";
+import { VNodeUtils } from "../util/VNodeUtils";
 import { FriendRequestSet, FriendsAndBookmarksViewModel } from "../viewmodel/FriendsAndBookmarksViewModel";
 import { LoadingOrValueOrError } from "../viewmodel/LoadingOrValueOrError";
 import { componentElement } from "./ComponentBase";
@@ -20,7 +21,7 @@ export class FriendsAndBookmarks extends StageViewComponent<FriendsAndBookmarksV
 
     render(args: RenderArguments): VNode {
         const vm = this.viewModel;
-        if (!vm) { return <></>; }
+        if (!vm) { return VNodeUtils.createEmptyFragment(); }
 
         return <>
             <div classList={[ "friends-column" ]}>
@@ -52,7 +53,7 @@ export class FriendsAndBookmarks extends StageViewComponent<FriendsAndBookmarksV
     }
 
     renderFriendRequestsSection(args: RenderArguments, vm: FriendsAndBookmarksViewModel, mvalue: LoadingOrValueOrError<FriendRequestSet>): VNode {
-        if (mvalue.isLoading || mvalue.isError) { return <></>; }
+        if (mvalue.isLoading || mvalue.isError) { return <div key="friendrequests-section" classList={[ "hidden", "section", "friendrequests-section" ]}></div>; }
 
         const v = mvalue.value!;
 
@@ -94,7 +95,7 @@ export class FriendsAndBookmarks extends StageViewComponent<FriendsAndBookmarksV
 
     renderFriendsSection(args: RenderArguments, friendMap: Map<CharacterName, CharacterName[]>): VNode {
         const vm = this.viewModel;
-        if (!vm) { return <></>; }
+        if (!vm) { return VNodeUtils.createEmptyFragment(); }
 
         const fgroupNodes: VNode[] = [];
         const fkeys = [...friendMap.keys()];
@@ -149,7 +150,7 @@ export class FriendsAndBookmarks extends StageViewComponent<FriendsAndBookmarksV
 
     renderBookmarksSection(args: RenderArguments, bookmarksList: CharacterName[]): VNode {
         const vm = this.viewModel;
-        if (!vm) { return <></>; }
+        if (!vm) { return VNodeUtils.createEmptyFragment(); }
 
         const bmNodes: VNode[] = [];
         for (let bm of bookmarksList) {

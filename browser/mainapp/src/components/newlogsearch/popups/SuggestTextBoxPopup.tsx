@@ -32,11 +32,11 @@
 //                 case SuggestTextboxDropdownState.IDLE:
 //                     return this.renderList(vm);
 //                 default:
-//                     return <></>;
+//                     return VNodeUtils.createEmptyFragment();
 //             }
 //         }
 //         else {
-//             return <></>;
+//             return VNodeUtils.createEmptyFragment();
 //         }
 //     }
 

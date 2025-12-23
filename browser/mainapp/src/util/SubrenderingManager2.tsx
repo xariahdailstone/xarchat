@@ -6,6 +6,7 @@ import { Logger, Logging } from "./Logger";
 import { DependencySet, IObservable, Observable, PropertyChangeEvent, PropertyChangeEventListener, ValueSubscription } from "./Observable";
 import { setupValueSubscription } from "./ObservableBase";
 import { ISubrenderingManager, SubrenderArguments } from "./SubrenderingManager";
+import { VNodeUtils } from "./VNodeUtils";
 
 export class SubrenderingManager2 implements ISubrenderingManager {
     constructor(private readonly name: string) {
@@ -93,7 +94,7 @@ export class SubrenderingManager2 implements ISubrenderingManager {
     }
 
     getOrCreate<TAdditionalData>(key: string, additionalData: TAdditionalData, createFunc: (rargs: SubrenderArguments<TAdditionalData>) => VNode): VNode {
-        if (this._isDisposed) { return <></>; }
+        if (this._isDisposed) { return VNodeUtils.createEmptyFragment(); }
         const cachedValue = this._currentSubrenders.get(key);
         if (cachedValue) {
             if (cachedValue.isExpired) {

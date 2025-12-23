@@ -170,7 +170,9 @@ export class FriendsAndBookmarksViewModel extends ObservableBase {
         } 
     }
 
-    acceptIncomingRequest(entry: FriendRequestEntry) {
+    async acceptIncomingRequest(entry: FriendRequestEntry) {
+        await this.session.authenticatedApi.acceptIncomingFriendRequestAsync(entry.id, CancellationToken.NONE);
+        await this.session.sessionFriendsAndBookmarks.forceGetFriendsList();
     }
 
     rejectIncomingRequest(entry: FriendRequestEntry) {

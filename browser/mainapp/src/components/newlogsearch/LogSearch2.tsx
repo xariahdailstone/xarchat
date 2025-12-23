@@ -4,6 +4,7 @@ import { asDisposable, IDisposable, isDisposable, maybeDispose } from "../../uti
 import { HTMLUtils } from "../../util/HTMLUtils";
 import { observableProperty } from "../../util/ObservableBase";
 import { Scheduler } from "../../util/Scheduler";
+import { VNodeUtils } from "../../util/VNodeUtils";
 import { LogSearch2ViewModel, VirtualScrollViewModel, VirtualScrollBarViewModel, CurrentDisplayItems } from "../../viewmodel/newlogsearch/LogSearch2ViewModel";
 import { SearchStreamSpecChannelViewModel, SearchStreamSpecPMConvoViewModel } from "../../viewmodel/newlogsearch/SearchCriteriaViewModel";
 import { componentArea, ComponentBase, componentElement } from "../ComponentBase";
@@ -34,7 +35,7 @@ export class LogSearch2 extends RenderingComponentBase<LogSearch2ViewModel> {
             return [resultNode, asDisposable(...disposables)];
         }
         else {
-            return <></>;
+            return VNodeUtils.createEmptyFragment();
         }
     }
 

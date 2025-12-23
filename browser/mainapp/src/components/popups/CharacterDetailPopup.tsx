@@ -19,6 +19,7 @@ import { makeRenderingComponent, RenderArguments } from "../RenderingComponentBa
 import { jsx, Fragment, VNode } from "../../snabbdom/index";
 import { setupTooltipHandling } from "../../viewmodel/popups/TooltipPopupViewModel";
 import { CharacterProfileDialogViewModel } from "../../viewmodel/dialogs/character-profile/CharacterProfileDialogViewModel";
+import { VNodeUtils } from "../../util/VNodeUtils";
 
 @componentArea("popups")
 @componentElement("x-characterdetailpopup")
@@ -181,7 +182,7 @@ export class CharacterDetailPopup extends ContextPopupBase<CharacterDetailPopupV
             return [resNode, asDisposable(...disposables)];
         }
         else {
-            return <></>;
+            return VNodeUtils.createEmptyFragment();
         }
     }
 

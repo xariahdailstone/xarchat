@@ -1,6 +1,7 @@
 import { jsx, Fragment, VNode } from "../../snabbdom/index";
 import { IDisposable } from "../../util/Disposable";
 import { HTMLUtils } from "../../util/HTMLUtils";
+import { VNodeUtils } from "../../util/VNodeUtils";
 import { ChannelFiltersViewModel, ChannelNamedFilterViewModel } from "../../viewmodel/ChannelFiltersViewModel";
 import { ChatChannelViewModel } from "../../viewmodel/ChatChannelViewModel";
 import { ChannelFiltersEditPopupViewModel } from "../../viewmodel/popups/ChannelFiltersEditPopupViewModel";
@@ -29,7 +30,7 @@ export class ChannelFiltersEditPopup extends ContextPopupBase<ChannelFiltersEdit
     render(): (VNode | [VNode, IDisposable]) {
         const vm = this.viewModel;
         if (!vm) {
-            return <></>;
+            return VNodeUtils.createEmptyFragment();
         }
         else
         {
@@ -155,7 +156,7 @@ export class ChannelFiltersEditPopup extends ContextPopupBase<ChannelFiltersEdit
                                     </div>
                                 </label>
                             </>
-                            : <></> }
+                            : VNodeUtils.createEmptyFragment() }
                     </div>
                 </div>
             </>;
