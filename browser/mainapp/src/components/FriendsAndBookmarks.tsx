@@ -68,8 +68,8 @@ export class FriendsAndBookmarks extends StageViewComponent<FriendsAndBookmarksV
 
                 childNodes.push(<div key={`req-${c.myCharacterName.canonicalValue}#${c.interlocutorCharacterName.canonicalValue}`} classList={[ "friendrequests-list-item"]}>
                     <div classList={[ "friendrequests-list-item-name" ]}>{charVNode}</div>
-                    <button classList={[ "friendrequests-list-item-accept" ]} on={{ "click": () => { vm.acceptIncomingRequest(c); } }}>Accept</button>
-                    <button classList={[ "friendrequests-list-item-reject" ]} on={{ "click": () => { vm.rejectIncomingRequest(c); } }}>Ignore</button>
+                    <button classList={[ "friendrequests-list-item-accept", "themed" ]} on={{ "click": () => { vm.acceptIncomingRequest(c); } }}>Accept</button>
+                    <button classList={[ "friendrequests-list-item-reject", "themed" ]} on={{ "click": () => { vm.rejectIncomingRequest(c); } }}>Ignore</button>
                 </div>);
             }
 

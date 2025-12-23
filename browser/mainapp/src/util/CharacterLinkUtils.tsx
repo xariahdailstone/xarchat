@@ -8,7 +8,7 @@ import { ChannelViewModel, IChannelStreamViewModel } from "../viewmodel/ChannelV
 import { ChatChannelViewModel } from "../viewmodel/ChatChannelViewModel";
 import { CharacterDetailPopupViewModel } from "../viewmodel/popups/CharacterDetailPopupViewModel";
 import { CallbackSet } from "./CallbackSet";
-import { EffectiveCharacterNameInfo, EffectiveCharacterNameInfoProvider, getEffectiveCharacterNameInfo, getEffectiveCharacterNameVNodes, getEffectiveCharacterNameVNodes2 } from "./CharacterNameIcons";
+import { CharacterLinkIconType, EffectiveCharacterNameInfo, EffectiveCharacterNameInfoProvider, getEffectiveCharacterNameInfo, getEffectiveCharacterNameVNodes, getEffectiveCharacterNameVNodes2 } from "./CharacterNameIcons";
 import { ConvertibleToDisposable, IDisposable, asDisposable } from "./Disposable";
 import { EventListenerUtil } from "./EventListenerUtil";
 import { ObjectUniqueId } from "./ObjectUniqueId";
@@ -17,6 +17,7 @@ import { setupValueSubscription } from "./ObservableBase";
 
 export interface CharacterLinkOptions {
     disallowLeftClick?: boolean;
+    suppressIcons?: CharacterLinkIconType[];
 }
 
 export class CharacterLinkUtils {
@@ -50,7 +51,7 @@ export class CharacterLinkUtils {
                         return false;
                     }
                 }
-            }}>{getEffectiveCharacterNameVNodes2(char, ecni)}</span>;
+            }}>{getEffectiveCharacterNameVNodes2(char, ecni, options)}</span>;
         return vnode;
     }
 

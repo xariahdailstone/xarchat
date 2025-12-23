@@ -69,3 +69,7 @@
 * Added an option to swap the behavior of Enter and Shift+Enter in the chat text entry textbox.
   * Default, pre-existing behavior is that Shift+Enter adds a line break into the chat message, and
 	Enter sends the message.
+* Added an interface to view and maintain friends and bookmarks lists
+  * Available under the "..." tab on the left bar.
+* Added an interface to view and maintain your ignore list
+  * Available under the "..." tab on the left bar.

@@ -115,5 +115,11 @@
 
     &:hover:not(.selected) {
         background-color: rgba(255, 255, 255, 0.05);
-    }    
+    }
+
+    .friendrequests-list-item-accept,
+    .friendrequests-list-item-reject {
+        zoom: 0.75;
+        padding: 4px 9px;
+    }
 }

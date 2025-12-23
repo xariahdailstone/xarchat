@@ -56,6 +56,7 @@ import { CallbackSet } from "../util/CallbackSet.js";
 import { LogSearch3ViewModel } from "./logsearch/LogSearch3ViewModel.js";
 import { FriendsAndBookmarksViewModel } from "./FriendsAndBookmarksViewModel.js";
 import { SessionFriendsAndBookmarksViewModel } from "./AccountsFriendsAndBookmarksViewModel.js";
+import { IgnoreListViewModel } from "./IgnoreListViewModel.js";
 
 declare const XCHost: any;
 
@@ -98,6 +99,8 @@ export class ActiveLoginViewModel extends ObservableBase implements IDisposable 
 
         this.friendAndBookmarksTab = new FriendsAndBookmarksViewModel(this);
 
+        this.ignoreListTab = new IgnoreListViewModel(this);
+
         this.miscTabs.push(new MiscTabViewModel(this, "Console", this.console));
         //this._logSearchViewModel = new LogSearchViewModel(this, this.appViewModel, savedChatState.characterName);
         //this.miscTabs.push(new MiscTabViewModel(this, "Log Viewer", this._logSearchViewModel));
@@ -112,6 +115,7 @@ export class ActiveLoginViewModel extends ObservableBase implements IDisposable 
         this.miscTabs.push(new MiscTabViewModel(this, "Recent Conversations", this.recentConversations));
         this.miscTabs.push(new MiscTabViewModel(this, "Recent Notifications", this.recentNotifications));
         this.miscTabs.push(new MiscTabViewModel(this, "Friends & Bookmarks", this.friendAndBookmarksTab));
+        this.miscTabs.push(new MiscTabViewModel(this, "Ignores", this.ignoreListTab));
 
         this.leftTabs = new LeftSidebarTabContainerViewModel(this);
         this.rightTabs = new RightSidebarTabContainerViewModel(this);
@@ -497,6 +501,8 @@ export class ActiveLoginViewModel extends ObservableBase implements IDisposable 
     readonly recentNotifications: NotificationManagerViewModel;
 
     readonly friendAndBookmarksTab: FriendsAndBookmarksViewModel;
+
+    readonly ignoreListTab: IgnoreListViewModel;
 
     get pingWords() { return this.savedChatState.pingWords; };
 

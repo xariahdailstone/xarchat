@@ -16,6 +16,7 @@ import { ReportSource, ReportViewModel } from "../dialogs/ReportViewModel";
 import { ContextPopupViewModel, PopupViewModel } from "./PopupViewModel";
 import { LoadingOrValueOrError } from "../LoadingOrValueOrError";
 import { ProfileInfo } from "../../fchat/api/FListApi";
+import { CatchUtils } from "../../util/CatchUtils";
 
 export class CharacterDetailPopupViewModel extends ContextPopupViewModel {
     constructor(
@@ -53,8 +54,13 @@ export class CharacterDetailPopupViewModel extends ContextPopupViewModel {
         const cpip = session.authenticatedApi.getCharacterProfileAsync(char, CancellationToken.NONE);
         this._charProfileInfoPromise = cpip;
         (async () => {
-            const profInfo = await cpip;
-            this.canBookmark = LoadingOrValueOrError.value(!profInfo.settings.prevent_bookmarks);
+            try {
+                const profInfo = await cpip;
+                this.canBookmark = LoadingOrValueOrError.value(!profInfo.settings.prevent_bookmarks);
+            }
+            catch (e) {
+                this.canBookmark = LoadingOrValueOrError.error(CatchUtils.getMessage(e));
+            }
         })();
     }
 
