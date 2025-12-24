@@ -4,6 +4,7 @@ import { jsx, VNode, Fragment, Classes } from "../snabbdom/index";
 import { asDisposable, ConvertibleToDisposable, IDisposable } from "../util/Disposable";
 import { StringUtils } from "../util/StringUtils";
 import { URLUtils } from "../util/URLUtils";
+import { VNodeUtils } from "../util/VNodeUtils";
 import { RecentConversationsViewModel } from "../viewmodel/RecentConversationsViewModel";
 import { componentElement } from "./ComponentBase";
 import { RenderingStageViewComponent, stageViewFor } from "./Stage";
@@ -26,7 +27,7 @@ export class RecentConversations extends RenderingStageViewComponent<RecentConve
 
     protected render(): (VNode | [VNode, IDisposable]) {
         const vm = this.viewModel;
-        if (!vm) { return <></>; }
+        if (!vm) { return VNodeUtils.createEmptyFragment(); }
 
         const disposables: ConvertibleToDisposable[] = [];
         const addDisposable = (d: ConvertibleToDisposable) => { disposables.push(d); };
@@ -43,7 +44,7 @@ export class RecentConversations extends RenderingStageViewComponent<RecentConve
 
                 const xnickname = charStatus.nickname; //vm.session.nicknameSet.get(rc.interlocutor);
                 const nicknameNode = (StringUtils.isNullOrWhiteSpace(xnickname))
-                    ? <></>
+                    ? VNodeUtils.createEmptyFragment()
                     : <span classList={[ "recentconversations-item-nickname" ]}> ({xnickname})</span>
                 
                 const nameNode = <span classList={[ "recentconversations-item-name" ]}>{rc.interlocutor.value}</span>

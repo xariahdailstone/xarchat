@@ -22,6 +22,7 @@ export class CharacterProfileDetailViewModel extends ObservableBase {
         parent: CharacterProfileDialogViewModel,
         session: ActiveLoginViewModel,
         character: CharacterName,
+        charProfileLoadPromise: Promise<ProfileInfo> | undefined | null,
         cancellationToken: CancellationToken) {
 
         const atx = session.getMyFriendsListInfo(cancellationToken);
@@ -32,7 +33,7 @@ export class CharacterProfileDetailViewModel extends ObservableBase {
         let pix;
         let mypix;
         if (character != session.characterName) {
-            pix = session.authenticatedApi.getCharacterProfileAsync(character, cancellationToken);
+            pix = charProfileLoadPromise ?? session.authenticatedApi.getCharacterProfileAsync(character, cancellationToken);
             mypix = session.getMyProfileInfo(cancellationToken);
         }
         else {

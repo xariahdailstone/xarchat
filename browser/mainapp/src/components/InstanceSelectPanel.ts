@@ -80,15 +80,15 @@ class InstanceSelectPanelTab extends ComponentBase<ActiveLoginViewModel> {
         });
 
         const headerDotWCM = new WhenChangeManager();
-        this.watchExpr(vm => ({ hasPings: vm.hasPings, hasUnseenMessages: vm.hasUnseenMessages, isSelectedSession: vm.isSelectedSession }), vp => {
+        this.watchExpr(vm => ({ pingCount: vm.pingCount, unseenCount: vm.unseenCount, isSelectedSession: vm.isSelectedSession }), vp => {
             let klass = "hidden";
             let headerDotText = "";
             if (!vp?.isSelectedSession) {
-                if (vp?.hasPings) {
+                if ((vp?.pingCount ?? 0) > 0) {
                     klass = "has-ping-icon";
                     headerDotText = `<x-iconimage src="assets/ui/channel-ping.svg" class="ping-icon"></x-iconimage> `;
                 }
-                else if (vp?.hasUnseenMessages) {
+                else if ((vp?.unseenCount) ?? 0 > 0) {
                     klass = "has-unseen-dot";
                     headerDotText = "<x-litestatusdot></x-litestatusdot>";
                 }

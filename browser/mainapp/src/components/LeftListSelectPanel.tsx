@@ -1,6 +1,7 @@
 import { jsx, Fragment, VNode } from "../snabbdom/index.js";
 import { asDisposable, IDisposable } from "../util/Disposable.js";
 import { HTMLUtils } from "../util/HTMLUtils.js";
+import { VNodeUtils } from "../util/VNodeUtils.js";
 import { WhenChangeManager } from "../util/WhenChange.js";
 import { ActiveLoginViewModel, LeftListSelectedPane } from "../viewmodel/ActiveLoginViewModel.js";
 import { AppViewModel } from "../viewmodel/AppViewModel.js";
@@ -75,7 +76,7 @@ export class LeftListSelectPanel extends RenderingComponentBase<ActiveLoginViewM
             </div>;
         }
         else {
-            return <></>;
+            return VNodeUtils.createEmptyFragment();
         }
     }
 }

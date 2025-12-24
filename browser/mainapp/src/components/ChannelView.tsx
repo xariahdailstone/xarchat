@@ -3,6 +3,7 @@ import { IDisposable } from "../util/Disposable.js";
 import { FocusMagnet, FocusUtil } from "../util/FocusMagnet.js";
 import { HTMLUtils } from "../util/HTMLUtils.js";
 import { getValueReference } from "../util/ValueReference.js";
+import { VNodeUtils } from "../util/VNodeUtils.js";
 import { ChannelViewModel } from "../viewmodel/ChannelViewModel.js";
 import { ChatChannelViewModel } from "../viewmodel/ChatChannelViewModel.js";
 import { ConsoleChannelViewModel } from "../viewmodel/ConsoleChannelViewModel.js";
@@ -48,7 +49,7 @@ export class ChannelView extends StageViewComponent<ChannelViewModel> {
             this.logger.logDebug("ChannelView rendering");
             
             const vm = this.viewModel;
-            if (!vm) { return <></>; }
+            if (!vm) { return VNodeUtils.createEmptyFragment(); }
 
             const shouldHaveUserList = vm.activeLoginViewModel.rightTabs != null && vm.activeLoginViewModel.rightTabs.tabs.length > 0;
             const userListNodes = shouldHaveUserList
@@ -92,7 +93,7 @@ export class ChannelView extends StageViewComponent<ChannelViewModel> {
         }
         catch (e) {
             this.logger.logError("channelview rendering error", e);
-            return <></>;
+            return VNodeUtils.createEmptyFragment();
         }
     }
 

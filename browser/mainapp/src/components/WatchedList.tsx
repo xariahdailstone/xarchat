@@ -13,11 +13,12 @@ import { ObservableValue } from "../util/Observable";
 import { ObservableExpression } from "../util/ObservableExpression";
 import { StringUtils } from "../util/StringUtils";
 import { URLUtils } from "../util/URLUtils";
+import { VNodeUtils } from "../util/VNodeUtils";
 import { WhenChangeManager } from "../util/WhenChange";
 import { ChatBBCodeParser } from "../util/bbcode/BBCode";
 import { KeyValuePair } from "../util/collections/KeyValuePair";
 import { ActiveLoginViewModel, WatchedListFilterType } from "../viewmodel/ActiveLoginViewModel";
-import { CharacterNameSet } from "../viewmodel/CharacterNameSet";
+import { CharacterNameSet, ReadOnlyCharacterNameSet } from "../viewmodel/CharacterNameSet";
 import { PMConvoChannelViewModel } from "../viewmodel/PMConvoChannelViewModel";
 import { CharacterDetailPopupViewModel } from "../viewmodel/popups/CharacterDetailPopupViewModel";
 import { CollectionViewLightweight } from "./CollectionViewLightweight";
@@ -63,7 +64,7 @@ export class WatchedList extends RenderingComponentBase<ActiveLoginViewModel> {
                 : vm.lookingBookmarks;
 
             let countText: string;
-            let boundList: CharacterNameSet;
+            let boundList: ReadOnlyCharacterNameSet;
             switch (vm.watchedListFilter) {
                 case WatchedListFilterType.ALL:
                     countText = listModel.length.toString();
@@ -103,7 +104,7 @@ export class WatchedList extends RenderingComponentBase<ActiveLoginViewModel> {
             </>;
         }
         else {
-            return <></>;
+            return VNodeUtils.createEmptyFragment();
         }
     }
 

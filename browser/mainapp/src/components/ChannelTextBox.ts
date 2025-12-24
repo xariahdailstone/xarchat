@@ -265,7 +265,20 @@ export class ChannelTextBox extends ComponentBase<ChannelViewModel> {
             channelViewModelGetter: () => { return this.viewModel ?? null; },
             activeLoginViewModelGetter: () => { return this.viewModel?.activeLoginViewModel ?? null; },
             onKeyDownHandler: (ev, handleShortcuts) => {
-                if (ev.keyCode == 13 && !ev.shiftKey) {
+
+                const sendMessageShortcutConfig = this.viewModel?.getConfigSettingById("sendMessageShortcut");
+                let isSendMessage = false;
+                switch (sendMessageShortcutConfig) {
+                    case "shiftenter":
+                        isSendMessage = (ev.keyCode == KeyCodes.RETURN && ev.shiftKey);
+                        break;
+                    default:
+                    case "enter":
+                        isSendMessage = (ev.keyCode == KeyCodes.RETURN && !ev.shiftKey);
+                        break;
+                }
+
+                if (isSendMessage) {
                     ev.preventDefault();
                     const mm = (this.viewModel instanceof ChatChannelViewModel) ? (this.viewModel?.messageMode ?? null) : ChatChannelMessageMode.CHAT_ONLY;
                     switch (mm) {

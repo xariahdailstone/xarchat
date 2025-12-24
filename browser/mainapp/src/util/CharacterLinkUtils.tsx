@@ -8,7 +8,7 @@ import { ChannelViewModel, IChannelStreamViewModel } from "../viewmodel/ChannelV
 import { ChatChannelViewModel } from "../viewmodel/ChatChannelViewModel";
 import { CharacterDetailPopupViewModel } from "../viewmodel/popups/CharacterDetailPopupViewModel";
 import { CallbackSet } from "./CallbackSet";
-import { EffectiveCharacterNameInfo, EffectiveCharacterNameInfoProvider, getEffectiveCharacterNameInfo, getEffectiveCharacterNameVNodes, getEffectiveCharacterNameVNodes2 } from "./CharacterNameIcons";
+import { CharacterLinkIconType, EffectiveCharacterNameInfo, EffectiveCharacterNameInfoProvider, getEffectiveCharacterNameInfo, getEffectiveCharacterNameVNodes, getEffectiveCharacterNameVNodes2 } from "./CharacterNameIcons";
 import { ContextMenuUtils } from "./ContextMenuUtils";
 import { ConvertibleToDisposable, IDisposable, asDisposable } from "./Disposable";
 import { EventListenerUtil } from "./EventListenerUtil";
@@ -16,19 +16,30 @@ import { ObjectUniqueId } from "./ObjectUniqueId";
 import { Observable, PropertyChangeEvent, PropertyChangeEventListener, ValueSubscription } from "./Observable";
 import { setupValueSubscription } from "./ObservableBase";
 
+export interface CharacterLinkOptions {
+    disallowLeftClick?: boolean;
+    suppressIcons?: CharacterLinkIconType[];
+}
+
 export class CharacterLinkUtils {
-    static createStaticCharacterLinkVNode(sess: ActiveLoginViewModel, char: CharacterName, csi: CharacterStatusNoEquals, channelContext?: IChannelStreamViewModel | null): VNode {
+    static createStaticCharacterLinkVNode(
+        sess: ActiveLoginViewModel, char: CharacterName, csi: CharacterStatusNoEquals, channelContext?: IChannelStreamViewModel | null,
+        options?: CharacterLinkOptions): VNode {
+
         const ecni = getEffectiveCharacterNameInfo(csi, channelContext ?? sess);
-        return CharacterLinkUtils.createStaticCharacterLinkVNode2(sess, char, csi, channelContext ?? null, ecni);
+        return CharacterLinkUtils.createStaticCharacterLinkVNode2(sess, char, csi, channelContext ?? null, ecni, options);
     }
 
     static createStaticCharacterLinkVNode2(
-        sess: ActiveLoginViewModel, char: CharacterName, csi: CharacterStatusNoEquals, channelContext: IChannelStreamViewModel | null, ecni: EffectiveCharacterNameInfo): VNode {
+        sess: ActiveLoginViewModel, char: CharacterName, csi: CharacterStatusNoEquals, channelContext: IChannelStreamViewModel | null,
+        ecni: EffectiveCharacterNameInfo,
+        options?: CharacterLinkOptions): VNode {
 
         const vnode = <span classList={[ "character-link", `gender-${CharacterGenderConvert.toString(csi.gender)}` ]}
             on={{
                 "click": (ev: MouseEvent) => {
-                    if (!ev.defaultPrevented) {
+                    const disallowLeftClick = (options?.disallowLeftClick ?? false);
+                    if (!ev.defaultPrevented && !disallowLeftClick) {
                         sess.bbcodeSink.userClick(char, { rightClick: false, channelContext: channelContext, targetElement: vnode.elm as HTMLElement });
                         ev.preventDefault();
                         return false;
@@ -41,7 +52,7 @@ export class CharacterLinkUtils {
                         return false;
                     }
                 }
-            }}>{getEffectiveCharacterNameVNodes2(char, ecni)}</span>;
+            }}>{getEffectiveCharacterNameVNodes2(char, ecni, options)}</span>;
         return vnode;
     }
 

@@ -1,5 +1,6 @@
 import { NotificationRouting, NotificationRoutingTargetSetting } from "../../../../configuration/NotificationRouting";
 import { jsx, VNode, Fragment } from "../../../../snabbdom/index";
+import { VNodeUtils } from "../../../../util/VNodeUtils";
 import { settingsRendererFor, SettingRenderArgs } from "./SettingsTypeRenderer";
 import { SettingTypeRendererBase } from "./SettingTypeRendererBase";
 
@@ -11,6 +12,30 @@ const EMOJI_IMPORTANT = "\u26A0\uFE0F";
 export class NotifRoutesSettingRenderer extends SettingTypeRendererBase {
 
     renderSetting(args: SettingRenderArgs): VNode {
+        const setting = args.item;
+        
+        const isExpanded = setting.getViewSetting("expanded");
+        if (isExpanded) {
+            return this.renderSettingExpanded(args);
+        }
+        else {
+            return this.renderSettingCollapsed(args);
+        }
+    }
+
+    private renderSettingCollapsed(args: SettingRenderArgs): VNode {
+        const setting = args.item;
+
+        return <>
+            <button key="expandcollapsebtn" classList={[ "notifroute-collapse-button", "notifroute-collapse-button-collapsed", "themed" ]} on={{
+                "click": () => {
+                    setting.setViewSetting("expanded", true);
+                }
+            }}>Expand</button>
+        </>;
+    }
+
+    private renderSettingExpanded(args: SettingRenderArgs): VNode {
         const setting = args.item;
         
         const settingId = this.getOrCreateSettingId(setting.schema);
@@ -75,12 +100,12 @@ export class NotifRoutesSettingRenderer extends SettingTypeRendererBase {
             return <div classList={["notifroute-button-container"]} attr-title={showButton ? tooltip : ""}>
                 <div classList={["notifroute-button-container-title"]}>{title}</div>
                 <div classList={["notifroute-button-container-description"]}>{tooltip}</div>
-                {showButton ? makeButton(title, curValue, id, availableOptions) : <></>}
+                {showButton ? makeButton(title, curValue, id, availableOptions) : VNodeUtils.createEmptyFragment()}
             </div>;
         };
         const makeUnavailableSelect = () => {
             return <div classList={["notifroute-button-container"]}>
-                <></>
+                { VNodeUtils.createEmptyFragment() }
             </div>;
         };
 
@@ -100,21 +125,28 @@ export class NotifRoutesSettingRenderer extends SettingTypeRendererBase {
             ? makeSelect("Notification", "notification", "Add to the \"Recent Notifications\" tab.", ["no", "yes"])
             : null;
 
-        return <div classList={["setting-entry", "setting-entry-notifroute"]}>
-            <div classList={["setting-entry-notifroute-group"]}>
-                <div classList={["setting-entry-notifroute-group-title"]}>Chat Tabs</div>
-                {makeSelect("Console", "console", "Send to the console.")}
-                {makeSelect("Current", "currentTab", "Send to the currently active tab.")}
-                {characterSelect}
-                {channelSelect}
-                {makeSelect("All", "everywhere", "Send to every open tab.")}
+        return <>
+            <button key="expandcollapsebtn" classList={[ "notifroute-collapse-button", "notifroute-collapse-button-collapsed", "themed" ]} on={{
+                "click": () => {
+                    setting.setViewSetting("expanded", false);
+                }
+            }}>Collapse</button>
+            <div classList={["setting-entry", "setting-entry-notifroute"]}>
+                <div classList={["setting-entry-notifroute-group"]}>
+                    <div classList={["setting-entry-notifroute-group-title"]}>Chat Tabs</div>
+                    {makeSelect("Console", "console", "Send to the console.")}
+                    {makeSelect("Current", "currentTab", "Send to the currently active tab.")}
+                    {characterSelect}
+                    {channelSelect}
+                    {makeSelect("All", "everywhere", "Send to every open tab.")}
+                </div>
+                <div classList={["setting-entry-notifroute-group"]}>
+                    <div classList={["setting-entry-notifroute-group-title"]}>Notifications</div>
+                    {toastSelect}
+                    {notificationSelect}
+                </div>
             </div>
-            <div classList={["setting-entry-notifroute-group"]}>
-                <div classList={["setting-entry-notifroute-group-title"]}>Notifications</div>
-                {toastSelect}
-                {notificationSelect}
-            </div>
-        </div>;
+        </>;
     }
 
 }

@@ -14,6 +14,7 @@ import { ObservableValue } from "../util/Observable.js";
 import { CollectionChangeEvent, CollectionChangeType, ReadOnlyObservableCollection } from "../util/ObservableCollection.js";
 import { DictionaryChangeEvent, DictionaryChangeType, ObservableKeyExtractedOrderedDictionary, ObservableOrderedDictionary } from "../util/ObservableKeyedLinkedList.js";
 import { Scheduler } from "../util/Scheduler.js";
+import { VNodeUtils } from "../util/VNodeUtils.js";
 import { WhenChangeManager } from "../util/WhenChange.js";
 import { KeyValuePair } from "../util/collections/KeyValuePair.js";
 import { StdObservableCollectionChangeType } from "../util/collections/ReadOnlyStdObservableCollection.js";
@@ -130,7 +131,7 @@ export class ChannelUserList extends RenderingComponentBase<ChatChannelViewModel
 
     protected render(): (VNode | [VNode, IDisposable]) {
         const vm = this.viewModel;
-        if (!vm) return <></>;
+        if (!vm) return VNodeUtils.createEmptyFragment();
 
         const disposables: ConvertibleToDisposable[] = [];
         const addDisposable = (d: ConvertibleToDisposable) => disposables.push(d);

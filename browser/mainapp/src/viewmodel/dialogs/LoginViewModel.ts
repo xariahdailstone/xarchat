@@ -17,7 +17,7 @@ import { KeyValuePair } from "../../util/collections/KeyValuePair";
 import { SnapshottableSet } from "../../util/collections/SnapshottableSet";
 import { ActiveLoginViewModel } from "../ActiveLoginViewModel";
 import { AppViewModel } from "../AppViewModel";
-import { CharacterNameSet, UnsortedCharacterNameSet } from "../CharacterNameSet";
+import { CharacterNameSet, CharacterNameSetImpl, UnsortedCharacterNameSet } from "../CharacterNameSet";
 import { ContextMenuPopupItemViewModel, ContextMenuPopupViewModel } from "../popups/ContextMenuPopupViewModel";
 import { DialogButtonStyle, DialogButtonViewModel, DialogViewModel } from "./DialogViewModel";
 
@@ -200,7 +200,7 @@ export class LoginViewModel extends DialogViewModel<boolean> {
                 return false;
             };
 
-            this.characters = new CharacterNameSet();
+            this.characters = new CharacterNameSetImpl();
             for (let c of Object.getOwnPropertyNames(apiTicket.characters)) {
                 const cn = CharacterName.createCanonical(c);
                 if (!isAlreadyLoggedIn(cn)) {

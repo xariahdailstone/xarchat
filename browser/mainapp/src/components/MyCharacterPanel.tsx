@@ -7,6 +7,7 @@ import { ComponentBase, ComponentCharacterStatusListener, componentElement } fro
 import { RenderingComponentBase } from "./RenderingComponentBase.js";
 import { EmptyDisposable, IDisposable, asDisposable } from "../util/Disposable.js";
 import { StatusDotVNodeBuilder } from "./StatusDot.js";
+import { VNodeUtils } from "../util/VNodeUtils.js";
 
 @componentElement("x-mycharacterpanel")
 export class MyCharacterPanel extends RenderingComponentBase<ActiveLoginViewModel> {
@@ -46,7 +47,7 @@ export class MyCharacterPanel extends RenderingComponentBase<ActiveLoginViewMode
             return [el, parseCodeResult];
         }
         else {
-            return [<></>, EmptyDisposable];
+            return [VNodeUtils.createEmptyFragment(), EmptyDisposable];
         }
     }
 
