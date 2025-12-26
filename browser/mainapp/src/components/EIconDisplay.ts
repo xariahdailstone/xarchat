@@ -1,7 +1,7 @@
 import { CharacterName } from "../shared/CharacterName";
 import { BBCodeParser } from "../util/bbcode/BBCode";
 import { CancellationTokenSource } from "../util/CancellationTokenSource";
-import { ContextMenuUtils } from "../util/ContextMenuUtils";
+import { ContextMenuItemBuilder, ContextMenuUtils } from "../util/ContextMenuUtils";
 import { asDisposable, IDisposable } from "../util/Disposable";
 import { EIconLoadManager } from "../util/EIconLoadManager";
 import { EventListenerUtil } from "../util/EventListenerUtil";
@@ -134,10 +134,13 @@ export class EIconDisplay extends HTMLElement {
         super();
 
         this.addEventListener("contextmenu", (ev) => {
-            ContextMenuUtils.add({ title: "Copy EIcon BBCode", onSelect: () => { alert("hi"); }});
-            ContextMenuUtils.addSeparator();
-            ContextMenuUtils.add({ title: "Favorite this EIcon", onSelect: () => { alert("hi"); }});
-            ContextMenuUtils.add({ title: "Block this EIcon", onSelect: () => { alert("hi"); }});
+            const eiconName = this.eiconName;
+            if (eiconName)
+            {
+                ContextMenuUtils.add(ContextMenuItemBuilder.createCopyEIconBBCode(eiconName));
+                // TODO: ContextMenuUtils.add(ContextMenuItemBuilder.createFavoriteThisEIcon(eiconName));
+                // TODO: ContextMenuUtils.add(ContextMenuItemBuilder.createBlockThisEIcon(eiconName));
+            }
         });
     }
 

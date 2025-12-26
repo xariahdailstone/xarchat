@@ -22,7 +22,7 @@ import { PopupViewModel } from "../viewmodel/popups/PopupViewModel.js";
 import { DelayedCallManager, DelayedCallScheduler, DelayedCallStyle } from "../util/DelayedCallManager.js";
 import { Scheduler } from "../util/Scheduler.js";
 import { PlatformUtils } from "../util/PlatformUtils.js";
-import { ContextMenuItem, ContextMenuUtils } from "../util/ContextMenuUtils.js";
+import { ContextMenuItem, ContextMenuItemBuilder, ContextMenuUtils } from "../util/ContextMenuUtils.js";
 import { ContextMenuPopupItemViewModel, ContextMenuPopupViewModel } from "../viewmodel/popups/ContextMenuPopupViewModel.js";
 
 @componentElement("x-maininterface")
@@ -172,34 +172,21 @@ export class MainInterface extends ComponentBase<AppViewModel> {
 
         this.addEventListener("contextmenu", (ev) => {
             ContextMenuUtils.clear();
+
+            const sel = window.getSelection();
+            if (sel?.type == "Range") {
+                ContextMenuUtils.add(ContextMenuItemBuilder.createCopy());
+            }
         }, true);
         this.addEventListener("contextmenu", (ev) => {
             const vm = this.viewModel;
             if (vm && !ev.defaultPrevented) {
                 ev.preventDefault();
-                if (ContextMenuUtils.items.length > 0) {
-                    const cvm = new ContextMenuPopupViewModel<object>(vm, new DOMRect(ev.clientX, ev.clientY, 1, 1));
-                    const itemsMap = new Map<object, ContextMenuItem>();
-                    for (let item of ContextMenuUtils.items) {
-                        if (item.title == "-") {
-                            const titem = new ContextMenuPopupItemViewModel<object>("-", {}, false);
-                            cvm.items.add(titem);
-                        }
-                        else {
-                            const myKey = {};
-                            itemsMap.set(myKey, item);
-                            const titem = new ContextMenuPopupItemViewModel<object>(item.title, myKey, item.onSelect != null);
-                            cvm.items.add(titem);
-                        }
-                    }
-                    cvm.onValueSelected = (val) => {
-                        cvm.dismissed();
-                        const selItem = itemsMap.get(val);
-                        if (selItem && selItem.onSelect) {
-                            selItem.onSelect();
-                        }
-                    };
-                    vm.popups.add(cvm);
+                if (ContextMenuUtils.hasMenuItems) {
+                    (async () => {
+                        const cvm = await ContextMenuUtils.makePopupViewModelAsync(vm, ev.clientX, ev.clientY);
+                        vm.popups.add(cvm);
+                    })();
                 }
             }
         });

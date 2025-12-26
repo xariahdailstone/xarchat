@@ -14,9 +14,7 @@ class ShadowRootsManagerImpl {
     elementAttachShadow(el: (HTMLElement & ISupportsConnectDisconnectRegistration), options: ShadowRootInit): ShadowRoot {
         const sroot = el.attachShadow(options);
 
-        sroot.addEventListener("contextmenu", (ev: PointerEvent) => {
-            ContextMenuUtils.addDefaultContextMenuItems(ev);
-        }, true);
+        ContextMenuUtils.addShadowRootHandler(sroot);
 
         let currentRegisteredHandler: (IDisposable | null) = null;
         el.addConnectDisconnectHandler(() => {
