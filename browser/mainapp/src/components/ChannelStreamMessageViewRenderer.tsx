@@ -19,6 +19,7 @@ import { ChannelMessageDisplayStyle, ChannelMessageType, ChannelMessageViewModel
 import { LocaleViewModel } from "../viewmodel/LocaleViewModel";
 import { RenderingComponentBase } from "./RenderingComponentBase";
 import { StatusDotVNodeBuilder } from "./StatusDot";
+import { VNodeUtils } from "../util/VNodeUtils";
 
 function areSameDate(a: Date, b: Date) {
     const aDate = a.getFullYear().toString() + '-' + a.getMonth().toString() + '-' + a.getDate().toString();
@@ -231,7 +232,7 @@ export class ChannelStreamMessageViewRenderer implements IDisposable {
                         if (element != null) {
                             this.onUpdatingElements();
                             needEnd = true;
-                            const initVNode = <></>;
+                            const initVNode = VNodeUtils.createEmptyFragment();
                             const target = document.createElement("span");
                             HTMLUtils.clearChildren(element);
                             element.appendChild(target);
@@ -260,7 +261,7 @@ export class ChannelStreamMessageViewRenderer implements IDisposable {
                         this._currentVNode = this.patch(this._currentVNode, renderResult[0]);
                     }
                     else if (this._currentVNode) {
-                        this._currentVNode = this.patch(this._currentVNode, <></>);
+                        this._currentVNode = this.patch(this._currentVNode, VNodeUtils.createEmptyFragment());
                     }
                 }
                 finally {
@@ -289,7 +290,7 @@ export class ChannelStreamMessageViewRenderer implements IDisposable {
     }
 
     protected render(vm: ReadOnlyStdObservableCollection<KeyValuePair<any, ChannelMessageViewModel>> | null): [VNode, IDisposable] {
-        if (!vm) { return [<></>, asDisposable()]; }
+        if (!vm) { return [VNodeUtils.createEmptyFragment(), asDisposable()]; }
 
         const renderStyle = (vm.length > 0)
             ? (IterableUtils.asQueryable(vm.iterateValues()).first().value.channelViewModel?.messageDisplayStyle ?? ChannelMessageDisplayStyle.FCHAT)
@@ -744,7 +745,7 @@ class ChannelStreamMessageViewRendererDiscord implements MessageRenderer {
                     elUsername = <span key={`msg-${uniqueMessageId}-charcontainer`} classList={["character-container"]} attrs={{"data-copycontent":""}}>{sdVNode}{elUsername}</span>;
                 }
                 else {
-                    elUsername = <></>;
+                    elUsername = VNodeUtils.createEmptyFragment();
                 }
             }
             else {

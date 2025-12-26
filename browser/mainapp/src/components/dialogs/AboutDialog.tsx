@@ -1,5 +1,6 @@
 import { jsx, Fragment, VNode } from "../../snabbdom/index";
 import { EmptyDisposable, IDisposable } from "../../util/Disposable";
+import { VNodeUtils } from "../../util/VNodeUtils";
 import { AboutViewModel } from "../../viewmodel/dialogs/AboutViewModel";
 import { componentArea, componentElement } from "../ComponentBase";
 import { makeRenderingComponent } from "../RenderingComponentBase";
@@ -19,7 +20,7 @@ export class AboutDialog extends DialogComponentBase<AboutViewModel> {
 
     render(): [VNode, IDisposable] {
         const vm = this.viewModel;
-        if (!vm) { return [<></>, EmptyDisposable] }
+        if (!vm) { return [VNodeUtils.createEmptyFragment(), EmptyDisposable] }
 
         const acknowledgements = vm.acknowledgements;
         

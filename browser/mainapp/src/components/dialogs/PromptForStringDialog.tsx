@@ -3,6 +3,7 @@ import { BBCodeUtils } from "../../util/BBCodeUtils";
 import { IDisposable, EmptyDisposable, asDisposable } from "../../util/Disposable";
 import { HTMLUtils } from "../../util/HTMLUtils";
 import { KeyCodes } from "../../util/KeyCodes";
+import { VNodeUtils } from "../../util/VNodeUtils";
 import { PromptForStringViewModel } from "../../viewmodel/dialogs/PromptViewModel";
 import { SuggestTextBoxViewModel } from "../../viewmodel/SuggestTextBoxViewModel";
 import { componentArea, componentElement } from "../ComponentBase";
@@ -26,7 +27,7 @@ export class PromptForStringDialog extends DialogComponentBase<PromptForStringVi
     private _suggestVM: SuggestTextBoxViewModel | null = null;
     render(): [VNode, IDisposable] {
         const vm = this.viewModel;
-        if (!vm) { return [<></>, EmptyDisposable]; }
+        if (!vm) { return [VNodeUtils.createEmptyFragment(), EmptyDisposable]; }
 
         const disposables: IDisposable[] = [];
         const addDisposable = (d: IDisposable) => disposables.push(d);

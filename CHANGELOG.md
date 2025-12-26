@@ -66,3 +66,13 @@
 * Added a new log viewer!
   * Available under the "..." tab on the left bar.
   * Planning on expanding it more in the future; and adding log importing and exporting.
+* Added an option to swap the behavior of Enter and Shift+Enter in the chat text entry textbox.
+  * Default, pre-existing behavior is that Shift+Enter adds a line break into the chat message, and
+	Enter sends the message.
+* Fixed an issue where the instance select panel (the bar that shows which characters you're currently
+  logged in to) wouldn't show the red ping icon on unread PMs.
+* Added the ability to bookmark/unbookmark a character on the character right-click popup.
+* Added an interface to view and maintain friends and bookmarks lists
+  * Available under the "..." tab on the left bar.
+* Added an interface to view and maintain your ignore list
+  * Available under the "..." tab on the left bar.

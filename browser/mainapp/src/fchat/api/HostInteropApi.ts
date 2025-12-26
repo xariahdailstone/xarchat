@@ -137,6 +137,38 @@ export class HostInteropAuthenticatedApi implements FListAuthenticatedApi {
         }, cancellationToken);
     }
 
+    async addFriendRequestAsync(myCharName: CharacterName, theirCharName: CharacterName, cancellationToken: CancellationToken): Promise<void> {
+        const result = await this.owner.postFromHostInteropAsync<any>(`${this.account}/addFriendRequest`, {
+            myCharName: myCharName.value,
+            theirCharName: theirCharName.value
+        }, cancellationToken);
+    }
+
+    async cancelFriendRequestAsync(friendRequestId: number, cancellationToken: CancellationToken): Promise<void> {
+        const result = await this.owner.postFromHostInteropAsync<any>(`${this.account}/cancelFriendRequest`, {
+            request_id: friendRequestId.toString()
+        }, cancellationToken);
+    }
+
+    async acceptIncomingFriendRequestAsync(friendRequestId: number, cancellationToken: CancellationToken): Promise<void> {
+        const result = await this.owner.postFromHostInteropAsync<any>(`${this.account}/acceptIncomingFriendRequest`, {
+            request_id: friendRequestId.toString()
+        }, cancellationToken);
+    }
+
+    async rejectIncomingFriendRequestAsync(friendRequestId: number, cancellationToken: CancellationToken): Promise<void> {
+        const result = await this.owner.postFromHostInteropAsync<any>(`${this.account}/rejectIncomingFriendRequest`, {
+            request_id: friendRequestId.toString()
+        }, cancellationToken);
+    }
+
+    async removeFriendAsync(myCharName: CharacterName, theirCharName: CharacterName, cancellationToken: CancellationToken): Promise<void> {
+        const result = await this.owner.postFromHostInteropAsync<any>(`${this.account}/removeFriend`, {
+            myCharName: myCharName.value,
+            theirCharName: theirCharName.value
+        }, cancellationToken);
+    }
+
     async saveMemoAsync(name: CharacterName, memoText: string, cancellationToken: CancellationToken): Promise<string> {
         const r = await this.owner.postFromHostInteropAsync<any>(`${this.account}/saveMemo`, {
             target_name: name.value,

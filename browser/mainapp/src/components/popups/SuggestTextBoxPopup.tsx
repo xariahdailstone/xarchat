@@ -1,6 +1,7 @@
 import { jsx, Fragment, VNode } from "../../snabbdom/index";
 import { AnimationFrameUtils } from "../../util/AnimationFrameUtils";
 import { EmptyDisposable, IDisposable } from "../../util/Disposable";
+import { VNodeUtils } from "../../util/VNodeUtils";
 import { SuggestTextBoxPopupViewModel } from "../../viewmodel/popups/SuggestTextBoxPopupViewModel";
 import { SuggestionHeader, SuggestionSeparator } from "../../viewmodel/SuggestTextBoxViewModel";
 import { componentArea, componentElement } from "../ComponentBase";
@@ -61,7 +62,7 @@ export class SuggestTextBoxPopup extends ContextPopupBase<SuggestTextBoxPopupVie
     render(): [VNode, IDisposable] {
         const vm = this.viewModel;
         if (!vm) {
-            return [<></>, EmptyDisposable];
+            return [VNodeUtils.createEmptyFragment(), EmptyDisposable];
         }
 
         const itemNodes: VNode[] = [];

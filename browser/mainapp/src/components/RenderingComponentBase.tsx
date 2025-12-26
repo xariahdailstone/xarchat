@@ -14,6 +14,7 @@ import { idModule } from "../util/snabbdom/id.js";
 import { HTMLUtils } from "../util/HTMLUtils.js";
 import { valueSyncModule } from "../util/snabbdom/valueSyncHook.js";
 import { Scheduler } from "../util/Scheduler.js";
+import { VNodeUtils } from "../util/VNodeUtils.js";
 
 export interface RenderArguments {
     addDisposable(disp: ConvertibleToDisposable): void;
@@ -167,7 +168,7 @@ export function makeRenderingComponent<TViewModel>(
             refreshDisposable.dispose();
             refreshDisposable = null;
         }
-        currentVNode = patch(currentVNode, <></>);
+        currentVNode = patch(currentVNode, VNodeUtils.createEmptyFragment());
     });
 
     return {

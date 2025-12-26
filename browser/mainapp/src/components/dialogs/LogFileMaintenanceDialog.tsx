@@ -2,6 +2,7 @@ import { Attrs } from "../../../node_modules/snabbdom/build/index";
 import { jsx, Fragment, VNode, On } from "../../snabbdom/index"
 import { CancellationToken } from "../../util/CancellationTokenSource";
 import { StringUtils } from "../../util/StringUtils";
+import { VNodeUtils } from "../../util/VNodeUtils";
 import { LogFileMaintenanceDialogViewModel } from "../../viewmodel/dialogs/LogFileMaintenanceDialogViewModel";
 import { componentArea, componentElement } from "../ComponentBase";
 import { makeRenderingComponent, RenderArguments } from "../RenderingComponentBase";
@@ -20,7 +21,7 @@ export class LogFileMaintenanceDialog extends DialogComponentBase<LogFileMainten
     }
 
     render(renderArgs: RenderArguments): VNode {
-        if (!this.viewModel) { return <></>; }
+        if (!this.viewModel) { return VNodeUtils.createEmptyFragment(); }
         const vm = this.viewModel;
 
         const vacuumButtonAttrs: Attrs = {};

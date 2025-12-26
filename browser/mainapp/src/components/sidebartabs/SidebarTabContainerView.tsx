@@ -5,6 +5,7 @@ import { jsx, Fragment, VNode, On, Classes } from "../../snabbdom/index";
 import { asDisposable, ConvertibleToDisposable, IDisposable } from "../../util/Disposable";
 import { getStylesheetAdoption, setStylesheetAdoption, SharedStyleSheet } from "../../util/StyleSheetPolyfill";
 import { StringUtils } from "../../util/StringUtils";
+import { VNodeUtils } from "../../util/VNodeUtils";
 
 @componentArea("sidebartabs")
 @componentElement("x-sidebartabcontainer")
@@ -21,7 +22,7 @@ export class SidebarTabContainerView extends RenderingComponentBase<SidebarTabCo
 
     override render(): VNode | [VNode, IDisposable] {
         const vm = this.viewModel;
-        if (!vm) { return <></>; }
+        if (!vm) { return VNodeUtils.createEmptyFragment(); }
 
         const disposables: ConvertibleToDisposable[] = [];
         const addDisposable = (d: ConvertibleToDisposable) => { disposables.push(d); };
@@ -33,7 +34,7 @@ export class SidebarTabContainerView extends RenderingComponentBase<SidebarTabCo
 
         const tabStripNode = needsTabStrip
             ? <div classList={[ "tabstrip" ]}>{this.renderTabTitles(vm, addDisposable)}</div>
-            : <></>;
+            : VNodeUtils.createEmptyFragment();
         const tabBodyNode = this.renderTabBody(vm, addDisposable, needsTabStrip);
 
         const node = <div classList={[ "tabcontainer", ...vm.containerClasses]}>
@@ -118,7 +119,7 @@ export class SidebarTabContainerView extends RenderingComponentBase<SidebarTabCo
         addDisposable: (d: ConvertibleToDisposable) => void,
         hasVisibleTabStrip: boolean) {
 
-        if (!vm.selectedTab) { return <></>; }
+        if (!vm.selectedTab) { return VNodeUtils.createEmptyFragment(); }
 
         const vr = this.getRendererForTab(vm.selectedTab);
         const result = vr.renderBody(vm.selectedTab, addDisposable, hasVisibleTabStrip);

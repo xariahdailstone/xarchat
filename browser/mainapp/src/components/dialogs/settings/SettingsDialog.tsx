@@ -9,6 +9,7 @@ import { EnableIfOptions, } from "../../../configuration/ConfigSchemaItem";
 import { Collection } from "../../../util/ObservableCollection";
 import { getSettingsRendererFor } from "./type-renderers/SettingsTypeRenderer";
 import { ConvertibleToDisposable } from "../../../util/Disposable";
+import { VNodeUtils } from "../../../util/VNodeUtils";
 
 @componentArea("dialogs")
 @componentElement("x-settingsdialog")
@@ -195,7 +196,7 @@ export class SettingsDialog extends DialogComponentBase<SettingsDialogViewModel>
             }
         }
         else {
-            return <></>;
+            return VNodeUtils.createEmptyFragment();
         }
     }
 }
