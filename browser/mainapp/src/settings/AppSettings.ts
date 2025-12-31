@@ -9,6 +9,7 @@ import { PromiseSource } from "../util/PromiseSource";
 import { StringUtils } from "../util/StringUtils";
 import { StdObservableCollectionChange, StdObservableCollectionChangeType } from "../util/collections/ReadOnlyStdObservableCollection";
 import { RawAppSettings, RawSavedAccountCredentials, RawSavedChatState, RawSavedChatStateAutoAdSettings, RawSavedChatStateAutoAdSettingsEntry, RawSavedChatStateJoinedChannel, RawSavedChatStateNamedFilterMap, RawSavedChatStatePMConvo, RawSavedLogin, RawSavedWindowLocation } from "./RawAppSettings";
+import { Observable } from "../util/Observable";
 
 export class AppSettings {
     static async initializeAsync(): Promise<void> { 
@@ -36,6 +37,7 @@ export class AppSettings {
         this.savedLogins = new SavedLoginMap(this, inner?.savedLogins ?? []);
         this.savedChatStates = new SavedChatStateMap(this, inner?.savedChatStates ?? []);
         this._autoIdleSec = inner?.autoIdleSec;
+        this._chatTextBoxHeight = inner?.chatTextBoxHeight ?? 90;
     }
 
     private _lastUsedSavedAccount?: string;
@@ -65,6 +67,21 @@ export class AppSettings {
         }
     }
 
+    private _chatTextBoxHeight: number;
+
+    get chatTextBoxHeight() { 
+        const result = this._chatTextBoxHeight; 
+        Observable.publishNamedRead("AppSettings.chatTextBoxHeight", result);
+        return result;
+    }
+    set chatTextBoxHeight(value) {
+        if (value != this._chatTextBoxHeight) {
+            this._chatTextBoxHeight = value;
+            this.onUpdate();
+            Observable.publishNamedUpdate("AppSettings.chatTextBoxHeight", value);
+        }
+    }
+
     updated(): void {
         this.onUpdate();
     }
@@ -76,7 +93,8 @@ export class AppSettings {
             savedAccountCredentials: this.savedAccountCredentials.toJSON(),
             savedChatStates: this.savedChatStates.toJSON(),
             savedLogins: this.savedLogins.toJSON(),
-            autoIdleSec: this.autoIdleSec
+            autoIdleSec: this.autoIdleSec,
+            chatTextBoxHeight: this.chatTextBoxHeight
         };
         return result;
     }

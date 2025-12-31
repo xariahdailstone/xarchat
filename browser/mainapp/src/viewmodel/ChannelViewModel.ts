@@ -242,7 +242,8 @@ export abstract class ChannelViewModel extends ObservableBase implements IDispos
     filterOptions: ChannelFilterOptions | null = null;
 
     @observableProperty
-    textBoxHeight: number = 90;
+    get textBoxHeight(): number { return this.parent.appViewModel.chatTextBoxHeight; }
+    set textBoxHeight(value: number) { this.parent.appViewModel.chatTextBoxHeight = value; }
 
     private _textBoxContent: string = "";
     @observableProperty
