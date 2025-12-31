@@ -20,6 +20,10 @@ export interface RenderArguments {
     addDisposable(disp: ConvertibleToDisposable): void;
 }
 
+export interface RenderArgumentsWithViewModel<T> extends RenderArguments {
+    readonly viewModel: T;
+}
+
 export interface MakeRenderingComponentOptions {
     render: (renderArgs: RenderArguments) => (VNode | [VNode, IDisposable]);
     afterRender?: () => (void | IDisposable | IDisposable[] | Iterable<IDisposable>);

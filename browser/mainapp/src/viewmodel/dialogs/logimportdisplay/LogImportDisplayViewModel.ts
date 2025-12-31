@@ -1,6 +1,6 @@
 import { observableProperty } from "../../../util/ObservableBase";
 import { AppViewModel } from "../../AppViewModel";
-import { LogImportViewModel } from "../../logimport/LogImportViewModel";
+import { LogImportViewModel } from "../logimport/LogImportViewModel";
 import { DialogViewModel } from "../DialogViewModel";
 
 export class LogImportDisplayViewModel extends DialogViewModel<number> {

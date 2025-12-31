@@ -1,15 +1,25 @@
-import { CancellationToken, CancellationTokenSource } from "../../util/CancellationTokenSource";
-import { IDisposable, maybeDispose } from "../../util/Disposable";
-import { HostInterop } from "../../util/hostinterop/HostInterop";
-import { CalculatedObservable, Observable } from "../../util/Observable";
-import { ObservableBase, observableProperty } from "../../util/ObservableBase";
-import { AppViewModel } from "../AppViewModel";
+import { CancellationToken, CancellationTokenSource } from "../../../util/CancellationTokenSource";
+import { IDisposable, maybeDispose } from "../../../util/Disposable";
+import { HostInterop } from "../../../util/hostinterop/HostInterop";
+import { CalculatedObservable, Observable } from "../../../util/Observable";
+import { ObservableBase, observableProperty } from "../../../util/ObservableBase";
+import { Collection } from "../../../util/ObservableCollection";
+import { AppViewModel } from "../../AppViewModel";
+import { DialogButtonViewModel, DialogViewModel } from "../DialogViewModel";
+import { ChatLogImportWorkflowShowMessageStepArgs } from "./ChatLogImportWorkflowShowMessageStepArgs";
+import { LogImportPageViewModel } from "./LogImportPageViewModel";
+import { LogImportPleaseWaitPageViewModel } from "./LogImportPleaseWaitPageViewModel";
+import { LogImportSelectImportPageViewModel } from "./LogImportSelectImportPageViewModel";
+import { LogImportShowMessagePageViewModel } from "./LogImportShowMessagePageViewModel";
 
-export class LogImportViewModel extends ObservableBase implements IDisposable {
+export class LogImportViewModel extends DialogViewModel<number> implements IDisposable {
     constructor(
         private readonly appViewModel: AppViewModel) {
 
-        super();
+        super(appViewModel);
+
+        this.title = "Log Import";
+
         this.currentPage = new LogImportPleaseWaitPageViewModel(this);
 
         this.runImportWorkflowAsync(this._disposedCTS.token);
@@ -26,6 +36,12 @@ export class LogImportViewModel extends ObservableBase implements IDisposable {
 
     [Symbol.dispose](): void { this.dispose(); }
 
+    get closeBoxResult() {
+        return Observable.calculate("LogImportViewModel.closeBoxResult", () => {
+            return (this.currentPage?.canClose ?? true) ? -1 : undefined;
+        });
+    }
+
     private _currentPage: LogImportPageViewModel = null!;
     @observableProperty
     get currentPage(): LogImportPageViewModel { return this._currentPage; }
@@ -34,6 +50,7 @@ export class LogImportViewModel extends ObservableBase implements IDisposable {
             if (value != this._currentPage) {
                 const oldPage = this._currentPage;
                 maybeDispose(oldPage);
+                this.buttons = value?.buttons ?? new Collection<DialogButtonViewModel>();
             }
         }
         else {
@@ -86,74 +103,3 @@ export class LogImportViewModel extends ObservableBase implements IDisposable {
     }
 }
 
-export interface LogImportPageViewModel {
-    readonly logImportViewModel: LogImportViewModel;
-
-    waitForResponseAsync(cancellationToken: CancellationToken): Promise<any>;
-}
-
-export class LogImportPleaseWaitPageViewModel extends ObservableBase implements LogImportPageViewModel {
-    constructor(
-        public readonly logImportViewModel: LogImportViewModel) {
-
-        super();
-    }
-
-    async waitForResponseAsync(cancellationToken: CancellationToken): Promise<any> {
-        return null;
-    }
-}
-
-export class LogImportSelectImportPageViewModel extends ObservableBase implements LogImportPageViewModel {
-    static async createAsync(
-        logImportViewModel: LogImportViewModel,
-        cancellationToken: CancellationToken): Promise<LogImportSelectImportPageViewModel> {
-
-        const availableImporters = await HostInterop.logImport.getAvailableImportersAsync(cancellationToken);
-        const result = new LogImportSelectImportPageViewModel(logImportViewModel, availableImporters);
-        return result;
-    }
-
-    constructor(
-        public readonly logImportViewModel: LogImportViewModel,
-        public readonly availableImporters: string[]) {
-
-        super();
-    }
-
-    @observableProperty
-    selectedImporter: string | null = null;
-
-    async waitForResponseAsync(cancellationToken: CancellationToken): Promise<string> {
-        const selectedImporter = await Observable.waitForChangeAsync(() => this.selectedImporter, null, cancellationToken);
-        return selectedImporter!;
-    }
-}
-
-export class LogImportShowMessagePageViewModel extends ObservableBase implements LogImportPageViewModel {
-    constructor(
-        public readonly logImportViewModel: LogImportViewModel,
-        public readonly data: ChatLogImportWorkflowShowMessageStepArgs) {
-
-        super();
-    }
-
-    @observableProperty
-    result: string | null = null;
-
-    async waitForResponseAsync(cancellationToken: CancellationToken): Promise<string> {
-        const selectedImporter = await Observable.waitForChangeAsync(() => this.result, null, cancellationToken);
-        return selectedImporter!;
-    }    
-}
-
-
-interface ChatLogImportWorkflowShowMessageStepArgs {
-    readonly title: string;
-    readonly body: string;
-    readonly buttons: ChatLogImportWorkflowShowMessageButton[];
-}
-interface ChatLogImportWorkflowShowMessageButton {
-    readonly title: string;
-    readonly result: string;
-}

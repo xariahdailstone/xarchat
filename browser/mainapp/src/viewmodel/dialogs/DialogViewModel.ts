@@ -4,6 +4,7 @@ import { StdObservableSortedView } from "../../util/collections/StdObservableSor
 import { StdObservableFilteredView, StdObservableSortedList } from "../../util/collections/StdObservableView";
 import { asDisposable, IDisposable } from "../../util/Disposable";
 import { KeyCodes } from "../../util/KeyCodes";
+import { ObservableValue } from "../../util/Observable";
 import { ObservableBase, observableProperty } from "../../util/ObservableBase";
 import { Collection } from "../../util/ObservableCollection";
 import { AppViewModel } from "../AppViewModel";
@@ -19,8 +20,10 @@ export abstract class DialogViewModel<TResult> extends ObservableBase {
     @observableProperty
     title: string = "Untitled";
 
-    @observableProperty
-    closeBoxResult: (TResult | undefined) = undefined;
+    private readonly _closeBoxResultObs: ObservableValue<TResult | undefined> = new ObservableValue(undefined);
+
+    get closeBoxResult(): (TResult | undefined) { return this._closeBoxResultObs.value; }
+    set closeBoxResult(value: (TResult | undefined)) { this._closeBoxResultObs.value = value; }
 
     @observableProperty
     buttons: Collection<DialogButtonViewModel> = new Collection();
