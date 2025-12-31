@@ -39,6 +39,7 @@ import { PlatformUtils } from "../util/PlatformUtils.js";
 import { InAppToastsViewModel, ToastInfo } from "./InAppToastsViewModel.js";
 import { Scheduler } from "../util/Scheduler.js";
 import { AccountsFriendsAndBookmarksViewModel } from "./AccountsFriendsAndBookmarksViewModel.js";
+import { ObjectUniqueId } from "../util/ObjectUniqueId.js";
 
 export class AppViewModel extends ObservableBase {
     constructor(configBlock: ConfigBlock) {
@@ -496,6 +497,18 @@ export class AppViewModel extends ObservableBase {
         else {
             swl.updateFromObject(data);
         }
+    }
+
+    get chatTextBoxHeight() {
+        const value = this.appSettings?.chatTextBoxHeight ?? 90;
+        Observable.publishNamedRead(`${ObjectUniqueId.get(this)}-chatTextBoxHeight`, value);
+        return value;
+    }
+    set chatTextBoxHeight(value: number) {
+        if (this.appSettings) {
+            this.appSettings.chatTextBoxHeight = value;
+        }
+        Observable.publishNamedUpdate(`${ObjectUniqueId.get(this)}-chatTextBoxHeight`, value);
     }
 
     private _idleDetection: IdleDetection | null = null;
