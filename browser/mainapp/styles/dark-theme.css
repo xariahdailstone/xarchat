@@ -28,6 +28,9 @@ body {
     --bg-level-3-highlight: hsl(var(--bg-base-hue), var(--fg-base-sat), calc(27% * var(--bg-brightness-scale))); /* #404249; */
     --fg-level-3-highlight: hsl(var(--bg-base-hue), var(--fg-base-sat), calc(100% * var(--fg-brightness-scale)));
 
+    --bg-level-4-highlight: hsl(var(--bg-base-hue), var(--fg-base-sat), calc(30% * var(--bg-brightness-scale))); /* #404249; */
+    --fg-level-4-highlight: hsl(var(--bg-base-hue), var(--fg-base-sat), calc(100% * var(--fg-brightness-scale)));
+
     --bg-level-2-hover: hsl(var(--bg-base-hue), calc(var(--bg-base-sat) * 0.65), calc(27% * var(--bg-brightness-scale)));
     --fg-level-2-hover: hsl(var(--bg-base-hue), var(--fg-base-sat), calc(100% * var(--fg-brightness-scale)));
     --bg-level-3-hover: hsl(var(--bg-base-hue), calc(var(--bg-base-sat) * 0.65), calc(30% * var(--bg-brightness-scale)));
