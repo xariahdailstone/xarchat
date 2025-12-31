@@ -127,6 +127,10 @@ function tryHandleEditShortcutKey(textarea: HTMLTextAreaElement, ev: KeyboardEve
                 tesh.spoiler();
                 loadBack = true;
                 break;
+            case KeyCodes.KEY_L:
+                tesh.url();
+                loadBack = true;
+                break;                
             case KeyCodes.KEY_N:
                 tesh.noparse();
                 loadBack = true;

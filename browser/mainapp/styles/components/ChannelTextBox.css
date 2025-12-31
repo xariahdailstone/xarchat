@@ -17,11 +17,10 @@
 
     display: grid;
 
-    grid-template-rows: 1fr auto;
+    grid-template-rows: 1fr;
     grid-template-columns: 1fr 125px;
     grid-template-areas:
-        "textbox buttons"
-        "statusbar buttons";
+        "textbox buttons";
 
     padding-top: 0px;
     padding-left: 0px;
@@ -78,9 +77,6 @@
 }
 .textbox-container.no-toolbar .textbox-toolbar-expandedcontainer { display: none; }
 
-.textbox-container.no-toolbar .textbox-toolbar {
-    display: contents;
-}
 .textbox-container .textbox-toolbar-toggle {
     grid-area: toggler;
     /* background-color: inherit; */
@@ -91,6 +87,10 @@
     max-height: 16px;
     --iconimage-max-width: 16px;
     --iconimage-max-height: 16px;
+}
+.textbox-container.toolbar-shown .textbox-toolbar-toggle {
+    margin-top: 2px;
+    margin-right: 2px;
 }
 
 .textbox-container.toolbar-shown {
@@ -106,47 +106,48 @@
 }
 
 .textbox-statusbar {
+    grid-area: statusbar;
     font-size: 85%;
     text-align: right;
     opacity: 0.3;
-    margin-top: 5px;
+    margin-right: 8px;
+    align-self: center;
 }
-.no-statusbar .textbox-statusbar { display: none !important; }
 
 .textbox-container.toolbar-shown .textbox-toolbar {
     grid-area: toolbar;
 
     display: grid;
     grid-template-rows: auto;
-    grid-template-columns: auto 1fr auto;
+    grid-template-columns: auto 1fr auto auto;
     grid-template-areas:
-        "buttons . toggler";
+        "buttons . statusbar toggler";
 
-    background-color: var(--bg-level-4);
-    color: var(--fg-level-4);
+    background-color: var(--bg-level-2);
+    color: var(--fg-level-2);
     border-radius: var(--textbox-container-border-radius);
 
     padding: calc(var(--textbox-container-padding) - 2px);
     border-radius: 0;
 }
 .textbox-container.toolbar-shown .textbox-toolbar-button {
-    background: var(--bg-level-2);
-    color: var(--fg-level-2);
+    background: var(--bg-level-4);
+    color: var(--fg-level-4);
     padding: 3px 3px;
     line-height: 0;
-    width: 18px;
-    height: 18px;
+    width: 20px;
+    height: 20px;
     cursor: pointer;
 }
 .textbox-container.toolbar-shown .textbox-toolbar-button:hover {
-    background: var(--bg-level-2-highlight);
-    color: var(--fg-level-2-highlight);
+    background: var(--bg-level-4-highlight);
+    color: var(--fg-level-4-highlight);
 }
 .textbox-container.toolbar-shown .textbox-toolbar-button x-iconimage {
-    height: 12px;
-    width: 12px;
-    max-height: 12px;
-    max-width: 12px;
+    height: 14px;
+    width: 14px;
+    max-height: 14px;
+    max-width: 14px;
     color: var(--fg-level-4);
 }
 
@@ -156,7 +157,7 @@
     grid-area: buttons; 
     display: flex; 
     flex-direction: row;
-    gap: 4px;
+    gap: 6px;
 }
 
 #elTextbox {

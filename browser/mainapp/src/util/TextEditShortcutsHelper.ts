@@ -85,6 +85,15 @@ export class TextEditShortcutsHelper {
         }
     }
 
+    url(href?: string) {
+        if (href) {
+            this.handleContainingTags(`[url=${href}]`, "[/url]");
+        }
+        else {
+            this.handleContainingTags(`[url=]`, "[/url]");
+        }
+    }
+
     private insensitiveStartsWith(haystack: string, needle: string) {
         return (haystack.toLowerCase().startsWith(needle.toLowerCase()));
     }
