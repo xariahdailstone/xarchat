@@ -24,6 +24,33 @@ const io = new IntersectionObserver((entries) => {
     }
 });
 
+const elForceVisStyle = document.createElement("style");
+elForceVisStyle.appendChild(document.createTextNode(`
+    .eicon-visibility-container {
+        position: absolute;
+        top: 0;
+        left: 0;
+        pointer-events: none;
+        user-select: none;
+        z-index: 9999;
+        opacity: 0.01;
+        line-height: 1px;
+
+        img {
+            width: 1px;
+            height: 1px;
+
+            &.hidden {
+                display: none;
+            }
+        }
+    }    
+`));
+document.head.appendChild(elForceVisStyle);
+const elForceVisibilityContainer = document.createElement("div");
+elForceVisibilityContainer.classList.add("eicon-visibility-container");
+document.body.appendChild(elForceVisibilityContainer);
+
 class EIconSyncManager {
     private readonly _logger = Logging.createLogger(`EIconSyncManager#${ObjectUniqueId.get(this)}`);
 
@@ -130,11 +157,17 @@ export class EIconDisplay extends HTMLElement {
     private connectedCallback() {
         //this._logger.logInfo("connected to DOM");
         this.updateState();
+        if (this._forceVisImgEl && !this._forceVisImgEl.parentElement) {
+            elForceVisibilityContainer.appendChild(this._forceVisImgEl);
+        }
     }
 
     private disconnectedCallback() {
         //this._logger.logInfo("disconnected from DOM");
         this.updateState();
+        if (this._forceVisImgEl && this._forceVisImgEl.parentElement) {
+            this._forceVisImgEl.remove();
+        }
     }
 
     private _isIntersecting: boolean = false;
@@ -210,10 +243,22 @@ export class EIconDisplay extends HTMLElement {
         }
     }
 
+    private _restartingAnimation = false;
     restartAnimation() {
-        const imgEl = this.imgEl;
-        if (imgEl) {
-            imgEl.src = imgEl.src;
+        if (!this._restartingAnimation) {
+            this._restartingAnimation = true;
+            Scheduler.scheduleCallback("nextframe", () => {
+                this._restartingAnimation = false;
+                const imgEl = this.imgEl;
+                if (imgEl && this._forceVisImgEl) {
+                    const src = imgEl.src;
+                    imgEl.src = "";
+                    this._forceVisImgEl.src = "";
+
+                    imgEl.src = src;
+                    this._forceVisImgEl.src = src;
+                }
+            });
         }
     }
 
@@ -223,6 +268,7 @@ export class EIconDisplay extends HTMLElement {
 
     private _lastStateEIconName: string | null = null;
     private _lastStateIsConnected: boolean = false;
+    private _lastStateIsIntersecting: boolean = false;
     private _lastStateSyncGroup: string | null = null;
     private _lastIsCompletedLoaded = false;
     private _isInIntersectObserver = false;
@@ -240,9 +286,33 @@ export class EIconDisplay extends HTMLElement {
         });
     }
 
+    private _forceVisImgEl: HTMLImageElement | null = null;
+
+    private createImageEl(eiconName: string) {
+        let imgEl = this.imgEl;
+        if (!imgEl) {
+            imgEl = document.createElement("img");
+            imgEl.id = "imgEl";
+            imgEl.src = emptyImageUrl;
+            imgEl.setAttribute("data-copycontent", `[eicon]${eiconName}[/eicon]`);
+            this.elMain.appendChild(imgEl);
+        }
+        if (!this._forceVisImgEl) {
+            this._forceVisImgEl = document.createElement("img");
+            this._forceVisImgEl.src = imgEl.src;
+            elForceVisibilityContainer.appendChild(this._forceVisImgEl);
+        }
+        return imgEl;
+    }
+    private setImageElSrc(src: string) {
+        this.createImageEl(src).src = src;
+        this._forceVisImgEl!.src = src;
+    }
+
     private updateStateInternal() {
         const lastEIconName = this._lastStateEIconName;
         const lastIsConnected = this._lastStateIsConnected;
+        const lastIsIntersecting = this._lastStateIsIntersecting;
         const lastSyncGroup = this._lastStateSyncGroup;
 
         const isConnected = this.isConnected;
@@ -252,12 +322,13 @@ export class EIconDisplay extends HTMLElement {
         const syncGroup = isConnected ? this.syncGroup : null;
         const charName = this.charName ? CharacterName.create(this.charName) : null;
 
-        if (lastEIconName == eiconName && lastIsConnected == isConnected && lastSyncGroup == syncGroup) { return; }
+        if (lastEIconName == eiconName && lastIsConnected == isConnected && lastSyncGroup == syncGroup && lastIsIntersecting == isIntersecting) { return; }
         //this._logger.logInfo(`updateState lastEIconName=${lastEIconName}, lastIsConnected=${lastIsConnected}, lastSyncGroup=${lastSyncGroup}, eiconName=${eiconName}, isConnected=${isConnected}, syncGroup=${syncGroup}`);
 
         this._lastStateEIconName = eiconName;
         this._lastStateIsConnected = isConnected;
         this._lastStateSyncGroup = syncGroup;
+        this._lastStateIsIntersecting = isIntersecting;
 
         let imgEl = this.imgEl;
 
@@ -303,13 +374,7 @@ export class EIconDisplay extends HTMLElement {
                 this._stopPreviousEIconLoad();
 
                 if (eiconName) {
-                    if (!imgEl) {
-                        imgEl = document.createElement("img");
-                        imgEl.id = "imgEl";
-                        imgEl.src = emptyImageUrl;
-                        imgEl.setAttribute("data-copycontent", `[eicon]${eiconName}[/eicon]`);
-                        this.elMain.appendChild(imgEl);
-                    }
+                    imgEl = this.createImageEl(eiconName);
 
                     const cts = new CancellationTokenSource();
                     this._stopPreviousEIconLoad = () => cts.cancel();
@@ -319,14 +384,14 @@ export class EIconDisplay extends HTMLElement {
                             const blobUrl = await loadedEicon.getBlobUrlAsync(syncGroup ?? "", cts.token);
                             this._stopPreviousEIconLoad = () => {
                                 blobUrl.dispose();
-                                imgEl!.src = emptyImageUrl;
+                                this.setImageElSrc(emptyImageUrl);
                             };
                             const loadHandler = EventListenerUtil.addDisposableEventListener(imgEl, "load", () => {
                                 loadHandler.dispose();
                                 this._logger.logDebug("eicon load", eiconName);
                                 this.set_isImageLoaded(true);
                             });
-                            imgEl.src = blobUrl.url;
+                            this.setImageElSrc(blobUrl.url);
                         }
                         catch { }
                     })();
@@ -340,6 +405,14 @@ export class EIconDisplay extends HTMLElement {
             }
             else {
                 this._lastIsCompletedLoaded = false;
+            }
+
+            if (isIntersecting && isIntersecting != lastIsIntersecting) {
+                eIconSyncManager.indicateLoad(this);
+            }
+
+            if (this._forceVisImgEl) {
+                this._forceVisImgEl.classList.toggle("hidden", !isIntersecting);
             }
         }
         else {

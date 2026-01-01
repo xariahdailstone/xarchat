@@ -20,10 +20,10 @@ export class ChannelEditHelpPopup extends ContextPopupBase<ChannelEditHelpPopupV
                     <td>${shortcutKeyString}T</td>
                     <td>Toggle Editing Toolbar</td>
                 </tr>
-                <tr>
+                <!--<tr>
                     <td>${shortcutKeyString}W</td>
                     <td>Toggle Editing Status Bar</td>
-                </tr>
+                </tr>-->
                 <tr>
                     <td>${shortcutKeyString}P</td>
                     <td>Show Message Preview</td>

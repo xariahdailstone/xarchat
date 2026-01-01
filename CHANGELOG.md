@@ -76,3 +76,11 @@
   * Available under the "..." tab on the left bar.
 * Added an interface to view and maintain your ignore list
   * Available under the "..." tab on the left bar.
+* The height of the chat entry textbox is now synced between all channel tabs, and is saved and
+  restored when you exit and restart XarChat.
+* Updated chat entry textbox toolbar
+  * Added some buttons that were missing
+  * Improved the overall appearance
+* Removed chat entry textbox status bar
+  * Word/character count moved onto the toolbar instead
+* Improved synchronization of eicon mosaics in chat messages.
