@@ -40,7 +40,7 @@ export class MyCharacterPanel extends RenderingComponentBase<ActiveLoginViewMode
                     <div id="elStatusMessage"><x-bbcodedisplay props={{viewModel: parseCodeResult}}></x-bbcodedisplay></div>
                 </div>
                 <button id="elConfigButton" on={{ click: () => vm.showMainContextMenu(this.$("elConfigButton")!) }} attr-tabindex="-1">
-                    <x-iconimage id="elConfigIcon" attr-src={"assets/ui/config-button.svg"}></x-iconimage>
+                    <x-iconimage id="elConfigIcon" attr-src={"assets/ui/hamburger-menu-icon.svg"}></x-iconimage>
                 </button>
             </>;
 

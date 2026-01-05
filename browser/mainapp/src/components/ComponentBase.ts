@@ -461,17 +461,23 @@ export abstract class ComponentBase<TViewModel> extends HTMLElement {
     }
 
     watchViewModel(valueChanged: (value: TViewModel | null | undefined) => (void | IDisposable)): IDisposable {
-        const lastReturnedDisposable = new DisposableOwnerField();
-        const result = this.whenConnectedWithViewModel(vm => {
-            lastReturnedDisposable.value = valueChanged(vm) ?? null;
-            return lastReturnedDisposable;
-        });
-        return asDisposable(() => {
-            result.dispose();
-            lastReturnedDisposable.value = valueChanged(undefined) ?? null;
-            lastReturnedDisposable.dispose();
+        return this.watchExpr(vm => vm, vm => {
+            return valueChanged(vm);
         });
     }
+
+    // watchViewModel(valueChanged: (value: TViewModel | null | undefined) => (void | IDisposable)): IDisposable {
+    //     const lastReturnedDisposable = new DisposableOwnerField();
+    //     const result = this.whenConnectedWithViewModel(vm => {
+    //         lastReturnedDisposable.value = valueChanged(vm) ?? null;
+    //         return lastReturnedDisposable;
+    //     });
+    //     return asDisposable(() => {
+    //         result.dispose();
+    //         lastReturnedDisposable.value = valueChanged(undefined) ?? null;
+    //         lastReturnedDisposable.dispose();
+    //     });
+    // }
 
     private readonly _whenConnectedEntries: SnapshottableSet<{ invoke: (isConnected: boolean) => Optional<IDisposable>, lastResult: DisposableOwnerField }> = new SnapshottableSet();
 

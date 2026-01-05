@@ -43,7 +43,7 @@ export class ChannelHeader extends ComponentBase<ChannelViewModel> {
             </div>
 
             <div id="elConfigIconContainer">
-                <x-iconimage id="elConfigIcon" src="assets/ui/config-button.svg"></x-iconimage>
+                <x-iconimage id="elConfigIcon" src="assets/ui/hamburger-menu-icon.svg"></x-iconimage>
             </div>
         `);
 
@@ -58,98 +58,7 @@ export class ChannelHeader extends ComponentBase<ChannelViewModel> {
         const elDescriptionShowMore = this.$("elDescriptionShowMore") as HTMLButtonElement;
 
         this.elMain.addEventListener("contextmenu", (e: MouseEvent) => {
-            const vm = this.viewModel;
-            if (vm instanceof ChatChannelViewModel) {
-                const menuvm = new ContextMenuPopupViewModel<() => any>(vm.appViewModel, new DOMRect(e.clientX, e.clientY, 1, 1));
-                const isChanOp = vm.isEffectiveOp(vm.activeLoginViewModel.characterName);
-                const isChanOwner = vm.isEffectiveOwner(vm.activeLoginViewModel.characterName);
-
-                menuvm.addMenuItem("Copy BBCode Link to Channel", () => {
-                    navigator.clipboard.writeText(`[session=${vm.title}]${vm.name.value}[/session]`);
-                    menuvm.dismissed();
-                });
-
-                menuvm.addMenuItem("List Channel Operators", () => {
-                    vm.getChannelOpListAsync();
-                    menuvm.dismissed();
-                });
-
-                if (isChanOp) {
-                    menuvm.addSeparator();
-
-                    menuvm.addMenuItem("List Channel Bans", () => {
-                        vm.getBanListAsync();
-                        menuvm.dismissed();
-                    });
-                    menuvm.addMenuItem("Kick a Character From Channel...", () => {
-                        vm.kickAsync();
-                        menuvm.dismissed();
-                    });
-                    menuvm.addMenuItem("Timeout a Character From Channel...", () => {
-                        // TODO:
-                        vm.appViewModel.alertAsync("Not yet implemented, use the /timeout command instead.");
-                        menuvm.dismissed();
-                    });
-                    menuvm.addMenuItem("Ban a Character From Channel...", () => {
-                        vm.banAsync();
-                        menuvm.dismissed();
-                    });
-                    menuvm.addMenuItem("Unban a Character From Channel...", () => {
-                        vm.unbanAsync();
-                        menuvm.dismissed();
-                    });
-
-                    menuvm.addMenuItem("Invite Character to Channel...", () => {
-                        vm.inviteAsync();
-                        menuvm.dismissed();
-                    });
-    
-                    menuvm.addSeparator();
-
-                    menuvm.addMenuItem("Open Channel to Public", () => {
-                        vm.changeChannelPrivacyStatusAsync("public");
-                        menuvm.dismissed();
-                    });
-                    menuvm.addMenuItem("Close Channel to Public", () => {
-                        vm.changeChannelPrivacyStatusAsync("private");
-                        menuvm.dismissed();
-                    });
-
-                    menuvm.addMenuItem("Change Channel Description...", () => {
-                        vm.changeDescriptionAsync();
-                        menuvm.dismissed();
-                    });
-                }
-
-                if (isChanOwner) {
-                    menuvm.addSeparator();
-
-                    menuvm.addMenuItem("Add Channel Moderator...", () => {
-                        vm.opAsync();
-                        menuvm.dismissed();
-                    });
-                    menuvm.addMenuItem("Remove Channel Moderator...", () => {
-                        vm.deopAsync();
-                        menuvm.dismissed();
-                    });
-
-                    menuvm.addSeparator();
-                    menuvm.addMenuItem("Give Ownership of Channel...", () => {
-                        // TODO:
-                        vm.appViewModel.alertAsync("Not yet implemented, use the /makeowner command instead.");
-                        menuvm.dismissed();
-                    });
-                }
-
-                menuvm.addSeparator();
-                menuvm.addMenuItem("Report Channel...", () => {
-                    const reportvm = new ReportViewModel(vm.activeLoginViewModel, ReportSource.CHANNEL_HEADER, undefined, vm);
-                    vm.appViewModel.showDialogAsync(reportvm);
-                    menuvm.dismissed();
-                });
-                menuvm.onValueSelected = (v) => v();
-                vm.appViewModel.popups.push(menuvm);
-            }
+            this.showContextMenuAsync(new DOMRect(e.clientX, e.clientY, 1, 1));
             e.preventDefault();
         });
         this.watchViewModel(v => {
@@ -294,62 +203,6 @@ export class ChannelHeader extends ComponentBase<ChannelViewModel> {
             elConfigIconContainer.classList.toggle("hidden", !showConfigButton);
         });
 
-        // let assigningFilterMode = false;
-        // this.watch("filterMode", v => {
-        //     let selectIndex: number;
-        //     switch (v) {
-        //         case ChatChannelMessageMode.ADS_ONLY:
-        //             selectIndex = 0;
-        //             break;
-        //         case ChatChannelMessageMode.CHAT_ONLY:
-        //             selectIndex = 1;
-        //             break;
-        //         case ChatChannelMessageMode.BOTH:
-        //             selectIndex = 2;
-        //             break;
-        //         default:
-        //             selectIndex = 0;
-        //             break;
-        //     }
-        //     assigningFilterMode = true;
-        //     elFilterDropdown.selectedIndex = selectIndex;
-        //     assigningFilterMode = false;
-        // });
-
-        // elFilterDropdown.addEventListener("change", () => {
-        //     if (assigningFilterMode) { return; }
-
-        //     const vm = this.viewModel;
-        //     if (!vm) { return; }
-        //     if (vm instanceof ChatChannelViewModel && vm.filterMode !== undefined) {
-        //         let assignValue: ChatChannelMessageMode;
-        //         switch (elFilterDropdown.selectedIndex) {
-        //             case 0:
-        //                 assignValue = ChatChannelMessageMode.ADS_ONLY;
-        //                 break;
-        //             case 1:
-        //                 assignValue = ChatChannelMessageMode.CHAT_ONLY;
-        //                 break;
-        //             default:
-        //             case 2:
-        //                 assignValue = ChatChannelMessageMode.BOTH;
-        //                 break;
-        //         }
-        //         vm.filterMode = assignValue;
-        //     }
-        // });
-
-        // this.whenConnected(() => {
-        //     const rm = new ResizeObserverNice(() => {
-        //         this.checkDescriptionSizeNow();
-        //     });
-        //     rm.observe(elDescriptionText);
-        //     rm.observe(elDescriptionTextSizer);
-        //     return asDisposable(() => {
-        //         rm.disconnect();
-        //     });
-        // });
-
         this.$("elDescriptionShowMore")!.addEventListener("click", () => {
             const vm = this.viewModel;
             if (vm) {
@@ -363,10 +216,129 @@ export class ChannelHeader extends ComponentBase<ChannelViewModel> {
         });
 
         elConfigIconContainer.addEventListener("click", () => {
-            if (this.viewModel) {
-                this.viewModel.showSettingsDialogAsync();
-            }
+            // if (this.viewModel) {
+            //     this.viewModel.showSettingsDialogAsync();
+            // }
+            this.showContextMenuAsync(elConfigIconContainer);
         });
+    }
+
+    private async showContextMenuAsync(target: HTMLElement | DOMRect) {
+        const vm = this.viewModel;
+        if (!vm) { return; }
+
+        const elConfigIconContainer = this.$("elConfigIconContainer") as HTMLDivElement;
+
+        const menuvm = (target instanceof HTMLElement) ? new ContextMenuPopupViewModel<() => any>(vm.appViewModel, target)
+            : new ContextMenuPopupViewModel<() => any>(vm.appViewModel, target);
+
+        if (vm instanceof ChatChannelViewModel) {
+            const isChanOp = vm.isEffectiveOp(vm.activeLoginViewModel.characterName);
+            const isChanOwner = vm.isEffectiveOwner(vm.activeLoginViewModel.characterName);
+
+            menuvm.addMenuItem("Channel Settings...", () => {
+                vm.showSettingsDialogAsync();
+                menuvm.dismissed();
+            });
+
+            menuvm.addSeparator();
+
+            menuvm.addMenuItem("Copy BBCode Link to Channel", () => {
+                navigator.clipboard.writeText(`[session=${vm.title}]${vm.name.value}[/session]`);
+                menuvm.dismissed();
+            });
+
+            menuvm.addMenuItem("List Channel Operators", () => {
+                vm.getChannelOpListAsync();
+                menuvm.dismissed();
+            });
+
+            if (isChanOp) {
+                menuvm.addSeparator();
+
+                menuvm.addMenuItem("List Channel Bans", () => {
+                    vm.getBanListAsync();
+                    menuvm.dismissed();
+                });
+                menuvm.addMenuItem("Kick a Character From Channel...", () => {
+                    vm.kickAsync();
+                    menuvm.dismissed();
+                });
+                menuvm.addMenuItem("Timeout a Character From Channel...", () => {
+                    // TODO:
+                    vm.appViewModel.alertAsync("Not yet implemented, use the /timeout command instead.");
+                    menuvm.dismissed();
+                });
+                menuvm.addMenuItem("Ban a Character From Channel...", () => {
+                    vm.banAsync();
+                    menuvm.dismissed();
+                });
+                menuvm.addMenuItem("Unban a Character From Channel...", () => {
+                    vm.unbanAsync();
+                    menuvm.dismissed();
+                });
+
+                menuvm.addMenuItem("Invite Character to Channel...", () => {
+                    vm.inviteAsync();
+                    menuvm.dismissed();
+                });
+
+                menuvm.addSeparator();
+
+                menuvm.addMenuItem("Open Channel to Public", () => {
+                    vm.changeChannelPrivacyStatusAsync("public");
+                    menuvm.dismissed();
+                });
+                menuvm.addMenuItem("Close Channel to Public", () => {
+                    vm.changeChannelPrivacyStatusAsync("private");
+                    menuvm.dismissed();
+                });
+
+                menuvm.addMenuItem("Change Channel Description...", () => {
+                    vm.changeDescriptionAsync();
+                    menuvm.dismissed();
+                });
+            }
+
+            if (isChanOwner) {
+                menuvm.addSeparator();
+
+                menuvm.addMenuItem("Add Channel Moderator...", () => {
+                    vm.opAsync();
+                    menuvm.dismissed();
+                });
+                menuvm.addMenuItem("Remove Channel Moderator...", () => {
+                    vm.deopAsync();
+                    menuvm.dismissed();
+                });
+
+                menuvm.addSeparator();
+                menuvm.addMenuItem("Give Ownership of Channel...", () => {
+                    // TODO:
+                    vm.appViewModel.alertAsync("Not yet implemented, use the /makeowner command instead.");
+                    menuvm.dismissed();
+                });
+            }
+
+            menuvm.addSeparator();
+            menuvm.addMenuItem("Report Channel...", () => {
+                const reportvm = new ReportViewModel(vm.activeLoginViewModel, ReportSource.CHANNEL_HEADER, undefined, vm);
+                vm.appViewModel.showDialogAsync(reportvm);
+                menuvm.dismissed();
+            });
+        }
+        else if (vm instanceof PMConvoChannelViewModel) {
+            menuvm.addMenuItem("PM Conversation Settings...", () => {
+                vm.showSettingsDialogAsync();
+                menuvm.dismissed();
+            });
+        }
+        else {
+            return;
+        }
+
+        menuvm.onValueSelected = (v) => v();
+        vm.appViewModel.popups.push(menuvm);        
     }
 
     // private _checkDescSizeHandle: IDisposable | null = null;
