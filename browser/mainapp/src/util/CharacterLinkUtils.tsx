@@ -12,8 +12,7 @@ import { CharacterLinkIconType, EffectiveCharacterNameInfo, EffectiveCharacterNa
 import { ConvertibleToDisposable, IDisposable, asDisposable } from "./Disposable";
 import { EventListenerUtil } from "./EventListenerUtil";
 import { ObjectUniqueId } from "./ObjectUniqueId";
-import { Observable, PropertyChangeEvent, PropertyChangeEventListener, ValueSubscription } from "./Observable";
-import { setupValueSubscription } from "./ObservableBase";
+import { Observable, PropertyChangeEvent, PropertyChangeEventListener } from "./Observable";
 
 export interface CharacterLinkOptions {
     disallowLeftClick?: boolean;
@@ -176,9 +175,6 @@ export class MassCharacterLinkManager implements IDisposable, Observable {
     }
     raisePropertyChangeEvent(propertyName: string, propValue: unknown): void {
         this._cbSet.invoke(new PropertyChangeEvent(propertyName, propValue));
-    }
-    addValueSubscription(propertyPath: string, handler: (value: any) => any): ValueSubscription {
-        return setupValueSubscription(this, propertyPath, handler);
     }
 
     private _chars: Set<CharacterName> = new Set();
