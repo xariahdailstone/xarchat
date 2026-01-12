@@ -64,7 +64,7 @@ export abstract class CollectionViewLightweight<TViewModel> extends ComponentBas
         const isConnected = this.isComponentConnected;
 
         this._wcm.assign({ vm, containerEl, isConnected }, () => {
-            if (vm != null && containerEl && isConnected) {
+            if (vm != null && containerEl && isConnected && vm.addCollectionObserver) {
                 const ccHandler = vm.addCollectionObserver(changes => {
                     this.startingElementUpdate();
                     for (let chg of changes) {

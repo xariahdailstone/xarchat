@@ -998,7 +998,9 @@ export class ChatChannelViewModel extends ChannelViewModel implements IHasRightB
                 multiline: true,
                 maxLength: this.activeLoginViewModel.serverVariables.cds_max != null ? +this.activeLoginViewModel.serverVariables.cds_max : 5000,
                 isBBCodeString: true,
-                initialValue: this.description
+                initialValue: this.description,
+                channelViewModel: this,
+                activeLoginViewModel: this.activeLoginViewModel
             });
             if (nd == null) {
                 return;
