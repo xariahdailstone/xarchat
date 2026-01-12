@@ -185,15 +185,6 @@ class SubrenderData<TAdditionalData> implements IDisposable, IObservable<any> {
     }
 
     private cloneVNode(origNode: VNode): VNode {
-        const result = {...origNode};
-        if (result.children) {
-            for (let i = 0; i < result.children?.length; i++) {
-                const titem = result.children[i];
-                if (typeof titem != "string") {
-                    result.children[i] = this.cloneVNode(titem);
-                }
-            }
-        }
-        return result;
+        return VNodeUtils.clone(origNode);
     }
 }

@@ -8,6 +8,19 @@ export class VNodeUtils {
         return <x-emptyfragment style={{ "display": "none" }}></x-emptyfragment>
     }
 
+    static clone(origNode: VNode): VNode {
+        const result = {...origNode};
+        if (result.children) {
+            for (let i = 0; i < result.children?.length; i++) {
+                const titem = result.children[i];
+                if (typeof titem != "string") {
+                    result.children[i] = this.clone(titem);
+                }
+            }
+        }
+        return result;
+    }
+
     static fromHTML(htmlStr: string): VNode {
         const tmpl = document.createElement("template");
         tmpl.innerHTML = htmlStr;

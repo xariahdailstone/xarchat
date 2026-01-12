@@ -1,6 +1,7 @@
 import { BBCodeParseOptions, BBCodeParser, BBCodeParseResult, ChatBBCodeParser, SystemMessageBBCodeParser } from "../../util/bbcode/BBCode";
 import { CancellationToken, CancellationTokenSource } from "../../util/CancellationTokenSource";
 import { IDisposable } from "../../util/Disposable";
+import { HostInterop } from "../../util/hostinterop/HostInterop";
 import { KeyCodes } from "../../util/KeyCodes";
 import { Observable, ObservableValue } from "../../util/Observable";
 import { ObservableBase, observableProperty } from "../../util/ObservableBase";
@@ -25,6 +26,8 @@ export class AboutViewModel extends DialogViewModel<boolean> implements IDisposa
         this._setAcknowledgementsText("Loading acknowledgements...");
 
         this._loadAcknowledgementsAsync(this._disposeCTS.token);
+
+        this._loadSupportInfoAsync(this._disposeCTS.token);
     }
 
     private readonly _disposeCTS: CancellationTokenSource = new CancellationTokenSource();
@@ -38,6 +41,8 @@ export class AboutViewModel extends DialogViewModel<boolean> implements IDisposa
             this._disposeCTS.cancel();
             this.acknowledgements?.dispose();
             this.acknowledgements = null;
+            this.supportInfo?.dispose();
+            this.supportInfo = null;
         }
     }
     [Symbol.dispose](): void {
@@ -51,6 +56,25 @@ export class AboutViewModel extends DialogViewModel<boolean> implements IDisposa
     get clientBranch() { return XarChatUtils.clientBranch; }
 
     get fullClientVersion() { return XarChatUtils.getFullClientVersionString(); }
+
+    private readonly _supportInfo: ObservableValue<BBCodeParseResult | null> = new ObservableValue(null);
+
+    get supportInfo() { return this._supportInfo.value; }
+    set supportInfo(value: BBCodeParseResult | null) {
+        if (value != this._supportInfo.value) {
+            const currentValue = this._supportInfo.value;
+
+            if (this._disposed) {
+                value?.dispose();
+                value = null;
+            }
+
+            this._supportInfo.value = value;
+            if (currentValue) {
+                currentValue.dispose();
+            }
+        }
+    }
 
     private readonly _acknowledgements: ObservableValue<BBCodeParseResult | null> = new ObservableValue<BBCodeParseResult | null>(null);
 
@@ -118,6 +142,40 @@ export class AboutViewModel extends DialogViewModel<boolean> implements IDisposa
         catch (e) {
             this.logger.logError("Credits load failed.", e);
             this._setAcknowledgementsText("Unable to load acknowledgements.");
+        }
+    }
+
+    private async _loadSupportInfoAsync(cancellationToken: CancellationToken) {
+        try {
+            const fresp = await HostInterop.noCorsFetch({ url: "https://xariah.net/xarchat/supportinfo", method: "get" }, cancellationToken);
+            if (cancellationToken.isCancellationRequested) return;
+            const fhtml = await fresp.text();
+            if (cancellationToken.isCancellationRequested) return;
+            const template = document.createElement("template");
+            template.innerHTML = fhtml;
+            const tnode = template.content.cloneNode(true) as Element;
+            const contentEl = tnode.querySelector("#elContent");
+            if (contentEl) {
+                let rtext =  (contentEl as HTMLElement).innerHTML
+                rtext = rtext.replace(/\r/g, "");
+                rtext = rtext.replace(/\n\n?/g, (s) => {
+                    if (s == "\n\n") { return "\n\n"; }
+                    return " ";
+                });
+                this._setSupportInfoText(rtext);
+            }
+        }
+        catch (e) {
+        }
+    }
+
+    _setSupportInfoText(text: string) {
+        if (!this._disposed) {
+            const pres = SystemMessageBBCodeParser.parse(text, this.bbcodeParseOptions);
+            this.supportInfo = pres;
+        }
+        else {
+            this.supportInfo = null;
         }
     }
 }
