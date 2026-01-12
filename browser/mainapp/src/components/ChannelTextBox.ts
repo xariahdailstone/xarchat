@@ -69,11 +69,9 @@ export class ChannelTextBox extends ComponentBase<ChannelViewModel> {
                             <div class="textbox-toolbar-button" data-buttoncommand="noparse" title="No Parse (${shortcutKeyString}N)">
                                 <x-iconimage src="assets/ui/textbox-toolbar/noparse.svg"></x-iconimage>
                             </div>
-                            <!--
                             <div class="textbox-toolbar-button" data-buttoncommand="preview" title="Preview (${shortcutKeyString}P)">
                                 <x-iconimage src="assets/ui/textbox-toolbar/preview.svg"></x-iconimage>
                             </div>
-                            -->
                         </div>
                         <div class="textbox-statusbar" id="elStatusBar">0 words :: 0/30,000 characters used</div>
                         <div class="textbox-toolbar-toggle" title="Show Editing Help">
@@ -266,6 +264,7 @@ export class ChannelTextBox extends ComponentBase<ChannelViewModel> {
         elTextbox.addEventListener("input", pushTextbox);
         elTextbox.addEventListener("change", pushTextbox);
         BBCodeUtils.addEditingShortcuts(elTextbox, {
+            previewPopupElement: elTextboxContainer,
             appViewModelGetter: () => { return this.viewModel?.appViewModel ?? null; },
             channelViewModelGetter: () => { return this.viewModel ?? null; },
             activeLoginViewModelGetter: () => { return this.viewModel?.activeLoginViewModel ?? null; },
@@ -420,9 +419,15 @@ export class ChannelTextBox extends ComponentBase<ChannelViewModel> {
     }
 
     private tryHandleButtonCommand(cmd: string) {
+        const elTextboxContainer = this.$("elTextboxContainer")! as HTMLElement;
         const elTextbox = this.$("elTextbox")! as HTMLTextAreaElement;
 
-        const tesh = new TextEditShortcutsHelper();
+        const tesh = new TextEditShortcutsHelper({
+            textarea: elTextbox,
+            previewPopupElement: elTextboxContainer,
+            channelViewModelGetter: () => this.viewModel ?? null,
+            activeLoginViewModelGetter: () => this.viewModel?.activeLoginViewModel ?? null
+        });
         tesh.value = elTextbox.value;
         tesh.selectionAt = Math.min(elTextbox.selectionStart, elTextbox.selectionEnd)
         tesh.selectionLength = Math.abs(elTextbox.selectionEnd - elTextbox.selectionStart);
@@ -481,7 +486,10 @@ export class ChannelTextBox extends ComponentBase<ChannelViewModel> {
             case "url":
                 tesh.url();
                 loadBack = true;
-                break;                
+                break;
+            case "preview":
+                tesh.showPreview();
+                break;
         }
 
         if (loadBack) {

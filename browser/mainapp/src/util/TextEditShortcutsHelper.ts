@@ -1,6 +1,21 @@
+import { ActiveLoginViewModel } from "../viewmodel/ActiveLoginViewModel";
+import { ChannelViewModel } from "../viewmodel/ChannelViewModel";
+import { MessagePreviewPopupViewModel } from "../viewmodel/popups/MessagePreviewPopupViewModel";
+import { EventListenerUtil } from "./EventListenerUtil";
+
+const CUR_POPUP_VM = Symbol();
+
+export interface TextEditShortcutsHelperOptions {
+    textarea: HTMLTextAreaElement;
+    previewPopupElement?: HTMLElement;
+
+    channelViewModelGetter?: () => ChannelViewModel | null;
+    activeLoginViewModelGetter?: () => ActiveLoginViewModel | null;
+};
 
 export class TextEditShortcutsHelper {
-    constructor() {
+    constructor(
+        private readonly options: TextEditShortcutsHelperOptions) {
     }
 
     value: string = "";
@@ -91,6 +106,34 @@ export class TextEditShortcutsHelper {
         }
         else {
             this.handleContainingTags(`[url=]`, "[/url]");
+        }
+    }
+
+    showPreview() {
+        const textarea = this.options.textarea;
+        const curPopup = (textarea as any)[CUR_POPUP_VM] as (MessagePreviewPopupViewModel | undefined);
+        if (!curPopup) {
+            const cvm = this.options.channelViewModelGetter ? this.options.channelViewModelGetter() : null;
+            const alvm = cvm ? cvm.activeLoginViewModel : (this.options.activeLoginViewModelGetter ? this.options.activeLoginViewModelGetter() : null);
+            if (alvm) {
+                const pu = new MessagePreviewPopupViewModel(cvm, alvm, this.options.previewPopupElement ?? textarea);
+                (textarea as any)[CUR_POPUP_VM] = pu;
+                pu.rawText = textarea.value;
+                alvm.appViewModel.popups.push(pu);
+                const hinput = EventListenerUtil.addDisposableEventListener(textarea, "input", () => { pu.dismissed(); });
+                const hblur = EventListenerUtil.addDisposableEventListener(textarea, "blur", () => { pu.dismissed(); });
+                const hkeydown = EventListenerUtil.addDisposableEventListener(textarea, "keydown", () => { pu.dismissed(); });
+                (async () => {
+                    await pu.waitForDismissalAsync();
+                    delete (textarea as any)[CUR_POPUP_VM];
+                    hinput.dispose();
+                    hblur.dispose();
+                    hkeydown.dispose();
+                })();
+            }
+        }
+        else {
+            curPopup.dismissed();
         }
     }
 
