@@ -348,12 +348,13 @@ namespace XarChat.Backend.UrlHandlers.FListApiProxy
             app.MapGet(urlBase + "{account}/ticket", async (
                 [FromRoute] string account,
                 [FromServices] IFalsifiedClientTicketManager fctm,
-                CancellationToken cancellationToken) =>
+                CancellationToken cancellationToken,
+                [FromQuery] bool verify = true) =>
             {
                 return await CallFListApi(async () =>
                 {
                     var authApi = await flistApi.GetAlreadyAuthenticatedFListApiAsync(account, cancellationToken);
-                    var resultWFC = await authApi.GetApiTicketAsync(cancellationToken);
+                    var resultWFC = await authApi.GetApiTicketAsync(verify, cancellationToken);
 
                     var resTicket = new ApiTicket()
                     {

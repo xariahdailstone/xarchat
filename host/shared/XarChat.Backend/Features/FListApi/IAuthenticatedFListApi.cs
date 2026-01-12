@@ -12,7 +12,10 @@ namespace XarChat.Backend.Features.FListApi
         Task DebugBreakTicketAsync(CancellationToken cancellationToken);
 #endif
 
-        Task<ValueWithCameFromCache<ApiTicket>> GetApiTicketAsync(CancellationToken cancellationToken);
+        Task<ValueWithCameFromCache<ApiTicket>> GetApiTicketAsync(CancellationToken cancellationToken)
+            => GetApiTicketAsync(false, cancellationToken);
+
+        Task<ValueWithCameFromCache<ApiTicket>> GetApiTicketAsync(bool verifyTicket, CancellationToken cancellationToken);
 
         Task<FriendsList> GetFriendsListAsync(CancellationToken cancellationToken);
 

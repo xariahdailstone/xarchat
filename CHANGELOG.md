@@ -84,3 +84,7 @@
 * Removed chat entry textbox status bar
   * Word/character count moved onto the toolbar instead
 * Improved synchronization of eicon mosaics in chat messages.
+* Changed menu icons from gears to hamburgers.
+  * Mmmm, hamburgers. 
+* Moved channel menu items into the channel hamburger menu.
+* Fixed an issue where automatic reconnection to chat would fail if the cached API ticket was expired.

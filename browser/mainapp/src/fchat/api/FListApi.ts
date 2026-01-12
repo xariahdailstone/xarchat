@@ -14,7 +14,7 @@ export interface FListAuthenticatedApi extends FListApi {
     readonly account: string;
 
     //invalidateApiTicketAsync(ticket: string, cancellationToken: CancellationToken): Promise<void>;
-    getApiTicketAsync(cancellationToken: CancellationToken): Promise<ApiTicket>;
+    getApiTicketAsync(verifyTicket: boolean, cancellationToken: CancellationToken): Promise<ApiTicket>;
 
     getFriendsListAsync(cancellationToken: CancellationToken): Promise<FriendsList>;
     addBookmarkAsync(name: CharacterName, cancellationToken: CancellationToken): Promise<void>;
