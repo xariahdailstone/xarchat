@@ -1,7 +1,6 @@
 import { CallbackSet } from "./CallbackSet.js";
 import { IDisposable, asDisposable } from "./Disposable.js";
-import { Observable, ObservableValue, PropertyChangeEvent, PropertyChangeEventListener, ValueSubscription } from "./Observable.js";
-import { setupValueSubscription } from "./ObservableBase.js";
+import { Observable, ObservableValue, PropertyChangeEvent, PropertyChangeEventListener } from "./Observable.js";
 import { Predicate } from "./Predicate.js";
 import { ReadOnlyStdObservableCollection, StdObservableCollectionChange, StdObservableCollectionChangeType, StdObservableCollectionObserver } from "./collections/ReadOnlyStdObservableCollection.js";
 import { SnapshottableSet } from "./collections/SnapshottableSet.js";
@@ -10,7 +9,6 @@ export interface ReadOnlyObservableCollection<T> extends ReadOnlyStdObservableCo
     readonly [index: number]: (T | undefined);
     get length(): number;
     [Symbol.iterator](): Iterator<T>;
-    addValueSubscription(propertyPath: string, handler: (value: any) => any): ValueSubscription;
     addEventListener(eventName: "collectionchange", handler: CollectionChangeEventListener<T>): IDisposable;
     removeEventListener(eventName: "collectionchange", handler: CollectionChangeEventListener<T>): void;
 }
@@ -30,11 +28,7 @@ export interface ObservableCollection<T> extends ReadOnlyObservableCollection<T>
     filter(predicate: Predicate<T>): T[];
     contains(value: T): boolean;
 
-    //addValueSubscription(propertyPath: string, handler: (value: any) => any): ValueSubscription;
     raisePropertyChangeEvent(propertyName: string, propertyValue: unknown): void;
-
-    //addEventListener(eventName: "collectionchange", handler: CollectionChangeEventListener<T>): Disposable;
-    //removeEventListener(eventName: "collectionchange", handler: CollectionChangeEventListener<T>): void;
 
     setPushSort(sortFunc: (SortFunction<T> | null)): void;
 }
@@ -390,10 +384,6 @@ export class Collection<T> implements ObservableCollection<T>, Observable {
         else if (eventName == "propertychange") {
             this._propertyChangeHandlers2.delete(handler as PropertyChangeEventListener);
         }
-    }
-
-    addValueSubscription(propertyPath: string, handler: (value: any) => any): ValueSubscription {
-        return setupValueSubscription(this, propertyPath, handler);
     }
 
     protected raiseCollectionChangeEvent(type: CollectionChangeType, index?: number, count?: number, removedItem?: T): void {

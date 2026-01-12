@@ -1,8 +1,7 @@
 import { h } from "../../snabbdom/h";
 import { CallbackSet } from "../CallbackSet";
 import { IDisposable, asDisposable } from "../Disposable";
-import { Observable, PropertyChangeEvent, PropertyChangeEventListener, ValueSubscription } from "../Observable";
-import { setupValueSubscription } from "../ObservableBase";
+import { Observable, PropertyChangeEvent, PropertyChangeEventListener } from "../Observable";
 import { ReadOnlyStdObservableCollection, StdObservableCollectionChange, StdObservableCollectionChangeType, StdObservableCollectionObserver } from "./ReadOnlyStdObservableCollection";
 import { SnapshottableSet } from "./SnapshottableSet";
 
@@ -170,8 +169,5 @@ export class StdObservableConcatCollectionView<TItem> implements ReadOnlyStdObse
     raisePropertyChangeEvent(propertyName: string, propValue: unknown): void {
         const pce = new PropertyChangeEvent(propertyName, propValue);
         this._propertyChangeListeners2.invoke(pce);
-    }
-    addValueSubscription(propertyPath: string, handler: (value: any) => any): ValueSubscription {
-        return setupValueSubscription(this, propertyPath, handler);
     }
 }

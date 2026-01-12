@@ -8,6 +8,7 @@ export interface RawAppSettings {
     savedLogins: RawSavedLogin[];
     savedChatStates: RawSavedChatState[];
     autoIdleSec: Optional<number>;
+    chatTextBoxHeight?: number;
 }
 
 export interface RawSavedWindowLocation {

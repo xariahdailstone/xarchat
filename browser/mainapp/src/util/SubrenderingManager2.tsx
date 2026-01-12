@@ -3,8 +3,7 @@ import { ArrayUtils } from "./ArrayUtils";
 import { CallbackSet } from "./CallbackSet";
 import { asDisposable, ConvertibleToDisposable, IDisposable } from "./Disposable";
 import { Logger, Logging } from "./Logger";
-import { DependencySet, IObservable, Observable, PropertyChangeEvent, PropertyChangeEventListener, ValueSubscription } from "./Observable";
-import { setupValueSubscription } from "./ObservableBase";
+import { DependencySet, IObservable, Observable, PropertyChangeEvent, PropertyChangeEventListener } from "./Observable";
 import { ISubrenderingManager, SubrenderArguments } from "./SubrenderingManager";
 import { VNodeUtils } from "./VNodeUtils";
 
@@ -157,9 +156,6 @@ class SubrenderData<TAdditionalData> implements IDisposable, IObservable<any> {
     raisePropertyChangeEvent(propertyName: string, propValue: unknown): void {
         this._cbSet.invoke(new PropertyChangeEvent(propertyName, propValue));
     }
-    addValueSubscription(propertyPath: string, handler: (value: any) => any): ValueSubscription {
-        return setupValueSubscription(this, propertyPath, handler);
-    }
 
     private readonly _origResult: VNode;
     private readonly _depSet: DependencySet;
@@ -189,15 +185,6 @@ class SubrenderData<TAdditionalData> implements IDisposable, IObservable<any> {
     }
 
     private cloneVNode(origNode: VNode): VNode {
-        const result = {...origNode};
-        if (result.children) {
-            for (let i = 0; i < result.children?.length; i++) {
-                const titem = result.children[i];
-                if (typeof titem != "string") {
-                    result.children[i] = this.cloneVNode(titem);
-                }
-            }
-        }
-        return result;
+        return VNodeUtils.clone(origNode);
     }
 }

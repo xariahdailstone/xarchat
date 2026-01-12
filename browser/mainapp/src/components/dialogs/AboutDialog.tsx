@@ -26,8 +26,11 @@ export class AboutDialog extends DialogComponentBase<AboutViewModel> {
         
         this.logger.logInfo("rendering about dialog");
         const vnode = <div classList={[ "about-container" ]}>
-            <div classList={[ "about-title" ]}>{vm.productName}</div>
-            <div classList={[ "about-version" ]}>{vm.fullClientVersion}</div>
+            <div classList={[ "about-appinfo" ]}>
+                <div classList={[ "about-title" ]}>{vm.productName}</div>
+                <div classList={[ "about-version" ]}>{vm.fullClientVersion}</div>
+            </div>
+            <div classList={[ "about-supportinfo" ]}>{ vm.supportInfo?.asVNode() }</div>
             <div classList={[ "about-acknowledgements" ]}>{acknowledgements?.asVNode()}</div>
         </div>
 

@@ -39,6 +39,8 @@ import { PlatformUtils } from "../util/PlatformUtils.js";
 import { InAppToastsViewModel, ToastInfo } from "./InAppToastsViewModel.js";
 import { Scheduler } from "../util/Scheduler.js";
 import { AccountsFriendsAndBookmarksViewModel } from "./AccountsFriendsAndBookmarksViewModel.js";
+import { ObjectUniqueId } from "../util/ObjectUniqueId.js";
+import { UpdateInfoDialogViewModel } from "./dialogs/UpdateInfoDialogViewModel.js";
 
 export class AppViewModel extends ObservableBase {
     constructor(configBlock: ConfigBlock) {
@@ -498,6 +500,18 @@ export class AppViewModel extends ObservableBase {
         }
     }
 
+    get chatTextBoxHeight() {
+        const value = this.appSettings?.chatTextBoxHeight ?? 90;
+        Observable.publishNamedRead(`${ObjectUniqueId.get(this)}-chatTextBoxHeight`, value);
+        return value;
+    }
+    set chatTextBoxHeight(value: number) {
+        if (this.appSettings) {
+            this.appSettings.chatTextBoxHeight = value;
+        }
+        Observable.publishNamedUpdate(`${ObjectUniqueId.get(this)}-chatTextBoxHeight`, value);
+    }
+
     private _idleDetection: IdleDetection | null = null;
     private _idleAfterAssign: object | null = null;
     private _idleAfterSec: number | null = null;
@@ -793,6 +807,16 @@ export class AppViewModel extends ObservableBase {
                 (e) => {}
             );
         }
+    }
+
+    async showUpdateDialogAsync(currentVersion: string, newVersion: string, changelogBBCode: string, mustUpdate: boolean) {
+        const vm = new UpdateInfoDialogViewModel(this);
+        vm.currentVersion = currentVersion;
+        vm.newVersion = newVersion;
+        vm.mustUpdate = mustUpdate;
+        vm.changelogBBCode = changelogBBCode;
+        const resp = await this.showDialogAsync(vm);
+
     }
 }
 

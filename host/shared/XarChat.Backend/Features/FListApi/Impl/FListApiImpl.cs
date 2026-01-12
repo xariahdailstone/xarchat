@@ -1,15 +1,16 @@
-﻿using System;
+﻿using Microsoft.Extensions.DependencyInjection;
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
+using System.Security.Principal;
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 using XarChat.Backend.Caching;
-using System.Text.Json.Nodes;
-using System.Text.Json;
 using XarChat.Backend.Common;
 using XarChat.Backend.Features.EIconUpdateSubmitter;
-using Microsoft.Extensions.DependencyInjection;
-using System.Reflection;
 
 namespace XarChat.Backend.Features.FListApi.Impl
 {
@@ -115,7 +116,7 @@ namespace XarChat.Backend.Features.FListApi.Impl
 
 		public async Task<AuthenticatedFListApiImpl> GetAuthenticatedFListApiAsync(string account, string password, CancellationToken cancellationToken)
         {
-            var apiTicket = await GetApiTicketAsync(account, password, cancellationToken);
+            var apiTicket = await GetApiTicketAsync(account, password, false, cancellationToken);
             var result = CreateAuthenticatedFListApiImpl(account);
             return result;
         }
@@ -125,7 +126,7 @@ namespace XarChat.Backend.Features.FListApi.Impl
 
         public async Task<AuthenticatedFListApiImpl> GetAlreadyAuthenticatedFListApiAsync(string account, CancellationToken cancellationToken)
         {
-            var apiTicket = await GetApiTicketAsync(account, null, cancellationToken);
+            var apiTicket = await GetApiTicketAsync(account, null, false, cancellationToken);
 			var result = CreateAuthenticatedFListApiImpl(account);
 			return result;
         }
@@ -235,8 +236,10 @@ namespace XarChat.Backend.Features.FListApi.Impl
 
         internal string WebsiteUrlBase => "https://www.f-list.net/";
 
-        internal async Task<ValueWithCameFromCache<ApiTicket>> GetApiTicketAsync(string account, string? password, CancellationToken cancellationToken)
+        internal async Task<ValueWithCameFromCache<ApiTicket>> GetApiTicketAsync(
+            string account, string? password, bool verifyTicket, CancellationToken cancellationToken)
         {
+        TRYAGAIN:
             var cte = await _cache.GetOrCreateAsync<CachedApiTicketEntry>($"apiTicket-{account.ToLower()}", async () =>
             {
                 if (password != null)
@@ -250,8 +253,53 @@ namespace XarChat.Backend.Features.FListApi.Impl
                 }
             }, cancellationToken);
 
-            var result = await cte.Value.Task;
-            return new ValueWithCameFromCache<ApiTicket>(result, cte.CameFromCache);
+            var apiTicket = await cte.Value.Task;
+
+            if (verifyTicket && cte.CameFromCache)
+            {
+                try
+                {
+                    await VerifyApiTicketAsync(cte.Value.Account, apiTicket, cancellationToken);
+                }
+                catch
+                {
+                    await InvalidateApiTicketAsync(cte.Value.Account, apiTicket.Ticket, cancellationToken);
+                    goto TRYAGAIN;
+                }
+            }
+
+            return new ValueWithCameFromCache<ApiTicket>(apiTicket, cte.CameFromCache);
+        }
+
+        private async Task VerifyApiTicketAsync(string account, ApiTicket apiTicket, CancellationToken cancellationToken)
+        {
+            var hc = GetHttpClient();
+
+            var req = GetHttpRequestMessage(HttpMethod.Post, ApiUrlBase + "api/request-list.php");
+            req.Content = new FormUrlEncodedContent(new List<KeyValuePair<string, string>>
+                {
+                    new KeyValuePair<string, string>("account", account),
+                    new KeyValuePair<string, string>("ticket", apiTicket.Ticket)
+                });
+
+            System.Diagnostics.Debug.WriteLine("Verifying api ticket...");
+            var resp = await hc.SendAsync(req, cancellationToken);
+            resp.EnsureSuccessStatusCode();
+
+            var json = await resp.Content.ReadAsStringAsync();
+
+            var dynObj = JsonUtilities.Deserialize<JsonObject>(json, SourceGenerationContext.Default.JsonObject);
+
+            if (dynObj == null)
+            {
+                throw new ApplicationException($"Verify ticket call failed, server returned null.");
+            }
+
+            var errMsg = (dynObj?.ContainsKey("error") ?? false) ? dynObj["error"]?.ToString() : "";
+            if (!String.IsNullOrEmpty(errMsg))
+            {
+                throw new FListApiErrorException(errMsg);
+            }
         }
 
         internal async Task InvalidateApiTicketAsync(string account, string ifTicket, CancellationToken cancellationToken)

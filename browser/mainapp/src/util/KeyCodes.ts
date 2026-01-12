@@ -18,7 +18,8 @@ export enum KeyCodes {
     KEY_I = 73,
     KEY_J = 74,
     KEY_K = 75,
-
+    KEY_L = 76,
+    KEY_M = 77,
     KEY_N = 78,
     KEY_O = 79,
     KEY_P = 80,

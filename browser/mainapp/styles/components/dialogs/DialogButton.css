@@ -10,3 +10,7 @@
 
 .dialogbutton.style-cancel {
 }
+
+.dialogbutton.hidden {
+    display: none;
+}

@@ -42,40 +42,44 @@ export class ChannelTextBox extends ComponentBase<ChannelViewModel> {
                             <div class="textbox-toolbar-button" data-buttoncommand="strikethrough" title="Strikethrough (${shortcutKeyString}S)">
                                 <x-iconimage src="assets/ui/textbox-toolbar/strikethrough.svg"></x-iconimage>
                             </div>
-                            <div class="textbox-toolbar-separator"></div>
-                            <div class="textbox-toolbar-button" data-buttoncommand="subscript" title="Subscript (${shortcutKeyString}Down or ${shortcutKeyString}H)">
-                                <x-iconimage src="assets/ui/textbox-toolbar/subscript.svg"></x-iconimage>
+                            <div class="textbox-toolbar-button" data-buttoncommand="color" title="Color (${shortcutKeyString}D)">
+                                <x-iconimage src="assets/ui/textbox-toolbar/color.svg"></x-iconimage>
                             </div>
                             <div class="textbox-toolbar-button" data-buttoncommand="superscript" title="Superscript (${shortcutKeyString}Up or ${shortcutKeyString}Y)">
                                 <x-iconimage src="assets/ui/textbox-toolbar/superscript.svg"></x-iconimage>
                             </div>
-                            <div class="textbox-toolbar-separator"></div>
-                            <div class="textbox-toolbar-button" data-buttoncommand="spoiler" title="Spoiler (${shortcutKeyString}K)">
-                                <x-iconimage src="assets/ui/textbox-toolbar/spoiler.svg"></x-iconimage>
+                            <div class="textbox-toolbar-button" data-buttoncommand="subscript" title="Subscript (${shortcutKeyString}Down or ${shortcutKeyString}H)">
+                                <x-iconimage src="assets/ui/textbox-toolbar/subscript.svg"></x-iconimage>
                             </div>
-                            <div class="textbox-toolbar-separator"></div>
+                            <div class="textbox-toolbar-button" data-buttoncommand="url" title="URL (${shortcutKeyString}L)">
+                                <x-iconimage src="assets/ui/textbox-toolbar/url.svg"></x-iconimage>
+                            </div>
                             <div class="textbox-toolbar-button" data-buttoncommand="user" title="User Link (${shortcutKeyString}R)">
                                 <x-iconimage src="assets/ui/textbox-toolbar/user.svg"></x-iconimage>
                             </div>
                             <div class="textbox-toolbar-button" data-buttoncommand="icon" title="User Icon (${shortcutKeyString}O)">
                                 <x-iconimage src="assets/ui/textbox-toolbar/icon.svg"></x-iconimage>
                             </div>
-                            <div class="textbox-toolbar-separator"></div>
                             <div class="textbox-toolbar-button" data-buttoncommand="eicon" title="EIcon (${shortcutKeyString}E)">
                                 <x-iconimage src="assets/ui/textbox-toolbar/eicon.svg"></x-iconimage>
                             </div>
-                            <div class="textbox-toolbar-separator"></div>
+                            <div class="textbox-toolbar-button" data-buttoncommand="spoiler" title="Spoiler (${shortcutKeyString}K)">
+                                <x-iconimage src="assets/ui/textbox-toolbar/spoiler.svg"></x-iconimage>
+                            </div>
                             <div class="textbox-toolbar-button" data-buttoncommand="noparse" title="No Parse (${shortcutKeyString}N)">
                                 <x-iconimage src="assets/ui/textbox-toolbar/noparse.svg"></x-iconimage>
                             </div>
+                            <div class="textbox-toolbar-button" data-buttoncommand="preview" title="Preview (${shortcutKeyString}P)">
+                                <x-iconimage src="assets/ui/textbox-toolbar/preview.svg"></x-iconimage>
+                            </div>
                         </div>
+                        <div class="textbox-statusbar" id="elStatusBar">0 words :: 0/30,000 characters used</div>
                         <div class="textbox-toolbar-toggle" title="Show Editing Help">
                             <x-iconimage src="assets/ui/help-icon.svg" id="elShowEditHelp"></x-iconimage>
                         </div>
                     </div>
                     <textarea id="elTextbox" data-focusmagnet-strength="1"></textarea>
                 </div>
-                <div class="textbox-statusbar" id="elStatusBar">0 words :: 0/30,000 characters used</div>
                 <div class="buttons-container">
                     <button id="elSendChat">Send Chat</button>
                     <button id="elSendAd">Send Ad</button>
@@ -163,7 +167,7 @@ export class ChannelTextBox extends ComponentBase<ChannelViewModel> {
                 elTextbox.value = v ?? "";
             }
         });
-        this.watchExpr(vm => [ vm, vm.textBoxContent, vm.getConfigSettingById("showChatTextboxStatusBar"), vm instanceof ChatChannelViewModel ? vm.messageMode : null ], (v) => {
+        this.watchExpr(vm => [ vm, vm.textBoxContent, vm.getConfigSettingById("showChatTextboxToolbar"), vm instanceof ChatChannelViewModel ? vm.messageMode : null ], (v) => {
             if (v) {
                 const vm = v[0];
                 const txt = v[1];
@@ -260,6 +264,7 @@ export class ChannelTextBox extends ComponentBase<ChannelViewModel> {
         elTextbox.addEventListener("input", pushTextbox);
         elTextbox.addEventListener("change", pushTextbox);
         BBCodeUtils.addEditingShortcuts(elTextbox, {
+            previewPopupElement: elTextboxContainer,
             appViewModelGetter: () => { return this.viewModel?.appViewModel ?? null; },
             channelViewModelGetter: () => { return this.viewModel ?? null; },
             activeLoginViewModelGetter: () => { return this.viewModel?.activeLoginViewModel ?? null; },
@@ -295,11 +300,11 @@ export class ChannelTextBox extends ComponentBase<ChannelViewModel> {
                     avm.setConfigSettingById("showChatTextboxToolbar", !avm.getConfigSettingById("showChatTextboxToolbar"));
                     ev.preventDefault();
                 }
-                else if (PlatformUtils.isShortcutKey(ev) && ev.keyCode == KeyCodes.KEY_W && this.viewModel) {
-                    const avm = this.viewModel.activeLoginViewModel.appViewModel;
-                    avm.setConfigSettingById("showChatTextboxStatusBar", !avm.getConfigSettingById("showChatTextboxStatusBar"));
-                    ev.preventDefault();
-                }
+                // else if (PlatformUtils.isShortcutKey(ev) && ev.keyCode == KeyCodes.KEY_W && this.viewModel) {
+                //     const avm = this.viewModel.activeLoginViewModel.appViewModel;
+                //     avm.setConfigSettingById("showChatTextboxStatusBar", !avm.getConfigSettingById("showChatTextboxStatusBar"));
+                //     ev.preventDefault();
+                // }
                 else if (ev.keyCode == KeyCodes.F1 && this.viewModel) {
                     if (helpPopupVM != null) {
                         helpPopupVM.dismissed();
@@ -359,10 +364,10 @@ export class ChannelTextBox extends ComponentBase<ChannelViewModel> {
             elTextboxContainer.classList.toggle("no-toolbar", !tbs);
             elTextboxContainer.classList.toggle("toolbar-shown", !!tbs);
         });
-        this.watchExpr(vm => vm.appViewModel.getConfigSettingById("showChatTextboxStatusBar"), tbs => {
-            this.elMain.classList.toggle("no-statusbar", !tbs);
-            this.elMain.classList.toggle("statusbar-shown", !!tbs);
-        });
+        // this.watchExpr(vm => vm.appViewModel.getConfigSettingById("showChatTextboxStatusBar"), tbs => {
+        //     this.elMain.classList.toggle("no-statusbar", !tbs);
+        //     this.elMain.classList.toggle("statusbar-shown", !!tbs);
+        // });
         elShowEditHelp.addEventListener("click", () => {
             if (this.viewModel) {
                 helpPopupVM = new ChannelEditHelpPopupViewModel(this.viewModel.appViewModel, elShowEditHelp, () => { helpPopupVM = null; });
@@ -414,9 +419,15 @@ export class ChannelTextBox extends ComponentBase<ChannelViewModel> {
     }
 
     private tryHandleButtonCommand(cmd: string) {
+        const elTextboxContainer = this.$("elTextboxContainer")! as HTMLElement;
         const elTextbox = this.$("elTextbox")! as HTMLTextAreaElement;
 
-        const tesh = new TextEditShortcutsHelper();
+        const tesh = new TextEditShortcutsHelper({
+            textarea: elTextbox,
+            previewPopupElement: elTextboxContainer,
+            channelViewModelGetter: () => this.viewModel ?? null,
+            activeLoginViewModelGetter: () => this.viewModel?.activeLoginViewModel ?? null
+        });
         tesh.value = elTextbox.value;
         tesh.selectionAt = Math.min(elTextbox.selectionStart, elTextbox.selectionEnd)
         tesh.selectionLength = Math.abs(elTextbox.selectionEnd - elTextbox.selectionStart);
@@ -467,6 +478,17 @@ export class ChannelTextBox extends ComponentBase<ChannelViewModel> {
             case "strikethrough":
                 tesh.strikethrough();
                 loadBack = true;
+                break;
+            case "color":
+                tesh.color();
+                loadBack = true;
+                break;
+            case "url":
+                tesh.url();
+                loadBack = true;
+                break;
+            case "preview":
+                tesh.showPreview();
                 break;
         }
 

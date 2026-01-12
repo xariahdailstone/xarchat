@@ -125,6 +125,9 @@ export class DialogButtonViewModel extends ObservableBase {
     @observableProperty
     enabled: boolean = true;
 
+    @observableProperty
+    visible: boolean = true;
+
     private _shortcutKeyCode: number | null = null;
     @observableProperty
     get shortcutKeyCode(): number | null { 

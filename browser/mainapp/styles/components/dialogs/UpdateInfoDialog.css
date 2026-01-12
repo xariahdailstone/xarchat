@@ -1,0 +1,19 @@
+
+#elMain {
+    display: flex;
+    flex-direction: column;
+    overflow: clip;
+    height: 60vh;
+    max-height: 100%;
+}
+
+.title { font-size: 22px; margin: 0; padding: 0; color: white; }
+.description { }
+.changelog {
+    flex-grow: 1;
+    flex-shrink: 1;
+    background: var(--bg-level-2);
+    color: var(--fg-level-2);
+    padding: 6px 6px;
+    overflow-y: auto;
+}
