@@ -47,7 +47,7 @@ namespace XarChat.Backend.Features.FListApi.Impl
             CancellationToken cancellationToken)
         {
             var hc = _flistApi.GetHttpClient();
-            var apiTicket = await this.GetApiTicketAsync(cancellationToken);
+            var apiTicket = await this.GetApiTicketAsync(false, cancellationToken);
             if (apiTicket.CameFromCache)
             {
                 try
@@ -64,7 +64,7 @@ namespace XarChat.Backend.Features.FListApi.Impl
 
                 System.Diagnostics.Debug.WriteLine($"Invalidating ticket {apiTicket.Value.Ticket}");
                 await this.InvalidateApiTicketAsync(apiTicket.Value.Ticket, cancellationToken);
-                apiTicket = await this.GetApiTicketAsync(cancellationToken);
+                apiTicket = await this.GetApiTicketAsync(false, cancellationToken);
             }
 
             System.Diagnostics.Debug.WriteLine($"Performing authenticated request with fresh ticket {apiTicket.Value.Ticket}");
@@ -152,8 +152,8 @@ namespace XarChat.Backend.Features.FListApi.Impl
             await PerformAuthenticatedRequest<JsonObject>("api/bookmark-add.php", formData, SourceGenerationContext.Default.JsonObject, cancellationToken);
         }
 
-        public Task<ValueWithCameFromCache<ApiTicket>> GetApiTicketAsync(CancellationToken cancellationToken)
-            => _flistApi.GetApiTicketAsync(_account, null, cancellationToken);
+        public Task<ValueWithCameFromCache<ApiTicket>> GetApiTicketAsync(bool verifyTicket, CancellationToken cancellationToken)
+            => _flistApi.GetApiTicketAsync(_account, null, verifyTicket, cancellationToken);
 
         public async Task<ProfileInfo> GetCharacterProfileAsync(string name, bool bypassCache, CancellationToken cancellationToken)
         {

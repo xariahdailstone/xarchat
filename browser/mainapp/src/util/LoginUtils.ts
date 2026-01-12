@@ -37,7 +37,7 @@ export class LoginUtils {
             try {
                 if (activeLoginViewModel == null) {
                     authApi = await appViewModel.flistApi.getAuthenticatedApiAsync(account, password, cancellationToken);
-                    apiTicket = await authApi.getApiTicketAsync(cancellationToken);
+                    apiTicket = await authApi.getApiTicketAsync(true, cancellationToken);
 
                     const appSettings = appViewModel.appSettings;
 
@@ -47,7 +47,7 @@ export class LoginUtils {
                 }
                 else {
                     authApi = activeLoginViewModel.authenticatedApi;
-                    apiTicket = await authApi.getApiTicketAsync(cancellationToken);
+                    apiTicket = await authApi.getApiTicketAsync(true, cancellationToken);
                 }
 
                 const sink = new ChatViewModelSink(activeLoginViewModel, isReconnect);

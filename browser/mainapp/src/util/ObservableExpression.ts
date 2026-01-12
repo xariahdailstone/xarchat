@@ -4,8 +4,7 @@ import { delayExecuteAsync } from "./DelayCodeUtils";
 import { IDisposable } from "./Disposable";
 import { testEquality } from "./Equality";
 import { Logging } from "./Logger";
-import { Observable, PropertyChangeEvent, PropertyChangeEventListener, ValueSubscription } from "./Observable";
-import { ObservableBase, setupValueSubscription } from "./ObservableBase";
+import { Observable, PropertyChangeEvent, PropertyChangeEventListener } from "./Observable";
 import { PromiseSource } from "./PromiseSource";
 
 export class AwaitableObservableExpression<T> implements IDisposable, Disposable {
@@ -393,9 +392,6 @@ export class WatchedExpression<T> implements Observable, IDisposable {
     }
     raisePropertyChangeEvent(propertyName: string, propValue: unknown): void {
         this._cbSet.invoke(new PropertyChangeEvent(propertyName, propValue));
-    }
-    addValueSubscription(propertyPath: string, handler: (value: any) => any): ValueSubscription {
-        return setupValueSubscription(this, propertyPath, handler);
     }
 
     private readonly _oe: ObservableExpression<T>;

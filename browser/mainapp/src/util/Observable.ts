@@ -5,24 +5,19 @@ import { SnapshottableSet } from "./collections/SnapshottableSet.js";
 import { IDisposable, EmptyDisposable, asDisposable } from "./Disposable.js";
 import { testEquality } from "./Equality.js";
 import { ObjectUniqueId } from "./ObjectUniqueId.js";
-import { setupValueSubscription, ValueSubscriptionImpl } from "./ObservableBase.js";
 import { ObservableExpression } from "./ObservableExpression.js";
 
 export interface IObservable<T> {
     addEventListener(eventName: "propertychange", handler: PropertyChangeEventListener): IDisposable;
     removeEventListener(eventName: "propertychange", handler: PropertyChangeEventListener): void;
-//    raisePropertyChangeEvent(propertyName: string): void;
     raisePropertyChangeEvent(propertyName: string, propValue: unknown): void;
-
-    addValueSubscription(propertyPath: string, handler: (value: T) => any): ValueSubscription;
 }
 
 export function isObservable(obj: any) {
     if (obj == null) return false;
     return (typeof obj.addEventListener == "function" &&
         typeof obj.removeEventListener == "function" &&
-        typeof obj.raisePropertyChangeEvent == "function" &&
-        typeof obj.addValueSubscription == "function");
+        typeof obj.raisePropertyChangeEvent == "function");
 }
 
 export class PropertyChangeEvent extends Event {
@@ -32,10 +27,6 @@ export class PropertyChangeEvent extends Event {
 }
 
 export type PropertyChangeEventListener = (event: PropertyChangeEvent) => any;
-
-export interface ValueSubscription extends IDisposable {
-    readonly value: any;
-}
 
 export class Observable {
     private static _listeners: Set<ReadMonitorEventListener> = new Set();
@@ -240,26 +231,6 @@ class DynamicNameObservable implements Observable {
             DynamicNameObservable._listeners2.invoke(this.name, args);
         });
     }
-
-    addValueSubscription(propertyPath: string, handler: (value: any) => any): ValueSubscription {
-        if (propertyPath == "." || propertyPath == "value") {
-            let disposed = false;
-            let lastValue: any = null;
-            
-            const h = this.addEventListener("propertychange", (args) => {
-                lastValue = args.propertyValue;
-                try { handler(lastValue); }
-                catch { }
-            });
-
-            const result = new ValueSubscriptionImpl(() => lastValue, () => h.dispose());
-            return result;
-        }
-        else {
-            const result = new ValueSubscriptionImpl(() => null);
-            return result;
-        }
-    }
 }
 
 export type ReadMonitorEventListener = (observable: unknown, propertyName: string, gotValue: unknown) => void;
@@ -313,11 +284,6 @@ export class ObservableValue<T> implements IObservable<T> {
                 this._propertyChangeListeners2?.invoke(pce);
             });
         }
-    }
-
-    addValueSubscription(propertyPath: string, handler: (value: any) => any): ValueSubscription {
-        if (this.debug) { let x = 1; }
-        return setupValueSubscription(this, propertyPath, handler);
     }
 
     private _value: T;
@@ -550,8 +516,4 @@ export class CalculatedObservable<T> implements Observable, IDisposable {
         this._cbSet.invoke(new PropertyChangeEvent(propertyName, propValue));
     }
 
-    addValueSubscription(propertyPath: string, handler: (value: any) => any): ValueSubscription {
-        return setupValueSubscription(this, propertyPath, handler);
-    }
-   
 }

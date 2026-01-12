@@ -180,7 +180,7 @@ export class LoginViewModel extends DialogViewModel<boolean> {
         this.flowState = LoginState.GETTING_CHARS;
         try {
             this.authApi = await this.parent.flistApi.getAuthenticatedApiAsync(this.accountName, this.password, cancellationToken);
-            const apiTicket = await this.authApi.getApiTicketAsync(cancellationToken);
+            const apiTicket = await this.authApi.getApiTicketAsync(true, cancellationToken);
 
             // save username and/or password into settings
             if (this.rememberAccountName) {

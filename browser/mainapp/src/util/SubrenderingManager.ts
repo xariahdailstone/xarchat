@@ -4,8 +4,6 @@ import { CallbackSet } from "./CallbackSet";
 import { asDisposable, ConvertibleToDisposable, IDisposable, ObjectDisposedError } from "./Disposable";
 import { testEquivalent } from "./Equality";
 import { Logger, Logging } from "./Logger";
-import { CreateDependencySetOverResult, Observable, PropertyChangeEvent, PropertyChangeEventListener, ValueSubscription } from "./Observable";
-import { setupValueSubscription } from "./ObservableBase";
 
 interface RenderResult {
     additionalData: any;

@@ -244,7 +244,10 @@ class DialogButton extends ComponentBase<DialogButtonViewModel> {
         });
         this.watchExpr(vm => vm.enabled, (v) => {
             elButton.disabled = !v;
-        })
+        });
+        this.watchExpr(vm => vm.visible, (v) => {
+            elButton.classList.toggle("hidden", !v);
+        });
 
         elButton.addEventListener("click", () => {
             if (this.viewModel) {

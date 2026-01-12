@@ -3,8 +3,7 @@ import { CallbackSet } from "../util/CallbackSet";
 import { SnapshottableMap } from "../util/collections/SnapshottableMap";
 import { asDisposable, DisposableOwnerField, IDisposable, ObjectDisposedError } from "../util/Disposable";
 import { ObjectUniqueId } from "../util/ObjectUniqueId";
-import { Observable, PropertyChangeEvent, PropertyChangeEventListener, ValueSubscription } from "../util/Observable";
-import { setupValueSubscription } from "../util/ObservableBase";
+import { Observable, PropertyChangeEvent, PropertyChangeEventListener } from "../util/Observable";
 import { ObservableExpression } from "../util/ObservableExpression";
 import { StringUtils } from "../util/StringUtils";
 import { ActiveLoginViewModel } from "../viewmodel/ActiveLoginViewModel";
@@ -109,9 +108,6 @@ export class NicknameSet implements Observable, IDisposable, NicknameSource {
 
     }
         }
-    }
-    addValueSubscription(propertyPath: string, handler: (value: any) => any): ValueSubscription {
-        return setupValueSubscription(this, propertyPath, handler);
     }
 
     private _nicknameMap: SnapshottableMap<CharacterName, string> = new SnapshottableMap();

@@ -12,9 +12,6 @@ import { FastEventSource } from "../util/FastEventSource.js";
 import { HostInterop } from "../util/hostinterop/HostInterop.js";
 import { Logger, Logging, LogLevel } from "../util/Logger.js";
 import { ObjectUniqueId } from "../util/ObjectUniqueId.js";
-import { Observable, ValueSubscription } from "../util/Observable.js";
-import { ObservableBase } from "../util/ObservableBase.js";
-import { Collection } from "../util/ObservableCollection.js";
 import { DelayedObservableExpression, ObservableExpression } from "../util/ObservableExpression.js";
 import { Optional } from "../util/Optional.js";
 import { Predicate } from "../util/Predicate.js";
@@ -461,17 +458,23 @@ export abstract class ComponentBase<TViewModel> extends HTMLElement {
     }
 
     watchViewModel(valueChanged: (value: TViewModel | null | undefined) => (void | IDisposable)): IDisposable {
-        const lastReturnedDisposable = new DisposableOwnerField();
-        const result = this.whenConnectedWithViewModel(vm => {
-            lastReturnedDisposable.value = valueChanged(vm) ?? null;
-            return lastReturnedDisposable;
-        });
-        return asDisposable(() => {
-            result.dispose();
-            lastReturnedDisposable.value = valueChanged(undefined) ?? null;
-            lastReturnedDisposable.dispose();
+        return this.watchExpr(vm => vm, vm => {
+            return valueChanged(vm);
         });
     }
+
+    // watchViewModel(valueChanged: (value: TViewModel | null | undefined) => (void | IDisposable)): IDisposable {
+    //     const lastReturnedDisposable = new DisposableOwnerField();
+    //     const result = this.whenConnectedWithViewModel(vm => {
+    //         lastReturnedDisposable.value = valueChanged(vm) ?? null;
+    //         return lastReturnedDisposable;
+    //     });
+    //     return asDisposable(() => {
+    //         result.dispose();
+    //         lastReturnedDisposable.value = valueChanged(undefined) ?? null;
+    //         lastReturnedDisposable.dispose();
+    //     });
+    // }
 
     private readonly _whenConnectedEntries: SnapshottableSet<{ invoke: (isConnected: boolean) => Optional<IDisposable>, lastResult: DisposableOwnerField }> = new SnapshottableSet();
 

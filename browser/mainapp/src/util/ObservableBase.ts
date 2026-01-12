@@ -3,7 +3,7 @@ import { SnapshottableSet } from "./collections/SnapshottableSet.js";
 import { asDisposable, EmptyDisposable, IDisposable, isDisposable } from "./Disposable.js";
 import { Logger, Logging } from "./Logger.js";
 import { ObjectUniqueId } from "./ObjectUniqueId.js";
-import { IObservable, Observable, PropertyChangeEvent, PropertyChangeEventListener, ValueSubscription } from "./Observable.js";
+import { IObservable, Observable, PropertyChangeEvent, PropertyChangeEventListener } from "./Observable.js";
 import { Collection } from "./ObservableCollection.js";
 import { Scheduler } from "./Scheduler.js";
 
@@ -46,49 +46,12 @@ export abstract class ObservableBase implements Observable {
 
     protected logger: Logger;
 
-    // private _pendingListenerChanges: { func: "add" | "remove", propertyName: string, onChangeCallback: PropertyChangeEventListener }[] = [];
-    // private _pendingListenerChangesIngestHandle: number | null = null;
-
-    // private ingestPendingListeners() {
-    //     this.logger.logInfo(`ingesting ${this._pendingListenerChanges.length} pending changes`);
-    //     for (let pl of this._pendingListenerChanges) {
-    //         if (pl.func == "add") {
-    //             this._propertyListeners2.add(pl.propertyName, pl.onChangeCallback);
-    //         }
-    //         else if (pl.func == "remove") {
-    //             this._propertyListeners2.delete(pl.propertyName, pl.onChangeCallback);
-    //         }
-    //     }
-    //     this._pendingListenerChanges = [];
-    //     this.logger.logInfo(`done ingesting pending changes`);
-    // }
-
     addPropertyListener(propertyName: string, onChangeCallback: PropertyChangeEventListener): IDisposable {
-        // this._pendingListenerChanges.push({ func: "add", propertyName: propertyName, onChangeCallback: onChangeCallback });
-        // if (this._pendingListenerChangesIngestHandle == null) {
-        //     this._pendingListenerChangesIngestHandle = registerIdleIngest(() => {
-        //         this._pendingListenerChangesIngestHandle = null;
-        //         this.ingestPendingListeners();
-        //     });
-        // }
-
-        // return asDisposable(() => {
-        //     this.removePropertyListener(propertyName, onChangeCallback);
-        // });
-
         const result = this._propertyListeners2.add(propertyName, onChangeCallback);
         return result;
     }
 
     removePropertyListener(propertyName: string, onChangeCallback: PropertyChangeEventListener) {
-        // this._pendingListenerChanges.push({ func: "remove", propertyName: propertyName, onChangeCallback: onChangeCallback });
-        // if (this._pendingListenerChangesIngestHandle == null) {
-        //     this._pendingListenerChangesIngestHandle = registerIdleIngest(() => {
-        //         this._pendingListenerChangesIngestHandle = null;
-        //         this.ingestPendingListeners();
-        //     });
-        // }
-
         this._propertyListeners2.delete(propertyName, onChangeCallback);
     }
 
@@ -113,35 +76,9 @@ export abstract class ObservableBase implements Observable {
             this._propertyListeners2.invoke(propertyName, evt);
         });
 
-        // const pendingHighwater = this._pendingListenerChanges.length;
-        // let pendingNotifySet: Set<PropertyChangeEventListener> | null = null;
-        // for (let i = 0; i < pendingHighwater; i++) {
-        //     const item = this._pendingListenerChanges[i];
-        //     if (item.func == "add" && (item.propertyName == propertyName || item.propertyName == "*")) {
-        //         pendingNotifySet ??= new Set();
-        //         pendingNotifySet!.add(item.onChangeCallback);
-        //     }
-        //     else if (pendingNotifySet != null && item.func == "remove" && (item.propertyName == propertyName || item.propertyName == "*")) {
-        //         pendingNotifySet!.delete(item.onChangeCallback);
-        //     }
-        // }
-        // if (pendingNotifySet != null) {
-        //     Observable.enterObservableFireStack(() => {
-        //         const evt = new PropertyChangeEvent(propertyName, propValue);
-        //         for (let pn of pendingNotifySet?.values()) {
-        //             try { pn(evt); }
-        //             catch { }
-        //         }
-        //     });
-        // }
-
         Observable.enterObservableFireStack(() => {
             this._propertyListeners2.invoke("*", evt);
         });
-    }
-
-    addValueSubscription(propertyPath: string, handler: (value: any) => any): ValueSubscription {
-        return setupValueSubscription(this, propertyPath, handler);
     }
 
     scanForChanges(debug?: boolean) {
@@ -177,100 +114,6 @@ export abstract class ObservableBase implements Observable {
             xx = Object.getPrototypeOf(xx);
         }
     }
-}
-
-export class ValueSubscriptionImpl implements ValueSubscription {
-    constructor(
-        private readonly valueFunc: () => any,
-        private readonly onDispose?: (() => any) | undefined) {
-    }
-
-    get value() { return this.valueFunc(); }
-
-    _disposed = false;
-
-    dispose() {
-        if (!this._disposed) {
-            this._disposed = true;
-            if (this.onDispose) {
-                this.onDispose();
-            }
-        }
-    }
-
-    [Symbol.dispose]() { this.dispose(); }
-
-    get isDisposed() { return this._disposed; }
-}
-
-export function setupValueSubscription(observable: IObservable<any>, propertyPath: string, handler: (value: any) => any): ValueSubscription {
-    const ppDotIdx = propertyPath.indexOf('.');
-    const thisProp = (ppDotIdx == -1) ? propertyPath : propertyPath.split('.')[0];
-    
-    let curValue: any = null;
-    let myEventListener: (IDisposable | null) = null;
-    let mySubSubscription: (ValueSubscription | null) = null;
-
-    const result = new ValueSubscriptionImpl(
-        () => curValue, 
-        () => {
-            teardownChain();
-            curValue = null;
-        }
-    );
-
-    const setCurValue = (newValue: any) => {
-        if (newValue !== curValue) {
-            curValue = newValue;
-            handler(newValue);
-        }
-    };
-
-    function canAddValueSubscription(obj: any) {
-        return obj != null && typeof obj.addValueSubscription == "function";
-    }
-
-    const setupChain = () => {
-        teardownChain();
-        myEventListener = observable.addEventListener("propertychange", e => {
-            if (e.propertyName == thisProp) {
-                setupChain();
-            }
-        });
-
-        const curThisValue = (observable as any)[thisProp];
-        if (ppDotIdx == -1) {
-            setCurValue(curThisValue);
-        }
-        else {
-            if (canAddValueSubscription(curThisValue)) {
-                const subPropertyPath = propertyPath.split('.');
-                subPropertyPath.shift();
-                mySubSubscription = (curThisValue as IObservable<any>).addValueSubscription(subPropertyPath.join('.'), (v) => {
-                    setCurValue(v);
-                });
-                setCurValue(mySubSubscription.value);
-            }
-            else if (curThisValue instanceof Collection) {
-                setCurValue(null);
-            }
-            else {
-                setCurValue(null);
-            }
-        }
-    };
-    const teardownChain = () => {
-        if (mySubSubscription) {
-            mySubSubscription.dispose();
-        }
-        if (myEventListener) {
-            myEventListener.dispose();
-        }
-    };
-    
-    setupChain();
-
-    return result;
 }
 
 const PROP_SYM = Symbol("allprops");

@@ -1,8 +1,8 @@
 import { CallbackSet } from "./CallbackSet";
 import { EmptyDisposable, IDisposable, asDisposable } from "./Disposable";
 import { ObjectUniqueId } from "./ObjectUniqueId";
-import { Observable, ObservableValue, PropertyChangeEvent, PropertyChangeEventListener, ValueSubscription } from "./Observable";
-import { observableProperty, setupValueSubscription } from "./ObservableBase";
+import { Observable, ObservableValue, PropertyChangeEvent, PropertyChangeEventListener } from "./Observable";
+import { observableProperty } from "./ObservableBase";
 import { CollectionChangeEventListener, KeyedCollection, ObservableCollection } from "./ObservableCollection";
 import { Predicate } from "./Predicate";
 import BTree from "./btree/btree";
@@ -22,8 +22,6 @@ export interface ReadOnlyObservableOrderedDictionary<TKey, TItem> extends Observ
     addEventListener(eventName: "propertychange", callback: PropertyChangeEventListener): IDisposable;
 
     removeEventListener(eventName: "propertychange", callback: PropertyChangeEventListener): void;
-
-    addValueSubscription(propertyPath: string, handler: (value: any) => any): ValueSubscription;
 }
 
 export interface ObservableOrderedDictionary<TKey, TItem> extends ReadOnlyObservableOrderedDictionary<TKey, TItem> {
@@ -365,11 +363,6 @@ export class ObservableOrderedDictionaryImpl<TKey, TItem> implements ObservableK
             this._propertyChangeCallbacks2.invoke(pce);
         });
     }
-
-    addValueSubscription(propertyPath: string, handler: (value: any) => any): ValueSubscription {
-        return setupValueSubscription(this, propertyPath, handler);
-    }
-
 
     private readonly _stdColObservers2: CallbackSet<StdObservableCollectionObserver<KeyValuePair<TKey, TItem>>> = new CallbackSet("ObservableOrderedDictionaryImpl-stdColObservers");
 

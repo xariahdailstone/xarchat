@@ -30,6 +30,11 @@ export class AppInitializeViewModel extends DialogViewModel<void> {
         }
     }
 
+    @observableProperty
+    get otherDialogShowing(): boolean {
+        return (this.parent.dialogs.length > 1);
+    }
+
     async runAsync(initialShow: boolean) {
         try {
             if (initialShow) {

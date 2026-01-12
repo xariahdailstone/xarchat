@@ -226,8 +226,8 @@ export class HostInteropAuthenticatedApi implements FListAuthenticatedApi {
         return this.owner.getKinksListAsync(cancellationToken);
     }
 
-    async getApiTicketAsync(cancellationToken: CancellationToken): Promise<ApiTicket> {
-        const result = await this.owner.getFromHostInteropAsync<ApiTicket>(`${this.account}/ticket`, cancellationToken);
+    async getApiTicketAsync(verifyTicket: boolean, cancellationToken: CancellationToken): Promise<ApiTicket> {
+        const result = await this.owner.getFromHostInteropAsync<ApiTicket>(`${this.account}/ticket?verify=${verifyTicket ? 'true' : 'false'}`, cancellationToken);
         return result;
     }
 }

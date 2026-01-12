@@ -3,7 +3,6 @@ import { CharacterStatus } from "../shared/CharacterSet";
 import { OnlineStatus } from "../shared/OnlineStatus";
 import { CallbackSet } from "../util/CallbackSet";
 import { IDisposable } from "../util/Disposable";
-import { PropertyChangeEventListener, ValueSubscription } from "../util/Observable";
 import { Collection } from "../util/ObservableCollection";
 import { DictionaryChangeEvent, ObservableKeyExtractedOrderedDictionary, ObservableOrderedDictionaryImpl, ReadOnlyObservableOrderedDictionary } from "../util/ObservableKeyedLinkedList";
 import { KeyValuePair } from "../util/collections/KeyValuePair";
