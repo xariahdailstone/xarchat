@@ -1,0 +1,33 @@
+
+:host {
+    position: absolute;
+    transform: translateY(-50%);
+    left: 0px;
+    right: 0px;
+}
+
+#elMain {
+    display: grid;
+    grid-template-rows: auto;
+    grid-template-columns: 1fr auto;
+    grid-template-areas: "sep-line new-text";
+
+    .sep-line { grid-area: sep-line; }
+    .new-text { grid-area: new-text; }
+}
+
+.sep-line {
+    background: red;
+    height: 1px;
+    align-self: center;
+}
+.new-text {
+    background: red;
+    color: white;
+    padding: 2px 2px;
+    border-left: 3px solid red;
+    border-top-left-radius: 8px;
+    border-bottom-left-radius: 8px;
+    font-size: 70%;
+    font-weight: bold;
+}

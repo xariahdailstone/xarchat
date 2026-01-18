@@ -6,7 +6,7 @@ import { KeyValuePair } from "../util/collections/KeyValuePair";
 import { ReadOnlyStdObservableCollection } from "../util/collections/ReadOnlyStdObservableCollection";
 import { DateUtils } from "../util/DateUtils";
 import { TimeSpanUtils } from "../util/TimeSpanUtils";
-import { asDisposable, asNamedDisposable, DisposableOwnerField, IDisposable } from "../util/Disposable";
+import { asDisposable, asNamedDisposable, ConvertibleToDisposable, DisposableOwnerField, IDisposable } from "../util/Disposable";
 import { HTMLUtils } from "../util/HTMLUtils";
 import { IterableUtils } from "../util/IterableUtils";
 import { Observable } from "../util/Observable";
@@ -258,7 +258,11 @@ export class ChannelStreamMessageViewRenderer implements IDisposable {
                             this.onUpdatingElements();
                             needEnd = true;
                         }
-                        this._currentVNode = this.patch(this._currentVNode, renderResult[0]);
+
+                        const finalResult = renderResult[0];
+                        //const finalResult = this.maybeAddLastSeenLine(renderResult[0], collection);
+                        
+                        this._currentVNode = this.patch(this._currentVNode, finalResult);
                     }
                     else if (this._currentVNode) {
                         this._currentVNode = this.patch(this._currentVNode, VNodeUtils.createEmptyFragment());
@@ -318,15 +322,22 @@ interface MessageRenderer {
 
 class ChannelStreamMessageViewRendererFChat implements MessageRenderer {
     render(vm: ReadOnlyStdObservableCollection<KeyValuePair<any, ChannelMessageViewModel>>): [VNode, IDisposable] {
-        const resultDisposables: IDisposable[] = [];
+        const resultDisposables: ConvertibleToDisposable[] = [];
+        const addDisposable = (d: ConvertibleToDisposable) => resultDisposables.push(d);
 
         const messageNodes: VNode[] = [];
         for (let kvp of vm.iterateValues()) {
             try {
                 const mvm = kvp.value;
-                const rmResult = this.renderMessage(vm, mvm);
-                messageNodes.push(rmResult[0]);
-                resultDisposables.push(rmResult[1]);
+                const rmResult = this.renderMessage(vm, mvm, addDisposable);
+                if (Array.isArray(rmResult)) {
+                    for (let n of rmResult) {
+                        messageNodes.push(n);
+                    }
+                }
+                else {
+                    messageNodes.push(rmResult);
+                }
             }
             catch (e) {
                 // TODO: write to error log
@@ -338,7 +349,11 @@ class ChannelStreamMessageViewRendererFChat implements MessageRenderer {
         return [resVNode, asDisposable(...resultDisposables)];
     }
 
-    protected renderMessage(vm: ReadOnlyStdObservableCollection<KeyValuePair<any, ChannelMessageViewModel>>, mvm: ChannelMessageViewModel): [VNode, IDisposable] {
+    protected renderMessage(
+        vm: ReadOnlyStdObservableCollection<KeyValuePair<any, ChannelMessageViewModel>>, 
+        mvm: ChannelMessageViewModel,
+        addDisposable: (d: ConvertibleToDisposable) => void): VNode | VNode[] {
+
         switch (mvm.type) {
             case ChannelMessageType.CHAT:
             case ChannelMessageType.AD:
@@ -346,17 +361,17 @@ class ChannelStreamMessageViewRendererFChat implements MessageRenderer {
             case ChannelMessageType.SPIN:
             case ChannelMessageType.SYSTEM:
             case ChannelMessageType.SYSTEM_IMPORTANT:
-                return this.renderStandardUserElement(mvm);
+                return this.renderStandardUserElement(mvm, addDisposable);
             case ChannelMessageType.LOG_NAV_PROMPT:
-                return this.createLogNavUserElement(mvm);
+                return this.createLogNavUserElement(mvm, addDisposable);
             case ChannelMessageType.TYPING_STATUS_INDICATOR:
-                return this.createTypingStatusElement(mvm);
+                return this.createTypingStatusElement(mvm, addDisposable);
         }
     }
 
-    private renderStandardUserElement(vm: ChannelMessageViewModel): [VNode, IDisposable] {
-        const resultDisposables: IDisposable[] = [];
-        //let resultDisposable: IDisposable = EmptyDisposable;
+    private renderStandardUserElement(
+        vm: ChannelMessageViewModel,
+        addDisposable: (d: ConvertibleToDisposable) => void): VNode | VNode[] {
 
         const locale = vm.appViewModel.locale;
 
@@ -502,7 +517,7 @@ class ChannelStreamMessageViewRendererFChat implements MessageRenderer {
 
 
         vm.incrementParsedTextUsage();
-        resultDisposables.push(asDisposable(() => vm.decrementParsedTextUsage()));
+        addDisposable(() => vm.decrementParsedTextUsage());
         targetContainer.push(<span classList={["messagetext"]}>{vm.parseResult.asVNode()}</span>);
 
         const toggleMainClass = (name: string, shouldHave: boolean) => {
@@ -520,7 +535,8 @@ class ChannelStreamMessageViewRendererFChat implements MessageRenderer {
         toggleMainClass("has-ping", vm.containsPing);
         toggleMainClass("from-me", CharacterName.equals(vm.characterStatus.characterName, vm.activeLoginViewModel.characterName));
         
-
+        toggleMainClass("is-last-seen-message", vm.isLastSeenMessage);
+        toggleMainClass("is-first-unseen-message", vm.isFirstUnseenMessage);
 
         //if (displayStyle == ChannelMessageDisplayStyle.DISCORD && emoteStyle != "none") {
             const mcContent = targetContainer;
@@ -541,15 +557,19 @@ class ChannelStreamMessageViewRendererFChat implements MessageRenderer {
 
         const uniqueMessageId = vm.uniqueMessageId.toString();
 
+        const showLastSeenIndicator = !!(vm.channelViewModel ?? vm.appViewModel).getConfigSettingById("showNewMessagesLine");
         const messageContainerVNode = createMessageContainerVNode({ vm, innerNode });
-        return [messageContainerVNode, asDisposable(...resultDisposables)];
+        if (vm.isLastSeenMessage && showLastSeenIndicator) {
+            return [ messageContainerVNode, <x-lastseenindicator></x-lastseenindicator> ];
+        }
+        else {
+            return messageContainerVNode;
+        }
     }
 
-    private createLogNavUserElement(vm: ChannelMessageViewModel): [VNode, IDisposable] {
-        let resultDisposables: IDisposable[] = [];
-
+    private createLogNavUserElement(vm: ChannelMessageViewModel, addDisposable: (d: ConvertibleToDisposable) => void): VNode {
         vm.incrementParsedTextUsage();
-        resultDisposables.push(asDisposable(() => vm.decrementParsedTextUsage()));
+        addDisposable(() => vm.decrementParsedTextUsage());
 
         const uniqueMessageId = vm.uniqueMessageId.toString();
 
@@ -564,39 +584,46 @@ class ChannelStreamMessageViewRendererFChat implements MessageRenderer {
                 </div>;
 
         const messageContainerVNode = createMessageContainerVNode({ vm, innerNode });
-        return [messageContainerVNode, asDisposable(...resultDisposables)];
+        return messageContainerVNode;
     }
 
-    private createTypingStatusElement(vm: ChannelMessageViewModel): [VNode, IDisposable] {
-        const resultDisposables: IDisposable[] = [];
-
+    private createTypingStatusElement(vm: ChannelMessageViewModel, addDisposable: (d: ConvertibleToDisposable) => void): VNode {
         vm.incrementParsedTextUsage();
-        resultDisposables.push(asDisposable(() => vm.decrementParsedTextUsage()));
+        addDisposable(() => vm.decrementParsedTextUsage());
 
         const uniqueMessageId = vm.uniqueMessageId.toString();
         let resultEl = <div key={`msg-${uniqueMessageId}`} classList={["messageitem", "typingstatusindicator"]}>
             <span classList={["messagetext"]}>{vm.text != "" ? vm.parseResult.asVNode() : " "}</span>
         </div>;
 
-        return [resultEl, asDisposable(...resultDisposables)];
+        return resultEl;
     }
 }
 
+type MessageRenderResult = [VNode | VNode[] | null, PreviousRenderedMessageContainer | null];
+
 class ChannelStreamMessageViewRendererDiscord implements MessageRenderer {
     render(vm: ReadOnlyStdObservableCollection<KeyValuePair<any, ChannelMessageViewModel>>): [VNode, IDisposable] {
-        const resultDisposables: IDisposable[] = [];
+        const resultDisposables: ConvertibleToDisposable[] = [];
+        const addDisposable = (d: ConvertibleToDisposable) => resultDisposables.push(d);
 
         let previousRMC: PreviousRenderedMessageContainer | null = null;
         const messageNodes: VNode[] = [];
         for (let kvp of vm.iterateValues()) {
             try {
                 const mvm = kvp.value;
-                const rmResult = this.renderMessage(vm, mvm, previousRMC);
+                const rmResult = this.renderMessage(vm, mvm, addDisposable, previousRMC);
                 if (rmResult[0]) {
-                    messageNodes.push(rmResult[0]);
+                    if (Array.isArray(rmResult[0])) {
+                        for (let n of rmResult[0]) {
+                            messageNodes.push(n);
+                        }
+                    }
+                    else {
+                        messageNodes.push(rmResult[0]);
+                    }
                 }
-                resultDisposables.push(rmResult[1]);
-                previousRMC = rmResult[2];
+                previousRMC = rmResult[1];
             }
             catch (e) {
                 previousRMC = null;
@@ -612,9 +639,10 @@ class ChannelStreamMessageViewRendererDiscord implements MessageRenderer {
     protected renderMessage(
         vm: ReadOnlyStdObservableCollection<KeyValuePair<any, ChannelMessageViewModel>>,
         mvm: ChannelMessageViewModel, 
-        previousRMC: PreviousRenderedMessageContainer | null): [VNode | null, IDisposable, PreviousRenderedMessageContainer | null] {
+        addDisposable: (d: ConvertibleToDisposable) => void,
+        previousRMC: PreviousRenderedMessageContainer | null): MessageRenderResult {
 
-        let res: [VNode | null, IDisposable, PreviousRenderedMessageContainer | null];
+        let res: MessageRenderResult;
         switch (mvm.type) {
             case ChannelMessageType.CHAT:
             case ChannelMessageType.AD:
@@ -622,17 +650,22 @@ class ChannelStreamMessageViewRendererDiscord implements MessageRenderer {
             case ChannelMessageType.SPIN:
             case ChannelMessageType.SYSTEM:
             case ChannelMessageType.SYSTEM_IMPORTANT:
-                res = this.renderStandardUserElement(mvm, previousRMC);
+                res = this.renderStandardUserElement(mvm, addDisposable, previousRMC);
                 break;
             case ChannelMessageType.LOG_NAV_PROMPT:
-                res = this.createLogNavUserElement(mvm, previousRMC);
+                res = this.createLogNavUserElement(mvm, addDisposable, previousRMC);
                 break;
             case ChannelMessageType.TYPING_STATUS_INDICATOR:
-                res = this.createTypingStatusElement(mvm, previousRMC);
+                res = this.createTypingStatusElement(mvm, addDisposable, previousRMC);
                 break;
         }
         if (res[0]) {
-            res[0].key = `msg-${mvm.uniqueMessageId}`;
+            if (Array.isArray(res[0])) {
+                res[0][res[0].length - 1].key = `msg-${mvm.uniqueMessageId}`;
+            }
+            else {
+                res[0].key = `msg-${mvm.uniqueMessageId}`;
+            }
         }
         return res;
     }
@@ -647,8 +680,10 @@ class ChannelStreamMessageViewRendererDiscord implements MessageRenderer {
         return tsText;
     }
 
-    private renderStandardUserElement(vm: ChannelMessageViewModel, previousRMC: PreviousRenderedMessageContainer | null): [VNode | null, IDisposable, PreviousRenderedMessageContainer | null] {
-        const resultDisposables: IDisposable[] = [];
+    private renderStandardUserElement(
+        vm: ChannelMessageViewModel, 
+        addDisposable: (d: ConvertibleToDisposable) => void,
+        previousRMC: PreviousRenderedMessageContainer | null): MessageRenderResult {
 
         const uniqueMessageId = vm.uniqueMessageId.toString();
 
@@ -662,6 +697,8 @@ class ChannelStreamMessageViewRendererDiscord implements MessageRenderer {
             }
         }
 
+        const isFirstUnseenMessage = vm.isFirstUnseenMessage;
+
         const canIncludeInPrevious =
             !isImportant
             && (vm.type == ChannelMessageType.CHAT)
@@ -672,11 +709,15 @@ class ChannelStreamMessageViewRendererDiscord implements MessageRenderer {
             !isImportant
             && (vm.type == ChannelMessageType.CHAT);
 
-        const rbody = this.renderStandardUserElementBody(vm, resultDisposables, canIncludeInPrevious ? previousRMC : null);
+        const rbody = this.renderStandardUserElementBody(vm, addDisposable, canIncludeInPrevious ? previousRMC : null);
 
         if (canIncludeInPrevious) {
+            const showLastSeenIndicator = !!(vm.channelViewModel ?? vm.appViewModel).getConfigSettingById("showNewMessagesLine");
+            if (isFirstUnseenMessage && showLastSeenIndicator) {
+                previousRMC!.appendMessageContent(<x-lastseenindicator></x-lastseenindicator>);
+            }
             previousRMC!.appendMessageContent(rbody);
-            return [null, asDisposable(...resultDisposables), { ...previousRMC, lastTimestamp: vm.timestamp }];
+            return [null, { ...previousRMC, lastTimestamp: vm.timestamp }];
         }
         else {
             const elIcon = <img key={`msg-${uniqueMessageId}-icon`} classList={["icon"]} attr-src={URLUtils.getAvatarImageUrl(vm.characterStatus.characterName)} attrs={{
@@ -766,10 +807,16 @@ class ChannelStreamMessageViewRendererDiscord implements MessageRenderer {
 
             const collapseAds = vm.type == ChannelMessageType.AD && (vm.channelViewModel?.getConfigSettingById("collapseAds") ?? false);
 
-            const messageContainerVNode = createMessageContainerVNode({ vm, innerNode });
+            let messageContainerVNode: VNode | VNode[] = createMessageContainerVNode({ vm, innerNode });
+
+            const showLastSeenIndicator = !!(vm.channelViewModel ?? vm.appViewModel).getConfigSettingById("showNewMessagesLine");
+            if (isFirstUnseenMessage && showLastSeenIndicator)
+            {
+                messageContainerVNode = [ <x-lastseenindicator></x-lastseenindicator>, messageContainerVNode ];
+            }
+
             return [ 
                 messageContainerVNode, 
-                asDisposable(...resultDisposables), 
                 collapseAds 
                     ? null
                     : canIncludeSubsequent
@@ -789,7 +836,11 @@ class ChannelStreamMessageViewRendererDiscord implements MessageRenderer {
         return diffMs < TimeSpanUtils.fromMinutes(2);
     }
 
-    private renderStandardUserElementBody(vm: ChannelMessageViewModel, resultDisposables: IDisposable[], previousRMC: PreviousRenderedMessageContainer | null): VNode {
+    private renderStandardUserElementBody(
+        vm: ChannelMessageViewModel, 
+        addDisposable: (d: ConvertibleToDisposable) => void, 
+        previousRMC: PreviousRenderedMessageContainer | null): VNode {
+
         const mainClasses: string[] = [];
 
         const locale = vm.appViewModel.locale;
@@ -904,7 +955,7 @@ class ChannelStreamMessageViewRendererDiscord implements MessageRenderer {
         targetContainer.push(<span classList={["character-spacer"]} attrs={{"data-copycontent":""}}>{spacerText}</span>);
 
         vm.incrementParsedTextUsage();
-        resultDisposables.push(asDisposable(() => vm.decrementParsedTextUsage()));
+        addDisposable(() => vm.decrementParsedTextUsage());
         targetContainer.push(<span classList={["messagetext"]}>{vm.parseResult.asVNode()}</span>);
 
         const toggleMainClass = (name: string, shouldHave: boolean) => {
@@ -921,6 +972,9 @@ class ChannelStreamMessageViewRendererDiscord implements MessageRenderer {
         toggleMainClass("important", isImportant);
         toggleMainClass("has-ping", vm.containsPing);
         toggleMainClass("from-me", CharacterName.equals(vm.characterStatus.characterName, vm.activeLoginViewModel.characterName));
+
+        toggleMainClass("is-last-seen-message", vm.isLastSeenMessage);
+        toggleMainClass("is-first-unseen-message", vm.isFirstUnseenMessage);
 
         const copyPrefix: string[] = [];
 
@@ -954,11 +1008,13 @@ class ChannelStreamMessageViewRendererDiscord implements MessageRenderer {
         return <div classList={[ "message-content", ...mainClasses ]}>{timestampHintNode}<span classList={["header-info"]}>{copyPrefix.join("")}</span>{targetContainer}</div>;
     }
 
-    private createLogNavUserElement(vm: ChannelMessageViewModel, previousRMC: PreviousRenderedMessageContainer | null): [VNode, IDisposable, PreviousRenderedMessageContainer | null] {
-        let resultDisposables: IDisposable[] = [];
+    private createLogNavUserElement(
+        vm: ChannelMessageViewModel,
+        addDisposable: (d: ConvertibleToDisposable) => void,
+        previousRMC: PreviousRenderedMessageContainer | null): MessageRenderResult {
 
         vm.incrementParsedTextUsage();
-        resultDisposables.push(asDisposable(() => vm.decrementParsedTextUsage()));
+        addDisposable(() => vm.decrementParsedTextUsage());
 
         const uniqueMessageId = vm.uniqueMessageId.toString();
 
@@ -973,21 +1029,23 @@ class ChannelStreamMessageViewRendererDiscord implements MessageRenderer {
                 </div>;
 
         const messageContainerVNode = createMessageContainerVNode({ vm, innerNode });
-        return [messageContainerVNode, asDisposable(...resultDisposables), null];
+        return [messageContainerVNode, null];
     }
 
-    private createTypingStatusElement(vm: ChannelMessageViewModel, previousRMC: PreviousRenderedMessageContainer | null): [VNode, IDisposable, PreviousRenderedMessageContainer | null] {
-        const resultDisposables: IDisposable[] = [];
+    private createTypingStatusElement(
+        vm: ChannelMessageViewModel, 
+        addDisposable: (d: ConvertibleToDisposable) => void,
+        previousRMC: PreviousRenderedMessageContainer | null): MessageRenderResult {
 
         vm.incrementParsedTextUsage();
-        resultDisposables.push(asDisposable(() => vm.decrementParsedTextUsage()));
+        addDisposable(() => vm.decrementParsedTextUsage());
 
         const uniqueMessageId = vm.uniqueMessageId.toString();
         let resultEl = <div key={`msg-${uniqueMessageId}`} classList={["messageitem", "typingstatusindicator"]}>
             <span classList={["messagetext"]}>{vm.text != "" ? vm.parseResult.asVNode() : " "}</span>
         </div>;
 
-        return [resultEl, asDisposable(...resultDisposables), null];
+        return [resultEl, null];
     }
 }
 
