@@ -272,6 +272,15 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     configBlockKey: "openPmTabForIncomingTyping.enabled"
                 },
                 {
+                    id: "promptOnWindowClose",
+                    scope: getScopeArray(["global"]),
+                    title: "Prompt for Confirmation on Close",
+                    description: "Prompt for confirmation when closing the main XarChat window to prevent accidental closure.",
+                    type: "boolean",
+                    defaultValue: true,
+                    configBlockKey: "promptOnWindowClose"
+                },                
+                {
                     scope: getScopeArray(["global"]),
                     sectionTitle: "Links and Images",
                     items: [

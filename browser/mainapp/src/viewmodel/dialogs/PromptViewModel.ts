@@ -28,6 +28,8 @@ export class PromptViewModel<TResult> extends DialogViewModel<TResult> {
             });
             this.buttons.add(buttonVm);
         }
+
+        this.checkboxes = options.checkboxes ?? null;
     }
 
     @observableProperty
@@ -35,6 +37,9 @@ export class PromptViewModel<TResult> extends DialogViewModel<TResult> {
 
     @observableProperty
     readonly messageAsHtml: boolean;
+
+    @observableProperty
+    readonly checkboxes: PromptCheckbox[] | null;
 }
 
 export class PromptForStringViewModel extends DialogViewModel<string | null> {
@@ -130,6 +135,7 @@ export interface PromptOptions<TResult> {
     messageAsHtml?: boolean;
     closeBoxResult?: TResult;
 
+    checkboxes?: PromptCheckbox[];
     buttons: PromptButtonOptions<TResult>[];
 }
 
@@ -138,6 +144,11 @@ export interface PromptButtonOptions<TResult> {
     style: DialogButtonStyle;
     shortcutKeyCode?: number;
     resultValue: TResult;
+}
+
+export interface PromptCheckbox {
+    label: string;
+    checked: boolean;
 }
 
 export interface PromptForStringOptions {
