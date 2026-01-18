@@ -28,7 +28,7 @@ import { PMConvoChannelViewModel } from "./PMConvoChannelViewModel.js";
 import { AboutViewModel } from "./dialogs/AboutViewModel.js";
 import { AlertOptions, AlertViewModel } from "./dialogs/AlertViewModel.js";
 import { AppInitializeViewModel } from "./dialogs/AppInitializeViewModel.js";
-import { DialogViewModel } from "./dialogs/DialogViewModel.js";
+import { DialogButtonStyle, DialogViewModel } from "./dialogs/DialogViewModel.js";
 import { PromptForStringOptions, PromptForStringViewModel, PromptOptions, PromptViewModel } from "./dialogs/PromptViewModel.js";
 import { SettingsDialogViewModel, SettingsLevel } from "./dialogs/SettingsDialogViewModel.js";
 import { ContextMenuPopupViewModel } from "./popups/ContextMenuPopupViewModel.js";
@@ -816,8 +816,37 @@ export class AppViewModel extends ObservableBase {
         vm.mustUpdate = mustUpdate;
         vm.changelogBBCode = changelogBBCode;
         const resp = await this.showDialogAsync(vm);
-
     }
+
+    async closeApplicationAsync(options?: CloseApplicationOptions): Promise<void> {
+        const shouldPrompt = this.getConfigSettingById("promptOnWindowClose");
+        if (shouldPrompt && !(options?.bypassPrompt ?? false)) {
+            const dontAskAgain = { label: "Don't ask me again", checked: false };
+
+            const resp = await this.promptAsync<boolean>({
+                title: "Confirm Exit",
+                message: "Are you sure you want to close XarChat?",
+                checkboxes: [ dontAskAgain ],
+                buttons: [
+                    { title: "Yes", resultValue: true, style: DialogButtonStyle.DEFAULT },
+                    { title: "No", resultValue: false, style: DialogButtonStyle.CANCEL }
+                ],
+                closeBoxResult: false
+            });
+
+            if (dontAskAgain.checked) {
+                this.setConfigSettingById("promptOnWindowClose", false);
+            }
+            if (!resp) {
+                return;
+            }
+        }
+        HostInterop.closeWindow();
+    }
+}
+
+export type CloseApplicationOptions = {
+    bypassPrompt?: boolean;
 }
 
 export type GetConfigSettingChannelViewModel = 

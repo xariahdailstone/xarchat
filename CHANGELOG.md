@@ -89,3 +89,8 @@
   * Mmmm, hamburgers. 
 * Moved channel menu items into the channel hamburger menu.
 * Fixed an issue where automatic reconnection to chat would fail if the cached API ticket was expired.
+* Added a "New Messages" line that shows up in a chat stream whenever you switch back to a tab that
+  has new messages you haven't seen yet.  (Can be turned off in options.)
+* Added a confirmation dialog when closing the XarChat window via the titlebar.
+  * This change is on Windows only, for now. Other platforms will get it soon.
+  * This dialog can be disabled/enabled in options.
