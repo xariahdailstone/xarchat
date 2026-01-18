@@ -1037,6 +1037,15 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     configBlockKey: "collapseAds"
                 },
                 {
+                    id: "showNewMessagesLine",
+                    scope: getScopeArray(["global", "char", "chan"]),
+                    title: "Show New Messages Line",
+                    description: "Show a line where new messages begin when returning to a channel or PM conversation with unseen messages.",
+                    type: "boolean",
+                    defaultValue: true,
+                    configBlockKey: "showNewMessagesLine"
+                },                
+                {
                     id: "showChatTextboxToolbar",
                     scope: getScopeArray(["global"]),
                     title: "Show Chat Textbox Toolbar",
