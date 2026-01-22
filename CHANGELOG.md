@@ -94,3 +94,4 @@
 * Added a confirmation dialog when closing the XarChat window via the titlebar.
   * This change is on Windows only, for now. Other platforms will get it soon.
   * This dialog can be disabled/enabled in options.
+* Even better EIcon mosaic syncing, now with 40% more perfection!
