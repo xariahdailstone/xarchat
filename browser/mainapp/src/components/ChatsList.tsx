@@ -668,69 +668,76 @@ export class ChatsList extends RenderingComponentBase<ActiveLoginViewModel> {
                     ? <x-iconimage classList={["sectionitems-item-titleicon-image"]} attr-src="assets/ui/channel-ping.svg"></x-iconimage>
                     : null;
 
-                let clickSuppressed = false;
-                const suppressThisClickAsSelection = () => {
-                    clickSuppressed = true;
-                };
-
                 const pinNode = cvmState.canPin
-                    ? <button classList={["pin-icon"]} on={{
-                            "mousedown": (e: MouseEvent) => {
-                                suppressThisClickAsSelection();
-                            },
-                            "click": (e: MouseEvent) => {
-                                suppressThisClickAsSelection();
-                                switch (e.button) {
-                                    case MouseButton.LEFT:
-                                        cvm.isPinned = !cvm.isPinned;
-                                        break;
-                                }
-                            }
-                        }}><x-iconimage attr-src="assets/ui/pin-icon.svg"></x-iconimage></button>
+                    ? <button classList={["pin-icon"]} attrs={{ "data-buttonaction": "toggle-pin" }}><x-iconimage attr-src="assets/ui/pin-icon.svg"></x-iconimage></button>
                     : null;
 
                 const closeNode = cvmState.canClose
-                    ? <button classList={["close-icon"]} on={{
-                            "mousedown": (e: MouseEvent) => {
-                                suppressThisClickAsSelection();
-                            },
-                            "click": (e: MouseEvent) => {
-                                suppressThisClickAsSelection();
-                                cvm.close();
-                            }
-                        }}><x-iconimage attr-src="assets/ui/close-icon.svg"></x-iconimage></button>
+                    ? <button classList={["close-icon"]} attrs={{ "data-buttonaction": "close-channel" }}><x-iconimage attr-src="assets/ui/close-icon.svg"></x-iconimage></button>
                     : null;
+
+                const getCurrentButtonAction = (e: MouseEvent): string | null => {
+                    let curEl: (HTMLElement | null) = e.target as HTMLElement;
+                    while (curEl) {
+                        if (curEl.hasAttribute("data-buttonaction")) {
+                            return curEl.getAttribute("data-buttonaction");
+                        }
+                        curEl = curEl.parentElement;
+                    }
+                    return "";
+                };
 
                 const mainEvents: On = {
                     "mousedown": (e: MouseEvent) => {
-                        if (!clickSuppressed) {
-                            if (e.button == MouseButton.LEFT) {
-                                cvm.parent.selectedChannel = cvm;
-                            }
-                        }
-                        else {
-                            clickSuppressed = false;
+                        const baction = getCurrentButtonAction(e);
+                        switch (baction) {
+                            case "toggle-pin":
+                                return;
+                            case "close-channel":
+                                return;
+                            default:
+                                if (e.button == MouseButton.LEFT) {
+                                   cvm.parent.selectedChannel = cvm;
+                                }
+                                return;
                         }
                     },
                     "click": (e: MouseEvent) => {
-                        if (!clickSuppressed) {
-                            try {
-                                switch (e.button) {
-                                    case MouseButton.LEFT:
-                                        cvm.parent.selectedChannel = cvm;
-                                        break;
-                                    case MouseButton.RIGHT:
-                                        if (cvm instanceof PMConvoChannelViewModel) {
-                                            cvm.showCharacterContextPopup(e.target as HTMLElement);
-                                            e.preventDefault();
-                                        }
-                                        break;
+                        const baction = getCurrentButtonAction(e);
+                        switch (baction) {
+                            case "toggle-pin":
+                                {
+                                    switch (e.button) {
+                                        case MouseButton.LEFT:
+                                            cvm.isPinned = !cvm.isPinned;
+                                            break;
+                                    }                                    
                                 }
-                            }
-                            catch { }
-                        }
-                        else {
-                            clickSuppressed = false;
+                                break;
+                            case "close-channel":
+                                {
+                                    switch (e.button) {
+                                        case MouseButton.LEFT:
+                                            cvm.close();
+                                            break;
+                                    }
+                                }
+                                break;
+                            default:
+                                {
+                                    switch (e.button) {
+                                        case MouseButton.LEFT:
+                                            cvm.parent.selectedChannel = cvm;
+                                            break;
+                                        case MouseButton.RIGHT:
+                                            if (cvm instanceof PMConvoChannelViewModel) {
+                                                cvm.showCharacterContextPopup(e.target as HTMLElement);
+                                                e.preventDefault();
+                                            }
+                                            break;
+                                    }
+                                }
+                                break;
                         }
                     },
                     "contextmenu": (e: MouseEvent) => {
