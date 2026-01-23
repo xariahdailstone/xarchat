@@ -95,3 +95,5 @@
   * This change is on Windows only, for now. Other platforms will get it soon.
   * This dialog can be disabled/enabled in options.
 * Even better EIcon mosaic syncing, now with 40% more perfection!
+* Fixed an issue where sometimes when attempting to close a tab that is not the currently active
+  tab, the tab would be both closed *and* selected.
