@@ -11,7 +11,6 @@ import { Profile } from "../../../util/profile/Profile";
 import { RichInfoTagDefListImpl } from "../../../util/profile/RichInfoTagDefList";
 import { RichKinkList } from "../../../util/profile/RichKinkList";
 import { RichMappingDefImpl } from "../../../util/profile/RichMappingDef";
-import { CharacterProfileDialogViewModel } from "..././../viewmodel/dialogs/character-profile/CharacterProfileDialogViewModel";
 import { EditMemoViewModel } from "../../../viewmodel/dialogs/EditMemoViewModel";
 import { CollectionViewLightweight } from "../../CollectionViewLightweight";
 import { componentArea, componentElement } from "../../ComponentBase";
@@ -21,6 +20,7 @@ import { Fragment, init, styleModule, toVNode, propsModule, eventListenersModule
 import { observableProperty } from "../../../util/ObservableBase";
 import { getEffectiveCharacterName } from "../../../util/CharacterNameIcons";
 import { HTMLUtils } from "../../../util/HTMLUtils";
+import { CharacterProfileDialogViewModel } from "../../../viewmodel/dialogs/character-profile/CharacterProfileDialogViewModel";
 
 @componentArea("dialogs/character-profile")
 @componentElement("x-characterprofiledialog")

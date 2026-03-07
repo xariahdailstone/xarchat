@@ -83,6 +83,7 @@ using XarChat.Backend.Features.IdleDetection;
 using XarChat.Backend.Features.NotificationBadge;
 using XarChat.Backend.Features.FileChooser;
 using XarChat.Backend.Features.LocaleList;
+using XarChat.Backend.UrlHandlers.AllComponentsScript;
 
 namespace XarChat.Backend
 {
@@ -443,6 +444,8 @@ namespace XarChat.Backend
 
                 startupLogWriter("XarChatBackend.Configure mapping /");
                 app.MapGet("/", () => "Hello world!");
+
+                app.UseAllComponentsScript();
 
                 startupLogWriter("XarChatBackend.Configure mapping app");
                 app.MapGet("/app/{*relPath}", async (
