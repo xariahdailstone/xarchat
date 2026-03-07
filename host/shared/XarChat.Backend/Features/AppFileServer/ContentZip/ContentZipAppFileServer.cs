@@ -7,6 +7,7 @@ using System.Linq;
 using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using XarChat.Backend.Features.MimeTypeMapper;
 
@@ -77,6 +78,8 @@ namespace XarChat.Backend.Features.AppFileServer.ContentZip
                 //await stream.CopyToAsync(ms);
                 //ms.Seek(0, SeekOrigin.Begin);
 
+                stream = await MaybeFixupStreamAsync(relPath, stream, cancellationToken);
+
                 var fresult = Results.File(
                     fileStream: stream,
                     //fileStream: ms,
@@ -92,6 +95,52 @@ namespace XarChat.Backend.Features.AppFileServer.ContentZip
             {
                 Console.WriteLine("no zip resource: " + relPath);
                 return Results.NotFound();
+            }
+        }
+
+        private static readonly Regex ImportPattern =
+            new Regex(@"^\s*(?<impexp>(import|export))\s+(?<importwhat>.+)\s*from\s+(?<importurl>.+);\s*$", RegexOptions.Compiled | RegexOptions.ExplicitCapture);
+
+        internal static async Task<Stream> MaybeFixupStreamAsync(string relPath, Stream stream, CancellationToken cancellationToken)
+        {
+            if (relPath.EndsWith(".js"))
+            {
+                var ms = new MemoryStream();
+
+                using var reader = new StreamReader(stream);
+                var writer = new StreamWriter(ms);
+                string? line;
+                while ((line = await reader.ReadLineAsync(cancellationToken)) != null)
+                {
+                    var m = ImportPattern.Match(line);
+                    if (m.Success)
+                    {
+                        var impexp = m.Groups["impexp"].Value;
+                        var iwhat = m.Groups["importwhat"].Value;
+                        var iurl = m.Groups["importurl"].Value;
+
+                        iurl = iurl.Substring(1, iurl.Length - 2);
+                        if (!iurl.EndsWith(".js"))
+                        {
+                            iurl = iurl + ".js";
+                        }
+
+                        writer.WriteLine($"{impexp} {iwhat} from \"{iurl}\";");
+                    }
+                    else
+                    {
+                        writer.WriteLine(line);
+                    }
+                }
+
+                writer.Flush();
+                ms.Seek(0, SeekOrigin.Begin);
+                stream.Dispose();
+                return ms;
+            }
+            else
+            {
+                return stream;
             }
         }
 

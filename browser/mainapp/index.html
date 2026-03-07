@@ -96,42 +96,7 @@
     </head>
     <body>
 
-        <!-- <x-maininterface id="elMain"></x-maininterface> -->
-
-        <!--
-        <x-testrendered id="elTest"></x-testrendered>
-        -->
-        <script>
-            // window.onerror = (ev, source, lineNo, colNo, error) => {
-            //     alert(`window.onerror\nsource=${source}\nlineNo=${lineNo}\ncolNo=${colNo}\nerror=${error}`);
-            // };
-            //alert("loading systemjs");
-        </script>
-
-        <script src="lib/systemjs-6.11.0/s.js"></script>
-
-        <script>
-            //alert("loading named-register");
-        </script>
-
-        <script src="lib/systemjs-6.11.0/extras/named-register.js"></script> 
-        <!--
-        <script>
-            document.write('<scr'+'ipt src="build/app.js?' + (new Date()) + '"></scr'+'ipt>');
-        </script>
-        -->
-
-        <script>
-            // const oldreg = System.register;
-            // System.register = function(...args) {
-            //     alert(`registering ${args[0]}`);
-            //     oldreg.call(System, ...args);
-            // }
-            //alert("loading app.js");
-        </script>
-        <script src="build/app.js"></script>
-        <script>
-            //alert("after app.js");
+        <script type="module">
             function onReady(func) {
                 if (/complete|interactive|loaded/.test(document.readyState)) {
                     func();
@@ -141,45 +106,16 @@
                 }
             }
 
-            function shouldProactivelyLoad(moduleName) {
-                return moduleName.startsWith("components/") ||
-                    (moduleName.indexOf("/debugtools/") != -1);
-            }
-
             onReady(async () => {
-
-
-                //alert("in html onready");
-                const failureMessages = [];
-                let hasFailure = false;
-                for (let x of Object.getOwnPropertyNames(System.registerRegistry)) {
-                    if (shouldProactivelyLoad(x)) {
-                        try {
-                            //alert(`importing component ${x}`);
-                            await System.import(x);
-                        }
-                        catch (e)
-                        {
-                            failureMessages.push(`failed to load component ${x}: ${e}\n${e?.stack}`);
-                            hasFailure = true;
-                        }
-                    }
-                }
-                if (hasFailure) {
-                    alert(failureMessages.join("\n\n"));
-                }
-                
-                //alert("importing main");
-                try {
-                    await System.import("main");
-                    //alert("imported main");
-                }
-                catch (e) {
-                    alert(`import main failed: ${e}`);
-                }
-
-                const elTest = document.getElementById("elTest");
+                await import("./build/_polyfill.js");
+                await import("./build/all-components.js");
+                await import("./build/main.js");
             });
+
+            // function shouldProactivelyLoad(moduleName) {
+            //     return moduleName.startsWith("components/") ||
+            //         (moduleName.indexOf("/debugtools/") != -1);
+            // }
         </script>
 
     </body>
