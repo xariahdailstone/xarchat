@@ -9,7 +9,7 @@ import { AppViewModel } from "../viewmodel/AppViewModel";
 import { LogFileMaintenanceDialogViewModel } from "../viewmodel/dialogs/LogFileMaintenanceDialogViewModel";
 import { addNotifRoutes } from "./ConfigSchemaItem-MigrationFuncs";
 
-export const ConfigSchemaVersion: number = 1;
+export const ConfigSchemaVersion: number = 2;
 
 export interface ConfigSchemaDefinition {
     settings: ConfigSchemaItemDefinition[];
@@ -21,6 +21,7 @@ export interface ConfigSchemaItemDefinitionItem {
     title: string;
     description?: string;
     descriptionByScope?: { [key in ConfigSchemaScopeType]: string };
+    moreInfo?: string;
     type: ConfigSchemaItemType;
     options?: ConfigSchemaOptionDefinition[];
     selectOptions?: ConfigSchemaSelectOptionDefinition[];
@@ -40,6 +41,8 @@ export interface ConfigSchemaItemDefinitionItem {
     enableIf?: (options: EnableIfOptions) => boolean;
     calculateValue?: (options: CalculateValueOptions) => any;
     migrations?: { [version: number]: (previousValue: any) => any };
+
+    dataCollectionSettingRefId?: string;
 }
 
 export interface ActionButtonDefinition {
@@ -163,6 +166,20 @@ function generateNumericOptions(min: number, max: number): ConfigSchemaSelectOpt
     return results;
 }
 
+function addDataCollectionNotifiedSetting(id: string): ConfigSchemaItemDefinitionItem {
+    return {
+        id: `${id}.notified`,
+        scope: getScopeArray(["global"]),
+        title: `${id} presented to user`,
+        description: `Has the data collection setting "${id}" been shown to the user for opt-in via a popup?`,
+        type: "boolean",
+        defaultValue: false,
+        configBlockKey: `${id}.notified`,
+        hidden: true,
+        dataCollectionSettingRefId: id
+    };
+}
+
 const spellCheckLanguageItem: ConfigSchemaItemDefinitionItem = {
     id: "spellCheckLanguage",
     scope: getScopeArray(["global"]),
@@ -279,6 +296,39 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     type: "boolean",
                     defaultValue: true,
                     configBlockKey: "promptOnWindowClose"
+                },                
+                {
+                    scope: getScopeArray(["global"]),
+                    sectionTitle: "Data Collection",
+                    items: [
+                        {
+                            id: "datacollection.submitSeenEIcons",
+                            scope: getScopeArray(["global"]),
+                            title: "Submit Seen EIcons to Xariah.net",
+                            description: "Send information about newly seen eicons to xariah.net for inclusion in the eicon search index.",
+                            moreInfo: "When enabled, XarChat will look at all eicons received in all chat messages and determine whether they should " +
+                                "be submitted to xariah.net to update the eicon search index.  This helps ensure that new eicons are added to the " +
+                                "index, that changed eicons are updated in the index, and that deleted eicons are removed from the index.",
+                            type: "boolean",
+                            defaultValue: false,
+                            configBlockKey: "datacollection.submitSeenEIcons"
+                        },
+                        addDataCollectionNotifiedSetting("datacollection.submitSeenEIcons"),
+                        {
+                            id: "datacollection.submitSeenProfiles",
+                            scope: getScopeArray(["global"]),
+                            title: "Submit Seen Profile Data to Xariah.net",
+                            description: "Send information about newly seen profile data to xariah.net for advanced search and filtering functionality.",
+                            moreInfo: "When enabled, XarChat will look at all profile data received when opening a character's profile and will " +
+                                "determine whether it should be submitted to xariah.net.  This data will be used by XarChat in the near future to assist in providing " +
+                                "upcoming features like advanced chat/ad filtering options and rating compatibility with other characters, that " +
+                                "cannot easily be provided without cached profile data provided by xariah.net.",
+                            type: "boolean",
+                            defaultValue: false,
+                            configBlockKey: "datacollection.submitSeenProfiles"
+                        },
+                        addDataCollectionNotifiedSetting("datacollection.submitSeenProfiles"),
+                    ]
                 },                
                 {
                     scope: getScopeArray(["global"]),

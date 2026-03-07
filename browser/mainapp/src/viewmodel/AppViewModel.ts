@@ -1,4 +1,4 @@
-import { ConfigSchema, ConfigSchemaScopeType, getConfigSchemaItemById } from "../configuration/ConfigSchemaItem.js";
+import { ConfigSchema, ConfigSchemaDefinition, ConfigSchemaItemDefinition, ConfigSchemaItemDefinitionItem, ConfigSchemaScopeType, getConfigSchemaItemById } from "../configuration/ConfigSchemaItem.js";
 import { FListApi } from "../fchat/api/FListApi.js";
 import { HostInteropApi } from "../fchat/api/HostInteropApi.js";
 import { AppSettings } from "../settings/AppSettings.js";
@@ -36,11 +36,12 @@ import { PopupViewModel } from "./popups/PopupViewModel.js";
 import { TooltipPopupViewModel } from "./popups/TooltipPopupViewModel.js";
 import { UIZoomNotifyPopupViewModel } from "./popups/UIZoomNotifyPopupViewModel.js";
 import { PlatformUtils } from "../util/PlatformUtils.js";
-import { InAppToastsViewModel, ToastInfo } from "./InAppToastsViewModel.js";
+import { InAppToastsViewModel, ToastCloseReason, ToastInfo } from "./InAppToastsViewModel.js";
 import { Scheduler } from "../util/Scheduler.js";
 import { AccountsFriendsAndBookmarksViewModel } from "./AccountsFriendsAndBookmarksViewModel.js";
 import { ObjectUniqueId } from "../util/ObjectUniqueId.js";
 import { UpdateInfoDialogViewModel } from "./dialogs/UpdateInfoDialogViewModel.js";
+import { DataCollectionOptInDialogViewModel } from "./dialogs/DataCollectionOptInDialogViewModel.js";
 
 export class AppViewModel extends ObservableBase {
     constructor(configBlock: ConfigBlock) {
@@ -138,6 +139,8 @@ export class AppViewModel extends ObservableBase {
         })();
 
         this._heldOEs.push(this.setupLocaleMonitoring());
+
+        this.initializeDataCollectionOptIn();
     }
 
     private readonly _heldOEs: IDisposable[] = [];
@@ -843,6 +846,76 @@ export class AppViewModel extends ObservableBase {
         }
         HostInterop.closeWindow();
     }
+
+    private async showDataCollectionOptInDialog(items: DataCollectionOptInPair[]) {
+        const vm = new DataCollectionOptInDialogViewModel(this, items);
+        await this.showDialogAsync(vm);
+    }
+
+    private initializeDataCollectionOptIn() {
+        const results: DataCollectionOptInPair[] = [];
+        for (let x of ConfigSchema.settings) {
+            if (x.items) {
+                for (let xy of this.initializeDataCollectionOptInForItem(x as ConfigSchemaItemDefinitionItem)) {
+                    results.push(xy);
+                }
+            }
+            else {
+                for (let xy of this.initializeDataCollectionOptInForItem(x as ConfigSchemaItemDefinitionItem)) {
+                    results.push(xy);
+                }
+            }
+        }
+
+        if (results.length > 0) {
+            this.toasts.addNewToast({ 
+                priority: 10,
+                canClose: false,
+                title: "New Settings to Review",
+                description: "There are new important settings you need to review.",
+                backgroundColor: "yellow",
+                color: "black",
+                buttons: [
+                    {
+                        title: "Review",
+                        onClick: async (info, vm) => {
+                            await this.showDataCollectionOptInDialog(results);
+                            vm.removeToast(info, ToastCloseReason.ToastClicked);
+                        }
+                    }
+                ]
+            });
+        }
+    }
+
+    private initializeDataCollectionOptInForItem(item: ConfigSchemaItemDefinition): DataCollectionOptInPair[] {
+        const result: DataCollectionOptInPair[] = [];
+
+        if (item.items) {
+            for (let subitem of item.items) {
+                const subpairs = this.initializeDataCollectionOptInForItem(subitem);
+                for (let subpair of subpairs) {
+                    result.push(subpair);
+                }
+            }
+        }
+        else {
+            const iitem = (item as ConfigSchemaItemDefinitionItem);
+            if (iitem.dataCollectionSettingRefId) {
+                const refedItem = getConfigSchemaItemById(iitem.dataCollectionSettingRefId);
+                if (refedItem) {
+                    result.push({ notifySettingItem: iitem, actualSettingItem: refedItem });
+                }
+            }
+        }
+
+        return result;
+    }
+}
+
+export interface DataCollectionOptInPair {
+    notifySettingItem: ConfigSchemaItemDefinitionItem;
+    actualSettingItem: ConfigSchemaItemDefinitionItem;
 }
 
 export type CloseApplicationOptions = {
