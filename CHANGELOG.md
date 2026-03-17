@@ -107,5 +107,7 @@
     * **Profiles** - XarChat can gather some information from profiles opened, to enable future
       XarChat features such as filtering ads and searches by additional profile fields.
   * If you opt-in, none of the collected data will be associated with your profile.
+* Added the ability to hide duplicate ads posted by a character within a specified period of time
+  (see Display settings to configure).
 * Fixed an issue that would prevent some profile data from loaded when opening a profile
   from a slightly invalid link.

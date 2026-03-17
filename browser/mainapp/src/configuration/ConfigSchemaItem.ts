@@ -1096,6 +1096,22 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     configBlockKey: "collapseAds"
                 },
                 {
+                    id: "hideRepeatedAds",
+                    scope: getScopeArray(["global", "char", "chan"]),
+                    title: "Hide Repeated Ads",
+                    description: "Hide ads posted by a character that are a repeat of an ad posted by that character recently.",
+                    type: "select",
+                    selectOptions: [
+                        { value: "0", displayValue: "Do Not Hide" },
+                        { value: "30", displayValue: "Within 30 minutes" },
+                        { value: "60", displayValue: "Within 1 hour" },
+                        { value: "120", displayValue: "Within 2 hours" },
+                        { value: "240", displayValue: "Within 4 hours" }
+                    ],
+                    defaultValue: "0",
+                    configBlockKey: "hideRepeatedAds"
+                },
+                {
                     id: "showNewMessagesLine",
                     scope: getScopeArray(["global", "char", "chan"]),
                     title: "Show New Messages Line",
