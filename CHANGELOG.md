@@ -111,3 +111,6 @@
   (see Display settings to configure).
 * Fixed an issue that would prevent some profile data from loaded when opening a profile
   from a slightly invalid link.
+* Added /ignore and /unignore slash commands.
+* Added an option to disable the use of blur effects in the user interface.  This can improve performance
+  on some video cards and driver combinations.

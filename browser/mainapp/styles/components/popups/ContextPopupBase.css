@@ -5,12 +5,22 @@
     border: calc(1px / var(--device-pixel-ratio)) solid var(--tooltip-border);
     padding: 5px 5px;
     border-radius: 9px;
-    background-color: color-mix(in srgb, var(--bg-level-3) 80%, transparent) ;
-    backdrop-filter: blur(8px);
     color: var(--fg-level-3);
     overflow: auto;
 
     box-sizing: border-box;
+
+    background-color: color-mix(in srgb, var(--bg-level-3) 80%, transparent) ;
+    backdrop-filter: blur(8px);
+
+    backdrop-filter: if(
+        style(--blur-disabled: true): none;
+        else: blur(8px);
+    );
+    background-color: if(
+        style(--blur-disabled: true): var(--bg-level-3);
+        else: color-mix(in srgb, var(--bg-level-3) 80%, transparent);
+    )
 }
 
 @supports not (backdrop-filter: blur(8px)) {

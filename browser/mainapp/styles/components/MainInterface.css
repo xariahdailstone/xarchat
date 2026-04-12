@@ -47,10 +47,6 @@
     width: 100%;
     height: 100%;
 
-    /* filter: blur(0px); */
-    /*opacity: 1;
-    transition: filter 0.1s ease-out, opacity 0.1s ease-out;*/
-
     background: var(--bg-level-4);
 
     --chatui-splitterhandle-width: 8px;
@@ -78,7 +74,10 @@
 
 #elMain.has-unclosed-dialogs .chatui {
     filter: blur(6px) opacity(0.3);
-    /*opacity: 0.3;*/
+    filter: if(
+        style(--blur-disabled: true): opacity(0.3);
+        else: blur(6px) opacity(0.3);
+    );
 }
 #elMain.nogpu.has-unclosed-dialogs .chatui {
     filter: opacity(0.3);
@@ -134,7 +133,12 @@
 
 .dialogstack > .inactive {
     filter: blur(6px) brightness(0.5);
+    filter: if(
+        style(--blur-disabled: true): brightness(0.5);
+        else: blur(6px) brightness(0.5);
+    );
 }
+
 .nogpu .dialogstack > .inactive {
     filter: brightness(0.5);
 }

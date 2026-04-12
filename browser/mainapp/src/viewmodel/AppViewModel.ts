@@ -175,6 +175,8 @@ export class AppViewModel extends ObservableBase {
 
     readonly accountsFriendsAndBookmarks: AccountsFriendsAndBookmarksViewModel;
 
+    get blurEffectsEnabled() { return this.configBlock.get("global.enableBlurEffects"); }
+
     @observableProperty
     updateCheckerState: UpdateCheckerState = UpdateCheckerState.Unknown;
 

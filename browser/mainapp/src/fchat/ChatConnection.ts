@@ -66,6 +66,7 @@ export interface ChatConnection extends IDisposable {
 
     ignoreCharacterAsync(character: CharacterName): Promise<void>;
     unignoreCharacterAsync(character: CharacterName): Promise<void>;
+    unignoreAllCharactersAsync(): Promise<void>;
     notifyIgnoredAsync(character: CharacterName): Promise<void>;
 
     performPartnerSearchAsync(args: PartnerSearchArgs): Promise<PartnerSearchResult>;

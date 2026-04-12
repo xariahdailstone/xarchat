@@ -224,6 +224,16 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     defaultValue: true,
                     configBlockKey: "useGpuAcceleration"
                 },
+                {
+                    id: "enableBlurEffects",
+                    scope: getScopeArray(["global"]),
+                    title: "Blur Effects",
+                    description: "Should visual blur effects be enabled?  You may need to disable these for performance reasons depending on your graphics card " +
+                        "and drivers.",
+                    type: "boolean",
+                    defaultValue: true,
+                    configBlockKey: "enableBlurEffects"
+                },
                 spellCheckLanguageItem,
                 {
                     id: "autoReconnect",
