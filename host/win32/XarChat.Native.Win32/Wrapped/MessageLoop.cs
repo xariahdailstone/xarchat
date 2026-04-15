@@ -94,9 +94,11 @@ namespace XarChat.Native.Win32.Wrapped
             }
 
             System.Diagnostics.Debug.WriteLine($"PostMessage WM_RUNTASK to {_taskReceiverWindow.HWND}");
-            if (!PInvoke.PostMessage(_taskReceiverWindow.HWND, WM_RUNTASK, new WPARAM((nuint) funcKey), IntPtr.Zero))
+            if (UiLoopCompleted ||
+                !PInvoke.PostMessage(_taskReceiverWindow.HWND, WM_RUNTASK, new WPARAM((nuint) funcKey), IntPtr.Zero))
             {
                 System.Diagnostics.Debug.WriteLine($"FAILED to posted Message WM_RUNTASK");
+                throw new ApplicationException("FAILED to posted Message WM_RUNTASK");
             }
             else
             {
@@ -133,6 +135,8 @@ namespace XarChat.Native.Win32.Wrapped
 
         public bool IsRunningOnUiThread => Thread.CurrentThread == _uiThread;
 
+        public bool UiLoopCompleted { get; set; } = false;
+
         private void EnsureRunningOnUIThread()
         {
             if (!IsRunningOnUiThread)
@@ -166,7 +170,7 @@ namespace XarChat.Native.Win32.Wrapped
                     return 0;
                 }
             }
-
+                
             return unchecked((int)msg.wParam.Value);
         }
 

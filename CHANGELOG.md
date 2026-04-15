@@ -114,3 +114,5 @@
 * Added /ignore and /unignore slash commands.
 * Added an option to disable the use of blur effects in the user interface.  This can improve performance
   on some video cards and driver combinations.
+* Fixed an issue on Windows where XarChat would sometimes take a few seconds to actually shut down
+  after closing the main window.

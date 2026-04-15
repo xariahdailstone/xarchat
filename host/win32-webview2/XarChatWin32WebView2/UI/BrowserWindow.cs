@@ -28,6 +28,7 @@ using XarChat.Backend.Features.CrashLogWriter;
 using System.Text.Json;
 using System.Diagnostics.CodeAnalysis;
 using XarChat.Backend.Features.EIconFavoriteManager;
+using Windows.AI.MachineLearning;
 
 namespace MinimalWin32Test.UI
 {
@@ -88,6 +89,16 @@ namespace MinimalWin32Test.UI
                 }
                 catch when (cancellationToken.IsCancellationRequested) { }
             });
+        }
+
+
+        protected override void Dispose(bool disposing)
+        {
+            base.Dispose(disposing);
+            if (disposing)
+            {
+                _disposedCTS.Cancel();
+            }
         }
 
         private ColorUtil _titlebarColor = new ColorUtil(0x282423);
