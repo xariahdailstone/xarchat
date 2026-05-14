@@ -23,6 +23,8 @@ export class CharacterProfileDialogViewModel extends DialogViewModel<number> {
 
         super(parent);
 
+        name = this.fixupCharacterName(name);
+
         this.closeBoxResult = 1;
         this.title = `Profile for ${name.value}`;
 
@@ -160,6 +162,17 @@ export class CharacterProfileDialogViewModel extends DialogViewModel<number> {
             if (shouldContinue) {
                 HostInterop.launchCharacterReport(this.activeLoginViewModel.appViewModel, this.profileDetails.character);
             }
+        }
+    }
+
+    private fixupCharacterName(rawName: CharacterName): CharacterName {
+        const slashPos = rawName.value.indexOf('/');
+        if (slashPos != -1) {
+            const fname = rawName.value.substring(0, slashPos);
+            return CharacterName.create(fname);
+        }
+        else {
+            return rawName;
         }
     }
 }

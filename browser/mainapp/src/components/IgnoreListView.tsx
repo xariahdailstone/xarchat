@@ -28,7 +28,11 @@ export class IgnoreListView extends RenderingStageViewComponent<IgnoreListViewMo
             const vnode = <div classList={[ "ignorelist-item" ]}>
                 <div key={`char-${char.canonicalValue}`} classList={[ "ignorelist-item-name" ]}>{charLinkNode}</div>
                 <div classList={[ "ignorelist-item-buttons" ]}>
-                    <button classList={[ "ignorelist-item-button-remove", "themed" ]}>Unignore</button>
+                    <button classList={[ "ignorelist-item-button-remove", "themed" ]} on={{
+                        "click": () => {
+                            vm.removeIgnore(char);
+                        }
+                    }}>Unignore</button>
                 </div>
             </div>;
 

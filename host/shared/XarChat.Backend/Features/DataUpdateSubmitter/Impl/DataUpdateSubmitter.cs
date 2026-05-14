@@ -156,7 +156,7 @@ namespace XarChat.Backend.Features.EIconUpdateSubmitter.Impl
         {
             try
             {
-                while (true)
+                while (!stoppingToken.IsCancellationRequested)
                 {
                     await WaitOnWaitHandle(_submitQueueHasItemsEvent.WaitHandle, stoppingToken);
                     await SendSubmitQueueAsync(stoppingToken);
@@ -240,14 +240,19 @@ namespace XarChat.Backend.Features.EIconUpdateSubmitter.Impl
             {
                 tcs.TrySetResult();
             }, null, -1, true);
-
-            using var cancelReg = cancellationToken.Register(() =>
+            try
             {
-                tcs.TrySetCanceled(cancellationToken);
-                registeredWait.Unregister(waitHandle);
-            });
+                using var cancelReg = cancellationToken.Register(() =>
+                {
+                    tcs.TrySetCanceled(cancellationToken);
+                });
 
-            await tcs.Task;
+                await tcs.Task;
+            }
+            finally
+            {
+                registeredWait.Unregister(waitHandle);
+            }
         }
 
         private record struct SubmittedCacheKey(string EIconName, string ETag, long ContentLength);

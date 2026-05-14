@@ -6,7 +6,7 @@ import { CharacterName } from "../shared/CharacterName.js";
 import { ObservableBase, observableProperty } from "../util/ObservableBase.js";
 import { OnlineStatus } from "../shared/OnlineStatus.js";
 import { ObservableKeyExtractedOrderedDictionary, ObservableOrderedDictionary, ObservableOrderedDictionaryImpl } from "../util/ObservableKeyedLinkedList.js";
-import { IDisposable, asDisposable } from "../util/Disposable.js";
+import { IDisposable, asDisposable, maybeDispose } from "../util/Disposable.js";
 import { HostInterop, LogMessageType } from "../util/hostinterop/HostInterop.js";
 import { RawSavedChatStateNamedFilterEntry, RawSavedChatStateNamedFilterMap } from "../settings/RawAppSettings.js";
 import { SavedChatState, SavedChatStateJoinedChannel } from "../settings/AppSettings.js";
@@ -176,7 +176,11 @@ export class ChatChannelViewModel extends ChannelViewModel implements IHasRightB
         // }
         this.updateFilterOptions();
 
+        this.seenAdsStore = new SeenAdsStore(this);
+        this.ownedDisposables.add(this.seenAdsStore);
     }
+
+    readonly seenAdsStore: SeenAdsStore;
 
     readonly rightBarTabs: Collection<SidebarTabViewModel>;
 
@@ -783,106 +787,6 @@ export class ChatChannelViewModel extends ChannelViewModel implements IHasRightB
         ]
     }
 
-    // override async processCommandInternalAsync(command: string): Promise<string> {
-    //     const spacePos = command.indexOf(' ');
-    //     const commandStr = spacePos != -1 ? command.substring(0, spacePos) : command;
-    //     const commandArgs = spacePos != -1 ? command.substring(spacePos + 1) : "";
-    //     switch (commandStr.toLowerCase()) {
-    //         case "code":
-    //             return `Channel link code: [noparse][session=${this.title}]${this.name.value}[/session][/noparse]`
-    //         case "invite":
-    //             {
-    //                 const inviteCharName = CharacterName.create(commandArgs.trim());
-    //                 await this.inviteAsync(inviteCharName);
-    //                 return "";
-    //             }
-    //         case "desc":
-    //         case "description":
-    //             {
-    //                 await this.changeDescriptionAsync(commandArgs.trim());
-    //                 return "";
-    //             }
-    //         case "kick":
-    //             {
-    //                 const kickCharName = CharacterName.create(commandArgs.trim());
-    //                 await this.kickAsync(kickCharName);
-    //                 return "";
-    //             }
-    //         case "timeout":
-    //             {
-    //                 const m = commandArgs.match(/^\s*(\d+)\s+(.+)$/);
-    //                 if (m) {
-    //                     const minutes = +m[1];
-    //                     const timeoutCharName = CharacterName.create(m[2]);
-    //                     await this.timeoutAsync(timeoutCharName, minutes);
-    //                     return "";
-    //                 }
-    //                 else {
-    //                     return "Invalid arguments.  Supply arguments as '<minutes> <character>'";
-    //                 }
-    //             }
-    //         case "oplist":
-    //             {
-    //                 await this.getChannelOpListAsync();
-    //                 return "";
-    //             }
-    //         case "banlist":
-    //             {
-    //                 await this.getBanListAsync();
-    //                 return "";
-    //             }
-    //         case "op":
-    //             {
-    //                 const opCharName = CharacterName.create(commandArgs.trim());
-    //                 await this.opAsync(opCharName);
-    //                 return "";
-    //             }
-    //         case "deop":
-    //         case "dop":
-    //             {
-    //                 const deopCharName = CharacterName.create(commandArgs.trim());
-    //                 await this.deopAsync(deopCharName);
-    //                 return "";
-    //             }
-    //         case "ban":
-    //             {
-    //                 const banCharName = CharacterName.create(commandArgs.trim());
-    //                 await this.banAsync(banCharName);
-    //                 return "";
-    //             }
-    //         case "unban":
-    //             {
-    //                 const unbanCharName = CharacterName.create(commandArgs.trim());
-    //                 await this.unbanAsync(unbanCharName);
-    //                 return "";
-    //             }
-    //         case "makeowner":
-    //             {
-    //                 const newOwnerCharName = CharacterName.create(commandArgs.trim());
-    //                 await this.changeOwnerAsync(newOwnerCharName);
-    //                 return `Made [user]${newOwnerCharName}[/user] the new channel owner.`;
-    //             }
-    //         case "setmode":
-    //             {
-    //                 await this.changeChannelModeAsync(commandArgs.trim());
-    //                 return "";
-    //             }
-    //         case "openroom":
-    //             {
-    //                 await this.changeChannelPrivacyStatusAsync("public");
-    //                 return "";
-    //             }
-    //         case "closeroom":
-    //             {
-    //                 await this.changeChannelPrivacyStatusAsync("private");
-    //                 return "";
-    //             }
-    //         default:
-    //             const sres = await super.processCommandInternalAsync(command);
-    //             return sres;
-    //     }
-    // }
-
     private searchAllOnlineCharacters(value: string, filterFunc?: (cn: CharacterName) => boolean): SuggestionItem[] {
         this.logger.logInfo("getting online char suggestions", value);
         if (StringUtils.isNullOrWhiteSpace(value)) {
@@ -1028,7 +932,14 @@ export class ChatChannelViewModel extends ChannelViewModel implements IHasRightB
                 logMessageType = LogMessageType.SPIN;
         }
 
-        super.addMessage(message, options);
+        let adIsFiltered = false;
+        if (message.type == ChannelMessageType.AD) {
+            adIsFiltered = this.seenAdsStore.checkIncomingAd(message.characterStatus.characterName, message.text);
+        }
+
+        if (!adIsFiltered) {
+            super.addMessage(message, options);
+        }
 
         if (logMessageType != null && !(options?.fromReplay ?? false)) {
             this.activeLoginViewModel.logChannelMessage(this, 
@@ -1548,6 +1459,112 @@ export class ChatChannelViewModel extends ChannelViewModel implements IHasRightB
         this.sendTextboxInternalAsync();
     }
 }
+
+class SeenAdsStore implements IDisposable {
+    static _activeStores: Set<WeakRef<SeenAdsStore>> = new Set();
+
+    static async startPurgeLoop() {
+        while (true) {
+            await TaskUtils.delay(1000 * 60 * 10);
+            for (let astoreRef of [...this._activeStores.values()]) {
+                const sas = astoreRef.deref();
+                if (sas != null) {
+                    sas._purgeExpired();
+                }
+                else {
+                    this._activeStores.delete(astoreRef);
+                }
+            }
+        }
+    }
+
+    constructor(private readonly ccvm: ChatChannelViewModel) {
+        this._weafRef = new WeakRef<SeenAdsStore>(this);
+        SeenAdsStore._activeStores.add(this._weafRef);
+    }
+
+    private readonly _weafRef: WeakRef<SeenAdsStore>;
+
+    private _isDisposed: boolean = false;
+    get isDisposed() { return this._isDisposed; }
+
+    dispose() {
+        if (!this._isDisposed) {
+            this._isDisposed = true;
+            this._seenAdsByCharacter.clear();
+            SeenAdsStore._activeStores.delete(this._weafRef);
+        }
+    }
+    [Symbol.dispose]() { this.dispose(); }
+
+    private readonly _seenAdsByCharacter: Map<CharacterName, SeenAdEntry[]> = new Map();
+
+    private _expireAfterMinutes: number = 0;
+    get expireAfterMinutes(): number { return this._expireAfterMinutes; }
+    set expireAfterMinutes(value: number) {
+        if (value != this._expireAfterMinutes) {
+            this._expireAfterMinutes = value;
+            this._purgeExpired();
+        }
+    }
+
+    checkIncomingAd(character: CharacterName, adText: string): boolean {
+        this._updateExpireInterval();
+        
+        let sa: SeenAdEntry[] = [];
+        try {
+            if (!this._seenAdsByCharacter.has(character)) {
+                sa = [ { adText, seenAt: (new Date()).getTime() } ];
+            }
+            else {
+                sa = this._removeExpired(this._seenAdsByCharacter.get(character)!);
+                for (let prevEntry of sa) {
+                    if (prevEntry.adText == adText) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+        finally {
+            sa = this._removeExpired(sa);
+            if (sa.length > 0) {
+                this._seenAdsByCharacter.set(character, sa);
+            }
+            else {
+                this._seenAdsByCharacter.delete(character);
+            }
+        }
+    }
+
+    private _removeExpired(entries: SeenAdEntry[]): SeenAdEntry[] {
+        const now = new Date().getTime();
+        return entries.filter(e => ((now - e.seenAt) / 60) < this._expireAfterMinutes);
+    }
+
+    private _updateExpireInterval() {
+        const purgeAfterMin = 0 + ((this.ccvm.getConfigSettingById("hideRepeatedAds") ?? 0) as number);
+        this.expireAfterMinutes = purgeAfterMin;
+    }
+
+    private _purgeExpired() {
+        this._updateExpireInterval();
+
+        for (let k of [...this._seenAdsByCharacter.keys()]) {
+            let sa = this._seenAdsByCharacter.get(k)!;
+            sa = this._removeExpired(sa);
+            if (sa.length == 0) {
+                this._seenAdsByCharacter.delete(k);
+            }
+            else {
+                this._seenAdsByCharacter.set(k, sa);
+            }
+        }
+    }
+}
+SeenAdsStore.startPurgeLoop();
+
+type SeenAdEntry = { adText: string, seenAt: number };
 
 enum CantSendAsAdReasons {
     ChannelDoesntAllowAds,

@@ -30,13 +30,13 @@ export class URLUtils {
     }
 
     static tryGetProfileLinkTarget(url: string): string | null {
-        const urlLinkPrefix = "https://www.f-list.net/c/";
-        if (url.toLowerCase().startsWith(urlLinkPrefix)) {
-            return decodeURIComponent(url.substring(urlLinkPrefix.length));
+        const urlLinkPrefixes = [ "https://www.f-list.net/c/", "https://f-list.net/c/" ];
+        for (let tprefix of urlLinkPrefixes) {
+            if (url.toLowerCase().startsWith(tprefix)) {
+                return decodeURIComponent(url.substring(tprefix.length));
+            }
         }
-        else {
-            return null;
-        }
+        return null;
     }
 
     static getProfileUrl(character: CharacterName): string {

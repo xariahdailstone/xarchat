@@ -164,6 +164,17 @@ export class MainInterface extends ComponentBase<AppViewModel> {
         //     }
         // });
 
+        this.watchExpr(vm => vm.blurEffectsEnabled, v => {
+            if (!!v) {
+                this.elMain.classList.toggle("blur-disabled", false);
+                this.style.setProperty("--blur-disabled", "false");
+            }
+            else {
+                this.elMain.classList.toggle("blur-disabled", true);
+                this.style.setProperty("--blur-disabled", "true");
+            }
+        });
+
         this.whenConnected(() => {
             this.updateWindowState();
         });

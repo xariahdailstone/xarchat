@@ -319,7 +319,7 @@ export class SessionFriendsAndBookmarksViewModel extends ObservableBase implemen
         for (let char of chars) {
             this.ignored.add(char);
         }
-        for (let ichar of this.ignored.values()) {
+        for (let ichar of [...this.ignored.values()]) {
             if (!curIgnoreChars.has(ichar)) {
                 this.ignored.delete(ichar);
             }
