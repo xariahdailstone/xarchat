@@ -98,3 +98,4 @@
 * Fixed an issue where sometimes when attempting to close a tab that is not the currently active
   tab, the tab would be both closed *and* selected.
 * Removed the arbitrary limit on the number of favorite eicons that show in the EIcon Search popup.
+* PM tabs opened by the "Open PM tab on typing" feature now show up at the top of the PM section.
