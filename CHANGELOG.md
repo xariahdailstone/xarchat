@@ -97,3 +97,4 @@
 * Even better EIcon mosaic syncing, now with 40% more perfection!
 * Fixed an issue where sometimes when attempting to close a tab that is not the currently active
   tab, the tab would be both closed *and* selected.
+* Removed the arbitrary limit on the number of favorite eicons that show in the EIcon Search popup.

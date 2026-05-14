@@ -60,7 +60,7 @@ export class EIconSearchDialog extends DialogComponentBase<EIconSearchDialogView
                         <div class="resultdisplay-hint" id="elFavoriteSetViewHint">
                             You haven't marked any eicons as favorites.  Right-click an eicon image to favorite/unfavorite it.
                         </div>
-                        <x-eiconsetview class="resultdisplay-setview" id="elFavoriteSetView" updatefast="true" maxrows="2"></x-eiconsetview>
+                        <x-eiconsetview class="resultdisplay-setview" id="elFavoriteSetView" updatefast="true"></x-eiconsetview>
                     </div>
 
                     <div class="resultdisplay-sectiontitle">Your Recently Used EIcons</div>
