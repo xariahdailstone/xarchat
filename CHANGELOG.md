@@ -116,3 +116,4 @@
   on some video cards and driver combinations.
 * Fixed an issue on Windows where XarChat would sometimes take a few seconds to actually shut down
   after closing the main window.
+* Removed the arbitrary limit on the number of favorite eicons that show in the EIcon Search popup.
