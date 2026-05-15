@@ -1513,6 +1513,15 @@ export class ChatConnectionImpl implements ChatConnection {
         });
     }
 
+    async unignoreAllCharactersAsync(): Promise<void> {
+        await this.bracketedSendAsync({
+            code: "IGN", body: {
+                action: "delete",
+                character: "*"
+            }
+        });
+    }
+
     async notifyIgnoredAsync(character: CharacterName): Promise<void> {
         await this.bracketedSendAsync({
             code: "IGN", body: {

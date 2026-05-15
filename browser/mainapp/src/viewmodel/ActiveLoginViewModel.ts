@@ -57,6 +57,8 @@ import { LogSearch3ViewModel } from "./logsearch/LogSearch3ViewModel.js";
 import { FriendsAndBookmarksViewModel } from "./FriendsAndBookmarksViewModel.js";
 import { SessionFriendsAndBookmarksViewModel } from "./AccountsFriendsAndBookmarksViewModel.js";
 import { IgnoreListViewModel } from "./IgnoreListViewModel.js";
+import { KeyCodes } from "../util/KeyCodes.js";
+import { DialogButtonStyle } from "./dialogs/DialogViewModel.js";
 
 declare const XCHost: any;
 
@@ -1009,7 +1011,61 @@ export class ActiveLoginViewModel extends ObservableBase implements IDisposable 
                 async (context, args) => {
                     HostInterop.showDevTools();
                 }
-            )
+            ),
+            new SlashCommandViewModel(
+                ["ignore"],
+                "Ignore a Character",
+                "Ignores the specified character, blocking their messages in channels and PM conversations.",
+                ["character"],
+                async (context, args) => {
+                    if (this.chatConnectionConnected == null) {
+                        return "You are not currently connected to chat.";
+                    }
+
+                    const targetCharName = args[0] as CharacterName;
+                    await this.chatConnectionConnected?.ignoreCharacterAsync(targetCharName);
+                }
+            ),
+            new SlashCommandViewModel(
+                ["unignore"],
+                "Unignore a Character",
+                "Unignores the specified character, allowing messages in channels and PM conversations from that character.  You can specify * as the character name to unignore all currently ignored characters.",
+                ["character"],
+                async (context, args) => {
+                    if (this.chatConnectionConnected == null) {
+                        return "You are not currently connected to chat.";
+                    }
+                    if (args[0] == "*" || args[0] == "\"*\"") {
+                        const confirmed = await this.appViewModel.promptAsync<boolean>({ 
+                            title: "Unignore All",
+                            message: "This will clear your ignore list.  Are you sure?",
+                            closeBoxResult: false,
+                            buttons: [
+                                {
+                                    title: "No, Cancel",
+                                    resultValue: false,
+                                    shortcutKeyCode: KeyCodes.ESCAPE,
+                                    style: DialogButtonStyle.CANCEL
+                                },
+                                {
+                                    title: "Yes, Unignore Everyone",
+                                    resultValue: true,
+                                    shortcutKeyCode: KeyCodes.KEY_Y,
+                                    style: DialogButtonStyle.NORMAL
+                                }
+                            ]
+                        });
+                        if (confirmed) {
+                            await this.chatConnectionConnected?.unignoreAllCharactersAsync();
+                            return "Your ignore list has been cleared.";
+                        }
+                    }
+                    else {
+                        const targetCharName = args[0] as CharacterName;
+                        await this.chatConnectionConnected?.unignoreCharacterAsync(targetCharName);
+                    }
+                }
+            ),
         ];
     }
 

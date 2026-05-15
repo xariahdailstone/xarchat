@@ -227,6 +227,7 @@ export class NullChatConnection implements ChatConnection {
 
     async ignoreCharacterAsync(character: CharacterName): Promise<void> { }
     async unignoreCharacterAsync(character: CharacterName): Promise<void> { }
+    async unignoreAllCharactersAsync(): Promise<void> { }
     async notifyIgnoredAsync(character: CharacterName): Promise<void> { }
 
     async performPartnerSearchAsync(args: PartnerSearchArgs): Promise<PartnerSearchResult> { throw new Error("unavailable"); }
