@@ -22,12 +22,27 @@ namespace XarChat.Backend.Common.DbSchema
             {
                 await cnn.OpenAsync(cancellationToken);
 
+                var needVacuum = false;
                 if (!readOnly)
                 {
                     foreach (var mig in migrations)
                     {
-                        await mig.RunAsync(cnn, cancellationToken);
+                        var thisMigWantsVacuum = await mig.RunAsync(cnn, cancellationToken);
+                        needVacuum = needVacuum || thisMigWantsVacuum;
                     }
+                }
+
+                if (needVacuum)
+                {
+                    try
+                    {
+                        using (var vacuumCmd = cnn.CreateCommand())
+                        {
+                            vacuumCmd.CommandText = "vacuum";
+                            await vacuumCmd.ExecuteNonQueryAsync(cancellationToken);
+                        }
+                    }
+                    catch { }
                 }
 
                 return cnn;
@@ -45,7 +60,9 @@ namespace XarChat.Backend.Common.DbSchema
 
     internal interface IMigration
     {
-        Task RunAsync(SqliteConnection sqliteConnection, CancellationToken cancellationToken);
+        bool VacuumAfterMigration { get; }
+
+        Task<bool> RunAsync(SqliteConnection sqliteConnection, CancellationToken cancellationToken);
     }
 
     internal abstract class MigrationBase : IMigration
@@ -59,6 +76,8 @@ namespace XarChat.Backend.Common.DbSchema
         }
 
         protected abstract int Version { get; }
+
+        public virtual bool VacuumAfterMigration => false;
 
         protected abstract Task UpgradeSchema(SqliteConnection cnn, SqliteTransaction xa, CancellationToken cancellationToken);
 
@@ -91,7 +110,7 @@ namespace XarChat.Backend.Common.DbSchema
             }
         }
 
-        public async Task RunAsync(SqliteConnection sqliteConnection, CancellationToken cancellationToken)
+        public async Task<bool> RunAsync(SqliteConnection sqliteConnection, CancellationToken cancellationToken)
         {
             await using var xa = (SqliteTransaction)(await sqliteConnection.BeginTransactionAsync(cancellationToken));
             var needsUpgrade = await NeedsUpgradeAsync(sqliteConnection, xa, cancellationToken);
@@ -100,6 +119,11 @@ namespace XarChat.Backend.Common.DbSchema
                 await UpgradeSchema(sqliteConnection, xa, cancellationToken);
                 await StoreSchemaVersionAsync(sqliteConnection, xa, cancellationToken);
                 await xa.CommitAsync(cancellationToken);
+                return this.VacuumAfterMigration;
+            }
+            else
+            {
+                return false;
             }
         }
     }
