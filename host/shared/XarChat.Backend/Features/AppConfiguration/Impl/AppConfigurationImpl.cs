@@ -320,8 +320,11 @@ namespace XarChat.Backend.Features.AppConfiguration.Impl
 #endif
             );
 
-		public bool EnableIndexDataCollection =>
-			Convert.ToBoolean(GetArbitraryValueString("EnableIndexDataCollection") ?? "true");
+        public bool EnableEIconDataCollection =>
+            Convert.ToBoolean(GetArbitraryValueString("global.datacollection.submitSeenEIcons") ?? "false");
+
+        public bool EnableProfileDataCollection =>
+            Convert.ToBoolean(GetArbitraryValueString("global.datacollection.submitSeenProfiles") ?? "false");
 
         public bool DisableGpuAcceleration =>
             (_commandLineOptions.DisableGpuAcceleration == true) ? true :

@@ -12,6 +12,8 @@ export interface ChatConnection extends IDisposable {
 
     readonly extendedFeaturesEnabled: boolean;
 
+    addIdTokenReceivedHandler(callback: (token: string) => any): IDisposable;
+
     debug_injectReceivedMessage(message: string): void;
     debug_outputMessage(message: string): void;
     

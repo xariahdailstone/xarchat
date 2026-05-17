@@ -13,6 +13,7 @@ using System.Threading.Tasks;
 using XarChat.Backend.Common;
 using XarChat.Backend.Features.AppConfiguration;
 using XarChat.Backend.Features.EIconIndexing;
+using XarChat.Backend.Features.XDNApiKeyManager;
 
 namespace XarChat.Backend.Features.EIconUpdateSubmitter.Impl
 {
@@ -42,8 +43,9 @@ namespace XarChat.Backend.Features.EIconUpdateSubmitter.Impl
         private readonly IHostApplicationLifetime _hostApplicationLifetime;
         private readonly IAppConfiguration _appConfiguration;
 		private readonly IMemoryCache _memoryCache;
+        private readonly IXDNApiKeyManager _xdnApiKeyManager;
 
-		private readonly IEIconIndex _eIconIndex;
+        private readonly IEIconIndex _eIconIndex;
 
         private readonly SemaphoreSlim _submitQueueSem = new SemaphoreSlim(1);
         private List<SubmitQueueItem> _submitQueue = new List<SubmitQueueItem>();
@@ -53,12 +55,14 @@ namespace XarChat.Backend.Features.EIconUpdateSubmitter.Impl
             IHostApplicationLifetime hostApplicationLifetime,
             IAppConfiguration appConfiguration,
             IMemoryCache memoryCache,
-            IEIconIndex eIconIndex)
+            IEIconIndex eIconIndex,
+            IXDNApiKeyManager xdnApiKeyManager)
         {
             _hostApplicationLifetime = hostApplicationLifetime;
             _appConfiguration = appConfiguration;
 			_memoryCache = memoryCache;
 			_eIconIndex = eIconIndex;
+            _xdnApiKeyManager = xdnApiKeyManager;
         }
 
 		private record EIconDataSubmitCacheKey(
@@ -137,18 +141,18 @@ namespace XarChat.Backend.Features.EIconUpdateSubmitter.Impl
             SubmitQueueItem submitQueueItem, 
             CancellationToken cancellationToken)
 		{
-            if (_appConfiguration.EnableIndexDataCollection)
+            if (submitQueueItem is EIconSubmitQueueItem && !_appConfiguration.EnableEIconDataCollection) { return; }
+            if (submitQueueItem is ProfileSubmitQueueItem && !_appConfiguration.EnableProfileDataCollection) { return; }
+
+            await _submitQueueSem.WaitAsync(cancellationToken);
+            try
             {
-                await _submitQueueSem.WaitAsync(cancellationToken);
-                try
-                {
-                    _submitQueue.Add(submitQueueItem);
-                    _submitQueueHasItemsEvent.Set();
-                }
-                finally
-                {
-                    _submitQueueSem.Release();
-                }
+                _submitQueue.Add(submitQueueItem);
+                _submitQueueHasItemsEvent.Set();
+            }
+            finally
+            {
+                _submitQueueSem.Release();
             }
 		}
 
@@ -193,7 +197,14 @@ namespace XarChat.Backend.Features.EIconUpdateSubmitter.Impl
                 {
                     try
                     {
-                        var url = "https://xariah.net/eicons/Home/ClientSubmitIcons";
+                        var apiKey = await _xdnApiKeyManager.TryGetApiKeyAsync(cancellationToken);
+                        if (apiKey == null)
+                        {
+                            throw new ApplicationException("No XDN API Key available");
+                        }
+
+                        //var url = "https://xariah.net/eicons/Home/ClientSubmitIcons";
+                        var url = "https://xariah.net/xarchat/ClientSubmitData";
 
                         var items = new DataUpdateSubmitBody()
                         {
@@ -219,14 +230,20 @@ namespace XarChat.Backend.Features.EIconUpdateSubmitter.Impl
                         var submitJson = JsonSerializer.Serialize(items, SourceGenerationContext.Default.DataUpdateSubmitBody);
 
                         var stringContent = new StringContent(submitJson, System.Text.Encoding.UTF8, "application/json");
-                        var resp = await hc.PostAsync(url, stringContent);
+                        var req = new HttpRequestMessage(HttpMethod.Post, url);
+                        req.Content = stringContent;
+                        req.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue(
+                            "Bearer", apiKey);
+
+                        var resp = await hc.SendAsync(req, cancellationToken);
+                        if (resp.StatusCode == System.Net.HttpStatusCode.NotFound) { return; }
                         resp.EnsureSuccessStatusCode();
                         return;
                     }
                     catch
                     {
                     }
-                    await Task.Delay(TimeSpan.FromSeconds(30));
+                    await Task.Delay(TimeSpan.FromSeconds(30), cancellationToken);
                     retriesRetaining--;
                 }
             }

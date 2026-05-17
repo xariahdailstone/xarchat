@@ -19,7 +19,9 @@ namespace XarChat.Backend.Features.AppConfiguration
 
         bool EnableDevTools { get; }
 
-		bool EnableIndexDataCollection { get; }
+		bool EnableEIconDataCollection { get; }
+
+        bool EnableProfileDataCollection { get; }
 
         bool DisableGpuAcceleration { get; }
 
