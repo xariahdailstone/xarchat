@@ -105,9 +105,9 @@
   * These settings are *opt-in*.  No data will be collected unless you specifically authorize it.
   * The settings available are described below:
 	* **EIcons** - XarChat can keep track of any eicons seen and report them back to xariah.net
-      for inclusion in the EIcon search index.
-    * **Profiles** - XarChat can gather some information from profiles opened, to enable future
-      XarChat features such as filtering ads and searches by additional profile fields.
+    for inclusion in the EIcon search index.
+  * **Profiles** - XarChat can gather some information from profiles opened, to enable future
+    XarChat features such as filtering ads and searches by additional profile fields.
   * If you opt-in, none of the collected data will be associated with your profile.
 * Added the ability to hide duplicate ads posted by a character within a specified period of time
   (see Display settings to configure).
@@ -119,3 +119,9 @@
 * Fixed an issue on Windows where XarChat would sometimes take a few seconds to actually shut down
   after closing the main window.
 * Removed the arbitrary limit on the number of favorite eicons that show in the EIcon Search popup.
+* Chat Logging updates:
+  * Optimized the chat log file format and removed some unused features which should result in the 
+	chat log file being around half the size it was in previous versions of XarChat.
+  * Fixed an issue with the Log Viewer where it might not show all logged messages for
+	private channels that were created more than once with the same name (e.g., after a
+	chat server restart).

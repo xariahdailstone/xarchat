@@ -1,6 +1,7 @@
 ﻿using Microsoft.Data.Sqlite;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Reflection.Metadata;
 using System.Runtime.CompilerServices;
@@ -76,6 +77,9 @@ namespace XarChat.Backend.Features.ChatLogging.Sqlite
                             new Migration03AddGenderStatusToMessageLog(),
                             new Migration04AddGenderStatusToPMLog(),
                             new Migration05MovePMConvosToChannels(),
+                            new Migration06RemoveFullTextIndex(),
+                            new Migration07UseBlobStringHashes(),
+                            new Migration08RemoveUnusedIndexes()
                         ],
                     _disposeCTS.Token);
 
@@ -167,22 +171,22 @@ namespace XarChat.Backend.Features.ChatLogging.Sqlite
         private async Task<long> GetStringIdAsync(
             SqliteConnection connection, SqliteTransaction xa, string text, CancellationToken cancellationToken)
         {
-            var hashStr = Convert.ToBase64String(SHA256.Create().ComputeHash(System.Text.Encoding.UTF8.GetBytes(text)));
+            var hashBytes = SHA256.Create().ComputeHash(System.Text.Encoding.UTF8.GetBytes(text));
 
             using (var cmd = connection.CreateCommand())
             {
                 cmd.Transaction = xa;
-                cmd.CommandText = @"select id from strings where hash = @hash";
-                cmd.Parameters.Add("@hash", Microsoft.Data.Sqlite.SqliteType.Text).Value = hashStr;
+                cmd.CommandText = @"select id from strings where bhash = @bhash";
+                cmd.Parameters.Add("@bhash", Microsoft.Data.Sqlite.SqliteType.Blob).Value = hashBytes;
                 var existingStringId = await cmd.ExecuteScalarAsync(cancellationToken);
 
                 if (existingStringId == null || existingStringId is DBNull)
                 {
                     using var createCmd = connection.CreateCommand();
                     createCmd.Transaction = xa;
-                    createCmd.CommandText = @"insert into strings(value, hash) values (@value, @hash)";
+                    createCmd.CommandText = @"insert into strings(value, bhash) values (@value, @bhash)";
                     createCmd.Parameters.Add("@value", Microsoft.Data.Sqlite.SqliteType.Text).Value = text;
-                    createCmd.Parameters.Add("@hash", Microsoft.Data.Sqlite.SqliteType.Text).Value = hashStr;
+                    createCmd.Parameters.Add("@bhash", Microsoft.Data.Sqlite.SqliteType.Text).Value = hashBytes;
                     await createCmd.ExecuteNonQueryAsync(cancellationToken);
 
                     existingStringId = await cmd.ExecuteScalarAsync(cancellationToken);
