@@ -552,20 +552,22 @@ namespace XarChat.Backend.Features.ChatLogging.Sqlite.Search
             return result;
         }
 
-        private async IAsyncEnumerable<DateOnly> EnumerateMessageDatesForChannel(
-            SqliteConnection connection, int channelId, [EnumeratorCancellation] CancellationToken cancellationToken)
+        private async IAsyncEnumerable<DateOnly> EnumerateMessageDatesForChannels(
+            SqliteConnection connection, IEnumerable<int> channelIds, [EnumeratorCancellation] CancellationToken cancellationToken)
         {
+            var channelIdsSet = String.Join(",", channelIds.Select(x => x.ToString()));
+
             using var cmd = connection.CreateCommand();
             cmd.CommandText = $@"
                         select cm.timestamp
                         from channelmessage cm
-                        where cm.channelid = @channelId
+                        where cm.channelid in ({channelIdsSet})
                             and cm.timestamp >= @fromTimestamp
                             and cm.messagetype <> 1
                         order by cm.timestamp asc
                         limit 1
                     ";
-            cmd.Parameters.Add("@channelId", SqliteType.Integer).Value = channelId;
+            //cmd.Parameters.Add("@channelId", SqliteType.Integer).Value = channelId;
             var prmFromTimestamp = cmd.Parameters.Add("@fromTimestamp", SqliteType.Integer);
             prmFromTimestamp.Value = 0;
             await cmd.PrepareAsync(cancellationToken);
@@ -593,24 +595,24 @@ namespace XarChat.Backend.Features.ChatLogging.Sqlite.Search
                 cancellationToken: cancellationToken,
                 func: async (connection, cancellationToken) =>
                 {
-                    int channelId;
-                    using (var getChannelIdCommand = connection.CreateCommand())
+                    var channelIds = new HashSet<int>();
+                    using (var getChannelIdsCommand = connection.CreateCommand())
                     {
-                        getChannelIdCommand.CommandText = $@"
+                        getChannelIdsCommand.CommandText = $@"
                             select c.id
                             from channel c
                             where lower(c.title) = @channelTitleLower
                         ";
-                        getChannelIdCommand.Parameters.Add("@channelTitleLower", SqliteType.Text).Value = channelTitle.ToLower();
-                        var channelIdObj = await getChannelIdCommand.ExecuteScalarAsync(cancellationToken);
-                        if (channelIdObj is null || channelIdObj is DBNull)
+                        getChannelIdsCommand.Parameters.Add("@channelTitleLower", SqliteType.Text).Value = channelTitle.ToLower();
+                        using var reader = await getChannelIdsCommand.ExecuteReaderAsync(cancellationToken);
+                        while (await reader.ReadAsync(cancellationToken))
                         {
-                            return [];
+                            var channelId = Convert.ToInt32(reader["id"]);
+                            channelIds.Add(channelId);
                         }
-                        channelId = Convert.ToInt32(channelIdObj);
                     }
 
-                    var result = await EnumerateMessageDatesForChannel(connection, channelId, cancellationToken).ToListAsync(cancellationToken);
+                    var result = await EnumerateMessageDatesForChannels(connection, channelIds, cancellationToken).ToListAsync(cancellationToken);
                     return result;
                 });
 
@@ -646,7 +648,7 @@ namespace XarChat.Backend.Features.ChatLogging.Sqlite.Search
                             channelId = Convert.ToInt32(channelIdObj);
                         }
 
-                        var result = await EnumerateMessageDatesForChannel(connection, channelId, cancellationToken).ToListAsync(cancellationToken);
+                        var result = await EnumerateMessageDatesForChannels(connection, new List<int>() { channelId }, cancellationToken).ToListAsync(cancellationToken);
                         return result;
                     });
 

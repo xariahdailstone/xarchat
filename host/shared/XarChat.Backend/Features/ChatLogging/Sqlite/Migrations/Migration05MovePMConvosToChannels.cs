@@ -7,6 +7,8 @@ namespace XarChat.Backend.Features.ChatLogging.Sqlite.Migrations
     {
         protected override int Version => 5;
 
+        public override bool VacuumAfterMigration => true;
+
         protected override async Task UpgradeSchema(SqliteConnection cnn, SqliteTransaction xa, CancellationToken cancellationToken)
         {
             // Migrate to new channels table to include PM convos as channels
