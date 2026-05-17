@@ -903,10 +903,18 @@ export class AppViewModel extends ObservableBase {
         }
         else {
             const iitem = (item as ConfigSchemaItemDefinitionItem);
-            if (iitem.dataCollectionSettingRefId) {
-                const refedItem = getConfigSchemaItemById(iitem.dataCollectionSettingRefId);
-                if (refedItem) {
-                    result.push({ notifySettingItem: iitem, actualSettingItem: refedItem });
+            if (iitem.id && iitem.dataCollectionSettingRefId) {
+                const alreadyAcked = !!this.getConfigSettingById(iitem.id);
+                if (!alreadyAcked) {
+                    const refedItem = getConfigSchemaItemById(iitem.dataCollectionSettingRefId);
+                    if (refedItem) {
+                        result.push({ 
+                            notifySettingItem: iitem,
+                            actualSettingItem: refedItem, 
+                            getCurrentValue: () => !!this.getConfigSettingById(iitem.dataCollectionSettingRefId!),
+                            assignFunc: v => this.setConfigSettingById(iitem.dataCollectionSettingRefId!, v),
+                            markPrompted: () => this.setConfigSettingById(iitem.id!, true) });
+                    }
                 }
             }
         }
@@ -918,6 +926,9 @@ export class AppViewModel extends ObservableBase {
 export interface DataCollectionOptInPair {
     notifySettingItem: ConfigSchemaItemDefinitionItem;
     actualSettingItem: ConfigSchemaItemDefinitionItem;
+    getCurrentValue: () => boolean;
+    assignFunc: (v: boolean) => void;
+    markPrompted: () => void;
 }
 
 export type CloseApplicationOptions = {

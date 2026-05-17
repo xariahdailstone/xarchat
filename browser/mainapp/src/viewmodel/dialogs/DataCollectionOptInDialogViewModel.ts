@@ -26,6 +26,7 @@ export class DataCollectionOptInDialogViewModel extends DialogViewModel<boolean>
             title: "Done",
             style: DialogButtonStyle.NORMAL,
             onClick: () => {
+                this.applySettings();
                 this.close(true);
             }
         }));
@@ -44,27 +45,45 @@ export class DataCollectionOptInDialogViewModel extends DialogViewModel<boolean>
             i.enabled = false;
         }
     }
+
+    private applySettings() {
+        for (let i of this.reviewItems) {
+            i.applySetting();
+        }
+    }
 }
 
 
 export class DataCollectionOptInLineItemViewModel extends ObservableBase {
     constructor(
         private readonly appViewModel: AppViewModel,
-        optInPair: DataCollectionOptInPair) {
+        readonly optInPair: DataCollectionOptInPair) {
 
         super();
 
+        this._enabled = new ObservableValue(optInPair.getCurrentValue());
         this.title = optInPair.actualSettingItem.title;
         this.description = optInPair.actualSettingItem.description;
         this.moreInfo = optInPair.actualSettingItem.moreInfo;
+        this.assignFunc = optInPair.assignFunc;
+        this.markPrompted = optInPair.markPrompted;
     }
 
     readonly title: string;
     readonly description: string | undefined;
     readonly moreInfo: string | undefined;
+    private readonly assignFunc: (v: boolean) => void;
+    private readonly markPrompted: () => void;
 
-    private readonly _enabled: ObservableValue<boolean> = new ObservableValue(false);
+    private readonly _enabled: ObservableValue<boolean>;
     
     get enabled() { return this._enabled.value; }
-    set enabled(value: boolean) { this._enabled.value = value; }
+    set enabled(value: boolean) { 
+        this._enabled.value = value; 
+        this.assignFunc(value);
+    }
+
+    applySetting() {
+        this.markPrompted();
+    }
 }

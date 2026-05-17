@@ -78,6 +78,8 @@ namespace XarChat.Backend.Features.EIconUpdateSubmitter.Impl
 
         public async Task SubmitHardLoadedProfileDataAsync(string characterName, string profileBodyJson, CancellationToken cancellationToken)
         {
+            if (!_appConfiguration.EnableProfileDataCollection) { return; }
+
             var cacheKey = new ProfileDataSubmitCacheKey(this, characterName, GetProfileDataJsonHash(profileBodyJson));
             if (_memoryCache.TryGetValue(cacheKey, out _))
             {
@@ -109,6 +111,8 @@ namespace XarChat.Backend.Features.EIconUpdateSubmitter.Impl
 
 		public async Task SubmitHardLoadedEIconInfoAsync(string eiconName, string etag, long contentLength, CancellationToken cancellationToken)
         {
+            if (!_appConfiguration.EnableEIconDataCollection) { return; }
+
             var cacheKey = new EIconDataSubmitCacheKey(this, eiconName, etag, contentLength);
 			if (_memoryCache.TryGetValue(cacheKey, out _))
 			{
@@ -141,9 +145,6 @@ namespace XarChat.Backend.Features.EIconUpdateSubmitter.Impl
             SubmitQueueItem submitQueueItem, 
             CancellationToken cancellationToken)
 		{
-            if (submitQueueItem is EIconSubmitQueueItem && !_appConfiguration.EnableEIconDataCollection) { return; }
-            if (submitQueueItem is ProfileSubmitQueueItem && !_appConfiguration.EnableProfileDataCollection) { return; }
-
             await _submitQueueSem.WaitAsync(cancellationToken);
             try
             {
