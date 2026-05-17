@@ -13,6 +13,7 @@ import { ChatConnectionImpl } from "./ChatConnectionImpl";
 import { ChatConnectionSink } from "./ChatConnectionSink";
 import { ProfileInfo } from "./api/FListApi";
 import { ChatWebSocket } from "../util/hostinterop/IHostInterop";
+import { asDisposable, EmptyDisposable, IDisposable } from "../util/Disposable";
 
 const testDisconnectActions = new Map<object, () => void>();
 (window as any).__getSocketCount = () => { return testDisconnectActions.size; };
@@ -121,6 +122,10 @@ export class ChatConnectionFactoryImpl {
 
 export class NullChatConnection implements ChatConnection {
     constructor() {
+    }
+
+    addIdTokenReceivedHandler(callback: (token: string) => any): IDisposable {
+        return EmptyDisposable;
     }
 
     debug_injectReceivedMessage(message: string): void {

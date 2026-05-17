@@ -85,6 +85,8 @@ using XarChat.Backend.Features.FileChooser;
 using XarChat.Backend.Features.LocaleList;
 using XarChat.Backend.UrlHandlers.AllComponentsScript;
 using Microsoft.Extensions.Hosting;
+using XarChat.Backend.Features.XDNApiKeyManager;
+using XarChat.Backend.Features.XDNApiKeyManager.Impl;
 
 namespace XarChat.Backend
 {
@@ -360,6 +362,8 @@ namespace XarChat.Backend
 
             services.AddSingleton<IEIconFavoriteBlockManager, 
                 XarChat.Backend.Features.EIconFavoriteBlockManager.Impl.EIconFavoriteBlockManager>();
+
+            services.AddSingleton<IXDNApiKeyManager, DefaultXDNApiKeyManager>();
         }
 
         private void SetupXCHostCommandHandlers(IServiceCollection services)

@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.Eventing.Reader;
@@ -29,6 +30,7 @@ using XarChat.Backend.Features.NotificationBadge;
 using XarChat.Backend.Features.TimingSet;
 using XarChat.Backend.Features.UpdateChecker;
 using XarChat.Backend.Features.WindowControl;
+using XarChat.Backend.Features.XDNApiKeyManager;
 using XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.ConfigData;
 using XarChat.Backend.UrlHandlers.XCHostFunctions.SessionAdapters;
 using XarChat.Backend.UrlHandlers.XCHostFunctions.SessionAdapters.OldNewAppSettings;
@@ -42,7 +44,7 @@ using SplitWriteFunc = System.Func<string, string?, System.Threading.Cancellatio
 
 namespace XarChat.Backend.UrlHandlers.XCHostFunctions
 {
-    public class WebSocketXCHostSession : XCHostSessionBase
+    public class WebSocketXCHostSession : XCHostSessionBase, IXDNApiKeyProvider
     {
         private static Dictionary<string, Func<WebSocketXCHostSession, string, CancellationToken, Task>> _commandHandlers;
 
@@ -55,6 +57,8 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions
 
                 { "eiconSearch", (sess, arg, ct) => sess.HandleEIconSearchCommand(arg, ct) },
                 { "eiconSearchClear", (sess, arg, ct) => sess.HandleEIconSearchClearCommand(arg, ct) },
+
+                { "gotXDNApiKey", (sess, arg, ct) => sess.GotXDNApiKey(arg, ct) }
             };
         }
 
@@ -105,6 +109,10 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions
             {
                 return ActivatorUtilities.CreateInstance<NoCorsProxySessionNamespace>(sp, w);
             });
+
+            var xdnApiKeyManager = sp.GetRequiredService<IXDNApiKeyManager>();
+            var registeredKeyProvider = xdnApiKeyManager.RegisterApiKeyProvider(this);
+            _sessionDisposables.TryAdd(new object(), registeredKeyProvider);
         }
 
         public override void Dispose()
@@ -360,7 +368,6 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions
             //sw.Stop();
             //await this.WriteAsync($"eiconSearchClearDone {{ \"took\": {sw.ElapsedMilliseconds} }}");
         }
-
 
         private readonly ConcurrentDictionary<object, IDisposable> _sessionDisposables
             = new ConcurrentDictionary<object, IDisposable>();
@@ -675,6 +682,51 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions
                 });
             }
             catch { }
+        }
+
+        private ImmutableHashSet<TaskCompletionSource<string?>> _getApiKeyWaiters
+            = ImmutableHashSet<TaskCompletionSource<string?>>.Empty;
+
+        async Task<string?> IXDNApiKeyProvider.GetApiKeyAsync(CancellationToken cancellationToken)
+        {
+            var waiterTCS = new TaskCompletionSource<string?>();
+            ImmutableInterlocked.Update(ref _getApiKeyWaiters, hset => hset.Add(waiterTCS));
+
+            try
+            {
+                using var combinedCTS = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                combinedCTS.CancelAfter(TimeSpan.FromSeconds(5));
+
+                await this.WriteAsync("?getXDNApiKey");
+
+                await await Task.WhenAny(waiterTCS.Task, Task.Delay(-1, combinedCTS.Token));
+                var result = await waiterTCS.Task;
+                return result;
+            }
+            catch
+            {
+                return null;
+            }
+            finally
+            {
+                ImmutableInterlocked.Update(ref _getApiKeyWaiters, hset => hset.Remove(waiterTCS));
+            }
+        }
+
+        private async Task GotXDNApiKey(string arg, CancellationToken cancellationToken)
+        {
+            var waiters = ImmutableHashSet<TaskCompletionSource<string?>>.Empty;
+            ImmutableInterlocked.Update(ref _getApiKeyWaiters, hset =>
+            {
+                waiters = hset;
+                return hset.Clear();
+            });
+
+            var deserArg = JsonSerializer.Deserialize<string?>(arg, SourceGenerationContext.Default.String);
+            foreach (var w in waiters)
+            {
+                w.TrySetResult(deserArg);
+            }
         }
 
         public class UpdateAppBadgeArgs

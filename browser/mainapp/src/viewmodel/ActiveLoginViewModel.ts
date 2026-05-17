@@ -59,6 +59,7 @@ import { SessionFriendsAndBookmarksViewModel } from "./AccountsFriendsAndBookmar
 import { IgnoreListViewModel } from "./IgnoreListViewModel.js";
 import { KeyCodes } from "../util/KeyCodes.js";
 import { DialogButtonStyle } from "./dialogs/DialogViewModel.js";
+import { Jwt } from "../util/Jwt.js";
 
 declare const XCHost: any;
 
@@ -1335,6 +1336,78 @@ export class ActiveLoginViewModel extends ObservableBase implements IDisposable 
         if (this.getConfigSettingById("loggingEnabled", pmConvo)) {
             HostInterop.logPMConvoMessage(this.characterName, pmConvo.character, speakingCharacter, speakingCharacterGender,
                 speakingCharacterOnlineStatus, messageType, messageText);
+        }
+    }
+
+    private _retrievingTokenCallbacks: PromiseSource<string | null>[] | null = null;
+    async getXariahNetApiTokenAsync(cancellationToken: CancellationToken): Promise<string | null> {
+        const charXarBot = CharacterName.XARBOT;
+        const configBlockKey = `xdn.apikey.${this.characterName.canonicalValue}`;
+
+        // Check for existing token
+        const valueFromConfig = this.appViewModel.configBlock.getWithDefault(configBlockKey, null) as (string | null);
+        if (valueFromConfig && Jwt.isValidJwt(valueFromConfig)) {
+            const now = Math.floor((new Date()).getTime() / 1000);
+            const jwt = new Jwt(valueFromConfig);
+            if (jwt.hasClaim("exp") && (+jwt.getClaim("exp") - (60 * 5)) > now) {
+                return valueFromConfig;
+            }
+        }
+
+        // Verify XarBot is online
+        const xarBotCharStatus = this.characterSet.getCharacterStatus(charXarBot);
+        if (xarBotCharStatus.status == OnlineStatus.OFFLINE) {
+            return null;
+        }
+
+        // Check to see if already retrieving token
+        if (this._retrievingTokenCallbacks != null) {
+            const ps = new PromiseSource<string | null>();
+            this._retrievingTokenCallbacks.push(ps);
+            const result = await ps.promise;
+            return result;
+        }
+
+        // Enter XarBot comm mode
+        const chatConn = this.chatConnectionConnected;
+        if (!chatConn) { return null; }
+
+        const rtcs: PromiseSource<string | null>[] = [];
+        this._retrievingTokenCallbacks = rtcs;
+
+        const gotTokenPromiseSource = new PromiseSource<string>();
+        using xxx = chatConn.addIdTokenReceivedHandler(token => {
+            gotTokenPromiseSource.tryResolve(token);
+        });
+
+        try {
+            // Send !idtoken request message
+            // TODO: include throttling retry
+            await chatConn.privateMessageSendAsync(charXarBot, "!idtoken");
+
+            // Wait for !token response
+            const result = await gotTokenPromiseSource.promise;
+
+            // Notify other waiters of the token
+            this._retrievingTokenCallbacks = null;
+            for (let w of rtcs) {
+                w.tryResolve(result);
+            }
+
+            // Cache the token
+            this.appViewModel.configBlock.set(configBlockKey, result);
+
+            // Return the token
+            return result;
+        }
+        catch (e) {
+            // Notify other waiters of the error
+            this._retrievingTokenCallbacks = null;
+            for (let w of rtcs) {
+                w.tryResolve(null);
+            }
+            // Return null;
+            return null;
         }
     }
 }

@@ -23,6 +23,8 @@ import { XarChatUtils } from "../util/XarChatUtils";
 import { Logger, Logging } from "../util/Logger";
 import { ImmutableList } from "../util/collections/ImmutableList";
 import { ObjectUniqueId } from "../util/ObjectUniqueId";
+import { CallbackSet } from "../util/CallbackSet";
+import { IDisposable } from "../util/Disposable";
 
 export class ServerError extends Error {
     constructor(message: ChatMessage);
@@ -134,6 +136,16 @@ export class ChatConnectionImpl implements ChatConnection {
             body: mbody,
         }
         this.sendMessageRawAsync(cm);
+    }
+
+    private readonly _idTokenCallbackSet: CallbackSet<(token: string) => any> = new CallbackSet("ChatConnectionImpl.IdTokenCallback");
+
+    addIdTokenReceivedHandler(callback: (token: string) => any): IDisposable {
+        return this._idTokenCallbackSet.add(callback);
+    }
+
+    private isInXarBotCommMode() {
+        return this._idTokenCallbackSet.size > 0;
     }
 
     async disconnect(): Promise<void> {
@@ -812,9 +824,15 @@ export class ChatConnectionImpl implements ChatConnection {
             // We skip updating our own typing status, since we use it as a messaging flag and don't want that to get exposed in the UI.
         }
         else {
-            this.sink.charactersStatusUpdated([
-                { characterName: CharacterName.createCanonical(msg.body.character), typingStatus: TypingStatusConvert.toTypingStatus(msg.body.status) ?? TypingStatus.NONE }
-            ], false, false);
+            const tpnCharName = CharacterName.createCanonical(msg.body.character);
+            if (this.isInXarBotCommMode() && tpnCharName == CharacterName.XARBOT) {
+                // Skip message, we're in idtoken comm mode
+            }
+            else {
+                this.sink.charactersStatusUpdated([
+                    { characterName: tpnCharName, typingStatus: TypingStatusConvert.toTypingStatus(msg.body.status) ?? TypingStatus.NONE }
+                ], false, false);
+            }
         }
         msg.handled = true;
     }
@@ -822,20 +840,34 @@ export class ChatConnectionImpl implements ChatConnection {
     private handlePRIMessage(msg: HandleableTypedChatMessage<ServerPRIMessage>) {
         const convoCharacter = CharacterName.createCanonical(msg.body!.character);
         const speakingCharacter = convoCharacter;
-        this.sink.pmConvoMessageReceived(convoCharacter, {
-                isAd: false,
-                message: this.unescapeHTML(msg.body!.message),
-                asOf: new Date(),
-                speakingCharacter: speakingCharacter,
-                seen: false
-            });
-        if (speakingCharacter != this._identifiedCharacter) {
-            this.sink.charactersStatusUpdated([
-                { characterName: speakingCharacter, typingStatus: TypingStatus.NONE }
-            ], false, false);
+
+        if (this.isInXarBotCommMode() && speakingCharacter == CharacterName.XARBOT && msg.body.message.startsWith("!")) {
+            // Skip message, we're in idtoken comm mode
+            this.handleXarBotCommMessage(msg.body.message);
+        }
+        else {
+            this.sink.pmConvoMessageReceived(convoCharacter, {
+                    isAd: false,
+                    message: this.unescapeHTML(msg.body!.message),
+                    asOf: new Date(),
+                    speakingCharacter: speakingCharacter,
+                    seen: false
+                });
+            if (speakingCharacter != this._identifiedCharacter) {
+                this.sink.charactersStatusUpdated([
+                    { characterName: speakingCharacter, typingStatus: TypingStatus.NONE }
+                ], false, false);
+            }
         }
 
         msg.handled = true;
+    }
+
+    private handleXarBotCommMessage(message: string) {
+        if (message.startsWith("!token ")) {
+            const token = message.substring(7);
+            this._idTokenCallbackSet.invoke(token);
+        }
     }
 
     // channel message received

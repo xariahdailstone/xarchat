@@ -386,6 +386,9 @@ export class XarHost2Interop implements IXarHost2HostInterop {
             const argo = JSON.parse(arg);
             (window as any).__refreshCss(argo.filename);
         }
+        else if (cmd == "?getxdnapikey") {
+            this.getXDNApiKey();
+        }
         else {
             for (let sess of this.sessions) {
                 if (cmd.startsWith(sess.prefix)) {
@@ -1034,6 +1037,27 @@ export class XarHost2Interop implements IXarHost2HostInterop {
             key: key,
             value: value
         }));
+    }
+
+    private async getXDNApiKey() {
+        let result: string | null;
+        try {
+            result = await this.getXDNApiKeyInternalAsync();
+        }
+        catch { 
+            result = null;
+        }
+
+        this.writeToXCHostSocket("gotXDNApiKey " + JSON.stringify(result));
+    }
+
+    private async getXDNApiKeyInternalAsync(): Promise<string | null> {
+        const appViewModel = (window as any)["__vm"] as (AppViewModel | null | undefined);
+        if (!appViewModel) { return null; }
+        if (appViewModel.logins.length == 0) { return null; }
+        const login = appViewModel.logins[0];
+        const result = await login!.getXariahNetApiTokenAsync(CancellationToken.NONE);
+        return result;
     }
 
     private readonly _configChangeListeners: SnapshottableMap<number, (value: ConfigKeyValue) => void> = new SnapshottableMap();
