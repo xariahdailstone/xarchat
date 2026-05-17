@@ -97,15 +97,17 @@
 * Even better EIcon mosaic syncing, now with 40% more perfection!
 * Fixed an issue where sometimes when attempting to close a tab that is not the currently active
   tab, the tab would be both closed *and* selected.
+* Removed the arbitrary limit on the number of favorite eicons that show in the EIcon Search popup.
+* PM tabs opened by the "Open PM tab on typing" feature now show up at the top of the PM section.
 * Added optional data collection
   * On first launch, a prompt will appear to allow you to opt-in to some optional data collection
     to help improve XarChat.
   * These settings are *opt-in*.  No data will be collected unless you specifically authorize it.
   * The settings available are described below:
 	* **EIcons** - XarChat can keep track of any eicons seen and report them back to xariah.net
-      for inclusion in the EIcon search index.
-    * **Profiles** - XarChat can gather some information from profiles opened, to enable future
-      XarChat features such as filtering ads and searches by additional profile fields.
+    for inclusion in the EIcon search index.
+  * **Profiles** - XarChat can gather some information from profiles opened, to enable future
+    XarChat features such as filtering ads and searches by additional profile fields.
   * If you opt-in, none of the collected data will be associated with your profile.
 * Added the ability to hide duplicate ads posted by a character within a specified period of time
   (see Display settings to configure).

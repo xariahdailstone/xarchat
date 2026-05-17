@@ -1060,6 +1060,7 @@ export class ChatViewModelSink implements ChatConnectionSink {
                             pmc!.addSystemMessage(new Date(), 
                                 `Opened PM tab because [user]${s.characterName.value}[/user] started typing a message to you.`,
                                 false, openPmTabSetting == 1);
+                            pmc!.lastInteractionAt = (new Date()).getTime();
                             if (openPmTabSetting == 2) {
                                 //pmc!.hasPing = true;
                                 pmc!.addPingMessage();
