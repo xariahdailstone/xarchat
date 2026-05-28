@@ -547,9 +547,9 @@ jobs:
       run: |
         PREPDIR=preproot
         mkdir $PREPDIR
-        cp host/host-publish/linux-arm64/xarchat $PREPDIR/.
+        cp host-publish/linux-arm64/xarchat $PREPDIR/.
         chmod +x $PREPDIR/xarchat
-        echo "XarChat linux-arm64" > host/host-publish/linux-arm64/buildtype.txt
+        echo "XarChat linux-arm64" > $PREPDIR/buildtype.txt
 
     - id: create_deb_package
       name: "Create .deb package"
