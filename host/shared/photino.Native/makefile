@@ -108,7 +108,7 @@ build-photino-linux-arm64:
 		  $(SRC)/Photino.Linux.Dialog.cpp\
 		  $(SRC)/Photino.Linux.cpp\
 		  $(SRC)/Exports.cpp\
-		  `pkg-config --cflags --libs gtk+-3.0 webkit2gtk-4.0 libnotify`
+		  `pkg-config --cflags --libs gtk+-3.0 webkit2gtk-4.1 libnotify`
 
 clean-x64:
 	rm -rf $(DEST_PATH_X64)/* & mkdir -p $(DEST_PATH_X64)
