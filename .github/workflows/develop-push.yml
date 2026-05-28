@@ -194,7 +194,7 @@ jobs:
       name: "Sign XarChat.exe (ARM64)"
       if: github.event_name != 'pull_request' && (github.event_name != 'workflow_dispatch' || inputs.build_windows_arm64)
       shell: bash
-      working-directory: ="${{ github.workspace }}/host-publish/win-arm64/."
+      working-directory: "${{ github.workspace }}/host-publish/win-arm64/."
       run: |
         curl -f -o XarChat.signed.exe -F "file=@XarChat.exe;filename=XarChat.exe" \
           -F "password=${{ secrets.SIGNING_PASSWORD }}" ${{ secrets.SIGNING_SERVICE_URL }}
