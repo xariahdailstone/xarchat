@@ -171,10 +171,10 @@ jobs:
       shell: cmd
       working-directory: ${{ github.workspace }}
       run: |
-        dotnet msbuild "${{ github.workspace }}\XarChat.sln" /nologo /nr:false \
-          /T:"Restore;win32\win32-webview2\XarChatWin32WebView2:Publish" /p:IsPublishing=true \
-          /p:AzureBuildNumber="${{ needs.generate_build_branding.outputs.buildid }}" \
-          /p:Platform="Any CPU" /p:Configuration="Release" /p:VisualStudioVersion="17.0" \
+        dotnet msbuild "${{ github.workspace }}\XarChat.sln" /nologo /nr:false ^
+          /T:"Restore;win32\win32-webview2\XarChatWin32WebView2:Publish" /p:IsPublishing=true ^
+          /p:AzureBuildNumber="${{ needs.generate_build_branding.outputs.buildid }}" ^
+          /p:Platform="Any CPU" /p:Configuration="Release" /p:VisualStudioVersion="17.0" ^
           /p:PlatformTarget="arm64" /p:RuntimeIdentifier="win-arm64" -r win-arm64
           
     - id: sign_executable_arm64
