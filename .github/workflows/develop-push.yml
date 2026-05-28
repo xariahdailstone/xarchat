@@ -387,7 +387,7 @@ jobs:
 
   build-linux-x64:
     if: ${{ github.event_name != 'workflow_dispatch' || inputs.build_linux_x64 }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: generate_build_branding
 
     steps:
@@ -427,17 +427,20 @@ jobs:
         cd host/shared/photino.Native
         make linux-x64
 
-    - id: csharp_build
-      name: "C# Build"
+    - id: csharp_build_x64
+      name: "C# Build (x64)"
+      if: github.event_name != 'workflow_dispatch' || inputs.build_linux_x64
       shell: bash
       working-directory: ${{ github.workspace }}
       run: |
-        dotnet msbuild "${{ github.workspace }}\XarChat-linuxphotino.sln" /nologo \
-          /nr:false /T:"Restore;host\XarChatLinuxPhotino:Publish" /p:IsPublishing=true \
-          /p:AzureBuildNumber="${{ needs.generate_build_branding.outputs.buildid }}" \
-          /p:Platform="Any CPU" /p:Configuration="Release" /p:VisualStudioVersion="17.0"
+        dotnet publish --configuration Release -r linux-x64 \
+          -p:AzureBuildNumber="${{ needs.generate_build_branding.outputs.buildid }}" \
+          -p:Platform="Any CPU" -p:VisualStudioVersion="18.0" \
+          -p:PlatformTarget="x64" -p:IsPublishing="true" \
+          -p:PublishDir="${{ github.workspace }}/host-publish/linux-x64/." \
+          "${{ github.workspace }}\host\linux-photino\XarChatLinuxPhotino\XarChatLinuxPhotino.csproj"
 
-        ls -lR host/linux-photino/XarChatLinuxPhotino/bin/Release/net10.0/linux-x64/.
+        ls -lR "${{ github.workspace }}/host-publish/linux-x64/."
 
     - id: create_preproot
       name: "Create prep root"
@@ -446,8 +449,9 @@ jobs:
       run: |
         PREPDIR=preproot
         mkdir $PREPDIR
-        cp host/linux-photino/XarChatLinuxPhotino/bin/Release/net10.0/linux-x64/publish/xarchat $PREPDIR/.
+        cp host-publish/linux-x64/xarchat $PREPDIR/.
         chmod +x $PREPDIR/xarchat
+        echo "XarChat linux-x64" > $PREPDIR/buildtype.txt
 
     - id: create_deb_package
       name: "Create .deb package"
@@ -460,10 +464,10 @@ jobs:
         mkdir -p $OUTROOT
         cp -r host/linux/DebRoot/. $PKGROOT/.
         mkdir -p $PKGROOT/usr/local/bin
-        cp host/linux-photino/XarChatLinuxPhotino/bin/Release/net10.0/linux-x64/publish/xarchat $PKGROOT/usr/local/bin/xarchat
+        cp host-publish/linux-x64/xarchat $PKGROOT/usr/local/bin/xarchat
         chmod +x $PKGROOT/usr/local/bin/xarchat
         perl -i -pe 's/0\.0\.0\.0/${{ needs.generate_build_branding.outputs.timestamp }}/g' $PKGROOT/DEBIAN/control
-        dpkg-deb --build $PKGROOT/. $OUTROOT/xarchat-${{ needs.generate_build_branding.outputs.timestamp }}.deb
+        dpkg-deb --build $PKGROOT/. $OUTROOT/xarchat_${{ needs.generate_build_branding.outputs.timestamp }}_x64.deb
 
     - id: publish_artifact_preproot
       name: "Publish Preproot Artifact"
