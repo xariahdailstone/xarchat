@@ -125,3 +125,4 @@
   * Fixed an issue with the Log Viewer where it might not show all logged messages for
 	private channels that were created more than once with the same name (e.g., after a
 	chat server restart).
+* Added ARM64 builds for XarChat for Windows and Linux

@@ -5,15 +5,21 @@ on:
     branches: [ "develop", "master" ]
   workflow_dispatch:
     inputs:
-      build_windows:
+      build_windows_x64:
         type: boolean
-        description: "Build Windows"
+        description: "Build Windows (x64)"
+      build_windows_arm64:
+        type: boolean
+        description: "Build Windows (ARM64)"
       build_macos:
         type: boolean
         description: "Build MacOS"
-      build_linux:
+      build_linux_x64:
         type: boolean
-        description: "Build Linux"
+        description: "Build Linux (x64)"
+      build_linux_arm64:
+        type: boolean
+        description: "Build Linux (ARM64)"
       produce_artifacts:
         type: boolean
         description: "Upload artifacts"
@@ -76,8 +82,8 @@ jobs:
       shell: bash
       run: echo "buildid=${{ steps.extract_timestamp.outputs.timestamp }}-${{ steps.extract_branch.outputs.branch }}" >> $GITHUB_OUTPUT
 
-  build-windows-amd64:
-    if: ${{ github.event_name != 'workflow_dispatch' || inputs.build_windows }}
+  build-windows:
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.build_windows_x64 || inputs.build_windows_arm64 }}
     runs-on: windows-latest
     needs: generate_build_branding
     
@@ -124,6 +130,12 @@ jobs:
         echo "Check Typescript Version"
         node_modules/typescript/bin/tsc --version
 
+    - id: restore_nuget
+      name: "Restore NuGet Packages"
+      shell: bash
+      run: |
+        dotnet restore "${{ github.workspace }}/XarChat.sln"
+
     - id: typescript_build
       name: "Typescript Build"
       shell: bash
@@ -132,33 +144,83 @@ jobs:
         echo "node_modules/typescript/bin/tsc --project tsconfig.json"
         node_modules/typescript/bin/tsc --project tsconfig.json
         
-    ## TODO: this step has temporary changes until github runners have VS2026 installed:
-    ##   it uses "dotnet msbuild" instead of ""msbuild.exe"
-    ##   it sets MSBuildExtensionsPath (which is normally set by msbuild.exe)
-    - id: restore_deps
-      name: "C# Build"
-      shell: cmd
+    # - id: csharp_build_x64
+    #   name: "C# Build (x64)"
+    #   if: github.event_name != 'workflow_dispatch' || inputs.build_windows_x64
+    #   shell: cmd
+    #   working-directory: ${{ github.workspace }}
+    #   run: |
+    #     dotnet msbuild "${{ github.workspace }}\XarChat.sln" /nologo /nr:false /T:"Restore;win32\win32-webview2\XarChatWin32WebView2:Publish" /p:IsPublishing=true /p:AzureBuildNumber="${{ needs.generate_build_branding.outputs.buildid }}" /p:Platform="Any CPU" /p:Configuration="Release" /p:VisualStudioVersion="17.0"
+
+    - id: csharp_build_x64
+      name: "C# Build (x64)"
+      if: github.event_name != 'workflow_dispatch' || inputs.build_windows_x64
+      shell: bash
       working-directory: ${{ github.workspace }}
       run: |
-        dotnet msbuild "${{ github.workspace }}\XarChat.sln" /nologo /nr:false /T:"Restore;win32\win32-webview2\XarChatWin32WebView2:Publish" /p:IsPublishing=true /p:AzureBuildNumber="${{ needs.generate_build_branding.outputs.buildid }}" /p:Platform="Any CPU" /p:Configuration="Release" /p:VisualStudioVersion="17.0"
+        dotnet publish --configuration Release -r win-x64 \
+          -p:AzureBuildNumber="${{ needs.generate_build_branding.outputs.buildid }}" \
+          -p:Platform="Any CPU" -p:VisualStudioVersion="18.0" \
+          -p:PlatformTarget="x64" -p:IsPublishing="true" \
+          -p:PublishDir="${{ github.workspace }}/host-publish/win-x64/." \
+          "${{ github.workspace }}\host\win32-webview2\XarChatWin32WebView2\XarChatWin32WebView2.csproj"
           
-    - id: sign_executable
-      name: "Sign XarChat.exe"
-      if: github.event_name != 'pull_request'
+    - id: sign_executable_x64
+      name: "Sign XarChat.exe (x64)"
+      if: github.event_name != 'pull_request' && (github.event_name != 'workflow_dispatch' || inputs.build_windows_x64)
       shell: bash
-      working-directory: "${{ github.workspace }}/host/win32-webview2/XarChatWin32WebView2/bin/Release/net10.0-windows10.0.17763.0/publish/win-x64/"
+      working-directory: "${{ github.workspace }}/host-publish/win-x64/."
       run: |
         curl -f -o XarChat.signed.exe -F "file=@XarChat.exe;filename=XarChat.exe" -F "password=${{ secrets.SIGNING_PASSWORD }}" ${{ secrets.SIGNING_SERVICE_URL }}
         rm XarChat.exe
         mv XarChat.signed.exe XarChat.exe
 
-    - id: publish_artifact
-      name: "Publish Artifact"
-      if: ${{ env.should_produce_artifacts == 'true' }}
+    - id: publish_artifact_x64
+      name: "Publish Artifact (x64)"
+      if: env.should_produce_artifacts == 'true' && (github.event_name != 'workflow_dispatch' || inputs.build_windows_x64)
       uses: actions/upload-artifact@v4
       with:
-        name: win32-exe
-        path: ${{ github.workspace }}/host/win32-webview2/XarChatWin32WebView2/bin/Release/net10.0-windows10.0.17763.0/publish/win-x64/XarChat.exe
+        name: win32-exe-x64
+        path: ${{ github.workspace }}/host-publish/win-x64/XarChat.exe
+        retention-days: 5
+
+    - id: csharp_build_arm64
+      name: "C# Build (ARM64)"
+      if: github.event_name != 'workflow_dispatch' || inputs.build_windows_arm64
+      shell: bash
+      working-directory: ${{ github.workspace }}
+      run: |
+        dotnet publish --configuration Release -r win-arm64 \
+          -p:AzureBuildNumber="${{ needs.generate_build_branding.outputs.buildid }}" \
+          -p:Platform="Any CPU" -p:VisualStudioVersion="18.0" \
+          -p:PlatformTarget="arm64" -p:IsPublishing="true" \
+          -p:PublishDir="${{ github.workspace }}/host-publish/win-arm64/." \
+          "${{ github.workspace }}\host\win32-webview2\XarChatWin32WebView2\XarChatWin32WebView2.csproj"
+      # run: |
+      #   msbuild.exe "${{ github.workspace }}\XarChat.sln" /nologo /nr:false ^
+      #     /T:"Restore;win32\win32-webview2\XarChatWin32WebView2:Publish" /p:IsPublishing=true ^
+      #     /p:AzureBuildNumber="${{ needs.generate_build_branding.outputs.buildid }}" ^
+      #     /p:Platform="Any CPU" /p:Configuration="Release" /p:VisualStudioVersion="17.0" ^
+      #     /p:PlatformTarget="arm64" /p:RuntimeIdentifier="win-arm64"
+          
+    - id: sign_executable_arm64
+      name: "Sign XarChat.exe (ARM64)"
+      if: github.event_name != 'pull_request' && (github.event_name != 'workflow_dispatch' || inputs.build_windows_arm64)
+      shell: bash
+      working-directory: "${{ github.workspace }}/host-publish/win-arm64/."
+      run: |
+        curl -f -o XarChat.signed.exe -F "file=@XarChat.exe;filename=XarChat.exe" \
+          -F "password=${{ secrets.SIGNING_PASSWORD }}" ${{ secrets.SIGNING_SERVICE_URL }}
+        rm XarChat.exe
+        mv XarChat.signed.exe XarChat.exe
+
+    - id: publish_artifact_arm64
+      name: "Publish Artifact (ARM64)"
+      if: env.should_produce_artifacts == 'true' && (github.event_name != 'workflow_dispatch' || inputs.build_windows_arm64)
+      uses: actions/upload-artifact@v4
+      with:
+        name: win32-exe-arm64
+        path: ${{ github.workspace }}/host-publish/win-arm64/XarChat.exe
         retention-days: 5
 
   build-macos-arm64:
@@ -323,9 +385,9 @@ jobs:
         path: ${{ github.workspace }}/XarChat-*.dmg
         retention-days: 5
 
-  build-linux-amd64:
-    if: ${{ github.event_name != 'workflow_dispatch' || inputs.build_linux }}
-    runs-on: ubuntu-latest
+  build-linux-x64:
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.build_linux_x64 }}
+    runs-on: ubuntu-24.04
     needs: generate_build_branding
 
     steps:
@@ -365,17 +427,20 @@ jobs:
         cd host/shared/photino.Native
         make linux-x64
 
-    - id: csharp_build
-      name: "C# Build"
+    - id: csharp_build_x64
+      name: "C# Build (x64)"
+      if: github.event_name != 'workflow_dispatch' || inputs.build_linux_x64
       shell: bash
       working-directory: ${{ github.workspace }}
       run: |
-        dotnet msbuild "${{ github.workspace }}\XarChat-linuxphotino.sln" /nologo \
-          /nr:false /T:"Restore;host\XarChatLinuxPhotino:Publish" /p:IsPublishing=true \
-          /p:AzureBuildNumber="${{ needs.generate_build_branding.outputs.buildid }}" \
-          /p:Platform="Any CPU" /p:Configuration="Release" /p:VisualStudioVersion="17.0"
+        dotnet publish --configuration Release -r linux-x64 \
+          -p:AzureBuildNumber="${{ needs.generate_build_branding.outputs.buildid }}" \
+          -p:Platform="Any CPU" -p:VisualStudioVersion="18.0" \
+          -p:PlatformTarget="x64" -p:IsPublishing="true" \
+          -p:PublishDir="${{ github.workspace }}/host-publish/linux-x64/." \
+          "${{ github.workspace }}\host\linux-photino\XarChatLinuxPhotino\XarChatLinuxPhotino.csproj"
 
-        ls -lR host/linux-photino/XarChatLinuxPhotino/bin/Release/net10.0/linux-x64/.
+        ls -lR "${{ github.workspace }}/host-publish/linux-x64/."
 
     - id: create_preproot
       name: "Create prep root"
@@ -384,8 +449,9 @@ jobs:
       run: |
         PREPDIR=preproot
         mkdir $PREPDIR
-        cp host/linux-photino/XarChatLinuxPhotino/bin/Release/net10.0/linux-x64/publish/xarchat $PREPDIR/.
+        cp host-publish/linux-x64/xarchat $PREPDIR/.
         chmod +x $PREPDIR/xarchat
+        echo "XarChat linux-x64" > $PREPDIR/buildtype.txt
 
     - id: create_deb_package
       name: "Create .deb package"
@@ -398,17 +464,17 @@ jobs:
         mkdir -p $OUTROOT
         cp -r host/linux/DebRoot/. $PKGROOT/.
         mkdir -p $PKGROOT/usr/local/bin
-        cp host/linux-photino/XarChatLinuxPhotino/bin/Release/net10.0/linux-x64/publish/xarchat $PKGROOT/usr/local/bin/xarchat
+        cp host-publish/linux-x64/xarchat $PKGROOT/usr/local/bin/xarchat
         chmod +x $PKGROOT/usr/local/bin/xarchat
         perl -i -pe 's/0\.0\.0\.0/${{ needs.generate_build_branding.outputs.timestamp }}/g' $PKGROOT/DEBIAN/control
-        dpkg-deb --build $PKGROOT/. $OUTROOT/xarchat-${{ needs.generate_build_branding.outputs.timestamp }}.deb
+        dpkg-deb --build $PKGROOT/. $OUTROOT/xarchat_${{ needs.generate_build_branding.outputs.timestamp }}_x64.deb
 
     - id: publish_artifact_preproot
       name: "Publish Preproot Artifact"
       if: ${{ env.should_produce_artifacts == 'true' }}
       uses: actions/upload-artifact@v4
       with:
-        name: linux-exe
+        name: linux-exe-x64
         path: ${{ github.workspace }}/preproot
         retention-days: 5
 
@@ -417,6 +483,108 @@ jobs:
       if: ${{ env.should_produce_artifacts == 'true' }}
       uses: actions/upload-artifact@v4
       with:
-        name: linux-deb
+        name: linux-deb-x64
+        path: ${{ github.workspace }}/preproot-deb/out
+        retention-days: 5
+
+  build-linux-arm64:
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.build_linux_arm64 }}
+    runs-on: ubuntu-24.04-arm
+    needs: generate_build_branding
+
+    steps:
+    - id: checkout
+      name: "Checkout Current Repository"
+      uses: actions/checkout@v4
+
+    - id: setup_dotnet
+      name: "Setup .NET 10 SDK"
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 10.0.x
+
+    - id: restore_npm_deps
+      name: "Restore NPM Packages"
+      shell: bash
+      working-directory: browser/mainapp
+      run: |
+        echo "npm install"
+        npm install
+        echo "Check Typescript Version"
+        node_modules/typescript/bin/tsc --version
+
+    - id: typescript_build
+      name: "Typescript Build"
+      shell: bash
+      working-directory: browser/mainapp
+      run: |
+        echo "node_modules/typescript/bin/tsc --project tsconfig.json"
+        node_modules/typescript/bin/tsc --project tsconfig.json
+
+    - id: cpp_build
+      name: "C++ Build"
+      shell: bash
+      working-directory: ${{ github.workspace }}
+      run: |
+        cd host/shared/photino.Native
+        make linux-arm64
+
+    - id: csharp_build_arm64
+      name: "C# Build (ARM64)"
+      if: github.event_name != 'workflow_dispatch' || inputs.build_linux_arm64
+      shell: bash
+      working-directory: ${{ github.workspace }}
+      run: |
+        dotnet publish --configuration Release -r linux-arm64 \
+          -p:AzureBuildNumber="${{ needs.generate_build_branding.outputs.buildid }}" \
+          -p:Platform="Any CPU" -p:VisualStudioVersion="18.0" \
+          -p:PlatformTarget="arm64" -p:IsPublishing="true" \
+          -p:PublishDir="${{ github.workspace }}/host-publish/linux-arm64/." \
+          "${{ github.workspace }}\host\linux-photino\XarChatLinuxPhotino\XarChatLinuxPhotino.csproj"
+
+        ls -lR "${{ github.workspace }}/host-publish/linux-arm64/."
+
+    - id: create_preproot
+      name: "Create prep root"
+      shell: bash
+      working-directory: ${{ github.workspace }}
+      run: |
+        PREPDIR=preproot
+        mkdir $PREPDIR
+        cp host-publish/linux-arm64/xarchat $PREPDIR/.
+        chmod +x $PREPDIR/xarchat
+        echo "XarChat linux-arm64" > $PREPDIR/buildtype.txt
+
+    - id: create_deb_package
+      name: "Create .deb package"
+      shell: bash
+      working-directory: ${{ github.workspace }}
+      run: |
+        PKGROOT=preproot-deb/xarchat
+        OUTROOT=preproot-deb/out
+        mkdir -p $PKGROOT
+        mkdir -p $OUTROOT
+        cp -r host/linux/DebRoot/. $PKGROOT/.
+        mkdir -p $PKGROOT/usr/local/bin
+        cp host-publish/linux-arm64/xarchat $PKGROOT/usr/local/bin/xarchat
+        chmod +x $PKGROOT/usr/local/bin/xarchat
+        perl -i -pe 's/0\.0\.0\.0/${{ needs.generate_build_branding.outputs.timestamp }}/g' $PKGROOT/DEBIAN/control
+        dpkg-deb --build $PKGROOT/. $OUTROOT/xarchat_${{ needs.generate_build_branding.outputs.timestamp }}_arm64.deb
+
+    - id: publish_artifact_preproot
+      name: "Publish Preproot Artifact"
+      if: ${{ env.should_produce_artifacts == 'true' }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: linux-exe-arm64
+        path: ${{ github.workspace }}/preproot
+        retention-days: 5
+
+    - id: publish_artifact_deb
+      name: "Publish .deb Artifact"
+      if: ${{ env.should_produce_artifacts == 'true' }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: linux-deb-arm64
         path: ${{ github.workspace }}/preproot-deb/out
         retention-days: 5
