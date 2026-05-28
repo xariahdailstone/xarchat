@@ -180,7 +180,7 @@ jobs:
         dotnet publish --configuration Release -r win-arm64 \
           -p:AzureBuildNumber="${{ needs.generate_build_branding.outputs.buildid }}" \
           -p:Platform="Any CPU" -p:VisualStudioVersion="18.0" \
-          -p:PlatformTarget="arm64" \
+          -p:PlatformTarget="arm64" -p:IsPublishing="true" \
           "${{ github.workspace }}\host\win32-webview2\XarChatWin32WebView2\XarChatWin32WebView2.csproj"
       # run: |
       #   msbuild.exe "${{ github.workspace }}\XarChat.sln" /nologo /nr:false ^
@@ -193,7 +193,7 @@ jobs:
       name: "Sign XarChat.exe (ARM64)"
       if: github.event_name != 'pull_request' && (github.event_name != 'workflow_dispatch' || inputs.build_windows_arm64)
       shell: bash
-      working-directory: "${{ github.workspace }}/host/win32-webview2/XarChatWin32WebView2/bin/Release/net10.0-windows10.0.17763.0/publish/win-arm64/"
+      working-directory: "${{ github.workspace }}/host/win32-webview2/XarChatWin32WebView2/bin/Release/net10.0-windows10.0.17763.0/win-arm64/publish/"
       run: |
         curl -f -o XarChat.signed.exe -F "file=@XarChat.exe;filename=XarChat.exe" \
           -F "password=${{ secrets.SIGNING_PASSWORD }}" ${{ secrets.SIGNING_SERVICE_URL }}
@@ -206,7 +206,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: win32-exe-arm64
-        path: ${{ github.workspace }}/host/win32-webview2/XarChatWin32WebView2/bin/Release/net10.0-windows10.0.17763.0/publish/win-arm64/XarChat.exe
+        path: ${{ github.workspace }}/host/win32-webview2/XarChatWin32WebView2/bin/Release/net10.0-windows10.0.17763.0/win-arm64/publish/XarChat.exe
         retention-days: 5
 
   build-macos-arm64:
