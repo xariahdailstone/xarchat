@@ -141,22 +141,32 @@ jobs:
         echo "node_modules/typescript/bin/tsc --project tsconfig.json"
         node_modules/typescript/bin/tsc --project tsconfig.json
         
-    ## TODO: this step has temporary changes until github runners have VS2026 installed:
-    ##   it uses "dotnet msbuild" instead of ""msbuild.exe"
-    ##   it sets MSBuildExtensionsPath (which is normally set by msbuild.exe)
+    # - id: csharp_build_x64
+    #   name: "C# Build (x64)"
+    #   if: github.event_name != 'workflow_dispatch' || inputs.build_windows_x64
+    #   shell: cmd
+    #   working-directory: ${{ github.workspace }}
+    #   run: |
+    #     dotnet msbuild "${{ github.workspace }}\XarChat.sln" /nologo /nr:false /T:"Restore;win32\win32-webview2\XarChatWin32WebView2:Publish" /p:IsPublishing=true /p:AzureBuildNumber="${{ needs.generate_build_branding.outputs.buildid }}" /p:Platform="Any CPU" /p:Configuration="Release" /p:VisualStudioVersion="17.0"
+
     - id: csharp_build_x64
       name: "C# Build (x64)"
       if: github.event_name != 'workflow_dispatch' || inputs.build_windows_x64
-      shell: cmd
+      shell: bash
       working-directory: ${{ github.workspace }}
       run: |
-        dotnet msbuild "${{ github.workspace }}\XarChat.sln" /nologo /nr:false /T:"Restore;win32\win32-webview2\XarChatWin32WebView2:Publish" /p:IsPublishing=true /p:AzureBuildNumber="${{ needs.generate_build_branding.outputs.buildid }}" /p:Platform="Any CPU" /p:Configuration="Release" /p:VisualStudioVersion="17.0"
+        dotnet publish --configuration Release -r win-x64 \
+          -p:AzureBuildNumber="${{ needs.generate_build_branding.outputs.buildid }}" \
+          -p:Platform="Any CPU" -p:VisualStudioVersion="18.0" \
+          -p:PlatformTarget="x64" -p:IsPublishing="true" \
+          -p:PublishDir="${{ github.workspace }}/host-publish/win-x64/." \
+          "${{ github.workspace }}\host\win32-webview2\XarChatWin32WebView2\XarChatWin32WebView2.csproj"
           
     - id: sign_executable_x64
       name: "Sign XarChat.exe (x64)"
       if: github.event_name != 'pull_request' && (github.event_name != 'workflow_dispatch' || inputs.build_windows_x64)
       shell: bash
-      working-directory: "${{ github.workspace }}/host/win32-webview2/XarChatWin32WebView2/bin/Release/net10.0-windows10.0.17763.0/publish/win-x64/"
+      working-directory: "${{ github.workspace }}/host-publish/win-x64/."
       run: |
         curl -f -o XarChat.signed.exe -F "file=@XarChat.exe;filename=XarChat.exe" -F "password=${{ secrets.SIGNING_PASSWORD }}" ${{ secrets.SIGNING_SERVICE_URL }}
         rm XarChat.exe
@@ -168,7 +178,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: win32-exe-x64
-        path: ${{ github.workspace }}/host/win32-webview2/XarChatWin32WebView2/bin/Release/net10.0-windows10.0.17763.0/publish/win-x64/XarChat.exe
+        path: ${{ github.workspace }}/host-publish/win-x64/XarChat.exe
         retention-days: 5
 
     - id: csharp_build_arm64
