@@ -122,10 +122,13 @@ jobs:
       shell: bash
       working-directory: browser/mainapp
       run: |
-        echo "npm install"
-        npm install
-        echo "Check Typescript Version"
-        node_modules/typescript/bin/tsc --version
+        dotnet restore 
+
+    - id: restore_nuget
+      name: "Restore NuGet Packages"
+      shell: bash
+      run: |
+        dotnet restore "${{ github.workspace }}\XarChat.sln"
 
     - id: typescript_build
       name: "Typescript Build"
@@ -175,7 +178,7 @@ jobs:
           -p:AzureBuildNumber="${{ needs.generate_build_branding.outputs.buildid }}" \
           -p:Platform="Any CPU" -p:VisualStudioVersion="18.0" \
           -p:PlatformTarget="arm64" \
-          "win32\win32-webview2\XarChatWin32WebView2.csproj"
+          "${{ github.workspace }}\win32\win32-webview2\XarChatWin32WebView2.csproj"
       # run: |
       #   msbuild.exe "${{ github.workspace }}\XarChat.sln" /nologo /nr:false ^
       #     /T:"Restore;win32\win32-webview2\XarChatWin32WebView2:Publish" /p:IsPublishing=true ^
