@@ -122,13 +122,16 @@ jobs:
       shell: bash
       working-directory: browser/mainapp
       run: |
-        dotnet restore 
+        echo "npm install"
+        npm install
+        echo "Check Typescript Version"
+        node_modules/typescript/bin/tsc --version
 
     - id: restore_nuget
       name: "Restore NuGet Packages"
       shell: bash
       run: |
-        dotnet restore "${{ github.workspace }}\XarChat.sln"
+        dotnet restore "${{ github.workspace }}/XarChat.sln"
 
     - id: typescript_build
       name: "Typescript Build"
