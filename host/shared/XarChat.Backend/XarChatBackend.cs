@@ -87,6 +87,7 @@ using XarChat.Backend.UrlHandlers.AllComponentsScript;
 using Microsoft.Extensions.Hosting;
 using XarChat.Backend.Features.XDNApiKeyManager;
 using XarChat.Backend.Features.XDNApiKeyManager.Impl;
+using XarChat.Backend.Features.DebugLogCapture;
 
 namespace XarChat.Backend
 {
@@ -271,6 +272,8 @@ namespace XarChat.Backend
                     return handler;
                 });
 
+            services.AddRequestLogCapture();
+
             services.AddSingleton<IUpdateChecker>(_updateChecker);
 
             services.AddSingleton<IAppConfiguration, AppConfigurationImpl>();
@@ -409,6 +412,8 @@ namespace XarChat.Backend
         {
             try
             {
+                app.UseRequestLogCapture();
+
                 app.Use(async (httpContext, next) =>
                 {
                     var requestStartAt = DateTimeOffset.UtcNow;

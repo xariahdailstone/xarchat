@@ -18,5 +18,9 @@ namespace XarChat.Backend.Features.FListApi
 
         [JsonPropertyName("ticket")]
         public required string Ticket { get; set; }
+
+        [JsonPropertyName("cameFromCache")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public bool? CameFromCache { get; set; }
     }
 }

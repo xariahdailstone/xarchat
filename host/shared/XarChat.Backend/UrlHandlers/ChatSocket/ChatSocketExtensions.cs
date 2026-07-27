@@ -14,6 +14,7 @@ using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 using XarChat.Backend.Common;
 using XarChat.Backend.Features.AppConfiguration;
+using XarChat.Backend.Features.DebugLogCapture;
 using XarChat.Backend.Features.FListApi;
 
 namespace XarChat.Backend.UrlHandlers.ChatSocket
@@ -34,6 +35,7 @@ namespace XarChat.Backend.UrlHandlers.ChatSocket
             [FromServices] IHostApplicationLifetime hostApplicationLifetime,
             [FromServices] IFalsifiedClientTicketManager fctm,
             [FromServices] ILogger<ChatSocketExtensionsClass> logger,
+            [FromServices] IRequestLogAccessor requestLogAccessor,
             CancellationToken cancellationToken)
         {
             Guid connectionGuid = Guid.NewGuid();
@@ -82,6 +84,8 @@ namespace XarChat.Backend.UrlHandlers.ChatSocket
                         await clientWebSocket.SendAsync(System.Text.Encoding.UTF8.GetBytes(initialMessage),
                             WebSocketMessageType.Text, true, cancellationToken);
 
+                        requestLogAccessor.StopCollecting();
+
                         if (maybeFChatWebSocket is not null)
                         {
                             using var fchatWebSocket = maybeFChatWebSocket;
@@ -111,7 +115,8 @@ namespace XarChat.Backend.UrlHandlers.ChatSocket
             }
             catch
             {
-                return Results.StatusCode(500);
+                var reqLogEntries = new List<RequestLogEntry>(requestLogAccessor.Entries);
+                return Results.Json(reqLogEntries, statusCode: 500);
             }
         }
 

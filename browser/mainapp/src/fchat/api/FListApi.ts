@@ -42,6 +42,7 @@ export interface ApiTicket {
     default_character: number;
     friends: ApiTicketFriend[];
     ticket: string;
+    cameFromCache?: boolean;
 }
 export interface ApiTicketBookmark {
     name: string;
