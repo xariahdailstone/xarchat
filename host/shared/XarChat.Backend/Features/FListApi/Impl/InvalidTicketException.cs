@@ -2,7 +2,10 @@
 {
     public class InvalidTicketException : ApplicationException
     {
-        public InvalidTicketException() { }
+        public InvalidTicketException()
+            : base("Invalid API Ticket")
+        { 
+        }
     }
 
     public class FListApiException : ApplicationException
