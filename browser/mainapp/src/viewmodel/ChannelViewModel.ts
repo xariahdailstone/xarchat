@@ -566,7 +566,11 @@ export abstract class ChannelViewModel extends ObservableBase implements IDispos
     }
 
     addMessage(message: ChannelMessageViewModel, options?: AddMessageOptions) {
-        if ((options?.fromReplay ?? false) == true) {
+        const isFromReplay = (options?.fromReplay ?? false);
+        const messageAlreadySeen = (options?.seen ?? false);
+        const bypassUnseenCount = (options?.bypassUnseenCount ?? false);
+
+        if (isFromReplay == true) {
             // Clear the window when receiving historical messages from extended connection
             this.populatedFromReplay = true;
         }
@@ -583,11 +587,11 @@ export abstract class ChannelViewModel extends ObservableBase implements IDispos
             //     messageBeingRemoved.dispose();
             // }
 
-            if (!(options?.seen ?? false)) {
-                if (this.canPingAccordingToFilters(filterClasses)) {
+            if (!messageAlreadySeen) {
+                if (!isFromReplay && this.canPingAccordingToFilters(filterClasses)) {
                     this.pingIfNecessary(message);
                 }
-                if (!(options?.bypassUnseenCount ?? false)) {
+                if (!bypassUnseenCount) {
                     if (this.canBeUnseenAccordingToFilters(filterClasses)) {
                         this.increaseUnseenCountIfNecessary();
                     }

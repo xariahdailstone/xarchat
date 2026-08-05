@@ -440,28 +440,6 @@ export class EIconDisplay extends HTMLElement {
             }
         }
 
-        this._eiconBlockWCM.assign<[CharacterName | null, string | null]>(
-            (isConnected && charName && eiconName) ? [charName, eiconName] : [null, null],
-            v => {
-                const charName = v[0];
-                const eiconName = v[1];
-                if (charName && eiconName) {
-                    const isBlockedObs = new ObservableExpression(
-                        () => {
-                            for (let login of ((window as any)["__vm"] as AppViewModel).logins) {
-                                if (login.characterName == charName) {
-                                    return login.eIconFavoriteBlockViewModel.isBlocked(eiconName);
-                                }
-                            }
-                            return false;
-                        },
-                        (isBlocked) => { imgEl?.classList.toggle("blocked", isBlocked); },
-                        () => { imgEl?.classList.toggle("blocked", false); }
-                    );
-                    return asDisposable(isBlockedObs);
-                }
-            });
-
         if (isConnected) {
             if (!this._isInIntersectObserver) {
                 this._isInIntersectObserver = true;
@@ -525,5 +503,19 @@ export class EIconDisplay extends HTMLElement {
                 io.unobserve(this);
             }
         }
+
+        const appViewModel = ((window as any)["__vm"] as AppViewModel);
+        this._eiconBlockWCM.assign<[AppViewModel, boolean, string | null]>(
+            [appViewModel, isConnected, eiconName],
+            v => {
+                const appViewModel = v[0];
+                const isConnected = v[1];
+                const eiconName = v[2];
+                if (isConnected && appViewModel && eiconName) {
+                    return appViewModel.eIconFavoriteBlockViewModel.addBlockStateChangedHandler(eiconName, (n, blocked) => {
+                        imgEl?.classList.toggle("blocked", blocked);
+                    });
+                }
+            });
     }
 }

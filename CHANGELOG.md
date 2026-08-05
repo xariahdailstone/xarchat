@@ -126,3 +126,4 @@
 	private channels that were created more than once with the same name (e.g., after a
 	chat server restart).
 * Added ARM64 builds for XarChat for Windows and Linux
+* Fixed blocked eicons incorrectly showing as unblurred in newly received messages
