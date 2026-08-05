@@ -42,6 +42,7 @@ import { AccountsFriendsAndBookmarksViewModel } from "./AccountsFriendsAndBookma
 import { ObjectUniqueId } from "../util/ObjectUniqueId.js";
 import { UpdateInfoDialogViewModel } from "./dialogs/UpdateInfoDialogViewModel.js";
 import { DataCollectionOptInDialogViewModel } from "./dialogs/DataCollectionOptInDialogViewModel.js";
+import { EIconFavoriteBlockViewModel } from "./EIconFavoriteBlockViewModel.js";
 
 export class AppViewModel extends ObservableBase {
     constructor(configBlock: ConfigBlock) {
@@ -58,6 +59,8 @@ export class AppViewModel extends ObservableBase {
 
         //this.flistApi = new FListApiImpl();
         this.flistApi = new HostInteropApi();
+
+        this.eIconFavoriteBlockViewModel = new EIconFavoriteBlockViewModel(this);
 
         this.logins.addCollectionObserver(entries => {
             for (let entry of entries) {
@@ -174,6 +177,8 @@ export class AppViewModel extends ObservableBase {
     readonly toasts: InAppToastsViewModel;
 
     readonly accountsFriendsAndBookmarks: AccountsFriendsAndBookmarksViewModel;
+
+    readonly eIconFavoriteBlockViewModel: EIconFavoriteBlockViewModel;
 
     get blurEffectsEnabled() { return this.configBlock.get("global.enableBlurEffects"); }
 
@@ -747,45 +752,22 @@ export class AppViewModel extends ObservableBase {
 
     private _currentNotificationAudio: HTMLAudioElement | null = null;
     soundNotification(event: AppNotifyEvent) {
+        const nsinfo = getNotificationSoundInfo(event.eventType);
+        if (event.activeLoginViewModel && event.activeLoginViewModel.isLoggingIn && nsinfo.isSuppressedDuringConnection) {
+            return;
+        }
+
         let fn: string | null = null;
 
         fn = this.getConfigEntryHierarchical(`sound.event.${event.eventType.toString()}`, event.activeLoginViewModel, event.channel) as (string | null);
 
-        if (this.getConfigSettingById("flashTaskbarButton") ?? true) {
-            let shouldFlashWindow: boolean;
-            switch (event.eventType) {
-                case AppNotifyEventType.CONNECTED:
-                case AppNotifyEventType.DISCONNECTED:
-                    shouldFlashWindow = false;
-                    break;
-                case AppNotifyEventType.HIGHLIGHT_MESSAGE_RECEIVED:
-                case AppNotifyEventType.PRIVATE_MESSAGE_RECEIVED:
-                    shouldFlashWindow = true;
-                    break;
-            }
-            if (shouldFlashWindow) {
-                HostInterop.flashWindow();
-            }
+        if ((this.getConfigSettingById("flashTaskbarButton") ?? true) && nsinfo.shouldFlashWindow) {
+            HostInterop.flashWindow();
         }
 
         if (fn == null || fn == "default:")
         {
-            switch (event.eventType) {
-                case AppNotifyEventType.CONNECTED:
-                    fn = "default_connect.mp3";
-                    break;
-                case AppNotifyEventType.DISCONNECTED:
-                    fn = "default_disconnect.mp3";
-                    break;
-                case AppNotifyEventType.HIGHLIGHT_MESSAGE_RECEIVED:
-                    fn = "default_highlightrecv.mp3";
-                    break;
-                case AppNotifyEventType.PRIVATE_MESSAGE_RECEIVED:
-                default:
-                    fn = "default_pmrecv.mp3";
-                    break;
-            }
-            fn = `assets/sfx/${fn}`;
+            fn = `assets/sfx/${nsinfo.defaultFilename}`;
         }
         else if (fn == "none:") {
             fn = "";
@@ -978,3 +960,49 @@ export class AppViewModelBBCodeSink implements BBCodeParseSink {
     }
 }
 
+
+interface NotificationSoundInfo {
+    eventType: AppNotifyEventType;
+    isSuppressedDuringConnection: boolean;
+    shouldFlashWindow: boolean;
+    defaultFilename: string;
+}
+
+const NOTIFICATION_SOUND_INFOS = new Map<AppNotifyEventType, NotificationSoundInfo>();
+function defineNotificationSound(info: NotificationSoundInfo) {
+    NOTIFICATION_SOUND_INFOS.set(info.eventType, info);
+}
+function getNotificationSoundInfo(eventType: AppNotifyEventType): NotificationSoundInfo {
+    const res = NOTIFICATION_SOUND_INFOS.get(eventType);
+    if (res) { return res; }
+    return {
+        eventType: eventType,
+        isSuppressedDuringConnection: false,
+        shouldFlashWindow: false,
+        defaultFilename: "default_highlightrecv.mp3"    
+    };
+}
+defineNotificationSound({
+    eventType: AppNotifyEventType.CONNECTED,
+    isSuppressedDuringConnection: false,
+    shouldFlashWindow: false,
+    defaultFilename: "default_connect.mp3"
+});
+defineNotificationSound({
+    eventType: AppNotifyEventType.DISCONNECTED,
+    isSuppressedDuringConnection: false,
+    shouldFlashWindow: false,
+    defaultFilename: "default_disconnect.mp3"
+});
+defineNotificationSound({
+    eventType: AppNotifyEventType.HIGHLIGHT_MESSAGE_RECEIVED,
+    isSuppressedDuringConnection: true,
+    shouldFlashWindow: true,
+    defaultFilename: "default_highlightrecv.mp3"
+});
+defineNotificationSound({
+    eventType: AppNotifyEventType.PRIVATE_MESSAGE_RECEIVED,
+    isSuppressedDuringConnection: true,
+    shouldFlashWindow: true,
+    defaultFilename: "default_pmrecv.mp3"
+});

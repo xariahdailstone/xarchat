@@ -244,7 +244,6 @@ export class ActiveLoginViewModel extends ObservableBase implements IDisposable 
         });
 
         this.bbcodeSink = new ActiveLoginViewModelBBCodeSink(this, this._logger);
-        this.eIconFavoriteBlockViewModel = new EIconFavoriteBlockViewModel(this);
 
         this.getMyFriendsListInfo(CancellationToken.NONE);
     }
@@ -285,7 +284,7 @@ export class ActiveLoginViewModel extends ObservableBase implements IDisposable 
 
     //private readonly _logSearchViewModel: LogSearchViewModel;
 
-    eIconFavoriteBlockViewModel: EIconFavoriteBlockViewModel;
+    get eIconFavoriteBlockViewModel(): EIconFavoriteBlockViewModel { return this.appViewModel.eIconFavoriteBlockViewModel; }
 
     //private readonly _logSearchViewModel2: LogSearch2ViewModel;
 
