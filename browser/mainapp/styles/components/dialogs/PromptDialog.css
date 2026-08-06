@@ -3,3 +3,17 @@
     min-width: 300px;
     min-height: 50px;
 }
+
+.checkboxes {
+    display: none;
+    margin-top: 18px;
+
+    &.shown { display: flex; flex-direction: column; }
+
+    .checkbox-container {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: 6px;
+    }
+}

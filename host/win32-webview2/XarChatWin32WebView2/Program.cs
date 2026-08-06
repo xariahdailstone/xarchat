@@ -110,6 +110,10 @@ namespace MinimalWin32Test
                     {
                         await backend.RunAsync(writeStartupLog, stopCTS.Token);
                     }
+                    catch when (stopCTS.IsCancellationRequested) 
+                    {
+                        System.Diagnostics.Debug.WriteLine("backendRunTask stopped");
+                    }
                     catch (Exception ex)
                     {
                         var err = $"Failed to initialize backend. Please see this file for more details:\r\n\r\n" + startupLogFile;
@@ -168,17 +172,20 @@ namespace MinimalWin32Test
                 }
 
                 var exitCode = app.Run();
+                app.UiLoopCompleted = true;
                 appRan = true;
 
-                System.Threading.Timer t = new System.Threading.Timer((_) =>
-                {
-                    Environment.Exit(exitCode);
-                });
-                t.Change(TimeSpan.FromSeconds(5), Timeout.InfiniteTimeSpan);
+                //System.Threading.Timer t = new System.Threading.Timer((_) =>
+                //{
+                //    Environment.Exit(exitCode);
+                //});
+                //t.Change(TimeSpan.FromSeconds(5), Timeout.InfiniteTimeSpan);
 
                 stopCTS.Cancel();
 
+                System.Diagnostics.Debug.WriteLine($"Awaiting application terminate...");
                 backendRunTask.Wait();
+                System.Diagnostics.Debug.WriteLine($"Awaited application terminate.");
 
                 if (autoUpdater.RelaunchOnExitRequested)
                 {

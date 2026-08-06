@@ -27,17 +27,23 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.GetMemo
 
             try
             {
-                var authApi = await _fListApi.GetAlreadyAuthenticatedFListApiAsync(myName, cancellationToken);
-                string? memoText = null;
-                try
-                {
-                    var resp = await authApi.GetMemoAsync(getForName, cancellationToken);
-                    memoText = resp.MemoText;
-                }
-                catch (FListApiException fex) when (fex.Message.Contains("not found"))
-                {
-                    memoText = null;
-                }
+                var memoText = await _fListApi.WithAlreadyAuthenticatedFListApiAsync(
+                    account: myName,
+                    cancellationToken: cancellationToken,
+                    callbackFunc: async (authApi, cancellationToken) =>
+                    {
+                        string? memoText = null;
+                        try
+                        {
+                            var resp = await authApi.GetMemoAsync(getForName, cancellationToken);
+                            memoText = resp.MemoText;
+                        }
+                        catch (FListApiException fex) when (fex.Message.Contains("not found"))
+                        {
+                            memoText = null;
+                        }
+                        return memoText;
+                    });
 
                 var respObj = new JsonObject();
                 respObj.Add("name", getForName);

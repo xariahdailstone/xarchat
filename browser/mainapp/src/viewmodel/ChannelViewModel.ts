@@ -566,7 +566,11 @@ export abstract class ChannelViewModel extends ObservableBase implements IDispos
     }
 
     addMessage(message: ChannelMessageViewModel, options?: AddMessageOptions) {
-        if ((options?.fromReplay ?? false) == true) {
+        const isFromReplay = (options?.fromReplay ?? false);
+        const messageAlreadySeen = (options?.seen ?? false);
+        const bypassUnseenCount = (options?.bypassUnseenCount ?? false);
+
+        if (isFromReplay == true) {
             // Clear the window when receiving historical messages from extended connection
             this.populatedFromReplay = true;
         }
@@ -583,11 +587,11 @@ export abstract class ChannelViewModel extends ObservableBase implements IDispos
             //     messageBeingRemoved.dispose();
             // }
 
-            if (!(options?.seen ?? false)) {
-                if (this.canPingAccordingToFilters(filterClasses)) {
+            if (!messageAlreadySeen) {
+                if (!isFromReplay && this.canPingAccordingToFilters(filterClasses)) {
                     this.pingIfNecessary(message);
                 }
-                if (!(options?.bypassUnseenCount ?? false)) {
+                if (!bypassUnseenCount) {
                     if (this.canBeUnseenAccordingToFilters(filterClasses)) {
                         this.increaseUnseenCountIfNecessary();
                     }
@@ -771,12 +775,63 @@ export abstract class ChannelViewModel extends ObservableBase implements IDispos
         }
     }
 
+    private _lastSeenMessage: ChannelMessageViewModel | null = null;
+    private _firstUnseenMessage: ChannelMessageViewModel | null = null;
+
     protected onIsTabActiveChanged() { 
         if (this.isTabActive) {
             this.clearPings();
             //this.hasPing = false;
             this.unseenMessageCount = 0;
             this.ensureSelectableFilterSelected();
+            this.flagLastSeenMessage();
+        }
+        else {
+            let lastMsg: ChannelMessageViewModel | null = this.getCurrentLastMessage();;
+            this._lastSeenMessage = lastMsg;
+            this._firstUnseenMessage = null;
+            this.logger.logInfo("Last seen message", lastMsg);
+        }
+    }
+
+    private getCurrentLastMessage() {
+        let lastMsg: ChannelMessageViewModel | null = null;
+        for (let msg of this.messages.iterateValues())
+        {
+            lastMsg = msg.value;
+        }
+        return lastMsg;
+    }
+
+    private flagLastSeenMessage() {
+        if (this._lastSeenMessage) {
+            const curLastMessage = this.getCurrentLastMessage();
+
+            let lastWasFlagged = false;
+            for (let msg of this.messages.iterateValues())
+            {
+                if (msg.value == this._lastSeenMessage && msg.value != curLastMessage) {
+                    msg.value.isLastSeenMessage = true;
+                    msg.value.isFirstUnseenMessage = false;
+                    lastWasFlagged = true;
+                    this.logger.logInfo("marked last seen message", msg.value);
+                }
+                else if (lastWasFlagged) {
+                    msg.value.isFirstUnseenMessage = true;
+                    msg.value.isLastSeenMessage = false;
+                    lastWasFlagged = false;
+                }
+                else {
+                    msg.value.isFirstUnseenMessage = false;
+                    msg.value.isLastSeenMessage = false;
+                }
+            }
+        }
+        else {
+            for (let msg of this.messages.iterateValues()) {
+                msg.value.isFirstUnseenMessage = false;
+                msg.value.isLastSeenMessage = false;
+            }
         }
     }
 
@@ -1265,6 +1320,12 @@ export class ChannelMessageViewModel extends ObservableBase implements IDisposab
 
     @observableProperty
     collapsed: boolean | null = true;
+
+    @observableProperty
+    isLastSeenMessage: boolean = false;
+
+    @observableProperty
+    isFirstUnseenMessage: boolean = false;
 
     serializeForLog(): SerializedChannelMessageViewModel {
         return {

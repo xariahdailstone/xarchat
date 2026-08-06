@@ -76,7 +76,7 @@ export class AppInitializeViewModel extends DialogViewModel<void> {
                                 case UpdateCheckerState.UpdateReadyMustUpdate:
                                     this.action = "Restarting to apply update...";
                                     await this.parent.relaunchToApplyUpdateAsync();
-                                    HostInterop.closeWindow();
+                                    this.parent.closeApplicationAsync({ bypassPrompt: true });
                                     throw new OperationCancelledError("Relaunching to apply update");
                                     break;
                                 case UpdateCheckerState.UpdateAvailable:
@@ -103,7 +103,7 @@ export class AppInitializeViewModel extends DialogViewModel<void> {
                                             );
                                         if (goToDownloadPage) {
                                             await this.launchUpdateUrlAsync();
-                                            HostInterop.closeWindow();
+                                            this.parent.closeApplicationAsync({ bypassPrompt: true });
                                             throw new Error("opted for update");
                                         }
                                         exitLoop = true;
@@ -134,7 +134,7 @@ export class AppInitializeViewModel extends DialogViewModel<void> {
                                         if (goToDownloadPage) {
                                             await this.launchUpdateUrlAsync();
                                         }
-                                        HostInterop.closeWindow();
+                                        this.parent.closeApplicationAsync({ bypassPrompt: true });
                                         throw new Error("required update");
                                     }
                                     break;
@@ -191,7 +191,7 @@ export class AppInitializeViewModel extends DialogViewModel<void> {
                 }
                 finally {
                     if (this.parent.logins.length == 0) {
-                        HostInterop.closeWindow();
+                        this.parent.closeApplicationAsync({ bypassPrompt: true });
                     }
                 }
             }

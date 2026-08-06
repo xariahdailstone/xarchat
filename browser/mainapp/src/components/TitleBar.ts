@@ -74,6 +74,6 @@ export class TitleBar extends ComponentBase<AppViewModel> {
                 }
             }
         });
-        elClose.addEventListener("click", () => HostInterop.closeWindow());
+        elClose.addEventListener("click", () => this.viewModel?.closeApplicationAsync());
     }
 }

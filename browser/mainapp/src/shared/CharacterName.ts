@@ -80,6 +80,8 @@ export class CharacterName {
 
     static readonly SYSTEM = CharacterName.create("System");
 
+    static readonly XARBOT = CharacterName.create("XarBot");
+
     private constructor(
         canonical: string,
         value: string) {

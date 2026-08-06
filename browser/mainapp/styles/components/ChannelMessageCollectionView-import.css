@@ -20,6 +20,10 @@
     /* background: inherit; */
 }
 
+/* .is-last-seen-message {
+    background: pink !important;
+} */
+
 /*
 .messagecontainer::-webkit-scrollbar {
     width: 16px;
@@ -604,10 +608,18 @@
             font-style: normal;
         }
         & .message-content-container {
+            position: relative;
             display: flex;
             flex-direction: column;
             gap: 7px;
             padding-bottom: calc(var(--gap-size) / 2);
+
+            & x-lastseenindicator {
+                position: relative !important;
+                height: 0px;
+                margin-top: -9px;
+                margin-bottom: 2px;
+            }
 
             & .statusdot { display: none; }
             & .character-status-spacer { display: none; }

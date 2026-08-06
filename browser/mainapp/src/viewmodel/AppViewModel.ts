@@ -1,4 +1,4 @@
-import { ConfigSchema, ConfigSchemaScopeType, getConfigSchemaItemById } from "../configuration/ConfigSchemaItem.js";
+import { ConfigSchema, ConfigSchemaDefinition, ConfigSchemaItemDefinition, ConfigSchemaItemDefinitionItem, ConfigSchemaScopeType, getConfigSchemaItemById } from "../configuration/ConfigSchemaItem.js";
 import { FListApi } from "../fchat/api/FListApi.js";
 import { HostInteropApi } from "../fchat/api/HostInteropApi.js";
 import { AppSettings } from "../settings/AppSettings.js";
@@ -28,7 +28,7 @@ import { PMConvoChannelViewModel } from "./PMConvoChannelViewModel.js";
 import { AboutViewModel } from "./dialogs/AboutViewModel.js";
 import { AlertOptions, AlertViewModel } from "./dialogs/AlertViewModel.js";
 import { AppInitializeViewModel } from "./dialogs/AppInitializeViewModel.js";
-import { DialogViewModel } from "./dialogs/DialogViewModel.js";
+import { DialogButtonStyle, DialogViewModel } from "./dialogs/DialogViewModel.js";
 import { PromptForStringOptions, PromptForStringViewModel, PromptOptions, PromptViewModel } from "./dialogs/PromptViewModel.js";
 import { SettingsDialogViewModel, SettingsLevel } from "./dialogs/SettingsDialogViewModel.js";
 import { ContextMenuPopupViewModel } from "./popups/ContextMenuPopupViewModel.js";
@@ -36,11 +36,13 @@ import { PopupViewModel } from "./popups/PopupViewModel.js";
 import { TooltipPopupViewModel } from "./popups/TooltipPopupViewModel.js";
 import { UIZoomNotifyPopupViewModel } from "./popups/UIZoomNotifyPopupViewModel.js";
 import { PlatformUtils } from "../util/PlatformUtils.js";
-import { InAppToastsViewModel, ToastInfo } from "./InAppToastsViewModel.js";
+import { InAppToastsViewModel, ToastCloseReason, ToastInfo } from "./InAppToastsViewModel.js";
 import { Scheduler } from "../util/Scheduler.js";
 import { AccountsFriendsAndBookmarksViewModel } from "./AccountsFriendsAndBookmarksViewModel.js";
 import { ObjectUniqueId } from "../util/ObjectUniqueId.js";
 import { UpdateInfoDialogViewModel } from "./dialogs/UpdateInfoDialogViewModel.js";
+import { DataCollectionOptInDialogViewModel } from "./dialogs/DataCollectionOptInDialogViewModel.js";
+import { EIconFavoriteBlockViewModel } from "./EIconFavoriteBlockViewModel.js";
 
 export class AppViewModel extends ObservableBase {
     constructor(configBlock: ConfigBlock) {
@@ -57,6 +59,8 @@ export class AppViewModel extends ObservableBase {
 
         //this.flistApi = new FListApiImpl();
         this.flistApi = new HostInteropApi();
+
+        this.eIconFavoriteBlockViewModel = new EIconFavoriteBlockViewModel(this);
 
         this.logins.addCollectionObserver(entries => {
             for (let entry of entries) {
@@ -138,6 +142,8 @@ export class AppViewModel extends ObservableBase {
         })();
 
         this._heldOEs.push(this.setupLocaleMonitoring());
+
+        this.initializeDataCollectionOptIn();
     }
 
     private readonly _heldOEs: IDisposable[] = [];
@@ -171,6 +177,10 @@ export class AppViewModel extends ObservableBase {
     readonly toasts: InAppToastsViewModel;
 
     readonly accountsFriendsAndBookmarks: AccountsFriendsAndBookmarksViewModel;
+
+    readonly eIconFavoriteBlockViewModel: EIconFavoriteBlockViewModel;
+
+    get blurEffectsEnabled() { return this.configBlock.get("global.enableBlurEffects"); }
 
     @observableProperty
     updateCheckerState: UpdateCheckerState = UpdateCheckerState.Unknown;
@@ -742,45 +752,22 @@ export class AppViewModel extends ObservableBase {
 
     private _currentNotificationAudio: HTMLAudioElement | null = null;
     soundNotification(event: AppNotifyEvent) {
+        const nsinfo = getNotificationSoundInfo(event.eventType);
+        if (event.activeLoginViewModel && event.activeLoginViewModel.isLoggingIn && nsinfo.isSuppressedDuringConnection) {
+            return;
+        }
+
         let fn: string | null = null;
 
         fn = this.getConfigEntryHierarchical(`sound.event.${event.eventType.toString()}`, event.activeLoginViewModel, event.channel) as (string | null);
 
-        if (this.getConfigSettingById("flashTaskbarButton") ?? true) {
-            let shouldFlashWindow: boolean;
-            switch (event.eventType) {
-                case AppNotifyEventType.CONNECTED:
-                case AppNotifyEventType.DISCONNECTED:
-                    shouldFlashWindow = false;
-                    break;
-                case AppNotifyEventType.HIGHLIGHT_MESSAGE_RECEIVED:
-                case AppNotifyEventType.PRIVATE_MESSAGE_RECEIVED:
-                    shouldFlashWindow = true;
-                    break;
-            }
-            if (shouldFlashWindow) {
-                HostInterop.flashWindow();
-            }
+        if ((this.getConfigSettingById("flashTaskbarButton") ?? true) && nsinfo.shouldFlashWindow) {
+            HostInterop.flashWindow();
         }
 
         if (fn == null || fn == "default:")
         {
-            switch (event.eventType) {
-                case AppNotifyEventType.CONNECTED:
-                    fn = "default_connect.mp3";
-                    break;
-                case AppNotifyEventType.DISCONNECTED:
-                    fn = "default_disconnect.mp3";
-                    break;
-                case AppNotifyEventType.HIGHLIGHT_MESSAGE_RECEIVED:
-                    fn = "default_highlightrecv.mp3";
-                    break;
-                case AppNotifyEventType.PRIVATE_MESSAGE_RECEIVED:
-                default:
-                    fn = "default_pmrecv.mp3";
-                    break;
-            }
-            fn = `assets/sfx/${fn}`;
+            fn = `assets/sfx/${nsinfo.defaultFilename}`;
         }
         else if (fn == "none:") {
             fn = "";
@@ -816,8 +803,118 @@ export class AppViewModel extends ObservableBase {
         vm.mustUpdate = mustUpdate;
         vm.changelogBBCode = changelogBBCode;
         const resp = await this.showDialogAsync(vm);
-
     }
+
+    async closeApplicationAsync(options?: CloseApplicationOptions): Promise<void> {
+        const shouldPrompt = this.getConfigSettingById("promptOnWindowClose");
+        if (shouldPrompt && !(options?.bypassPrompt ?? false)) {
+            const dontAskAgain = { label: "Don't ask me again", checked: false };
+
+            const resp = await this.promptAsync<boolean>({
+                title: "Confirm Exit",
+                message: "Are you sure you want to close XarChat?",
+                checkboxes: [ dontAskAgain ],
+                buttons: [
+                    { title: "Yes", resultValue: true, style: DialogButtonStyle.DEFAULT },
+                    { title: "No", resultValue: false, style: DialogButtonStyle.CANCEL }
+                ],
+                closeBoxResult: false
+            });
+
+            if (dontAskAgain.checked) {
+                this.setConfigSettingById("promptOnWindowClose", false);
+            }
+            if (!resp) {
+                return;
+            }
+        }
+        HostInterop.closeWindow();
+    }
+
+    private async showDataCollectionOptInDialog(items: DataCollectionOptInPair[]) {
+        const vm = new DataCollectionOptInDialogViewModel(this, items);
+        await this.showDialogAsync(vm);
+    }
+
+    private initializeDataCollectionOptIn() {
+        const results: DataCollectionOptInPair[] = [];
+        for (let x of ConfigSchema.settings) {
+            if (x.items) {
+                for (let xy of this.initializeDataCollectionOptInForItem(x as ConfigSchemaItemDefinitionItem)) {
+                    results.push(xy);
+                }
+            }
+            else {
+                for (let xy of this.initializeDataCollectionOptInForItem(x as ConfigSchemaItemDefinitionItem)) {
+                    results.push(xy);
+                }
+            }
+        }
+
+        if (results.length > 0) {
+            this.toasts.addNewToast({ 
+                priority: 10,
+                canClose: false,
+                title: "New Settings to Review",
+                description: "There are new important settings you need to review.",
+                backgroundColor: "yellow",
+                color: "black",
+                buttons: [
+                    {
+                        title: "Review",
+                        onClick: async (info, vm) => {
+                            await this.showDataCollectionOptInDialog(results);
+                            vm.removeToast(info, ToastCloseReason.ToastClicked);
+                        }
+                    }
+                ]
+            });
+        }
+    }
+
+    private initializeDataCollectionOptInForItem(item: ConfigSchemaItemDefinition): DataCollectionOptInPair[] {
+        const result: DataCollectionOptInPair[] = [];
+
+        if (item.items) {
+            for (let subitem of item.items) {
+                const subpairs = this.initializeDataCollectionOptInForItem(subitem);
+                for (let subpair of subpairs) {
+                    result.push(subpair);
+                }
+            }
+        }
+        else {
+            const iitem = (item as ConfigSchemaItemDefinitionItem);
+            if (iitem.id && iitem.dataCollectionSettingRefId) {
+                const alreadyAcked = !!this.getConfigSettingById(iitem.id);
+                if (!alreadyAcked) {
+                    const refedItem = getConfigSchemaItemById(iitem.dataCollectionSettingRefId);
+                    if (refedItem) {
+                        result.push({ 
+                            notifySettingItem: iitem,
+                            actualSettingItem: refedItem, 
+                            getCurrentValue: () => !!this.getConfigSettingById(iitem.dataCollectionSettingRefId!),
+                            assignFunc: v => this.setConfigSettingById(iitem.dataCollectionSettingRefId!, v),
+                            markPrompted: () => this.setConfigSettingById(iitem.id!, true) });
+                    }
+                }
+            }
+        }
+
+        return result;
+    }
+}
+
+export interface DataCollectionOptInPair {
+    notifySettingItem: ConfigSchemaItemDefinitionItem;
+    actualSettingItem: ConfigSchemaItemDefinitionItem;
+    getCurrentValue: () => boolean;
+    assignFunc: (v: boolean) => void;
+    markPrompted: () => void;
+}
+
+export type CloseApplicationOptions = {
+    bypassPrompt?: boolean;
 }
 
 export type GetConfigSettingChannelViewModel = 
@@ -863,3 +960,49 @@ export class AppViewModelBBCodeSink implements BBCodeParseSink {
     }
 }
 
+
+interface NotificationSoundInfo {
+    eventType: AppNotifyEventType;
+    isSuppressedDuringConnection: boolean;
+    shouldFlashWindow: boolean;
+    defaultFilename: string;
+}
+
+const NOTIFICATION_SOUND_INFOS = new Map<AppNotifyEventType, NotificationSoundInfo>();
+function defineNotificationSound(info: NotificationSoundInfo) {
+    NOTIFICATION_SOUND_INFOS.set(info.eventType, info);
+}
+function getNotificationSoundInfo(eventType: AppNotifyEventType): NotificationSoundInfo {
+    const res = NOTIFICATION_SOUND_INFOS.get(eventType);
+    if (res) { return res; }
+    return {
+        eventType: eventType,
+        isSuppressedDuringConnection: false,
+        shouldFlashWindow: false,
+        defaultFilename: "default_highlightrecv.mp3"    
+    };
+}
+defineNotificationSound({
+    eventType: AppNotifyEventType.CONNECTED,
+    isSuppressedDuringConnection: false,
+    shouldFlashWindow: false,
+    defaultFilename: "default_connect.mp3"
+});
+defineNotificationSound({
+    eventType: AppNotifyEventType.DISCONNECTED,
+    isSuppressedDuringConnection: false,
+    shouldFlashWindow: false,
+    defaultFilename: "default_disconnect.mp3"
+});
+defineNotificationSound({
+    eventType: AppNotifyEventType.HIGHLIGHT_MESSAGE_RECEIVED,
+    isSuppressedDuringConnection: true,
+    shouldFlashWindow: true,
+    defaultFilename: "default_highlightrecv.mp3"
+});
+defineNotificationSound({
+    eventType: AppNotifyEventType.PRIVATE_MESSAGE_RECEIVED,
+    isSuppressedDuringConnection: true,
+    shouldFlashWindow: true,
+    defaultFilename: "default_pmrecv.mp3"
+});

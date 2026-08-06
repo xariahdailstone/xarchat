@@ -9,12 +9,22 @@ using XarChat.Backend.Features.IdleDetection;
 
 namespace XarChat.Backend.Win32.IdleDetection
 {
-    public class Win32IdleDetectionManagerImpl : IIdleDetectionManager
+    public class Win32IdleDetectionManagerImpl : IIdleDetectionManager, IDisposable
     {
+        private readonly CancellationTokenSource _disposeCTS = new CancellationTokenSource();
+
         public Win32IdleDetectionManagerImpl(
             ILogger<Win32IdleDetectionManagerImpl> logger)
         {
             this.Logger = logger;
+        }
+
+        public void Dispose()
+        {
+            if (!_disposeCTS.IsCancellationRequested)
+            {
+                _disposeCTS.Cancel();
+            }
         }
 
         private ILogger Logger { get; }
@@ -91,7 +101,7 @@ namespace XarChat.Backend.Win32.IdleDetection
 
         public void RegisterCallback(string name, TimeSpan idleAfter, Action<string, string> callback)
         {
-            var myLoopCts = new CancellationTokenSource();
+            var myLoopCts = CancellationTokenSource.CreateLinkedTokenSource(_disposeCTS.Token);
             lock (_registeredLoops)
             {
                 _registeredLoops[name] = myLoopCts;

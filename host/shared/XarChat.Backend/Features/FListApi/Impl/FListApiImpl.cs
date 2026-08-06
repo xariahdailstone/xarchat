@@ -29,6 +29,12 @@ namespace XarChat.Backend.Features.FListApi.Impl
 
         private readonly AsyncCache _cache = new AsyncCache(TimeSpan.FromSeconds(120), TimeSpan.FromSeconds(5));
 
+        private readonly AsyncPopulateCache<string, ApiTicket> _apiTicketCache
+            = new AsyncPopulateCache<string, ApiTicket>(TimeSpan.FromSeconds(5));
+
+        private readonly Dictionary<string, string> _accountPasswordCache
+            = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
         public async Task<KinksList> GetKinksListAsync(CancellationToken cancellationToken)
         {
             var cacheKey = "GetKinksListAsync";
@@ -236,7 +242,106 @@ namespace XarChat.Backend.Features.FListApi.Impl
 
         internal string WebsiteUrlBase => "https://www.f-list.net/";
 
+        private string AccountToApiTicketCacheKey(string account) => account.ToLowerInvariant();
+
         internal async Task<ValueWithCameFromCache<ApiTicket>> GetApiTicketAsync(
+            string account, string? password, bool verifyTicket, CancellationToken cancellationToken)
+        {
+            var cacheKey = AccountToApiTicketCacheKey(account);
+        TRYAGAIN:
+            var cte = await _apiTicketCache.GetOrCreateAsync(
+                key: cacheKey,
+                cancellationToken: cancellationToken,
+                onCreateValueFunc: async (cancellationToken) =>
+                {
+                    if (password == null)
+                    {
+                        lock (_accountPasswordCache)
+                        {
+                            if (_accountPasswordCache.TryGetValue(cacheKey, out var cachedPassword))
+                            {
+                                password = cachedPassword;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        lock (_accountPasswordCache)
+                        {
+                            _accountPasswordCache[account] = password;
+                        }
+                    }
+
+                    if (password != null)
+                    {
+                        var apiTicket = await AcquireApiTicketAsync(account, password, cancellationToken);
+                        return GetFromCacheResult<string, ApiTicket>.Success(cacheKey, apiTicket, TimeSpan.FromDays(99));
+                    }
+                    else
+                    {
+                        throw new Exception("Credentials not set yet");
+                    }
+                });
+            
+            if (!cte.Result.IsSuccess)
+            {
+                throw new ApplicationException("Unable to acquire API ticket: " +
+                    cte.Result.Exception.Message);
+            }
+
+            if (cte.CameFromCache && verifyTicket)
+            {
+                try
+                {
+                    await VerifyApiTicketAsync(account, cte.Result.Value, cancellationToken);
+                }
+                catch
+                {
+                    await InvalidateApiTicketAsync(account, cte.Result.Value.Ticket, cancellationToken);
+                    goto TRYAGAIN;
+                }
+            }
+
+            return new ValueWithCameFromCache<ApiTicket>(cte.Result.Value, cte.CameFromCache);
+        }
+
+        private async Task<ApiTicket> AcquireApiTicketAsync(string account, string password, CancellationToken cancellationToken)
+        {
+            var hc = GetHttpClient();
+
+            var req = GetHttpRequestMessage(HttpMethod.Post, ApiUrlBase + "getApiTicket.php");
+            req.Content = new FormUrlEncodedContent(new List<KeyValuePair<string, string>>
+                {
+                    new KeyValuePair<string, string>("account", account),
+                    new KeyValuePair<string, string>("password", password),
+                    new KeyValuePair<string, string>("new_character_list", "true"),
+                });
+
+            System.Diagnostics.Debug.WriteLine("Acquiring new api ticket...");
+            var resp = await hc.SendAsync(req, cancellationToken);
+            resp.EnsureSuccessStatusCode();
+
+            var json = await resp.Content.ReadAsStringAsync();
+
+            var dynObj = JsonUtilities.Deserialize<JsonObject>(json, SourceGenerationContext.Default.JsonObject);
+
+            if (dynObj == null)
+            {
+                throw new ApplicationException($"GetApiTicket call failed, server returned null.");
+            }
+
+            var errMsg = (dynObj?.ContainsKey("error") ?? false) ? dynObj["error"]?.ToString() : "";
+            if (!String.IsNullOrEmpty(errMsg))
+            {
+                throw new FListApiErrorException(errMsg);
+            }
+
+            var result = dynObj.Deserialize<ApiTicket>(SourceGenerationContext.Default.ApiTicket)!;
+            System.Diagnostics.Debug.WriteLine($"Acquired new api ticket: {result.Ticket}");
+            return result;
+        }
+
+        internal async Task<ValueWithCameFromCache<ApiTicket>> GetApiTicketAsyncOLD(
             string account, string? password, bool verifyTicket, CancellationToken cancellationToken)
         {
         TRYAGAIN:
@@ -303,6 +408,17 @@ namespace XarChat.Backend.Features.FListApi.Impl
         }
 
         internal async Task InvalidateApiTicketAsync(string account, string ifTicket, CancellationToken cancellationToken)
+        {
+            var cacheKey = AccountToApiTicketCacheKey(account);
+            var gfcr = await _apiTicketCache.TryGetAsync(cacheKey, cancellationToken);
+            if (gfcr is not null
+                && gfcr.Value.Result.ExpiresAt > DateTime.UtcNow)
+            {
+                await _apiTicketCache.EvictIfEqualAsync(cacheKey, gfcr.Value.UniqueCacheEntryId, cancellationToken);
+            }
+        }
+
+        internal async Task InvalidateApiTicketAsyncOLD(string account, string ifTicket, CancellationToken cancellationToken)
         {
             var cte = await _cache.GetOrCreateAsync<CachedApiTicketEntry>($"apiTicket-{account.ToLower()}", async () =>
             {

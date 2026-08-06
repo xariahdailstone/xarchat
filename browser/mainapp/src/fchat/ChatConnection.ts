@@ -12,6 +12,8 @@ export interface ChatConnection extends IDisposable {
 
     readonly extendedFeaturesEnabled: boolean;
 
+    addIdTokenReceivedHandler(callback: (token: string) => any): IDisposable;
+
     debug_injectReceivedMessage(message: string): void;
     debug_outputMessage(message: string): void;
     
@@ -66,6 +68,7 @@ export interface ChatConnection extends IDisposable {
 
     ignoreCharacterAsync(character: CharacterName): Promise<void>;
     unignoreCharacterAsync(character: CharacterName): Promise<void>;
+    unignoreAllCharactersAsync(): Promise<void>;
     notifyIgnoredAsync(character: CharacterName): Promise<void>;
 
     performPartnerSearchAsync(args: PartnerSearchArgs): Promise<PartnerSearchResult>;

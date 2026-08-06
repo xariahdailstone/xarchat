@@ -83,6 +83,11 @@ using XarChat.Backend.Features.IdleDetection;
 using XarChat.Backend.Features.NotificationBadge;
 using XarChat.Backend.Features.FileChooser;
 using XarChat.Backend.Features.LocaleList;
+using XarChat.Backend.UrlHandlers.AllComponentsScript;
+using Microsoft.Extensions.Hosting;
+using XarChat.Backend.Features.XDNApiKeyManager;
+using XarChat.Backend.Features.XDNApiKeyManager.Impl;
+using XarChat.Backend.Features.DebugLogCapture;
 
 namespace XarChat.Backend
 {
@@ -139,71 +144,80 @@ namespace XarChat.Backend
 
         public async Task RunAsync(Action<string> startupLogWriter, CancellationToken cancellationToken)
         {
-            startupLogWriter("XarChatBackend.RunAsync - setting MinThreads");
-            ThreadPool.SetMinThreads(
-                Math.Min(20, System.Environment.ProcessorCount),
-                Math.Min(20, System.Environment.ProcessorCount));
-            //ThreadPool.SetMinThreads(100, 100);
-
-            startupLogWriter("XarChatBackend.RunAsync - creating webapp builder");
-            var builder = WebApplication.CreateSlimBuilder();
-
-            startupLogWriter("XarChatBackend.RunAsync - configuring Kestrel");
-            builder.WebHost.UseKestrel(options =>
+            try
             {
-                options.Limits.Http2.MaxStreamsPerConnection = 1_000_000;
-                options.Limits.MaxConcurrentConnections = 1_000_000;
+                startupLogWriter("XarChatBackend.RunAsync - setting MinThreads");
+                ThreadPool.SetMinThreads(
+                    Math.Min(20, System.Environment.ProcessorCount),
+                    Math.Min(20, System.Environment.ProcessorCount));
+                //ThreadPool.SetMinThreads(100, 100);
 
-                var sscert = GetSelfSignedCertificate();
+                startupLogWriter("XarChatBackend.RunAsync - creating webapp builder");
+                var builder = WebApplication.CreateSlimBuilder();
 
-                var freePort = GetFreePort();
-
-                // Create an HTTP/1 listener for UI assets
-                options.Listen(System.Net.IPAddress.Loopback, freePort /* 0 */, configure =>
+                startupLogWriter("XarChatBackend.RunAsync - configuring Kestrel");
+                builder.WebHost.UseKestrel(options =>
                 {
-                    configure.UseHttps(sscert);
-                    configure.Protocols =
-                        Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http1AndHttp2;
+                    options.Limits.Http2.MaxStreamsPerConnection = 1_000_000;
+                    options.Limits.MaxConcurrentConnections = 1_000_000;
+
+                    var sscert = GetSelfSignedCertificate();
+
+                    var freePort = GetFreePort();
+
+                    // Create an HTTP/1 listener for UI assets
+                    options.Listen(System.Net.IPAddress.Loopback, freePort /* 0 */, configure =>
+                    {
+                        configure.UseHttps(sscert);
+                        configure.Protocols =
+                            Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http1AndHttp2;
+                    });
                 });
-            });
 
-            startupLogWriter("XarChatBackend.RunAsync - configuring app services");
-            ConfigureServices(builder);
+                startupLogWriter("XarChatBackend.RunAsync - configuring app services");
+                ConfigureServices(builder);
 
-            startupLogWriter("XarChatBackend.RunAsync - building app");
-            await using var app = builder.Build();
+                startupLogWriter("XarChatBackend.RunAsync - building app");
+                await using var app = builder.Build();
 
-            _serviceProviderTCS.SetResult(app.Services);
+                _serviceProviderTCS.SetResult(app.Services);
 
-            startupLogWriter("XarChatBackend.RunAsync - registering appstartup handler");
-            app.Lifetime.ApplicationStarted.Register(() =>
-            {
-                startupLogWriter("XarChatBackend.RunAsync.AppStartup - getting server instance");
-                var server = app.Services.GetRequiredService<IServer>();
-                var features = server.Features;
+                startupLogWriter("XarChatBackend.RunAsync - registering appstartup handler");
+                app.Lifetime.ApplicationStarted.Register(() =>
+                {
+                    startupLogWriter("XarChatBackend.RunAsync.AppStartup - getting server instance");
+                    var server = app.Services.GetRequiredService<IServer>();
+                    var features = server.Features;
 
-                startupLogWriter("XarChatBackend.RunAsync.AppStartup - getting asset port");
-                var port = GetServerAssetPort(features);
-                //var wsPort = GetServerWSPort(features);
-                var wsPort = port;
-                System.Diagnostics.Debug.WriteLine($"port = {port}");
+                    startupLogWriter("XarChatBackend.RunAsync.AppStartup - getting asset port");
+                    var port = GetServerAssetPort(features);
+                    //var wsPort = GetServerWSPort(features);
+                    var wsPort = port;
+                    System.Diagnostics.Debug.WriteLine($"port = {port}");
 
-                startupLogWriter($"XarChatBackend.RunAsync.AppStartup - exposing asset port ({port},{wsPort})");
-                _portNumber.SetResult((port, wsPort));
-            });
-            using var reg = cancellationToken.Register(() =>
-            {
-                app.Lifetime.StopApplication();
-            });
+                    startupLogWriter($"XarChatBackend.RunAsync.AppStartup - exposing asset port ({port},{wsPort})");
+                    _portNumber.SetResult((port, wsPort));
+                });
+                using var reg = cancellationToken.Register(() =>
+                {
+                    System.Diagnostics.Debug.WriteLine($"Requesting application stop...");
+                    app.Lifetime.StopApplication();
+                    app.StopAsync();
+                    System.Diagnostics.Debug.WriteLine($"Requested application stop.");
+                });
 
-            startupLogWriter("XarChatBackend.RunAsync - starting eicon index populate");
-            _ = app.Services.GetService<IEIconIndex>()?.InitializeAsync(app.Lifetime.ApplicationStopping);
+                startupLogWriter("XarChatBackend.RunAsync - starting eicon index populate");
+                _ = app.Services.GetService<IEIconIndex>()?.InitializeAsync(app.Lifetime.ApplicationStopping);
 
-            startupLogWriter("XarChatBackend.RunAsync - configuring app");
-            Configure(startupLogWriter, app);
+                startupLogWriter("XarChatBackend.RunAsync - configuring app");
+                Configure(startupLogWriter, app);
 
-            startupLogWriter("XarChatBackend.RunAsync - calling runasync");
-            await app.RunAsync();
+                startupLogWriter("XarChatBackend.RunAsync - calling runasync");
+                await app.StartAsync(cancellationToken);
+                await app.WaitForShutdownAsync();
+                //await app.RunAsync();
+            }
+            catch when (cancellationToken.IsCancellationRequested) { }
         }
 
         private int GetServerAssetPort(IFeatureCollection features)
@@ -257,6 +271,8 @@ namespace XarChat.Backend
                     handler.MaxConnectionsPerServer = 2;
                     return handler;
                 });
+
+            services.AddRequestLogCapture();
 
             services.AddSingleton<IUpdateChecker>(_updateChecker);
 
@@ -349,6 +365,8 @@ namespace XarChat.Backend
 
             services.AddSingleton<IEIconFavoriteBlockManager, 
                 XarChat.Backend.Features.EIconFavoriteBlockManager.Impl.EIconFavoriteBlockManager>();
+
+            services.AddSingleton<IXDNApiKeyManager, DefaultXDNApiKeyManager>();
         }
 
         private void SetupXCHostCommandHandlers(IServiceCollection services)
@@ -394,6 +412,8 @@ namespace XarChat.Backend
         {
             try
             {
+                app.UseRequestLogCapture();
+
                 app.Use(async (httpContext, next) =>
                 {
                     var requestStartAt = DateTimeOffset.UtcNow;
@@ -443,6 +463,8 @@ namespace XarChat.Backend
 
                 startupLogWriter("XarChatBackend.Configure mapping /");
                 app.MapGet("/", () => "Hello world!");
+
+                app.UseAllComponentsScript();
 
                 startupLogWriter("XarChatBackend.Configure mapping app");
                 app.MapGet("/app/{*relPath}", async (

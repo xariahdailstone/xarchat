@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using XarChat.Backend.Features.AppFileServer.ContentZip;
 using XarChat.Backend.Features.MimeTypeMapper;
 
 namespace XarChat.Backend.Features.AppFileServer.FileSystem
@@ -38,20 +39,23 @@ namespace XarChat.Backend.Features.AppFileServer.FileSystem
             return Task.FromResult<IEnumerable<string>>(results);
         }
 
-        public Task<IResult> HandleRequestAsync(string relPath, CancellationToken cancellationToken)
+        public async Task<IResult> HandleRequestAsync(string relPath, CancellationToken cancellationToken)
         {
             var targetFn = Path.Combine(_baseDirectory, relPath);
             var fi = new FileInfo(targetFn);
             if (!fi.Exists ||
                 !fi.FullName.StartsWith(_baseDirectory, StringComparison.OrdinalIgnoreCase)) 
             {
-                return Task.FromResult<IResult>(Results.NotFound());
+                return Results.NotFound();
             }
 
-            return Task.FromResult<IResult>(Results.File(fi.FullName,
+            Stream s = File.OpenRead(fi.FullName);
+            s = await ContentZipAppFileServer.MaybeFixupStreamAsync(relPath, s, cancellationToken);
+
+            return Results.File(s,
                 contentType: _mimeTypeMapper.GetMimeType(fi.FullName),
                 fileDownloadName: null,
-                lastModified: fi.LastWriteTimeUtc));
+                lastModified: fi.LastWriteTimeUtc);
         }
 
         public async Task<string> GetFileContentAsStringAsync(string relPath, CancellationToken cancellationToken)
