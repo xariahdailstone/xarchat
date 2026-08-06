@@ -11,11 +11,15 @@
 
     background-color: color-mix(in srgb, var(--bg-level-3) 80%, transparent) ;
     backdrop-filter: var(--blur-8px);
+}
 
-    background-color: if(
-        style(--blur-disabled: true): var(--bg-level-3);
-        else: color-mix(in srgb, var(--bg-level-3) 80%, transparent);
-    )
+@supports (background-color: if(style(--blur-disabled: true): red; else: blue;)) {
+    :host {
+        background-color: if(
+            style(--blur-disabled: true): var(--bg-level-3);
+            else: color-mix(in srgb, var(--bg-level-3) 80%, transparent);
+        );
+    }
 }
 
 @supports not (backdrop-filter: blur(8px)) {
