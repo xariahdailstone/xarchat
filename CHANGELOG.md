@@ -127,3 +127,4 @@
 	chat server restart).
 * Added ARM64 builds for XarChat for Windows and Linux
 * Fixed blocked eicons incorrectly showing as unblurred in newly received messages
+* Removed logging of chat ads (there wasn't a way to view them in the log search anyway!)

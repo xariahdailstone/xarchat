@@ -3,22 +3,24 @@ using XarChat.Backend.Common.DbSchema;
 
 namespace XarChat.Backend.Features.ChatLogging.Sqlite.Migrations
 {
-    internal class Migration08RemoveUnusedIndexes : MigrationBase
+    internal class Migration09RemoveLoggedAds : MigrationBase
     {
-        protected override int Version => 8;
+        protected override int Version => 9;
 
         public override bool VacuumAfterMigration => true;
 
         protected override async Task UpgradeSchema(SqliteConnection cnn, SqliteTransaction xa, CancellationToken cancellationToken)
         {
-            UpdateMigrationStatus("Removing unneeded message indexes");
-
+            // Delete ads
+            UpdateMigrationStatus("Removing ads from log");
             await ExecuteNonQueryAsync(
-                @"DROP INDEX ix_channelmessage_bytextstringid",
+                @"DELETE FROM channelmessage WHERE messagetype = 1",
                 cnn, xa, cancellationToken);
 
+            // Remove unreferenced strings
+            UpdateMigrationStatus("Removing unnecessary message text");
             await ExecuteNonQueryAsync(
-                @"DROP INDEX ix_channelmessage_ordered",
+                @"DELETE FROM strings WHERE NOT EXISTS (SELECT textstringid FROM channelmessage)",
                 cnn, xa, cancellationToken);
         }
     }

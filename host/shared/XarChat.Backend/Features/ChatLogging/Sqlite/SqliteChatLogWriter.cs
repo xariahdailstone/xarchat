@@ -68,19 +68,21 @@ namespace XarChat.Backend.Features.ChatLogging.Sqlite
         {
             try
             {
-                startupTaskUpdateStatus(false, "Migrating chat log format...", null);
+                startupTaskUpdateStatus(false, "Migrating chat log...", null);
 
                 _cnn = await DbSchemaManager.VerifySchemaAsync(fn, false,
                     [
                         new Migration01Initial(),
-                            new Migration02AddSchemaVersionTable(),
-                            new Migration03AddGenderStatusToMessageLog(),
-                            new Migration04AddGenderStatusToPMLog(),
-                            new Migration05MovePMConvosToChannels(),
-                            new Migration06RemoveFullTextIndex(),
-                            new Migration07UseBlobStringHashes(),
-                            new Migration08RemoveUnusedIndexes()
-                        ],
+                        new Migration02AddSchemaVersionTable(),
+                        new Migration03AddGenderStatusToMessageLog(),
+                        new Migration04AddGenderStatusToPMLog(),
+                        new Migration05MovePMConvosToChannels(),
+                        new Migration06RemoveFullTextIndex(),
+                        new Migration07UseBlobStringHashes(),
+                        new Migration08RemoveUnusedIndexes(),
+                        new Migration09RemoveLoggedAds()
+                    ],
+                    (status) => startupTaskUpdateStatus(false, $"Migrating chat log ({status})...", null),
                     _disposeCTS.Token);
 
                 startupTaskUpdateStatus(true, "Chat log is ready.", null);
@@ -406,6 +408,11 @@ namespace XarChat.Backend.Features.ChatLogging.Sqlite
             CancellationToken cancellationToken)
         {
             var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+            if (messageType == 1) // Ad
+            {
+                return;
+            }
 
             var result = await WithSemaphore(
                 cancellationToken: cancellationToken,

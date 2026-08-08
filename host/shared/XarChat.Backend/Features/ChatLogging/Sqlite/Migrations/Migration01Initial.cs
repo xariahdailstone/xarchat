@@ -16,6 +16,8 @@ namespace XarChat.Backend.Features.ChatLogging.Sqlite.Migrations
 
         protected override async Task UpgradeSchema(SqliteConnection cnn, SqliteTransaction xa, CancellationToken cancellationToken)
         {
+            UpdateMigrationStatus("Preparing initial database");
+
             await ExecuteNonQueryAsync(@"
                     create table strings (
                         id integer primary key,

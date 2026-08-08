@@ -14,6 +14,8 @@ namespace XarChat.Backend.Features.ChatLogging.Sqlite.Migrations
 
         protected override async Task UpgradeSchema(SqliteConnection cnn, SqliteTransaction xa, CancellationToken cancellationToken)
         {
+            UpdateMigrationStatus("Optimizing message text storage");
+
             cnn.CreateFunction("base64_encode", (byte[] data) => Convert.ToBase64String(data));
             cnn.CreateFunction("base64_decode", (string data) => Convert.FromBase64String(data));
 
@@ -45,6 +47,7 @@ namespace XarChat.Backend.Features.ChatLogging.Sqlite.Migrations
                 ",
                 cnn, xa, cancellationToken);
 
+            UpdateMigrationStatus("Indexing message text storage");
             await ExecuteNonQueryAsync(
                 @"CREATE UNIQUE INDEX ix_strings_bhash ON strings(bhash)
                 ",
