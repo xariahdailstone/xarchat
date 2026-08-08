@@ -9,6 +9,8 @@ namespace XarChat.Backend.Features.ChatLogging.Sqlite.Migrations
 
         protected override async Task UpgradeSchema(SqliteConnection cnn, SqliteTransaction xa, CancellationToken cancellationToken)
         {
+            UpdateMigrationStatus("Adding gender/online status info to message log");
+
             await ExecuteNonQueryAsync(
                 @"ALTER TABLE channelmessage
                     ADD genderid INTEGER NOT NULL DEFAULT 0",

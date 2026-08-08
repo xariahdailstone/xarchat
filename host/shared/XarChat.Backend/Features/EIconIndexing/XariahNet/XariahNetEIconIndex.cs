@@ -557,6 +557,7 @@ namespace XarChat.Backend.Features.EIconIndexing.XariahNet
                     new EIconIndexMigration02AddSchemaVersionTable(),
                     new EIconIndexMigration03AddImageChangeData()
                 ],
+                (msg) => { },
                 cancellationToken);
             return result;
         }

@@ -923,7 +923,8 @@ export class ChatChannelViewModel extends ChannelViewModel implements IHasRightB
                 logMessageType = LogMessageType.CHAT;
                 break;
             case ChannelMessageType.AD:
-                logMessageType = LogMessageType.AD;
+                //logMessageType = LogMessageType.AD;
+                logMessageType = null;  // Don't log ads!
                 break;
             case ChannelMessageType.ROLL:
                 logMessageType = LogMessageType.ROLL;

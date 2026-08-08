@@ -88,6 +88,7 @@ using Microsoft.Extensions.Hosting;
 using XarChat.Backend.Features.XDNApiKeyManager;
 using XarChat.Backend.Features.XDNApiKeyManager.Impl;
 using XarChat.Backend.Features.DebugLogCapture;
+using XarChat.Backend.Features.ChatLogging.Sqlite.Importer;
 
 namespace XarChat.Backend
 {
@@ -286,6 +287,7 @@ namespace XarChat.Backend
             services.AddSingleton<IChatLogWriter>(sp => sp.GetRequiredService<SqliteChatLogWriter>());
             services.AddSingleton<IStartupTask>(sp => sp.GetRequiredService<SqliteChatLogWriter>().StartupTask);
             services.AddSingleton<IChatLogSearch, SqliteChatLogSearch>();
+            services.AddSingleton<IChatLogImporter, SqliteChatLogImporter>();
 
             //services.AddSingleton<IProxiedImageCache, ProxiedImageCache>();
             services.AddMemoryCache();
@@ -382,6 +384,7 @@ namespace XarChat.Backend
             services.AddXCHostCommandHandler<LogChannelMessageCommandHandler>("log.ChannelMessage");
             services.AddXCHostCommandHandler<LogPMConvoMessageCommandHandler>("log.PMConvoMessage");
             services.AddXCHostCommandHandler<GetChatLogSizeCommandHandler>("log.GetLogSize");
+            services.AddXCHostCommandHandler<ImportLogFileCommandHandler>("log.ImportFile");
             services.AddXCHostCommandHandler<EndCharacterSessionCommandHandler>("endCharacterSession");
             services.AddXCHostCommandHandler<UpdateAppBadgeCommandHandler>("updateAppBadge");
             services.AddXCHostCommandHandler<AddIdleMonitorRegistrationCommandHandler>("addIdleMonitorRegistration");

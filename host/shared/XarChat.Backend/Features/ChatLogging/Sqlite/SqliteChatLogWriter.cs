@@ -1,19 +1,24 @@
-﻿using Microsoft.Data.Sqlite;
+﻿using Microsoft.AspNetCore.Components.Forms;
+using Microsoft.Data.Sqlite;
 using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Reflection.Metadata;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 using XarChat.Backend.Common;
 using XarChat.Backend.Common.DbSchema;
 using XarChat.Backend.Features.AppConfiguration;
 using XarChat.Backend.Features.AppDataFolder;
 using XarChat.Backend.Features.ChatLogging.Sqlite.Migrations;
+using XarChat.Backend.Features.FListApi;
 using XarChat.Backend.Features.StartupTasks;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace XarChat.Backend.Features.ChatLogging.Sqlite
 {
@@ -68,19 +73,21 @@ namespace XarChat.Backend.Features.ChatLogging.Sqlite
         {
             try
             {
-                startupTaskUpdateStatus(false, "Migrating chat log format...", null);
+                startupTaskUpdateStatus(false, "Migrating chat log...", null);
 
                 _cnn = await DbSchemaManager.VerifySchemaAsync(fn, false,
                     [
                         new Migration01Initial(),
-                            new Migration02AddSchemaVersionTable(),
-                            new Migration03AddGenderStatusToMessageLog(),
-                            new Migration04AddGenderStatusToPMLog(),
-                            new Migration05MovePMConvosToChannels(),
-                            new Migration06RemoveFullTextIndex(),
-                            new Migration07UseBlobStringHashes(),
-                            new Migration08RemoveUnusedIndexes()
-                        ],
+                        new Migration02AddSchemaVersionTable(),
+                        new Migration03AddGenderStatusToMessageLog(),
+                        new Migration04AddGenderStatusToPMLog(),
+                        new Migration05MovePMConvosToChannels(),
+                        new Migration06RemoveFullTextIndex(),
+                        new Migration07UseBlobStringHashes(),
+                        new Migration08RemoveUnusedIndexes(),
+                        new Migration09RemoveLoggedAds()
+                    ],
+                    (status) => startupTaskUpdateStatus(false, $"Migrating chat log ({status})...", null),
                     _disposeCTS.Token);
 
                 startupTaskUpdateStatus(true, "Chat log is ready.", null);
@@ -142,8 +149,44 @@ namespace XarChat.Backend.Features.ChatLogging.Sqlite
             }
         }
 
+        internal async Task<T> WithSemaphore<T>(
+            Func<WithSemaphoreCallbackArgs, Task<T>> func,
+            CancellationToken cancellationToken)
+        {
+            ThrowIfDisposed();
+
+            await _sem.WaitAsync(cancellationToken);
+            try
+            {
+                ThrowIfDisposed();
+                var args = new WithSemaphoreCallbackArgs()
+                {
+                    Connection = _cnn!,
+                    CancellationToken = cancellationToken,
+                    DropAndReacquireAsync = async (ct) =>
+                    {
+                        _sem.Release();
+                        await _sem.WaitAsync(ct);
+                    }
+                };
+                var result = await func(args);
+                return result;
+            }
+            finally
+            {
+                _sem.Release();
+            }
+        }
+
+        internal class WithSemaphoreCallbackArgs
+        {
+            public required SqliteConnection Connection { get; init; }
+            public required CancellationToken CancellationToken { get; init; }
+            public required Func<CancellationToken, Task> DropAndReacquireAsync { get; init; }
+        }
+
         private async Task<long> GetCharacterIdAsync(
-            SqliteConnection connection, SqliteTransaction xa, string name, CancellationToken cancellationToken)
+            SqliteConnection connection, SqliteTransaction? xa, string name, CancellationToken cancellationToken)
         {
             using (var cmd = connection.CreateCommand())
             {
@@ -317,6 +360,279 @@ namespace XarChat.Backend.Features.ChatLogging.Sqlite
                 });
         }
 
+        public async Task EnsureCharactersAsync(
+            IAsyncEnumerable<string> characterNames, 
+            CancellationToken cancellationToken)
+        {
+            await WithSemaphore(
+                cancellationToken: cancellationToken,
+                func: async (connection, cancellationToken) =>
+                {
+                    using var xa = connection.BeginTransaction();
+                    await foreach (var c in characterNames)
+                    {
+                        _ = await GetCharacterIdAsync(connection, xa, c, cancellationToken);
+                    }
+                    await xa.CommitAsync(cancellationToken);
+                    return 0;
+                });
+        }
+
+        public async Task EnsureChannelsAsync(
+            IAsyncEnumerable<(string ChannelName, string ChannelTitle)> channels, 
+            CancellationToken cancellationToken)
+        {
+            await WithSemaphore(
+                cancellationToken: cancellationToken,
+                func: async (connection, cancellationToken) =>
+                {
+                    using var xa = connection.BeginTransaction();
+                    await foreach (var c in channels)
+                    {
+                        _ = await GetChannelIdForChannelAsync(connection, xa, c.ChannelName, c.ChannelTitle, cancellationToken);
+                    }
+                    await xa.CommitAsync(cancellationToken);
+                    return 0;
+                });
+        }
+
+        public async Task EnsurePMConvosAsync(
+            IAsyncEnumerable<(string MyCharacterName, string InterlocutorCharacterName)> pmConvos, 
+            CancellationToken cancellationToken)
+        {
+            await WithSemaphore(
+                cancellationToken: cancellationToken,
+                func: async (connection, cancellationToken) =>
+                {
+                    var charIdCache = new Dictionary<string, long>();
+
+                    using var xa = connection.BeginTransaction();
+                    await foreach (var c in pmConvos)
+                    {
+                        var myCharacterId = 
+                            charIdCache.TryGetValue(c.MyCharacterName, out var cachedCharId)
+                            ? cachedCharId
+                            : await GetCharacterIdAsync(connection, xa, c.MyCharacterName, cancellationToken);
+
+                        var interlocutorCharacterId = 
+                            charIdCache.TryGetValue(c.InterlocutorCharacterName, out cachedCharId)
+                            ? cachedCharId
+                            : await GetCharacterIdAsync(connection, xa, c.InterlocutorCharacterName, cancellationToken);
+
+                        charIdCache[c.MyCharacterName] = myCharacterId;
+                        charIdCache[c.InterlocutorCharacterName] = interlocutorCharacterId;
+                        _ = await GetChannelIdForPMConvoAsync(connection, xa, myCharacterId, interlocutorCharacterId, cancellationToken);
+                    }
+                    await xa.CommitAsync(cancellationToken);
+                    return 0;
+                });
+        }
+
+        private record CandidateChannelMessageInfo(
+            long ChannelId,
+            long SpeakingCharacterId,
+            int MessageType,
+            string MessageText,
+            DateTime Timestamp,
+            int SpeakerGenderId,
+            int SpeakerOnlineStatusId);
+
+        public async Task EnsureChannelMessagesAsync(
+            IAsyncEnumerable<EnsureChannelMessageInfo> channelMessages, 
+            CancellationToken cancellationToken)
+        {
+            await WithSemaphore(
+                cancellationToken: cancellationToken,
+                func: async (args) =>
+                {
+                    var connection = args.Connection;
+                    var cancellationToken = args.CancellationToken;
+
+                    var channelIdCache = new Dictionary<(string, string), long>();
+                    var characterIdCache = new Dictionary<string, long>();
+
+                    var xa = connection.BeginTransaction();
+                    try
+                    {
+                        async Task dropAndReacquire()
+                        {
+                            await xa.CommitAsync(cancellationToken);
+                            await args.DropAndReacquireAsync(cancellationToken);
+                            xa = connection.BeginTransaction();
+                            channelIdCache.Clear();
+                            characterIdCache.Clear();
+                        }
+                        var dropAndRequireAt = DateTime.UtcNow + TimeSpan.FromSeconds(10);
+
+                        await foreach (var cm in channelMessages)
+                        {
+                            var cacheKey = (cm.ChannelName, cm.ChannelTitle);
+                            var channelId = channelIdCache.TryGetValue(cacheKey, out var cachedId)
+                                ? cachedId
+                                : await this.GetChannelIdForChannelAsync(connection, xa, cm.ChannelName, cm.ChannelTitle, cancellationToken);
+
+                            channelIdCache[cacheKey] = channelId;
+
+                            var candidateMessage = new CandidateChannelMessageInfo(
+                                ChannelId: channelId,
+                                SpeakingCharacterId: characterIdCache.TryGetValue(cm.SpeakingCharacterName, out var cachedCharId)
+                                    ? cachedCharId
+                                    : await this.GetCharacterIdAsync(connection, xa, cm.SpeakingCharacterName, cancellationToken), // TODO
+                                MessageType: cm.MessageType,
+                                MessageText: cm.MessageText,
+                                Timestamp: cm.Timestamp,
+                                SpeakerGenderId: cm.SpeakerGenderId,
+                                SpeakerOnlineStatusId: cm.SpeakerOnlineStatusId);
+                            characterIdCache[cm.SpeakingCharacterName] = candidateMessage.SpeakingCharacterId;
+                            if (!(await DoesCandidateMessageExistAsync(connection, xa, candidateMessage, cancellationToken)))
+                            {
+                                await AddCandidateMessageAsync(connection, xa, candidateMessage, cancellationToken);
+                            }
+                            if (DateTime.UtcNow > dropAndRequireAt)
+                            {
+                                await dropAndReacquire();
+                                dropAndRequireAt = DateTime.UtcNow + TimeSpan.FromSeconds(10);
+                            }
+                        }
+                        await xa.CommitAsync(cancellationToken);
+                    }
+                    finally
+                    {
+                        await xa.DisposeAsync();
+                    }
+                    return 0;
+                });
+        }
+
+        public async Task EnsurePMConvoMessagesAsync(
+            IAsyncEnumerable<EnsurePMConvoMessageInfo> pmConvoMessages, 
+            CancellationToken cancellationToken)
+        {
+            await WithSemaphore(
+                cancellationToken: cancellationToken,
+                func: async (args) =>
+                {
+                    var connection = args.Connection;
+                    var cancellationToken = args.CancellationToken;
+
+                    var characterIdCache = new Dictionary<string, long>();
+                    var pmConvoChannelIdCache = new Dictionary<(string, string), long>();
+
+                    var xa = connection.BeginTransaction();
+                    try
+                    {
+                        async Task dropAndReacquire()
+                        {
+                            await xa.CommitAsync(cancellationToken);
+                            await args.DropAndReacquireAsync(cancellationToken);
+                            xa = connection.BeginTransaction();
+                            characterIdCache.Clear();
+                            pmConvoChannelIdCache.Clear();
+                        }
+                        var dropAndRequireAt = DateTime.UtcNow + TimeSpan.FromSeconds(10);
+
+                        await foreach (var cm in pmConvoMessages)
+                        {
+                            var cacheKey = (cm.MyCharacterName, cm.InterlocutorCharacterName);
+                            long pmConvoChannelId;
+                            if (!pmConvoChannelIdCache.TryGetValue(cacheKey, out var cachedId))
+                            {
+                                var myCharacterId = characterIdCache.TryGetValue(cm.MyCharacterName, out var cachedCharId)
+                                    ? cachedCharId
+                                    : await this.GetCharacterIdAsync(connection, xa, cm.MyCharacterName, cancellationToken);
+                                var interlocutorCharacterId = characterIdCache.TryGetValue(cm.InterlocutorCharacterName, out cachedCharId)
+                                    ? cachedCharId
+                                    : await this.GetCharacterIdAsync(connection, xa, cm.InterlocutorCharacterName, cancellationToken);
+
+                                characterIdCache[cm.MyCharacterName] = myCharacterId;
+                                characterIdCache[cm.InterlocutorCharacterName] = interlocutorCharacterId;
+
+                                pmConvoChannelId = await this.GetChannelIdForPMConvoAsync(connection, xa, myCharacterId, interlocutorCharacterId, cancellationToken);
+                            }
+                            else
+                            {
+                                pmConvoChannelId = cachedId;
+                            }
+
+                            pmConvoChannelIdCache[cacheKey] = pmConvoChannelId;
+
+                            var candidateMessage = new CandidateChannelMessageInfo(
+                                ChannelId: pmConvoChannelId,
+                                SpeakingCharacterId: characterIdCache.TryGetValue(cm.SpeakingCharacterName, out var cachedSpeakingCharId)
+                                    ? cachedSpeakingCharId
+                                    : await this.GetCharacterIdAsync(connection, xa, cm.SpeakingCharacterName, cancellationToken),
+                                MessageType: cm.MessageType,
+                                MessageText: cm.MessageText,
+                                Timestamp: cm.Timestamp,
+                                SpeakerGenderId: cm.SpeakerGenderId,
+                                SpeakerOnlineStatusId: cm.SpeakerOnlineStatusId);
+                            characterIdCache[cm.SpeakingCharacterName] = candidateMessage.SpeakingCharacterId;
+                            if (!(await DoesCandidateMessageExistAsync(connection, xa, candidateMessage, cancellationToken)))
+                            {
+                                await AddCandidateMessageAsync(connection, xa, candidateMessage, cancellationToken);
+                            }
+                            if (DateTime.UtcNow > dropAndRequireAt)
+                            {
+                                await dropAndReacquire();
+                                dropAndRequireAt = DateTime.UtcNow + TimeSpan.FromSeconds(10);
+                            }
+                        }
+                        await xa.CommitAsync(cancellationToken);
+                    }
+                    finally
+                    {
+                        await xa.DisposeAsync();
+                    }
+                    return 0;
+                });
+        }
+
+        private async Task<bool> DoesCandidateMessageExistAsync(
+            SqliteConnection connection, SqliteTransaction xa, CandidateChannelMessageInfo ccmi, CancellationToken cancellationToken)
+        {
+            //var hashBytes = SHA256.Create().ComputeHash(System.Text.Encoding.UTF8.GetBytes(ccmi.MessageText));
+
+            await using var cmd = connection.CreateCommand();
+            cmd.Transaction = xa;
+            cmd.CommandText = @"
+                SELECT 1
+                FROM channelmessage cm
+                INNER JOIN strings s ON s.id = cm.textstringid
+                WHERE cm.channelid = @channelId AND cm.speakingcharacterid = @speakingCharacterId 
+                    AND cm.messagetype = @messageType
+                    AND cm.timestamp = @timestamp AND s.value = @messageText";
+            cmd.Parameters.Add("@channelId", SqliteType.Integer).Value = ccmi.ChannelId;
+            cmd.Parameters.Add("@speakingCharacterId", SqliteType.Integer).Value = ccmi.SpeakingCharacterId;
+            cmd.Parameters.Add("@messageType", SqliteType.Integer).Value = ccmi.MessageType;
+            cmd.Parameters.Add("@timestamp", SqliteType.Integer).Value = new DateTimeOffset(ccmi.Timestamp, TimeSpan.Zero).ToUnixTimeMilliseconds();
+            cmd.Parameters.Add("@messageText", SqliteType.Text).Value = ccmi.MessageText;
+
+            var xResult = await cmd.ExecuteScalarAsync(cancellationToken);
+            return !(xResult is null || xResult is DBNull);
+        }
+
+        private async Task AddCandidateMessageAsync(
+            SqliteConnection connection, SqliteTransaction xa, CandidateChannelMessageInfo ccmi, CancellationToken cancellationToken)
+        {
+            var textStringId = await this.GetStringIdAsync(connection, xa, ccmi.MessageText, cancellationToken);
+
+            await using var cmd = connection.CreateCommand();
+            cmd.Transaction = xa;
+            cmd.CommandText = @"
+                INSERT INTO channelmessage (channelid, speakingcharacterid, messagetype, textstringid,
+                    timestamp, genderid, onlinestatusid)
+                VALUES
+                    (@channelId, @speakingCharacterId, @messageType, @textStringId, @timestamp, @genderId, @onlineStatusId)";
+            cmd.Parameters.Add("@channelId", SqliteType.Integer).Value = ccmi.ChannelId;
+            cmd.Parameters.Add("@speakingCharacterId", SqliteType.Integer).Value = ccmi.SpeakingCharacterId;
+            cmd.Parameters.Add("@messageType", SqliteType.Integer).Value = ccmi.MessageType;
+            cmd.Parameters.Add("@textStringId", SqliteType.Integer).Value = textStringId;
+            cmd.Parameters.Add("@timestamp", SqliteType.Integer).Value = new DateTimeOffset(ccmi.Timestamp, TimeSpan.Zero).ToUnixTimeMilliseconds();
+            cmd.Parameters.Add("@genderId", SqliteType.Integer).Value = ccmi.SpeakerGenderId;
+            cmd.Parameters.Add("@onlineStatusId", SqliteType.Integer).Value = ccmi.SpeakerOnlineStatusId;
+            await cmd.ExecuteNonQueryAsync(cancellationToken);
+        }
+
         public async Task ClearDatabaseAsync(CancellationToken cancellationToken)
         {
             var result = await WithSemaphore(
@@ -406,6 +722,11 @@ namespace XarChat.Backend.Features.ChatLogging.Sqlite
             CancellationToken cancellationToken)
         {
             var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+            if (messageType == 1) // Ad
+            {
+                return;
+            }
 
             var result = await WithSemaphore(
                 cancellationToken: cancellationToken,

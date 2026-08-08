@@ -1,4 +1,5 @@
-﻿using XarChat.Backend.Features.ChatLogging;
+﻿using System.Runtime.InteropServices;
+using XarChat.Backend.Features.ChatLogging;
 using static XarChat.Backend.UrlHandlers.XCHostFunctions.WebSocketXCHostSession;
 
 namespace XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.ChatLogging

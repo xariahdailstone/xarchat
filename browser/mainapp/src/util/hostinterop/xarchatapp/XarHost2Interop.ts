@@ -655,6 +655,19 @@ export class XarHost2Interop implements IXarHost2HostInterop {
         }));
     }
 
+    async performLogFileImportAsync(onStatusUpdate: (msg: string) => any): Promise<void> {
+        await this.writeToXCHostSocketAndRead("log.importfile",
+            (cmd, data) => {
+                if (cmd == "log.importmessage") {
+                    onStatusUpdate(data);
+                    return true;
+                }
+                else {
+                    return false;
+                }
+            });
+    }
+
     async getRecentLoggedChannelMessagesAsync(channelName: ChannelName, maxEntries: number): Promise<LogChannelMessage[]> {
         const lsrs = await this.logSearch.performSearchAsync(CharacterName.SYSTEM, LogSearchKind.Channels,
             channelName.value, DateAnchor.Before, new Date(), 200, CancellationToken.NONE);

@@ -11,6 +11,8 @@ namespace XarChat.Backend.Features.ChatLogging.Sqlite.Migrations
 
         protected override async Task UpgradeSchema(SqliteConnection cnn, SqliteTransaction xa, CancellationToken cancellationToken)
         {
+            UpdateMigrationStatus("Consolidating channel/PM logs");
+
             // Migrate to new channels table to include PM convos as channels
             await ExecuteNonQueryAsync(
                 @"CREATE TABLE channel_new (
@@ -104,6 +106,7 @@ namespace XarChat.Backend.Features.ChatLogging.Sqlite.Migrations
 
 
             // Add additional indexes for searching
+            UpdateMigrationStatus("Indexing channel/PM logs");
             await ExecuteNonQueryAsync(
                 @"CREATE INDEX ix_channelmessage_ordered on channelmessage(timestamp, textstringid)",
                 cnn, xa, cancellationToken);

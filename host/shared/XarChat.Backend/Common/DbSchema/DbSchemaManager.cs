@@ -13,6 +13,7 @@ namespace XarChat.Backend.Common.DbSchema
             string dbFilename,
             bool readOnly,
             IEnumerable<IMigration> migrations,
+            Action<string> updateStatusAction,
             CancellationToken cancellationToken)
         {
             var mode = readOnly ? "ReadOnly" : "ReadWriteCreate";
@@ -27,13 +28,14 @@ namespace XarChat.Backend.Common.DbSchema
                 {
                     foreach (var mig in migrations)
                     {
-                        var thisMigWantsVacuum = await mig.RunAsync(cnn, cancellationToken);
+                        var thisMigWantsVacuum = await mig.RunAsync(cnn, updateStatusAction, cancellationToken);
                         needVacuum = needVacuum || thisMigWantsVacuum;
                     }
                 }
 
                 if (needVacuum)
                 {
+                    updateStatusAction("Optimizing log storage");
                     try
                     {
                         using (var vacuumCmd = cnn.CreateCommand())
@@ -62,7 +64,10 @@ namespace XarChat.Backend.Common.DbSchema
     {
         bool VacuumAfterMigration { get; }
 
-        Task<bool> RunAsync(SqliteConnection sqliteConnection, CancellationToken cancellationToken);
+        Task<bool> RunAsync(
+            SqliteConnection sqliteConnection, 
+            Action<string> updateStatusAction,
+            CancellationToken cancellationToken);
     }
 
     internal abstract class MigrationBase : IMigration
@@ -110,20 +115,41 @@ namespace XarChat.Backend.Common.DbSchema
             }
         }
 
-        public async Task<bool> RunAsync(SqliteConnection sqliteConnection, CancellationToken cancellationToken)
+        private Action<string>? _updateStatusAction = null;
+        protected void UpdateMigrationStatus(string message)
         {
-            await using var xa = (SqliteTransaction)(await sqliteConnection.BeginTransactionAsync(cancellationToken));
-            var needsUpgrade = await NeedsUpgradeAsync(sqliteConnection, xa, cancellationToken);
-            if (needsUpgrade)
+            if (_updateStatusAction is not null)
             {
-                await UpgradeSchema(sqliteConnection, xa, cancellationToken);
-                await StoreSchemaVersionAsync(sqliteConnection, xa, cancellationToken);
-                await xa.CommitAsync(cancellationToken);
-                return this.VacuumAfterMigration;
+                _updateStatusAction($"V{this.Version}: {message}");
             }
-            else
+        }
+
+        public async Task<bool> RunAsync(
+            SqliteConnection sqliteConnection,
+            Action<string> updateStatusAction,
+            CancellationToken cancellationToken)
+        {
+            _updateStatusAction = updateStatusAction;
+            try
             {
-                return false;
+                UpdateMigrationStatus("Processing");
+                await using var xa = (SqliteTransaction)(await sqliteConnection.BeginTransactionAsync(cancellationToken));
+                var needsUpgrade = await NeedsUpgradeAsync(sqliteConnection, xa, cancellationToken);
+                if (needsUpgrade)
+                {
+                    await UpgradeSchema(sqliteConnection, xa, cancellationToken);
+                    await StoreSchemaVersionAsync(sqliteConnection, xa, cancellationToken);
+                    await xa.CommitAsync(cancellationToken);
+                    return this.VacuumAfterMigration;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+            finally
+            {
+                _updateStatusAction = null;
             }
         }
     }
