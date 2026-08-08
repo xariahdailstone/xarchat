@@ -7,11 +7,36 @@ using System.Threading.Tasks;
 
 namespace XarChat.Backend.Features.ChatLogging
 {
+    public record EnsureChannelMessageInfo(
+            string ChannelName,
+            string ChannelTitle,
+            int MessageType,
+            string SpeakingCharacterName,
+            string MessageText,
+            DateTime Timestamp,
+            int SpeakerGenderId,
+            int SpeakerOnlineStatusId);
+    public record EnsurePMConvoMessageInfo(
+            string MyCharacterName,
+            string InterlocutorCharacterName,
+            int MessageType,
+            string SpeakingCharacterName,
+            string MessageText,
+            DateTime Timestamp,
+            int SpeakerGenderId,
+            int SpeakerOnlineStatusId);
+
     public interface IChatLogWriter
     {
         Task<long> GetLogFileSizeAsync(CancellationToken cancellationToken);
 
         void EndLogSource(string myCharacterName);
+
+        Task EnsureCharactersAsync(IAsyncEnumerable<string> characterNames, CancellationToken cancellationToken);
+        Task EnsureChannelsAsync(IAsyncEnumerable<(string ChannelName, string ChannelTitle)> channels, CancellationToken cancellationToken);
+        Task EnsureChannelMessagesAsync(IAsyncEnumerable<EnsureChannelMessageInfo> channelMessages, CancellationToken cancellationToken);
+        Task EnsurePMConvosAsync(IAsyncEnumerable<(string MyCharacterName, string InterlocutorCharacterName)> pmConvos, CancellationToken cancellationToken);
+        Task EnsurePMConvoMessagesAsync(IAsyncEnumerable<EnsurePMConvoMessageInfo> pmConvoMessages, CancellationToken cancellationToken);
 
         Task LogChannelMessageAsync(
             string myCharacterName,
@@ -56,6 +81,14 @@ namespace XarChat.Backend.Features.ChatLogging
         //    string myCharacterName, string interlocutorName, CancellationToken cancellationToken);
 
         Task PerformExpirationAsync(CancellationToken cancellationToken);
+    }
+
+    public interface IChatLogImporter
+    {
+        Task ImportFromFileAsync(
+            string filename, 
+            Func<string, Task> writeStatusFunc,
+            CancellationToken cancellationToken);
     }
 
     public enum DateAnchor

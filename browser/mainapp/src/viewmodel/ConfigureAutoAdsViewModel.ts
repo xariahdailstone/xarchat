@@ -8,6 +8,7 @@ import { Collection } from "../util/ObservableCollection";
 import { ActiveLoginViewModel } from "./ActiveLoginViewModel";
 import { AppViewModel } from "./AppViewModel";
 import { DialogButtonStyle, DialogButtonViewModel, DialogViewModel } from "./dialogs/DialogViewModel";
+import { SlashCommandViewModel } from "./SlashCommandViewModel";
 
 export class ConfigureAutoAdsViewModel extends DialogViewModel<void> {
 
