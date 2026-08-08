@@ -54,6 +54,8 @@ export class NullHostInterop extends HostInteropBase implements IHostInterop {
     showDevTools(): void {
     }
 
+    async performLogFileImportAsync(onStatusUpdate: (msg: string) => any): Promise<void> {}
+
     logChannelMessage(myCharacterName: CharacterName, channelName: ChannelName, channelTitle: string, speakingCharacter: CharacterName, speakingCharacterGender: CharacterGender, speakingCharacterOnlineStatus: OnlineStatus, messageType: LogMessageType, messageText: string): void {
     }
 

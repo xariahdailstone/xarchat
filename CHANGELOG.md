@@ -127,3 +127,7 @@
 	chat server restart).
 * Added ARM64 builds for XarChat for Windows and Linux
 * Fixed blocked eicons incorrectly showing as unblurred in newly received messages
+* Removed logging of chat ads (there wasn't a way to view them in the log search anyway!)
+* Added an /importlogs command in the console to import messages from a backed up XarChat log
+  database file into the current log database file.
+  * Importing and exporting of XarChat logs for other F-Chat clients is coming soon!

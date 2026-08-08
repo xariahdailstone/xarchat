@@ -11,6 +11,8 @@ namespace XarChat.Backend.Features.ChatLogging.Sqlite.Migrations
 
         protected override async Task UpgradeSchema(SqliteConnection cnn, SqliteTransaction xa, CancellationToken cancellationToken)
         {
+            UpdateMigrationStatus("Removing full-text index");
+
             await ExecuteNonQueryAsync(
                 @"DROP TRIGGER strings_ad",
                 cnn, xa, cancellationToken);

@@ -1,7 +1,9 @@
 import { ConsoleCommand } from "../util/debugtools/ConsoleCommand";
+import { HostInterop } from "../util/hostinterop/HostInterop";
 import { URLUtils } from "../util/URLUtils";
 import { ActiveLoginViewModel } from "./ActiveLoginViewModel";
 import { ChannelViewModel } from "./ChannelViewModel";
+import { SlashCommandViewModel } from "./SlashCommandViewModel";
 
 export class ConsoleChannelViewModel extends ChannelViewModel {
     constructor(parent: ActiveLoginViewModel) {
@@ -50,5 +52,25 @@ export class ConsoleChannelViewModel extends ChannelViewModel {
         else {
             return await super.processCommandInternalAsync(command);
         }
+    }
+
+    getSlashCommands(): SlashCommandViewModel[] {
+        const result: SlashCommandViewModel[] = [
+            ...super.getSlashCommands(),
+            new SlashCommandViewModel(
+                ["importlogs"],
+                "Import XarChat Logs",
+                "Import logs from an external XarChat log file.",
+                [],
+                async (context, args) => {
+                    await HostInterop.performLogFileImportAsync(
+                        (msg) => {
+                            this.addSystemMessage(new Date(), msg);
+                        }
+                    );
+                }
+            ).withShowInHelp(true)
+        ];
+        return result;
     }
 }
