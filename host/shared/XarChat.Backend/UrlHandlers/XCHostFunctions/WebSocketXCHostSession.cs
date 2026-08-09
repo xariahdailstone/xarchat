@@ -768,6 +768,12 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions
             public int CharacterStatus { get; set; }
         }
 
+        public class ImportLogFileArgs
+        {
+            [JsonPropertyName("importType")]
+            public required string ImportType { get; set; }
+        }
+
         public class LogChannelMessageArgs
         {
             [JsonPropertyName("myCharacterName")]

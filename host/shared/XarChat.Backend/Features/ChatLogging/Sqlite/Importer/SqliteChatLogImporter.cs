@@ -5,17 +5,59 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Channels;
 using System.Xml.Linq;
+using XarChat.Backend.Features.AppDataFolder;
+using XarChat.Backend.Features.ChatLogging.FChat3.Importer;
+using XarChat.Backend.Features.FileChooser;
 
 namespace XarChat.Backend.Features.ChatLogging.Sqlite.Importer
 {
     internal class SqliteChatLogImporter : IChatLogImporter
     {
+        private readonly IFileChooser _fileChooser;
+        private readonly IAppDataFolder _appDataFolder;
         private readonly SqliteChatLogWriter _logWriter;
 
         public SqliteChatLogImporter(
+            IFileChooser fileChooser,
+            IAppDataFolder appDataFolder,
             SqliteChatLogWriter logWriter)
         {
+            _fileChooser = fileChooser;
+            _appDataFolder = appDataFolder;
             _logWriter = logWriter;
+        }
+
+        public async Task ImportAsync(
+            Func<string, Task> writeStatusFunc,
+            CancellationToken cancellationToken)
+        {
+            var fn = await _fileChooser.SelectLocalFileAsync(
+                    initialFile: null,
+                    filters: [
+                        new SelectLocalFileFilterEntry(
+                        Name: "XarChat Log File",
+                        Extensions: new List<string>() { "db" }
+                    )
+                    ],
+                    dialogTitle: "Select XarChat log file to import",
+                    cancellationToken: cancellationToken);
+            if (fn is null) { return; }
+
+            var fi = new FileInfo(fn);
+            var actualLogFile = new FileInfo(Path.Combine(_appDataFolder.GetAppDataFolder(), "chatlog.db"));
+
+            if (fi.FullName == actualLogFile.FullName)
+            {
+                throw new ApplicationException("That is the log file for the currently running copy of XarChat. Please choose " +
+                    "a different log file to import.");
+            }
+
+            await writeStatusFunc($"Beginning import of XarChat log file {fi.FullName}");
+            await this.ImportFromFileAsync(
+                fi.FullName,
+                writeStatusFunc,
+                cancellationToken);
+            await writeStatusFunc($"Log file import complete!");
         }
 
         public async Task ImportFromFileAsync(
@@ -27,27 +69,21 @@ namespace XarChat.Backend.Features.ChatLogging.Sqlite.Importer
             var version = await DetectLogFileVersion(inputCnn, cancellationToken);
 
             ILogFileVersionedReader reader;
-            switch (version)
+            if (version >= 1 && version <= 4)
             {
-                case 1: // initial
-                case 2: // add schema version table
-                case 3: // add gender/status to channel log
-                case 4: // add gender/status to PM log
-                    reader = new SplitTableLogFileVersionedReader(
+                reader = new SplitTableLogFileVersionedReader(
                         cnn: inputCnn,
-                        channelMessagesHaveGender: version >= 3, 
+                        channelMessagesHaveGender: version >= 3,
                         pmsHaveGender: version >= 4);
-                    break;
-                case 5: // combine channel/PM messages
-                case 6: // remove full text index
-                case 7: // use blob string hashes
-                case 8: // remove unused indexes
-                case 9: // remove logged ads
-                    reader = new CombinedTableLogFileVersionedReader(
+            }
+            else if (version >= 5)
+            {
+                reader = new CombinedTableLogFileVersionedReader(
                         cnn: inputCnn);
-                    break;
-                default:
-                    throw new ApplicationException($"Unhandled log file version: {version}");
+            }
+            else
+            {
+                throw new ApplicationException($"Unhandled log file version: {version}");
             }
 
             await writeStatusFunc($"Detected chat log version {version} format.");

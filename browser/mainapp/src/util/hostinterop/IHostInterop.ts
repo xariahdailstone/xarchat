@@ -37,7 +37,7 @@ export interface IHostInterop {
     closeWindow(): void;
     showDevTools(): void;
 
-    performLogFileImportAsync(onStatusUpdate: (msg: string) => any): Promise<void>;
+    performLogFileImportAsync(importType: string, onStatusUpdate: (msg: string) => any): Promise<void>;
 
     logChannelMessage(myCharacterName: CharacterName, channelName: ChannelName, channelTitle: string,
         speakingCharacter: CharacterName, speakingCharacterGender: CharacterGender, speakingCharacterOnlineStatus: OnlineStatus,

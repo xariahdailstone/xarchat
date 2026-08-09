@@ -29,7 +29,7 @@ import { AboutViewModel } from "./dialogs/AboutViewModel.js";
 import { AlertOptions, AlertViewModel } from "./dialogs/AlertViewModel.js";
 import { AppInitializeViewModel } from "./dialogs/AppInitializeViewModel.js";
 import { DialogButtonStyle, DialogViewModel } from "./dialogs/DialogViewModel.js";
-import { PromptForStringOptions, PromptForStringViewModel, PromptOptions, PromptViewModel } from "./dialogs/PromptViewModel.js";
+import { PromptDisplayStyle, PromptForStringOptions, PromptForStringViewModel, PromptOptions, PromptViewModel } from "./dialogs/PromptViewModel.js";
 import { SettingsDialogViewModel, SettingsLevel } from "./dialogs/SettingsDialogViewModel.js";
 import { ContextMenuPopupViewModel } from "./popups/ContextMenuPopupViewModel.js";
 import { PopupViewModel } from "./popups/PopupViewModel.js";
@@ -43,6 +43,7 @@ import { ObjectUniqueId } from "../util/ObjectUniqueId.js";
 import { UpdateInfoDialogViewModel } from "./dialogs/UpdateInfoDialogViewModel.js";
 import { DataCollectionOptInDialogViewModel } from "./dialogs/DataCollectionOptInDialogViewModel.js";
 import { EIconFavoriteBlockViewModel } from "./EIconFavoriteBlockViewModel.js";
+import { KeyCodes } from "../util/KeyCodes.js";
 
 export class AppViewModel extends ObservableBase {
     constructor(configBlock: ConfigBlock) {
@@ -230,6 +231,48 @@ export class AppViewModel extends ObservableBase {
 
     async relaunchToApplyUpdateAsync() {
         await HostInterop.relaunchToApplyUpdateAsync();
+    }
+
+    async performLogFileImportAsync(onStatusUpdate: (msg: string) => any) {
+        const importType = await this.promptAsync({
+            title: "Log Import",
+            message: "Use this tool to import logs into XarChat.  Please select what program you " +
+                "want to import logs from.",
+            promptDisplayStyle: PromptDisplayStyle.LargeSelections,
+            closeBoxResult: null,
+            buttons: [
+                {
+                    title: "XarChat",
+                    description: "Import log entries from a XarChat log database",
+                    resultValue: "xarchat",
+                    shortcutKeyCode: KeyCodes.KEY_X,
+                    style: DialogButtonStyle.NORMAL
+                },
+                {
+                    title: "F-Chat 3.0",
+                    description: "Import log entries from the official F-Chat 3.0 client application",
+                    resultValue: "fchat3",
+                    shortcutKeyCode: KeyCodes.KEY_F,
+                    style: DialogButtonStyle.NORMAL
+                },
+                {
+                    title: "Horizon",
+                    description: "Import log entries from F-Chat Horizon",
+                    resultValue: "horizon",
+                    shortcutKeyCode: KeyCodes.KEY_H,
+                    style: DialogButtonStyle.NORMAL
+                },
+                {
+                    title: "Cancel",
+                    description: "Do not import any logs",
+                    resultValue: null,
+                    shortcutKeyCode: KeyCodes.ESCAPE,
+                    style: DialogButtonStyle.CANCEL
+                }
+            ]
+        });
+        if (!importType) { return; }
+        return await HostInterop.performLogFileImportAsync(importType, onStatusUpdate);
     }
 
     @observableProperty

@@ -655,8 +655,8 @@ export class XarHost2Interop implements IXarHost2HostInterop {
         }));
     }
 
-    async performLogFileImportAsync(onStatusUpdate: (msg: string) => any): Promise<void> {
-        await this.writeToXCHostSocketAndRead("log.importfile",
+    async performLogFileImportAsync(importType: string, onStatusUpdate: (msg: string) => any): Promise<void> {
+        await this.writeToXCHostSocketAndRead("log.importfile " + JSON.stringify({ importType: importType }),
             (cmd, data) => {
                 if (cmd == "log.importmessage") {
                     onStatusUpdate(data);

@@ -35,6 +35,8 @@ ExtractIcon
 //AllocConsole
 //FreeConsole
 //CreateFileW
+SHBrowseForFolder
+SHGetPathFromIDListW
 BeginPaint
 EndPaint
 GetCursorPos
