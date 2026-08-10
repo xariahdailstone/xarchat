@@ -14,6 +14,9 @@ namespace XarChat.Backend.Photino.Services.WindowControl
 
         string? ShowFileChooser(
             string title, string defaultPath, IReadOnlyList<(string Name, string[] Extensions)> filters);
+
+        string? ShowDirectoryChooser(
+            string title, string defaultPath);
     }
 
     public class PhotinoWindowControl : IPhotinoWindowControl
@@ -103,6 +106,23 @@ namespace XarChat.Backend.Photino.Services.WindowControl
                 defaultPath: defaultPath,
                 multiSelect: false,
                 filters: filters.ToArray());
+            if (result is not null && result.Length > 0)
+            {
+                return result[0];
+            }
+            else
+            {
+                return null;
+            }
+        }
+
+        public string? ShowDirectoryChooser(
+            string title, string defaultPath)
+        {
+            var result = _photinoWindow.ShowOpenFolder(
+                title: title,
+                defaultPath: defaultPath,
+                multiSelect: false);
             if (result is not null && result.Length > 0)
             {
                 return result[0];
