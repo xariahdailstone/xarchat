@@ -17,19 +17,26 @@ export class PromptViewModel<TResult> extends DialogViewModel<TResult> {
         this.messageAsHtml = options.messageAsHtml ?? false;
         this.closeBoxResult = options.closeBoxResult;
 
-        for (let btnOptions of options.buttons) {
-            const buttonVm = new DialogButtonViewModel({
-                title: btnOptions.title,
-                shortcutKeyCode: btnOptions.shortcutKeyCode,
-                style: btnOptions.style,
-                onClick: () => {
-                    this.close(btnOptions.resultValue);
-                }
-            });
-            this.buttons.add(buttonVm);
+        if (options.promptDisplayStyle != PromptDisplayStyle.LargeSelections) {
+            for (let btnOptions of options.buttons) {
+                const buttonVm = new DialogButtonViewModel({
+                    title: btnOptions.title,
+                    shortcutKeyCode: btnOptions.shortcutKeyCode,
+                    style: btnOptions.style,
+                    onClick: () => {
+                        this.close(btnOptions.resultValue);
+                    }
+                });
+                this.buttons.add(buttonVm);
+            }
+            this.largeSelectionItems = [];
+        }
+        else {
+            this.largeSelectionItems = [...options.buttons];
         }
 
         this.checkboxes = options.checkboxes ?? null;
+        this.promptDisplayStyle = options.promptDisplayStyle ?? PromptDisplayStyle.DialogWithButtons;
     }
 
     @observableProperty
@@ -40,6 +47,12 @@ export class PromptViewModel<TResult> extends DialogViewModel<TResult> {
 
     @observableProperty
     readonly checkboxes: PromptCheckbox[] | null;
+
+    @observableProperty
+    readonly promptDisplayStyle: PromptDisplayStyle;
+
+    @observableProperty
+    readonly largeSelectionItems: PromptButtonOptions<TResult>[] | null;
 }
 
 export class PromptForStringViewModel extends DialogViewModel<string | null> {
@@ -134,13 +147,20 @@ export interface PromptOptions<TResult> {
     message: string;
     messageAsHtml?: boolean;
     closeBoxResult?: TResult;
+    promptDisplayStyle?: PromptDisplayStyle;
 
     checkboxes?: PromptCheckbox[];
     buttons: PromptButtonOptions<TResult>[];
 }
 
+export enum PromptDisplayStyle {
+    DialogWithButtons = 0,
+    LargeSelections = 1
+}
+
 export interface PromptButtonOptions<TResult> {
     title: string;
+    description?: string;
     style: DialogButtonStyle;
     shortcutKeyCode?: number;
     resultValue: TResult;

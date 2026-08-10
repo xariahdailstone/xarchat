@@ -17,3 +17,32 @@
         gap: 6px;
     }
 }
+
+.largeselections {
+    display: none;
+    margin-top: 18px;
+
+    &.shown { display: flex; flex-direction: column; gap: 8px; }
+
+    .largeselection-button {
+        outline: none;
+        border: none;
+        background: var(--bg-level-4);
+        color: var(--fg-level-4);
+        padding: 8px;
+        border-radius: 8px;
+        text-align: left;
+        cursor: pointer;
+
+        &:hover {
+            background: var(--bg-level-4-highlight);
+        }
+
+        .largeselection-button-title {
+            font-weight: bold;
+        }
+        .largeselection-button-description {
+            font-size: 90%;
+        }
+    }
+}

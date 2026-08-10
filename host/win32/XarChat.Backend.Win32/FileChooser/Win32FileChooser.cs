@@ -19,6 +19,22 @@ namespace XarChat.Backend.Win32.FileChooser
             _windowControl = windowControl;
         }
 
+        public async Task<string?> SelectLocalDirectoryAsync(
+            string? initialDirectory = null, 
+            string? dialogTitle = null, 
+            CancellationToken cancellationToken = default)
+        {
+            string? result = null;
+
+            await _windowControl.InvokeOnUIThread(() =>
+            {
+                result = Shell32.BrowseForFolder(_windowControl.WindowHandle,
+                    dialogTitle ?? "Choose Folder", initialDirectory);
+            });
+
+            return result;
+        }
+
         public async Task<string?> SelectLocalFileAsync(
             string? initialFile = null,
             IReadOnlyList<SelectLocalFileFilterEntry>? filters = null,

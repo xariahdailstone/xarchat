@@ -51,5 +51,18 @@ namespace XarChat.Backend.Photino.Services.FileChooser
 
             return res;
         }
+
+        public async Task<string?> SelectLocalDirectoryAsync(string? initialDirectory = null, string? dialogTitle = null, CancellationToken cancellationToken = default)
+        {
+            string? res = null;
+            await _windowControl.InvokeOnUIThread(() =>
+            {
+                res = _windowControl.ShowDirectoryChooser(
+                    title: dialogTitle ?? "Select a Directory",
+                    defaultPath: initialDirectory ?? System.Environment.CurrentDirectory);
+            });
+            return res;
+        }
+
     }
 }

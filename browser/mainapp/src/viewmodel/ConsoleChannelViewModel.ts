@@ -59,11 +59,11 @@ export class ConsoleChannelViewModel extends ChannelViewModel {
             ...super.getSlashCommands(),
             new SlashCommandViewModel(
                 ["importlogs"],
-                "Import XarChat Logs",
-                "Import logs from an external XarChat log file.",
+                "Import Chat Logs",
+                "Import chat logs from an external XarChat log file, F-Chat 3.0, or Horizon.",
                 [],
                 async (context, args) => {
-                    await HostInterop.performLogFileImportAsync(
+                    this.appViewModel.performLogFileImportAsync(
                         (msg) => {
                             this.addSystemMessage(new Date(), msg);
                         }
