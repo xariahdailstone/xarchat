@@ -85,7 +85,8 @@ namespace XarChat.Backend.Features.ChatLogging.Sqlite
                         new Migration06RemoveFullTextIndex(),
                         new Migration07UseBlobStringHashes(),
                         new Migration08RemoveUnusedIndexes(),
-                        new Migration09RemoveLoggedAds()
+                        new Migration09RemoveLoggedAds(),
+                        new Migration10FixViews()
                     ],
                     (status) => startupTaskUpdateStatus(false, $"Migrating chat log ({status})...", null),
                     _disposeCTS.Token);
