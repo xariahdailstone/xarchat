@@ -37,6 +37,7 @@ import { ChannelUserListTabViewModel } from "./sidebartabs/ChannelUserListTabVie
 import { FriendsListTabViewModel } from "./sidebartabs/FriendsListTabViewModel.js";
 import { IHasRightBarTabs } from "./sidebartabs/RightSidebarTabContainerViewModel.js";
 import { Scheduler } from "../util/Scheduler.js";
+import { ChannelAdManagerViewModel } from "./ChannelAdManagerViewModel.js";
 
 export class ChatChannelUserViewModel extends ObservableBase implements IDisposable {
     constructor(
@@ -178,9 +179,14 @@ export class ChatChannelViewModel extends ChannelViewModel implements IHasRightB
 
         this.seenAdsStore = new SeenAdsStore(this);
         this.ownedDisposables.add(this.seenAdsStore);
+
+        this.channelAdManager = new ChannelAdManagerViewModel(this);
+        this.ownedDisposables.add(this.channelAdManager);
     }
 
     readonly seenAdsStore: SeenAdsStore;
+
+    readonly channelAdManager: ChannelAdManagerViewModel;
 
     readonly rightBarTabs: Collection<SidebarTabViewModel>;
 
@@ -933,6 +939,12 @@ export class ChatChannelViewModel extends ChannelViewModel implements IHasRightB
                 logMessageType = LogMessageType.SPIN;
         }
 
+        const isFromReplay = (options?.fromReplay ?? false);
+
+        if (message.type == ChannelMessageType.AD && !isFromReplay) {
+            this.channelAdManager.handleAdMessage(message);
+        }
+
         let adIsFiltered = false;
         if (message.type == ChannelMessageType.AD) {
             adIsFiltered = this.seenAdsStore.checkIncomingAd(message.characterStatus.characterName, message.text);
@@ -942,7 +954,7 @@ export class ChatChannelViewModel extends ChannelViewModel implements IHasRightB
             super.addMessage(message, options);
         }
 
-        if (logMessageType != null && !(options?.fromReplay ?? false)) {
+        if (logMessageType != null && !isFromReplay) {
             this.activeLoginViewModel.logChannelMessage(this, 
                 message.characterStatus.characterName, message.characterStatus.gender, message.characterStatus.status,
                 logMessageType, message.text);

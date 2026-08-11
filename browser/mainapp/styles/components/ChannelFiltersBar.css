@@ -6,8 +6,8 @@
 #elMain {
     display: grid;
     grid-template-rows: 100%;
-    grid-template-columns: auto minmax(0, auto) auto 1fr;
-    grid-template-areas: "filtericon filtertabscontainer editbutton .";
+    grid-template-columns: auto minmax(0, auto) auto 1fr auto;
+    grid-template-areas: "filtericon filtertabscontainer editbutton . admanagerbutton";
 
     height: 100%;
     width: 100%;
@@ -25,6 +25,7 @@
     padding-right: 5px;
 }
 
+
 #elFilterIcon {
     vertical-align: middle;
 
@@ -36,7 +37,7 @@
     color: var(--fg-level-3);
 }
 
-.filtertabscontainer {
+.filtertabscontainer, .admanagerbutton {
     grid-area: filtertabscontainer;
     overflow: hidden;
 
@@ -98,4 +99,8 @@
 
 .editbutton .filtertab {
     padding-top: 5px;
+}
+
+.admanagerbutton {
+    grid-area: admanagerbutton;
 }

@@ -23,6 +23,14 @@ export class NumberComparer implements Comparer<number> {
     }
 }
 
+export class DateComparer implements Comparer<Date> {
+    static readonly instance = new DateComparer();
+
+    compare(a: Date, b: Date): number {
+        return a.getTime() - b.getTime();
+    }
+}
+
 class TupleComparerImpl implements Comparer<any> {
     compare(a: any, b: any): number {
         if (!(a instanceof Array)) {

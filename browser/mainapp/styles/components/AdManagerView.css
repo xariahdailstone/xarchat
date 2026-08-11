@@ -1,0 +1,100 @@
+
+#elMain {
+    height: 100%;
+    overflow: hidden;
+
+    display: grid;
+    grid-template-columns: 100%;
+    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-areas:
+        "searchbar"
+        "resultsection";
+
+    contain: strict;
+
+    .mainui {
+        display: contents;
+
+        .searchbar {
+            grid-area: searchbar;
+            display: flex;
+            flex-direction: row;
+
+            padding: 5px 10px;
+
+            background-color: var(--bg-level-4);
+            color: var(--fg-level-4);
+            font-size: 80%;
+
+            align-items: baseline;
+            justify-items: stretch;
+            justify-content: flex-start;
+
+            .searchbar-label {
+            }
+            .searchbar-field {
+                margin-left: 5px;
+                margin-right: 10px;
+            }
+        }
+
+        .resultsection {
+            grid-area: resultsection;
+            overflow-y: scroll;
+
+            font-family: var(--chat-font-family);
+            font-size: var(--chat-font-size);
+            background-color: var(--bg-level-2);
+            color: var(--fg-level-2);
+
+            padding-left: var(--chatui-splitterhandle-width);
+
+            .resultitem {
+                padding-top: 5px;
+                padding-bottom: 5px;
+                padding-left: 3px;
+                padding-right: 3px;
+                border-bottom: 1px solid var(--fg-level-3);
+
+                content-visibility: auto;
+                contain-intrinsic-size: 0 200px;
+
+                display: grid;
+                grid-template-rows: 1fr auto auto 1fr;
+                grid-template-columns: auto auto auto 1fr;
+                grid-template-areas:
+                    "icon . . ."
+                    "icon name timestamp ."
+                    "icon message message message"
+                    "icon . . .";
+
+                .icon {
+                    grid-area: icon;
+                    width: 50px;
+                    height: 50px;
+                    margin-right: 8px;
+                    margin-left: 0px;
+                }
+                .resultitem-name {
+                    grid-area: name;
+
+                    .statusdot {
+                        margin-right: 5px;
+                    }
+                    .character-link {
+                        font-weight: bold;
+                    }
+                }
+                .resultitem-timestamp {
+                    grid-area: timestamp;
+                    margin-left: 10px;
+                    font-size: 80%;
+                    opacity: 0.6;
+                }
+                .resultitem-message {
+                    grid-area: message;
+                }
+            }
+        }
+    }
+}

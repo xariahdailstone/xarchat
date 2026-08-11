@@ -3,7 +3,7 @@ import { IDisposable } from "../util/Disposable";
 import { HTMLUtils } from "../util/HTMLUtils";
 import { VNodeUtils } from "../util/VNodeUtils";
 import { ChannelFiltersViewModel } from "../viewmodel/ChannelFiltersViewModel";
-import { ChannelViewModel } from "../viewmodel/ChannelViewModel";
+import { ChannelActivePanel, ChannelViewModel } from "../viewmodel/ChannelViewModel";
 import { ChatChannelMessageMode, ChatChannelViewModel } from "../viewmodel/ChatChannelViewModel";
 import { ChannelFiltersEditPopupViewModel } from "../viewmodel/popups/ChannelFiltersEditPopupViewModel";
 import { ComponentBase, componentElement } from "./ComponentBase";
@@ -18,6 +18,17 @@ export class ChannelFiltersBar extends RenderingComponentBase<ChannelViewModel> 
     override render(): (VNode | [VNode, IDisposable]) {
         const vm = this.viewModel;
         if (!vm || !vm.channelFilters) { return VNodeUtils.createEmptyFragment(); }
+
+        let elAdManagerButton: VNode | null = null;
+        if (vm instanceof ChatChannelViewModel) {
+            elAdManagerButton = <div classList="admanagerbutton">
+                <div classList={[ "filtertab", (vm.activePanel == ChannelActivePanel.AD_MANAGER ? "selected" : "") ]} on={{
+                        "click": () => { vm.activePanel = ChannelActivePanel.AD_MANAGER; }
+                    }}>
+                    Ads ({vm.channelAdManager.adCount})
+                </div>
+            </div>;
+        }
 
         return <>
             <div classList="filtericon"><x-iconimage id="elFilterIcon" attr-src="assets/ui/filter-icon.svg"></x-iconimage></div>
@@ -34,6 +45,7 @@ export class ChannelFiltersBar extends RenderingComponentBase<ChannelViewModel> 
                     }
                 }}><x-iconimage id="elEditIcon" attr-src="assets/ui/edit.svg"></x-iconimage></div>
             </div>
+            {elAdManagerButton}
         </>;
     }
 
@@ -47,9 +59,9 @@ export class ChannelFiltersBar extends RenderingComponentBase<ChannelViewModel> 
                 if (!nf.showInBothAdsAndChatChannel && vm.channelViewModel.messageMode == ChatChannelMessageMode.BOTH) { continue; }
             }
 
-            const isSelected = vm.selectedFilter == nf;
+            const isSelected = (vm.selectedFilter == nf && vm.channelViewModel.activePanel == ChannelActivePanel.MESSAGE_STREAM);
             results.push(<div classList={["filtertab", (isSelected ? "selected" : "")]} on={{
-                "click": () => { vm.selectedFilter = nf; }
+                "click": () => { vm.selectedFilter = nf; vm.channelViewModel.activePanel = ChannelActivePanel.MESSAGE_STREAM; }
             }}>{ nf.name.trim() != "" ? nf.name : "(No Name)" }</div>);
         }
 

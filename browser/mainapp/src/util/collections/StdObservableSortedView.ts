@@ -42,6 +42,9 @@ export class StdObservableSortedView<TItem extends object, TSortKey> implements 
 
         this._btree = new BTree([], innerKeyComparer);
 
+        const initEntries = this.getRebuildEntries(innerCollection);
+        this.onInnerCollectionChanged(initEntries);
+
         this._disposables.add(innerCollection.addCollectionObserver(changes => {
             this.onInnerCollectionChanged(changes);
         }));
@@ -60,6 +63,25 @@ export class StdObservableSortedView<TItem extends object, TSortKey> implements 
             }
             this._btree.clear();
         }
+    }
+
+    private getRebuildEntries<T>(obs: ReadOnlyStdObservableCollection<T>) {
+        let prevItem: (T | undefined) = undefined;
+
+        const entries: StdObservableCollectionChange<T>[] = [];
+        for (let item of obs.iterateValues()) {
+            //if (prevItem) {
+                const pentry = new StdObservableCollectionChange<T>(
+                    StdObservableCollectionChangeType.ITEM_ADDED,
+                    item,
+                    undefined,
+                    prevItem
+                );
+                entries.push(pentry);
+            //}
+            prevItem = item;
+        }
+        return entries;
     }
 
     [Symbol.dispose]() { this.dispose(); }

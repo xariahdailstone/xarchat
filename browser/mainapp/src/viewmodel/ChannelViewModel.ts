@@ -140,6 +140,12 @@ export class TransientChannelStreamViewModel extends ObservableBase implements I
     }
 }
 
+
+export enum ChannelActivePanel {
+    MESSAGE_STREAM,
+    AD_MANAGER
+}
+
 export abstract class ChannelViewModel extends ObservableBase implements IDisposable, IChannelStreamViewModel {
     constructor(parent: ActiveLoginViewModel, title: string) {
         super();
@@ -192,6 +198,9 @@ export abstract class ChannelViewModel extends ObservableBase implements IDispos
     readonly isHistoricalView: boolean = false;
 
     readonly lazyLoadImages: boolean = false;
+
+    @observableProperty
+    activePanel: ChannelActivePanel = ChannelActivePanel.MESSAGE_STREAM;
 
     @observableProperty
     get title(): string { return this.channelState.title; }

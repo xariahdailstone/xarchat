@@ -1,5 +1,6 @@
 import { CallbackSet } from "../CallbackSet";
 import { IDisposable, asDisposable } from "../Disposable";
+import { Observable, ObservableValue } from "../Observable";
 import BTree from "../btree/btree";
 import { ReadOnlyStdObservableCollection, StdObservableCollectionChange, StdObservableCollectionChangeType, StdObservableCollectionObserver } from "./ReadOnlyStdObservableCollection";
 import { SnapshottableSet } from "./SnapshottableSet";
@@ -441,7 +442,7 @@ export class StdObservableFilteredView<T extends object> implements ReadOnlyStdO
 
     get isDisposed() { return this._disposed; }
 
-    get length(): number { return this._btree.size; }
+    get length(): number { return this._btreeSize.value; }
 
     private renumberSortKeys() {
         const filterPassItems = [...this._btree.values()];
@@ -538,9 +539,13 @@ export class StdObservableFilteredView<T extends object> implements ReadOnlyStdO
         this.notifyObservers(resultEntries);
     }
 
+    private _version = new ObservableValue<number>(0);
+    private _btreeSize = new ObservableValue<number>(0);
     private readonly _observers2: CallbackSet<StdObservableCollectionObserver<T>> = new CallbackSet("StdObservableFilteredView-observers");
 
     private notifyObservers(entries: StdObservableCollectionChange<T>[]) {
+        this._version.value += 1;
+        this._btreeSize.value = this._btree.size;
         this._observers2.invoke(entries);
     }
 
@@ -557,6 +562,7 @@ export class StdObservableFilteredView<T extends object> implements ReadOnlyStdO
     }
 
     values(): Iterable<T> {
+        const depOnVersion = this._version.value;
         return this._btree.values();
     }
 
