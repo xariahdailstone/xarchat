@@ -832,6 +832,7 @@ export class AppViewModel extends ObservableBase {
                 this._audioCache.set(fn, n);
             }
             this._currentNotificationAudio = n;
+            this._currentNotificationAudio.currentTime = 0;
             n.play().then(
                 () => {},
                 (e) => {}

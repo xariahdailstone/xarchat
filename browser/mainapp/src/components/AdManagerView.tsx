@@ -59,7 +59,7 @@ export class AdManagerView extends RenderingComponentBase<IAdManagerViewModel> {
             vm.resetFilters();
         };
 
-        const elSearchTextNode = <input attrs={{ "type": "text" }} classList={[ "searchbar-field" ]} />
+        const elSearchTextNode = <input attrs={{ "type": "text" }} classList={[ "searchbar-field", "themed" ]} />
         VNodeTextInputBinding.bind(elSearchTextNode, vm.searchText, (str) => vm.searchText = str);
 
         const elSearchBar =
@@ -75,7 +75,7 @@ export class AdManagerView extends RenderingComponentBase<IAdManagerViewModel> {
                 <x-xcselect classList={[ "searchbar-field" ]} props={{ "value": vm.showFilter }}
                     on={{ "change": showOptionChanged }}>{ showOptionItems }</x-xcselect>
 
-                <button classList={[ "searchbar-button" ]} on={{ "click": resetFilters }}>Reset</button>
+                <button classList={[ "searchbar-button", "themed" ]} on={{ "click": resetFilters }}>Reset</button>
             </div>;
 
         const resultItems: VNode[] = [];

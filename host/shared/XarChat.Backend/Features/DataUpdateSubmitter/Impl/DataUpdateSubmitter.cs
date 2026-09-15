@@ -238,6 +238,7 @@ namespace XarChat.Backend.Features.EIconUpdateSubmitter.Impl
 
                         var resp = await hc.SendAsync(req, cancellationToken);
                         if (resp.StatusCode == System.Net.HttpStatusCode.NotFound) { return; }
+                        var x = await resp.Content.ReadAsStringAsync();
                         resp.EnsureSuccessStatusCode();
                         return;
                     }

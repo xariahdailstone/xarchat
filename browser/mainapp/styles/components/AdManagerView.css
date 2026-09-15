@@ -36,6 +36,13 @@
                 margin-left: 5px;
                 margin-right: 10px;
             }
+            input[type='text'].searchbar-field {
+                background-color: var(--bg-level-2);
+            }
+
+            .searchbar-button {
+                margin-left: auto;
+            }
         }
 
         .resultsection {

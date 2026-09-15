@@ -109,6 +109,7 @@
             onReady(async () => {
                 await import("./build/_polyfill.js");
                 await import("./build/all-components.js");
+                await import("./build/all-pattern.js?pattern=util/debugtools/*.js");
                 await import("./build/main.js");
             });
 

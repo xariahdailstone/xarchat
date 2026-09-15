@@ -2,9 +2,9 @@ import { CharacterName } from "../shared/CharacterName";
 import { CharacterStatus } from "../shared/CharacterSet";
 import { OnlineStatus } from "../shared/OnlineStatus";
 import { ReadOnlyStdObservableCollection } from "../util/collections/ReadOnlyStdObservableCollection";
-import { StdObservableSortedView } from "../util/collections/StdObservableSortedView";
+import { StdObservableFilteredView2, StdObservableSortedView } from "../util/collections/StdObservableSortedView";
 import { StdObservableFilteredView } from "../util/collections/StdObservableView";
-import { DateComparer, StringComparer } from "../util/Comparer";
+import { DateComparer, DelegateComparer, StringComparer } from "../util/Comparer";
 import { asDisposable, EmptyDisposable, IDisposable, maybeDispose } from "../util/Disposable";
 import { Observable, ObservableValue } from "../util/Observable";
 import { ObservableBase } from "../util/ObservableBase";
@@ -146,7 +146,7 @@ export class ChannelAdManagerViewModel extends ObservableBase implements IDispos
     private _exposedActiveAds: ObservableValue<ReadOnlyStdObservableCollection<ChannelMessageViewModel>> = new ObservableValue(this._rawActiveAds);
     get activeAds() { return this._exposedActiveAds.value; }
 
-    get adCount(): number { return this._rawActiveAds.length; }
+    get adCount(): number { return this._exposedActiveAds.value.length; }
 
     private _updateView() {
         if (this._isDisposed) { return; }
@@ -160,8 +160,9 @@ export class ChannelAdManagerViewModel extends ObservableBase implements IDispos
         
         this._filteredActiveAds = searchText.trim() != ""
             ? new StdObservableFilteredView(this._rawActiveAds, 
-                cmvm => cmvm.text.toLowerCase().indexOf(searchText) != -1 || cmvm.characterStatus.characterName.canonicalValue.indexOf(searchText) != -1)
-            : new StdObservableFilteredView(this._rawActiveAds, cmvm => true);
+                cmvm => (cmvm.text.toLowerCase().indexOf(searchText) != -1 || cmvm.characterStatus.characterName.canonicalValue.indexOf(searchText) != -1)
+                    && !cmvm.characterStatus.ignored)
+            : new StdObservableFilteredView(this._rawActiveAds, cmvm => !cmvm.characterStatus.ignored);
 
         const sortInverter = sortDirection == AdManagerSortDirection.ASCENDING
             ? (x: number) => x
@@ -170,17 +171,19 @@ export class ChannelAdManagerViewModel extends ObservableBase implements IDispos
             default:
             case AdManagerSortField.CHARACTER_NAME:
                 {
-                    this._sortedActiveAds = new StdObservableSortedView(this._filteredActiveAds,
-                        (cmvm) => cmvm.characterStatus.characterName.canonicalValue,
-                        (a, b) => sortInverter(StringComparer.Ordinal.compare(a, b))
+                    this._sortedActiveAds = new StdObservableFilteredView2(this._filteredActiveAds,
+                        new DelegateComparer((a, b) => sortInverter(StringComparer.Ordinal.compare(
+                            a.characterStatus.characterName.canonicalValue,
+                            b.characterStatus.characterName.canonicalValue)))
                     );
                 }
                 break;
             case AdManagerSortField.POSTED_AT:
                 {
-                    this._sortedActiveAds = new StdObservableSortedView(this._filteredActiveAds,
-                        (cmvm) => cmvm.timestamp,
-                        (a, b) => sortInverter(DateComparer.instance.compare(a, b))
+                    this._sortedActiveAds = new StdObservableFilteredView2(this._filteredActiveAds,
+                        new DelegateComparer((a, b) => sortInverter(DateComparer.instance.compare(
+                            a.timestamp,
+                            b.timestamp)))
                     );
                 }
                 break;

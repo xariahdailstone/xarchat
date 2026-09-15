@@ -167,4 +167,21 @@ export class SnapshottableMap<K, V> implements ISnapshottableMap<K, V> {
     }
 
     get [Symbol.toStringTag](): string { return this._map[Symbol.toStringTag]; }
+
+    getOrInsert(key: K, defaultValue: V): V {
+        if (this.has(key)) {
+            this.get(key);
+        }
+        this.set(key, defaultValue);
+        return defaultValue;
+    }
+
+    getOrInsertComputed(key: K, callback: (key: K) => V): V {
+        if (this.has(key)) {
+            this.get(key);
+        }
+        const newValue = callback(key);
+        this.set(key, newValue);
+        return newValue;
+    }
 }

@@ -6,6 +6,10 @@
 #elMain {
     display: contents;
     contain: strict;
+
+    & > * {
+        contain: strict;
+    }
 }
 
 .actor {
