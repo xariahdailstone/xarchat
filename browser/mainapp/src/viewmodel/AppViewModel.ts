@@ -801,6 +801,10 @@ export class AppViewModel extends ObservableBase {
         }
 
         let fn: string | null = null;
+        let useAudioCache = true;
+
+        // XXX : temporarily disable the use of the audio cache to workaround a browser issue
+        useAudioCache = false;
 
         fn = this.getConfigEntryHierarchical(`sound.event.${event.eventType.toString()}`, event.activeLoginViewModel, event.channel) as (string | null);
 
@@ -826,10 +830,12 @@ export class AppViewModel extends ObservableBase {
                 this._currentNotificationAudio = null;
             }
     
-            let n = this._audioCache.get(fn);
+            let n = useAudioCache ? this._audioCache.get(fn) : null;
             if (!n) {
                 n = new Audio(fn);
-                this._audioCache.set(fn, n);
+                if (useAudioCache) {
+                    this._audioCache.set(fn, n);
+                }
             }
             this._currentNotificationAudio = n;
             this._currentNotificationAudio.currentTime = 0;
