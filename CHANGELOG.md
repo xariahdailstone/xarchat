@@ -133,3 +133,6 @@
   * **XarChat** - Import logs from the chatlog.db file from another installation of XarChat
   * **F-Chat 3.0** - Import logs from the official F-Chat 3.0 client application
   * **Horizon** - Import logs from F-Chat Horizon
+* (Windows) Added an option to use the OS native window titlebar, for certain compatibility situations.
+* (Windows) The Windows volume mixer will now properly show the XarChat title and icon in the
+  per-application volume mixer.

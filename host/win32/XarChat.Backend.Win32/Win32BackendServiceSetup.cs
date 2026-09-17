@@ -22,6 +22,7 @@ using XarChat.Backend.Win32.IdleDetection;
 using XarChat.Backend.Win32.LocaleList;
 using XarChat.Backend.Win32.MemoryHinter;
 using XarChat.Backend.Win32.NotificationBadge;
+using XarChat.Native.Win32.ComInterop.AudioApi;
 
 namespace XarChat.Backend.Win32
 {
@@ -44,6 +45,9 @@ namespace XarChat.Backend.Win32
 
 
             services.AddSingleton<IMemoryHinter, Win32MemoryHinter>();
+
+            services.AddSingleton<AudioSessionDisplayNameMonitor>(
+                sp => new AudioSessionDisplayNameMonitor("XarChat"));
         }
     }
 

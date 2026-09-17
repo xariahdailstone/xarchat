@@ -20,6 +20,15 @@ export class NullHostInterop extends HostInteropBase implements IHostInterop {
 
     get devMode(): boolean { return false; }
 
+    get useWebTitlebar(): boolean { return false; }
+
+    addWindowCloseRequestHandler(callback: () => void): IDisposable {
+        return EmptyDisposable;
+    }
+
+    removeWindowCloseRequestHandler(callback: () => void): void {
+    }
+
     launchUrl(app: AppViewModel, url: string, forceExternal: boolean): void {
         window.open(url, "_blank");
     }

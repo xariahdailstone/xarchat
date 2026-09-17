@@ -133,6 +133,12 @@ export class AppViewModel extends ObservableBase {
             this.appWindowState = winState;
         });
 
+        HostInterop.addWindowCloseRequestHandler(() => {
+            this.closeApplicationAsync({
+                bypassPrompt: false
+            });
+        });
+
         (async () => {
             let previousState = UpdateCheckerState.Unknown;
             this._updateCheckerClient = await UpdateCheckerClient.createAsync(state => {
@@ -407,11 +413,7 @@ export class AppViewModel extends ObservableBase {
 
     @observableProperty
     get showTitlebar(): boolean {
-        const sp = new URLSearchParams(document.location.search);
-        if (PlatformUtils.isWindows) {
-            return true;
-        }
-        return false;
+        return HostInterop.useWebTitlebar;
     }
 
     @observableProperty
@@ -855,7 +857,12 @@ export class AppViewModel extends ObservableBase {
         const resp = await this.showDialogAsync(vm);
     }
 
+    private _alreadyClosingApplication: boolean = false;
     async closeApplicationAsync(options?: CloseApplicationOptions): Promise<void> {
+        if (this._alreadyClosingApplication) { return; }
+        this._alreadyClosingApplication = true;
+        using _acaReset = asDisposable(() => this._alreadyClosingApplication = false);
+
         const shouldPrompt = this.getConfigSettingById("promptOnWindowClose");
         if (shouldPrompt && !(options?.bypassPrompt ?? false)) {
             const dontAskAgain = { label: "Don't ask me again", checked: false };
