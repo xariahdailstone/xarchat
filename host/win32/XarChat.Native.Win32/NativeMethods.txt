@@ -51,3 +51,9 @@ CloseHandle
 //EnumSystemLocalesEx
 EnumUILanguages
 GetLocaleInfoEx
+// Dwm
+DwmGetWindowAttribute
+DwmSetWindowAttribute
+COLORREF
+// shobjidl_core
+SetCurrentProcessExplicitAppUserModelID

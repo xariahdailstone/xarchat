@@ -23,6 +23,10 @@ export interface IHostInterop {
     get isInXarChatHost(): boolean;
     get devMode(): boolean;
 
+    get useWebTitlebar(): boolean;
+    addWindowCloseRequestHandler(callback: () => void): IDisposable;
+    removeWindowCloseRequestHandler(callback: () => void): void;
+
     launchUrl(app: AppViewModel, url: string, forceExternal: boolean): void;
 
     addUrlLaunchedHandler(callback: (args: UrlLaunchedEventArgs) => void): IDisposable;

@@ -4,6 +4,7 @@ using MinimalWin32Test.Properties;
 using MinimalWin32Test.UI;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 using System.Text;
 using XarChat.AutoUpdate;
 using XarChat.Backend;
@@ -47,6 +48,10 @@ namespace MinimalWin32Test
                 writeStartupLog($"Finding profile path...");
                 var profilePath = FindProfilePath(args);
                 writeStartupLog($"profilePath = {profilePath}");
+
+                writeStartupLog("Setting AUMID...");
+                var aumid = SetApplicationUserModelID(args, profilePath);
+                writeStartupLog($"AUMID = {aumid}");
 
                 writeStartupLog($"Starting AutoUpdateManagerFactory...");
                 var autoUpdater = AutoUpdateManagerFactory.Create(
@@ -210,6 +215,18 @@ namespace MinimalWin32Test
                 }
                 return 1;
             }
+        }
+
+        private static string SetApplicationUserModelID(string[] args, string profilePath)
+        {
+            var profileDirHash = String.Join("", SHA256.Create().ComputeHash(System.Text.Encoding.UTF8.GetBytes(profilePath))
+                .Select(b => b.ToString("X2")))
+                .Substring(0, 8);
+
+            var appId = $"XariahNet.XarChat.{profileDirHash}";
+            SHObjIdl.SetCurrentProcessExplicitAppUserModelID(appId);
+
+            return appId;
         }
 
         private static void WaitForStartupTasks(MessageLoop app, XarChatBackend backend)
