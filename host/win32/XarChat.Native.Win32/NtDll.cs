@@ -7,8 +7,6 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
-using Windows.Wdk;
-using Windows.Win32;
 
 namespace XarChat.Native.Win32
 {
