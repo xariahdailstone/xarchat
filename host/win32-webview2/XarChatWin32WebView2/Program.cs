@@ -3,6 +3,7 @@ using Microsoft.Win32.SafeHandles;
 using MinimalWin32Test.Properties;
 using MinimalWin32Test.UI;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
@@ -25,9 +26,13 @@ namespace MinimalWin32Test
 {
     internal class Program
     {
+        private static readonly int? DEFAULT_FIXED_WEBVIEW_VERSION = 151;
+
         [STAThread]
         static int Main(string[] args)
         {
+            Program.CommandLineArguments = args;
+
             var pid = Environment.ProcessId;
             var startupLogFile = Path.Combine(Path.GetTempPath(), $"XarChat.startup-{DateTime.Now.ToString("yyyyMMhddHHmmss")}-{pid}.log");
             if (File.Exists(startupLogFile))
@@ -46,7 +51,7 @@ namespace MinimalWin32Test
                 writeStartupLog($"XarChat {AssemblyVersionInfo.XarChatVersion}-{AssemblyVersionInfo.XarChatBranch} starting up...");
 
                 writeStartupLog($"Finding profile path...");
-                var profilePath = FindProfilePath(args);
+                var profilePath = GetProfilePath();
                 writeStartupLog($"profilePath = {profilePath}");
 
                 writeStartupLog("Setting AUMID...");
@@ -366,19 +371,239 @@ namespace MinimalWin32Test
                 return true;
             }
 
+            var neededVersion = GetRequiredWebViewVersion();
             var shouldFakeInstall = args.Select(x => x.ToLower()).Contains("--showinitwindow");
             var shouldFailFakeInstall = args.Select(x => x.ToLower()).Contains("--failinitwindow");
 
             var ver = GetWebView2RuntimeVersion();
-            if (String.IsNullOrWhiteSpace(ver) || shouldFakeInstall)
+            if ((String.IsNullOrWhiteSpace(ver) || shouldFakeInstall) ||
+                (neededVersion != null && !String.IsNullOrWhiteSpace(ver) && GetMajorVersionNumber(ver) != neededVersion.Value))
             {
-                var result = InstallWebView2Runtime(messageLoop, shouldFakeInstall, shouldFailFakeInstall);
-                return result;
+                if (neededVersion is null)
+                {
+                    var result = InstallEvergreenWebView2Runtime(messageLoop, shouldFakeInstall, shouldFailFakeInstall);
+                    return result;
+                }
+                else
+                {
+                    var result = InstallSpecificWebView2Runtime(messageLoop, neededVersion.Value, shouldFakeInstall, shouldFailFakeInstall);
+                    return result;
+                }
             }
+
+            CleanupNotNeededSpecificWebView2Folders(neededVersion);
+
             return true;
         }
 
-        private static bool InstallWebView2Runtime(MessageLoop messageLoop, bool fakeInstall, bool failFakeInstall)
+        private static void CleanupNotNeededSpecificWebView2Folders(int? neededVersion)
+        {
+            var profilePath = GetProfilePath();
+            var webviewRuntimesPath = Path.Combine(profilePath, "webview-runtimes");
+            foreach (var subdir in Directory.GetDirectories(webviewRuntimesPath))
+            {
+                var subdirBaseName = Path.GetFileName(subdir);
+                if (neededVersion is null 
+                    || !Int32.TryParse(subdirBaseName, out var subdirVerInt)
+                    || subdirVerInt != neededVersion)
+                {
+                    DirectoryDeleteWithRetry(subdir, true);
+                }
+            }
+        }
+
+        private static int GetMajorVersionNumber(string ver)
+        {
+            var parts = ver.Split('.')[0];
+            return Int32.Parse(parts);
+        }
+
+        private static bool InstallSpecificWebView2Runtime(MessageLoop messageLoop, int version, bool fakeInstall, bool failFakeInstall)
+        {
+            using var installingUi = new InstallingUI(messageLoop);
+
+            var result = false;
+            var cancellationToken = CancellationToken.None;
+            var installTask = Task.Run(async () =>
+            {
+                var downloadUrl = $"https://xariah.net/xarchat/download-webview/WebView2-v{version}.cab";
+                using var hc = new HttpClient();
+                installingUi.SetStatus($"Downloading Microsoft WebView2 runtime (v{version})...");
+                using var resp = await hc.GetAsync(downloadUrl, cancellationToken);
+
+                var tmpBasename = $"WebView2-v{version}.cab";
+                var tmpDir = System.Environment.GetEnvironmentVariable("TEMP") ??
+                    System.Environment.GetEnvironmentVariable("TMP") ?? ".";
+                var tmpFn = Path.Combine(tmpDir, tmpBasename);
+                var retryCount = 2;
+                while (File.Exists(tmpFn))
+                {
+                    tmpBasename = $"WebView2-v{version} ({retryCount++}).cab";
+                    tmpFn = Path.Combine(tmpDir, tmpBasename);
+                }
+
+                try
+                {
+                    using (var fileWriter = File.Create(tmpFn))
+                    {
+                        using var dataStream = await resp.Content.ReadAsStreamAsync();
+                        await dataStream.CopyToAsync(fileWriter, cancellationToken);
+                    }
+
+                    installingUi.SetStatus("Download complete, extracting...");
+
+                    var targetDir = GetBrowserExecutableFolder();
+                    if (targetDir is null)
+                    {
+                        throw new ApplicationException("Unable to extract webview cab, no targetDir");
+                    }
+                    if (!Directory.Exists(targetDir))
+                    {
+                        Directory.CreateDirectory(targetDir);
+                    }
+                    else
+                    {
+                        ClearDirectory(targetDir);
+                    }
+
+                    if (!fakeInstall)
+                    {
+                        var psi = new ProcessStartInfo();
+                        psi.UseShellExecute = false;
+                        psi.FileName = Path.Combine(Environment.SystemDirectory, "expand.exe");
+                        psi.WorkingDirectory = Path.GetDirectoryName(tmpFn);
+                        psi.ArgumentList.Add(tmpFn);
+                        psi.ArgumentList.Add("-F:*");
+                        psi.ArgumentList.Add(Path.Combine(targetDir, "."));
+                        psi.CreateNoWindow = true;
+                        var installProcess = Process.Start(psi);
+                        if (installProcess == null)
+                        {
+                            throw new ApplicationException("Could not extract WebView2 runtime");
+                        }
+                        await installProcess.WaitForExitAsync(cancellationToken);
+
+                        // Microsoft's cabs extract to a single subdirectory under the target; so let's move everything in there up one dir
+                        var cabSubdir = Directory.GetDirectories(targetDir).First();
+                        MoveUpOneDir(cabSubdir);
+                        Directory.Delete(cabSubdir);
+                    }
+                    else
+                    {
+                        await Task.Delay(2000);
+                        if (failFakeInstall)
+                        {
+                            throw new ApplicationException("install fail fake");
+                        }
+                    }
+
+                    var ver = GetWebView2RuntimeVersion();
+                    if (String.IsNullOrWhiteSpace(ver))
+                    {
+                        throw new ApplicationException("WebView2 runtime did not appear to install");
+                    }
+                    else if (GetMajorVersionNumber(ver) != version)
+                    {
+                        throw new ApplicationException(
+                            $"WebView2 runtime did not appear to install the expected version (wanted {version}, got {ver})");
+                    }
+                    else
+                    {
+                        installingUi.SetStatus("Microsoft WebView2 runtime install complete.");
+                        await Task.Delay(1000);
+                        result = true;
+                        installingUi.Dispose();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    installingUi.SetStatus("Microsoft WebView2 runtime install failed.");
+
+                    var deleteRetriesRemaining = 10;
+                    while (deleteRetriesRemaining > 0)
+                    {
+                        try
+                        {
+                            await FileSystemUtil.DeleteAsync(tmpFn);
+                            break;
+                        }
+                        catch
+                        {
+                            deleteRetriesRemaining--;
+                            if (deleteRetriesRemaining > 0)
+                            {
+                                await Task.Delay(100);
+                            }
+                        }
+                    }
+
+                    installingUi.ShowError($"Microsoft WebView2 runtime installation failed: {ex.Message}");
+                    installingUi.Dispose();
+                    result = false;
+                }
+            });
+
+            messageLoop.Run();
+            installTask.Wait();
+            return result;
+        }
+
+        private static void ClearDirectory(string targetDir)
+        {
+            foreach (var fn in Directory.GetFiles(targetDir))
+            {
+                FileDeleteWithRetry(fn);
+            }
+            foreach (var subdir in Directory.GetDirectories(targetDir))
+            {
+                DirectoryDeleteWithRetry(subdir, true);
+            }
+        }
+
+        private static void ActionWithRetry(
+            Action action,
+            int maxRetryCount = 20,
+            int sleepMs = 500)
+        {
+            var retriesRemaining = maxRetryCount;
+            while (true)
+            {
+                try { action(); break; }
+                catch
+                {
+                    if (retriesRemaining == 0)
+                    {
+                        throw;
+                    }
+                    retriesRemaining--;
+
+                    Thread.Sleep(sleepMs);
+                }
+            }
+        }
+
+        private static void FileDeleteWithRetry(string fn) => ActionWithRetry(() => File.Delete(fn));
+        private static void DirectoryDeleteWithRetry(string dir, bool recursive) => ActionWithRetry(() => Directory.Delete(dir, recursive));
+        private static void FileMoveWithRetry(string source, string target) => ActionWithRetry(() => File.Move(source, target));
+        private static void DirectoryMoveWithRetry(string source, string target) => ActionWithRetry(() => Directory.Move(source, target));
+
+        private static void MoveUpOneDir(string sourceDir)
+        {
+            var targetDir = Path.GetDirectoryName(sourceDir);
+
+            foreach (var sourceFile in Directory.GetFiles(sourceDir))
+            {
+                var targetFile = Path.Combine(targetDir, Path.GetFileName(sourceFile));
+                FileMoveWithRetry(sourceDir, targetFile);
+            }
+            foreach (var sourceSubdir in Directory.GetDirectories(sourceDir))
+            {
+                var targetSubdir = Path.Combine(targetDir, Path.GetFileName(sourceSubdir));
+                DirectoryMoveWithRetry(sourceSubdir, targetSubdir);
+            }
+        }
+
+        private static bool InstallEvergreenWebView2Runtime(MessageLoop messageLoop, bool fakeInstall, bool failFakeInstall)
         {
             using var installingUi = new InstallingUI(messageLoop);
             //installingUi.SetStatus("Please wait, installing WebView2 runtime...");
@@ -486,7 +711,17 @@ namespace MinimalWin32Test
         {
             try
             {
-                var result = Microsoft.Web.WebView2.Core.CoreWebView2Environment.GetAvailableBrowserVersionString();
+                var bexdir = GetBrowserExecutableFolder();
+                string? result;
+                if (!String.IsNullOrWhiteSpace(bexdir))
+                {
+                    result = Microsoft.Web.WebView2.Core.CoreWebView2Environment.GetAvailableBrowserVersionString(
+                        browserExecutableFolder: bexdir);
+                }
+                else
+                {
+                    result = Microsoft.Web.WebView2.Core.CoreWebView2Environment.GetAvailableBrowserVersionString();
+                }
                 return result ?? "";
             }
             catch
@@ -495,13 +730,60 @@ namespace MinimalWin32Test
             }
         }
 
-        private static string FindProfilePath(string[] args)
+        private static string GetProfilePath()
         {
-            var clo = new ArrayCommandLineOptions(args);
+            var clo = new ArrayCommandLineOptions(Program.CommandLineArguments);
             var adl = new Win32AppDataFolderImpl(clo);
             var appDataFolder = adl.GetAppDataFolder();
             var fi = new FileInfo(appDataFolder);
             return fi.FullName;
+        }
+
+        public static string[] CommandLineArguments { get; private set; }
+
+        public static string? GetBrowserExecutableFolder()
+        {
+            var clo = new ArrayCommandLineOptions(Program.CommandLineArguments);
+            if (clo.ForceEvergreenWebView) { return null; }
+
+            if (!String.IsNullOrWhiteSpace(clo.WebViewDirectory)
+                && Directory.Exists(clo.WebViewDirectory))
+            {
+                return clo.WebViewDirectory;
+            }
+            else
+            {
+                var wvv = GetRequiredWebViewVersion();
+                if (wvv != null)
+                {
+                    var profilePath = GetProfilePath();
+                    var localWebViewDir = Path.Combine(profilePath, "webview-runtimes", wvv.Value.ToString());
+                    return localWebViewDir;
+                }
+                else
+                {
+                    return null;
+                }
+            }
+        }
+
+        public static int? GetRequiredWebViewVersion()
+        {
+            var clo = new ArrayCommandLineOptions(Program.CommandLineArguments);
+            if (clo.ForceEvergreenWebView) { return null; }
+
+            if (clo.WebViewVersion != null)
+            {
+                return clo.WebViewVersion;
+            }
+            else if (DEFAULT_FIXED_WEBVIEW_VERSION != null)
+            {
+                return DEFAULT_FIXED_WEBVIEW_VERSION;
+            }
+            else
+            {
+                return null;
+            }
         }
 
         private static string MakeStringSafeForMutexName(string str)
