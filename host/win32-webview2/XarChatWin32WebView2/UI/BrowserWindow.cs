@@ -600,8 +600,9 @@ namespace MinimalWin32Test.UI
                 }
 
                 WriteToStartupLog("BrowserWindow.OnHandleCreated - Creating CoreWebView2Environment");
+                var bexdir = Program.GetBrowserExecutableFolder();
                 var cenv = await Microsoft.Web.WebView2.Core.CoreWebView2Environment.CreateAsync(
-                    browserExecutableFolder: null,
+                    browserExecutableFolder: bexdir,
                     userDataFolder: Path.Combine(appDataFolder, "WebView2Data"),
                     new Microsoft.Web.WebView2.Core.CoreWebView2EnvironmentOptions(
                         additionalBrowserArguments: String.Join(" ", browserArguments),
