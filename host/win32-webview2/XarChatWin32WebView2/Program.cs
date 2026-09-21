@@ -390,7 +390,26 @@ namespace MinimalWin32Test
                     return result;
                 }
             }
+
+            CleanupNotNeededSpecificWebView2Folders(neededVersion);
+
             return true;
+        }
+
+        private static void CleanupNotNeededSpecificWebView2Folders(int? neededVersion)
+        {
+            var profilePath = GetProfilePath();
+            var webviewRuntimesPath = Path.Combine(profilePath, "webview-runtimes");
+            foreach (var subdir in Directory.GetDirectories(webviewRuntimesPath))
+            {
+                var subdirBaseName = Path.GetFileName(subdir);
+                if (neededVersion is null 
+                    || !Int32.TryParse(subdirBaseName, out var subdirVerInt)
+                    || subdirVerInt != neededVersion)
+                {
+                    DirectoryDeleteWithRetry(subdir, true);
+                }
+            }
         }
 
         private static int GetMajorVersionNumber(string ver)
