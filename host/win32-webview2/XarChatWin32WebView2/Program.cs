@@ -26,7 +26,8 @@ namespace MinimalWin32Test
 {
     internal class Program
     {
-        private static readonly int? DEFAULT_FIXED_WEBVIEW_VERSION = 151;
+        //private static readonly int? DEFAULT_FIXED_WEBVIEW_VERSION = 151;
+        private static readonly int? DEFAULT_FIXED_WEBVIEW_VERSION = null;
 
         [STAThread]
         static int Main(string[] args)
