@@ -89,6 +89,7 @@ using XarChat.Backend.Features.XDNApiKeyManager;
 using XarChat.Backend.Features.XDNApiKeyManager.Impl;
 using XarChat.Backend.Features.DebugLogCapture;
 using XarChat.Backend.Features.ChatLogging.Sqlite.Importer;
+using XarChat.Backend.Features.ChatLogging.FChat3.Importer;
 
 namespace XarChat.Backend
 {
@@ -287,7 +288,9 @@ namespace XarChat.Backend
             services.AddSingleton<IChatLogWriter>(sp => sp.GetRequiredService<SqliteChatLogWriter>());
             services.AddSingleton<IStartupTask>(sp => sp.GetRequiredService<SqliteChatLogWriter>().StartupTask);
             services.AddSingleton<IChatLogSearch, SqliteChatLogSearch>();
-            services.AddSingleton<IChatLogImporter, SqliteChatLogImporter>();
+            services.AddKeyedSingleton<IChatLogImporter, SqliteChatLogImporter>("xarchat");
+            services.AddKeyedSingleton<IChatLogImporter, FChat3LogImporter>("fchat3");
+            services.AddKeyedSingleton<IChatLogImporter, HorizonLogImporter>("horizon");
 
             //services.AddSingleton<IProxiedImageCache, ProxiedImageCache>();
             services.AddMemoryCache();

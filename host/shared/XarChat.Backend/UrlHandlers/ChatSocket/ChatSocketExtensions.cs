@@ -120,6 +120,25 @@ namespace XarChat.Backend.UrlHandlers.ChatSocket
             }
         }
 
+        private static async Task<ClientWebSocket> CreateWebSocketAsync(string url, CancellationToken cancellationToken)
+        {
+            var ws = new ClientWebSocket();
+            if (url.StartsWith("wss:") || url.StartsWith("ws:"))
+            {
+            }
+            else if (url.StartsWith("uwss:"))
+            {
+                ws.Options.RemoteCertificateValidationCallback = (_, _, _, _) => true;
+                url = url.Substring(1);
+            }
+            else
+            {
+                throw new ApplicationException("Invalid WebSocketPath url");
+            }
+            await ws.ConnectAsync(new Uri(url), cancellationToken);
+            return ws;
+        }
+
         private static async Task<(ClientWebSocket?, string)> GetIdentifiedChatWebSocketAsync(
             IFListApi fListApi, IAppConfiguration appConfiguration,
             string method, string account, string character, string cname, string cversion,
@@ -137,12 +156,11 @@ namespace XarChat.Backend.UrlHandlers.ChatSocket
                 while (gatResp.CameFromCache && canRetry)
                 {
                     canRetry = canRetryAgain;
-                    var fchatWebSocket = new ClientWebSocket();
+                    logger.LogInformation("Opening server connection (guid={guid})...", connectionGuid);
+                    var fchatWebSocket = await CreateWebSocketAsync(appConfiguration.WebSocketPath, cancellationToken);
                     var fchatWebSocketReturned = false;
                     try
                     {
-                        logger.LogInformation("Opening server connection (guid={guid})...", connectionGuid);
-                        await fchatWebSocket.ConnectAsync(new Uri(appConfiguration.WebSocketPath), cancellationToken);
                         logger.LogInformation("Opened server connection (guid={guid})", connectionGuid);
 
                         var jobj = new JsonObject();

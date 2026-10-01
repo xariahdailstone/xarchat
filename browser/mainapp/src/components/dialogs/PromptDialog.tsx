@@ -1,7 +1,7 @@
 import { Fragment } from "../../snabbdom/index";
 import { EventListenerUtil } from "../../util/EventListenerUtil";
 import { HTMLUtils } from "../../util/HTMLUtils";
-import { PromptViewModel } from "../../viewmodel/dialogs/PromptViewModel";
+import { PromptDisplayStyle, PromptViewModel } from "../../viewmodel/dialogs/PromptViewModel";
 import { componentArea, componentElement } from "../ComponentBase";
 import { DialogComponentBase, dialogViewFor } from "./DialogFrame";
 
@@ -15,12 +15,19 @@ export class PromptDialog extends DialogComponentBase<PromptViewModel<any>> {
         HTMLUtils.assignStaticHTMLFragment(this.elMain, `
             <div class="message" id="elMessage"></div>
             <div class="checkboxes" id="elCheckboxes"></div>
+            <div class="largeselections" id="elLargeSelections"></div>
         `);
 
         const elMessage = this.$("elMessage") as HTMLDivElement;
         const elCheckboxes = this.$("elCheckboxes") as HTMLDivElement;
+        const elLargeSelections = this.$("elLargeSelections") as HTMLDivElement;
 
-        this.watchExpr(vm => { return { message: vm.message, messageAsHtml: vm.messageAsHtml, checkboxes: vm.checkboxes }}, args => {
+        this.watchExpr(vm => { return { 
+                message: vm.message, 
+                messageAsHtml: vm.messageAsHtml, 
+                checkboxes: vm.checkboxes, 
+                largeSelections: (vm.promptDisplayStyle == PromptDisplayStyle.LargeSelections),
+                largeSelectionItems: (vm.promptDisplayStyle == PromptDisplayStyle.LargeSelections) ? vm.largeSelectionItems : [] }}, args => {
             if (args?.messageAsHtml ?? false) {
                 elMessage.innerHTML = args?.message ?? "";
             }
@@ -53,6 +60,38 @@ export class PromptDialog extends DialogComponentBase<PromptViewModel<any>> {
             }
             else {
                 elCheckboxes.classList.remove("shown");
+            }
+
+            if (args?.largeSelections && (args.largeSelectionItems?.length ?? 0) > 0) {
+                elLargeSelections.classList.add("shown");
+                HTMLUtils.clearChildren(elLargeSelections);
+                for (let pbo of args.largeSelectionItems!) {
+                    const elSelectionButton = document.createElement("button");
+                    elSelectionButton.classList.add("largeselection-button");
+
+                    const elTitle = document.createElement("div");
+                    elTitle.classList.add("largeselection-button-title");
+                    elTitle.innerText = pbo.title;
+                    elSelectionButton.appendChild(elTitle);
+
+                    if (pbo.description) {
+                        const elDescription = document.createElement("div");
+                        elDescription.classList.add("largeselection-button-description");
+                        elDescription.innerText = pbo.description;
+                        elSelectionButton.appendChild(elDescription);
+                    }
+
+                    elSelectionButton.addEventListener("click", () => {
+                        const vm = this.viewModel;
+                        if (vm) {
+                            vm.close(pbo.resultValue);
+                        }
+                    });
+                    elLargeSelections.appendChild(elSelectionButton);
+                }
+            }
+            else {
+                elLargeSelections.classList.remove("shown");
             }
         });
     }

@@ -85,6 +85,10 @@ namespace XarChat.Backend.Features.ChatLogging
 
     public interface IChatLogImporter
     {
+        Task ImportAsync(
+            Func<string, Task> writeStatusFunc,
+            CancellationToken cancellationToken);
+
         Task ImportFromFileAsync(
             string filename, 
             Func<string, Task> writeStatusFunc,

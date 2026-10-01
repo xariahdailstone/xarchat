@@ -9,6 +9,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 using XarChat.Backend.Common;
 using XarChat.Backend.Features.AppConfiguration;
@@ -47,9 +48,12 @@ namespace XarChat.Backend.Features.EIconUpdateSubmitter.Impl
 
         private readonly IEIconIndex _eIconIndex;
 
-        private readonly SemaphoreSlim _submitQueueSem = new SemaphoreSlim(1);
-        private List<SubmitQueueItem> _submitQueue = new List<SubmitQueueItem>();
-        private readonly ManualResetEventSlim _submitQueueHasItemsEvent = new ManualResetEventSlim(false);
+        private readonly BatchingChannel<SubmitQueueItem> _submitQueueChannel
+            = new BatchingChannel<SubmitQueueItem>();
+
+        //private readonly SemaphoreSlim _submitQueueSem = new SemaphoreSlim(1);
+        //private List<SubmitQueueItem> _submitQueue = new List<SubmitQueueItem>();
+        //private readonly ManualResetEventSlim _submitQueueHasItemsEvent = new ManualResetEventSlim(false);
 
         public DataUpdateSubmitter(
             IHostApplicationLifetime hostApplicationLifetime,
@@ -145,48 +149,46 @@ namespace XarChat.Backend.Features.EIconUpdateSubmitter.Impl
             SubmitQueueItem submitQueueItem, 
             CancellationToken cancellationToken)
 		{
-            await _submitQueueSem.WaitAsync(cancellationToken);
-            try
-            {
-                _submitQueue.Add(submitQueueItem);
-                _submitQueueHasItemsEvent.Set();
-            }
-            finally
-            {
-                _submitQueueSem.Release();
-            }
+            await _submitQueueChannel.Writer.WriteAsync(submitQueueItem, cancellationToken);
 		}
 
 		protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             try
             {
-                while (!stoppingToken.IsCancellationRequested)
+                await foreach (var tbatch in _submitQueueChannel.Reader.ReadAllAsync(stoppingToken))
                 {
-                    await WaitOnWaitHandle(_submitQueueHasItemsEvent.WaitHandle, stoppingToken);
-                    await SendSubmitQueueAsync(stoppingToken);
+                    await SendSubmitQueueAsync(tbatch, stoppingToken);
                 }
+
+                //while (!stoppingToken.IsCancellationRequested)
+                //{
+                //    await WaitOnWaitHandle(_submitQueueHasItemsEvent.WaitHandle, stoppingToken);
+                //    await SendSubmitQueueAsync(stoppingToken);
+                //}
             }
             catch when (stoppingToken.IsCancellationRequested)
             {
             }
         }
 
-        private async Task SendSubmitQueueAsync(CancellationToken cancellationToken)
+        private async Task SendSubmitQueueAsync(
+            IReadOnlyList<SubmitQueueItem> toSend, 
+            CancellationToken cancellationToken)
         {
-            List<SubmitQueueItem> toSend;
+            //List<SubmitQueueItem> toSend;
 
-            await _submitQueueSem.WaitAsync(cancellationToken);
-            try
-            {
-                toSend = _submitQueue;
-                _submitQueue = new List<SubmitQueueItem>();
-                _submitQueueHasItemsEvent.Reset();
-            }
-            finally
-            {
-                _submitQueueSem.Release();
-            }
+            //await _submitQueueSem.WaitAsync(cancellationToken);
+            //try
+            //{
+            //    toSend = _submitQueue;
+            //    _submitQueue = new List<SubmitQueueItem>();
+            //    _submitQueueHasItemsEvent.Reset();
+            //}
+            //finally
+            //{
+            //    _submitQueueSem.Release();
+            //}
 
             if (toSend.Count > 0)
             {
@@ -238,6 +240,7 @@ namespace XarChat.Backend.Features.EIconUpdateSubmitter.Impl
 
                         var resp = await hc.SendAsync(req, cancellationToken);
                         if (resp.StatusCode == System.Net.HttpStatusCode.NotFound) { return; }
+                        var x = await resp.Content.ReadAsStringAsync();
                         resp.EnsureSuccessStatusCode();
                         return;
                     }

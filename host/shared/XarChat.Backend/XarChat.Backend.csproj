@@ -16,12 +16,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="Features\ChatLogging\FChat3\**" />
-    <EmbeddedResource Remove="Features\ChatLogging\FChat3\**" />
-    <None Remove="Features\ChatLogging\FChat3\**" />
-  </ItemGroup>
-
-  <ItemGroup>
+    <Compile Remove="Features\ChatLogging\FChat3\FChat3LogSearch.cs" />
+    <Compile Remove="Features\ChatLogging\FChat3\FChat3MultiLogFile.cs" />
     <Compile Remove="Features\ChatLogging\Sqlite\File\DbLogFileSwarm.cs" />
     <Compile Remove="Features\ChatLogging\Sqlite\File\SingleDbLogFile.cs" />
     <Compile Remove="Features\ChatLogging\Sqlite\File\SwarmingChatLogWriter.cs" />

@@ -155,7 +155,7 @@ class EIconSyncManager {
                 }
             }
             else {
-                this._logger.logWarn("not syncing eicon group due to not all loaded", sg.syncGroup);
+                //this._logger.logWarn("not syncing eicon group due to not all loaded", sg.syncGroup);
             }
         }
     }

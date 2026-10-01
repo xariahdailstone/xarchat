@@ -53,6 +53,9 @@ export class XarHost2Interop implements IXarHost2HostInterop {
             else if (data.type == "downloadStatusUpdate") {
                 this.doDownloadStatusUpdate(data);
             }
+            else if (data.type == "closerequested") {
+                this.doWindowCloseRequest();
+            }
         };
 
         if ((window as any).chrome?.webview) {
@@ -405,6 +408,25 @@ export class XarHost2Interop implements IXarHost2HostInterop {
         return usp.get("ClientPlatform") ?? "unknown";
     }
 
+    get useWebTitlebar() {
+        const sp = new URLSearchParams(window.location.search);
+        if (sp.get("webtitlebar") == "false") {
+            return false;
+        }
+
+        switch (this.clientPlatform) {
+            case "linux-x64":
+            case "macos-arm64":
+                return false;
+            default:
+                return true;
+        }
+    }
+
+    private doWindowCloseRequest() {
+        this._windowCloseRequestCallbackSet.invoke();
+    }
+
     private neededWidth: number = 0;
     private neededHeight: number = 0;
     private hasResizeQueued = false;
@@ -417,31 +439,19 @@ export class XarHost2Interop implements IXarHost2HostInterop {
                 this.hasResizeQueued = false;
                 const elMain = document.getElementById("elMain")!;
 
-                switch (this.clientPlatform) {
-                    case "linux-x64":
-                    case "macos-arm64":
-                        {
-                            //const pxScaleFactor = window.devicePixelRatio;
-                            //elMain.style.top = "0px";
-                            //elMain.style.width = `${this.neededWidth / pxScaleFactor}px`;
-                            //elMain.style.height = `${this.neededHeight / pxScaleFactor}px`;
-                            //elMain.style.setProperty("--main-interface-width", `${this.neededWidth / pxScaleFactor}px`);
-                            elMain.style.top = "0px";
-                            elMain.style.width = "100vw";
-                            elMain.style.height = "100vh";
-                            elMain.style.setProperty("--main-interface-width", "100vw");
-                        }
-                        break;
-                    default:
-                        {
-                            const w = this.neededWidth / (isInitial ? 1 : window.devicePixelRatio);
-                            const h = this.neededHeight / (isInitial ? 1 : window.devicePixelRatio);
-                            elMain.style.top = "-6px";
-                            elMain.style.width = `${w}px`;
-                            elMain.style.height = `${(h) + 6}px`;
-                            elMain.style.setProperty("--main-interface-width", `${this.neededWidth / window.devicePixelRatio}px`);
-                        }
-                        break;
+                if (this.useWebTitlebar) {
+                    const w = this.neededWidth / (isInitial ? 1 : window.devicePixelRatio);
+                    const h = this.neededHeight / (isInitial ? 1 : window.devicePixelRatio);
+                    elMain.style.top = "-6px";
+                    elMain.style.width = `${w}px`;
+                    elMain.style.height = `${(h) + 6}px`;
+                    elMain.style.setProperty("--main-interface-width", `${this.neededWidth / window.devicePixelRatio}px`);
+                }
+                else {
+                    elMain.style.top = "0px";
+                    elMain.style.width = "100vw";
+                    elMain.style.height = "100vh";
+                    elMain.style.setProperty("--main-interface-width", "100vw");                    
                 }
             });
         }
@@ -563,6 +573,15 @@ export class XarHost2Interop implements IXarHost2HostInterop {
         catch (e) { }
     }
 
+    private readonly _windowCloseRequestCallbackSet: CallbackSet<() => void> = new CallbackSet("XarHost2Interop.windowCloseRequestHandler");
+    addWindowCloseRequestHandler(callback: () => void): IDisposable {
+        return this._windowCloseRequestCallbackSet.add(callback);
+    }
+
+    removeWindowCloseRequestHandler(callback: () => void): void {
+        this._windowCloseRequestCallbackSet.delete(callback);
+    }
+
     private readonly _urlLaunchedCallbackSet: CallbackSet<(args: UrlLaunchedEventArgs) => void> = new CallbackSet("XarHost2Interop.urlLaunchedHandler");
     addUrlLaunchedHandler(callback: (args: UrlLaunchedEventArgs) => void): IDisposable {
         return this._urlLaunchedCallbackSet.add(callback);
@@ -655,8 +674,8 @@ export class XarHost2Interop implements IXarHost2HostInterop {
         }));
     }
 
-    async performLogFileImportAsync(onStatusUpdate: (msg: string) => any): Promise<void> {
-        await this.writeToXCHostSocketAndRead("log.importfile",
+    async performLogFileImportAsync(importType: string, onStatusUpdate: (msg: string) => any): Promise<void> {
+        await this.writeToXCHostSocketAndRead("log.importfile " + JSON.stringify({ importType: importType }),
             (cmd, data) => {
                 if (cmd == "log.importmessage") {
                     onStatusUpdate(data);

@@ -128,6 +128,14 @@
 * Added ARM64 builds for XarChat for Windows and Linux
 * Fixed blocked eicons incorrectly showing as unblurred in newly received messages
 * Removed logging of chat ads (there wasn't a way to view them in the log search anyway!)
-* Added an /importlogs command in the console to import messages from a backed up XarChat log
-  database file into the current log database file.
-  * Importing and exporting of XarChat logs for other F-Chat clients is coming soon!
+* Added an /importlogs command in the console to import chat logs.  You can import logs from the
+  following sources:
+  * **XarChat** - Import logs from the chatlog.db file from another installation of XarChat
+  * **F-Chat 3.0** - Import logs from the official F-Chat 3.0 client application
+  * **Horizon** - Import logs from F-Chat Horizon
+* (Windows) Added an option to use the OS native window titlebar, for certain compatibility situations.
+* (Windows) The Windows volume mixer will now properly show the XarChat title and icon in the
+  per-application volume mixer.
+* Fixed a small issue where XarChat might consume a (small) amount of CPU time unnecessarily after
+  it's been running for several days straight.
+* Inline images in guestbook posts now show up properly.

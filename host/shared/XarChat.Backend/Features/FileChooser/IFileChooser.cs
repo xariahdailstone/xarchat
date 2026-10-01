@@ -13,6 +13,11 @@ namespace XarChat.Backend.Features.FileChooser
             IReadOnlyList<SelectLocalFileFilterEntry>? filters = null,
             string? dialogTitle = null,
             CancellationToken cancellationToken = default);
+
+        Task<string?> SelectLocalDirectoryAsync(
+            string? initialDirectory = null,
+            string? dialogTitle = null,
+            CancellationToken cancellationToken = default);
     }
 
     public record struct SelectLocalFileFilterEntry(string Name, IEnumerable<string> Extensions);

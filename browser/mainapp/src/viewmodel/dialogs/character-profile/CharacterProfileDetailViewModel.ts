@@ -125,7 +125,7 @@ export class CharacterProfileDetailViewModel extends ObservableBase {
         }
 
         if (profileInfo.settings.guestbook) {
-            this.guestbook = new CharacterGuestbookViewModel(activeLoginViewModel, character);
+            this.guestbook = new CharacterGuestbookViewModel(activeLoginViewModel, this);
         }
     }
 

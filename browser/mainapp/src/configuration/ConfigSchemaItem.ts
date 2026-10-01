@@ -234,6 +234,16 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     defaultValue: true,
                     configBlockKey: "enableBlurEffects"
                 },
+                {
+                    id: "useNativeWindowBorder",
+                    scope: getScopeArray(["global"]),
+                    title: "Use Native Window Border",
+                    description: "Should XarChat use the native OS window border and controls?  You may need to enable this for better compatibility with some accessibility tools." +
+                        " (This setting only currently has an effect on Windows.)",
+                    type: "boolean",
+                    defaultValue: false,
+                    configBlockKey: "useNativeWindowBorder"
+                },
                 spellCheckLanguageItem,
                 {
                     id: "autoReconnect",
@@ -1147,6 +1157,15 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     type: "boolean",
                     defaultValue: false,
                     configBlockKey: "chat.textbox.statusBarShown"
+                },
+                {
+                    id: "showChannelAdManagerTest",
+                    scope: getScopeArray(["global"]),
+                    title: "Show Channel Ad Manager (Test)",
+                    description: "Show the (currently in development) ad manager within channels with posted ads.  This feature is not complete yet.",
+                    type: "boolean",
+                    defaultValue: false,
+                    configBlockKey: "showChannelAdManagerTest"
                 },
                 {
                     scope: getScopeArray(["global"]),

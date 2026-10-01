@@ -69,6 +69,7 @@ export class CharacterProfileDialogInner extends RenderingComponentBase<Characte
                     activeLoginViewModel: vm.activeLoginViewModel,
                     sink: x.sink,
                     syncGifs: true,
+                    imagePreviewPopups: true,
                     inlineImageData: x.inlines
                 });
                 this.lastParseResult = parseResult;

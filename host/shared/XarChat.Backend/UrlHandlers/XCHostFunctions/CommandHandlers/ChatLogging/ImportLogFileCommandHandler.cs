@@ -1,56 +1,29 @@
-﻿using XarChat.Backend.Features.AppDataFolder;
+﻿using Microsoft.Extensions.DependencyInjection;
+using XarChat.Backend.Features.AppDataFolder;
 using XarChat.Backend.Features.ChatLogging;
 using XarChat.Backend.Features.FileChooser;
+using static XarChat.Backend.UrlHandlers.XCHostFunctions.WebSocketXCHostSession;
 
 namespace XarChat.Backend.UrlHandlers.XCHostFunctions.CommandHandlers.ChatLogging
 {
-    internal class ImportLogFileCommandHandler : AsyncXCHostCommandHandlerBase
+    internal class ImportLogFileCommandHandler : AsyncXCHostCommandHandlerBase<ImportLogFileArgs>
     {
-        private readonly IChatLogImporter _chatLogImporter;
-        private readonly IFileChooser _fileChooser;
-        private readonly IAppDataFolder _appDataFolder;
+        private readonly IServiceProvider _serviceProvider;
 
         public ImportLogFileCommandHandler(
-            IChatLogImporter chatLogImporter,
-            IFileChooser fileChooser,
-            IAppDataFolder appDataFolder)
+            IServiceProvider serviceProvider)
         {
-            _chatLogImporter = chatLogImporter;
-            _fileChooser = fileChooser;
-            _appDataFolder = appDataFolder;
+            _serviceProvider = serviceProvider;
         }
 
-        protected override async Task HandleCommandAsync(CancellationToken cancellationToken)
+        protected override async Task HandleCommandAsync(ImportLogFileArgs args, CancellationToken cancellationToken)
         {
             try
             {
-                var fn = await _fileChooser.SelectLocalFileAsync(
-                    initialFile: null,
-                    filters: [
-                        new SelectLocalFileFilterEntry(
-                        Name: "XarChat Log File",
-                        Extensions: new List<string>() { "db" }
-                    )
-                    ],
-                    dialogTitle: "Select XarChat log file to import",
-                    cancellationToken: cancellationToken);
-                if (fn is null) { return; }
-
-                var fi = new FileInfo(fn);
-                var actualLogFile = new FileInfo(Path.Combine(_appDataFolder.GetAppDataFolder(), "chatlog.db"));
-
-                if (fi.FullName == actualLogFile.FullName)
-                {
-                    throw new ApplicationException("That is the log file for the currently running copy of XarChat. Please choose " +
-                        "a different log file to import.");
-                }
-
-                await this.CommandContext.WriteMessage($"log.importmessage Beginning import of file {fi.FullName}");
-                await _chatLogImporter.ImportFromFileAsync(
-                    fi.FullName,
+                var importer = _serviceProvider.GetRequiredKeyedService<IChatLogImporter>(args.ImportType);
+                await importer.ImportAsync(
                     async (msg) => await this.CommandContext.WriteMessage($"log.importmessage {msg}"),
                     cancellationToken);
-                await this.CommandContext.WriteMessage($"log.importmessage Log file import complete!");
             }
             catch (Exception ex)
             {

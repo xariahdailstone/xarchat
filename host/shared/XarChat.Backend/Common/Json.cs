@@ -58,6 +58,7 @@ namespace XarChat.Backend.Common
     [JsonSerializable(typeof(FriendsList))]
     [JsonSerializable(typeof(ProfileInfo))]
     [JsonSerializable(typeof(ProfileFieldsInfoList))]
+    [JsonSerializable(typeof(ImportLogFileArgs))]
     [JsonSerializable(typeof(LogChannelMessageArgs))]
     [JsonSerializable(typeof(LogPMConvoMessageArgs))]
     [JsonSerializable(typeof(UpdateAppBadgeArgs))]

@@ -23,6 +23,10 @@ export interface IHostInterop {
     get isInXarChatHost(): boolean;
     get devMode(): boolean;
 
+    get useWebTitlebar(): boolean;
+    addWindowCloseRequestHandler(callback: () => void): IDisposable;
+    removeWindowCloseRequestHandler(callback: () => void): void;
+
     launchUrl(app: AppViewModel, url: string, forceExternal: boolean): void;
 
     addUrlLaunchedHandler(callback: (args: UrlLaunchedEventArgs) => void): IDisposable;
@@ -37,7 +41,7 @@ export interface IHostInterop {
     closeWindow(): void;
     showDevTools(): void;
 
-    performLogFileImportAsync(onStatusUpdate: (msg: string) => any): Promise<void>;
+    performLogFileImportAsync(importType: string, onStatusUpdate: (msg: string) => any): Promise<void>;
 
     logChannelMessage(myCharacterName: CharacterName, channelName: ChannelName, channelTitle: string,
         speakingCharacter: CharacterName, speakingCharacterGender: CharacterGender, speakingCharacterOnlineStatus: OnlineStatus,

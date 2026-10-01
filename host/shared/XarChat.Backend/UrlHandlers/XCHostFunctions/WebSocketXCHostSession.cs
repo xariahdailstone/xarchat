@@ -699,7 +699,7 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions
 
                 await this.WriteAsync("?getXDNApiKey");
 
-                await await Task.WhenAny(waiterTCS.Task, Task.Delay(-1, combinedCTS.Token));
+                await TaskUtil.WhenAnyWithCancellation(combinedCTS.Token, waiterTCS.Task);
                 var result = await waiterTCS.Task;
                 return result;
             }
@@ -766,6 +766,12 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions
 
             [JsonPropertyName("status")]
             public int CharacterStatus { get; set; }
+        }
+
+        public class ImportLogFileArgs
+        {
+            [JsonPropertyName("importType")]
+            public required string ImportType { get; set; }
         }
 
         public class LogChannelMessageArgs

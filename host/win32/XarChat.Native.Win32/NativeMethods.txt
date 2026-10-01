@@ -35,6 +35,8 @@ ExtractIcon
 //AllocConsole
 //FreeConsole
 //CreateFileW
+SHBrowseForFolder
+SHGetPathFromIDListW
 BeginPaint
 EndPaint
 GetCursorPos
@@ -49,3 +51,9 @@ CloseHandle
 //EnumSystemLocalesEx
 EnumUILanguages
 GetLocaleInfoEx
+// Dwm
+DwmGetWindowAttribute
+DwmSetWindowAttribute
+COLORREF
+// shobjidl_core
+SetCurrentProcessExplicitAppUserModelID

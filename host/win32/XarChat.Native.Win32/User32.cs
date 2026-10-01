@@ -340,6 +340,11 @@ namespace XarChat.Native.Win32
             public const uint WM_LBUTTONUP = 0x0202;
         }
 
+        public static class SysCommands
+        {
+            public const uint SC_CLOSE = 0xF060;
+        }
+
         public enum WA : int
         {
             INACTIVE = 0x0,

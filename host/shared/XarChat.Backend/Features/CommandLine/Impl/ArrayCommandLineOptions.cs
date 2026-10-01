@@ -106,6 +106,27 @@ namespace XarChat.Backend.Features.CommandLine.Impl
                             }
                         }
                         break;
+                    case "--force-evergreen-webview":
+                        this.ForceEvergreenWebView = true;
+                        break;
+                    case "--webview-version":
+                        {
+                            var v = GetNextOrNull();
+                            if (!String.IsNullOrWhiteSpace(v) && Int32.TryParse(v, out var vint))
+                            {
+                                this.WebViewVersion = vint;
+                            }
+                        }
+                        break;
+                    case "--webview-path":
+                        {
+                            var dir = GetNextOrNull();
+                            if (!String.IsNullOrWhiteSpace(dir))
+                            {
+                                this.WebViewDirectory = dir;
+                            }
+                        }
+                        break;
                 }
             }
         }
@@ -129,5 +150,11 @@ namespace XarChat.Backend.Features.CommandLine.Impl
         public string? BrowserLanguage { get; private set; } = null;
 
         public string? LogToFile { get; private set; } = null;
+
+        public bool ForceEvergreenWebView { get; private set; } = false;
+
+        public int? WebViewVersion { get; private set; } = null;
+
+        public string? WebViewDirectory { get; private set; } = null;
     }
 }

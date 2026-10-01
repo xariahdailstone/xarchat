@@ -29,6 +29,7 @@ using System.Text.Json;
 using System.Diagnostics.CodeAnalysis;
 using XarChat.Backend.Features.EIconFavoriteManager;
 using Windows.AI.MachineLearning;
+using XarChat.Native.Win32.ComInterop.AudioApi;
 
 namespace MinimalWin32Test.UI
 {
@@ -125,6 +126,25 @@ namespace MinimalWin32Test.UI
             if (this.IsHandleCreated)
             {
                 InvalidateRect(this.WindowHandle!.Handle, this.Bounds, true);
+                if (this.UseNativeWindowBorder)
+                {
+                    UpdateNativeTitlebarColor();
+                }
+            }
+        }
+
+        private void UpdateNativeTitlebarColor()
+        {
+            if (Dwm.IsCaptionColorSupported(this.WindowHandle.Handle))
+            {
+                Dwm.SetCaptionBackgroundColor(this.WindowHandle.Handle,
+                    _titlebarColor.R, _titlebarColor.G, _titlebarColor.B);
+                Dwm.SetCaptionForegroundColor(this.WindowHandle.Handle,
+                    200, 200, 200);
+            }
+            else
+            {
+                // TODO:
             }
         }
 
@@ -193,15 +213,22 @@ namespace MinimalWin32Test.UI
                     //    break;
                     case User32.StandardWindowMessages.WM_NCCALCSIZE:
                         {
-                            var bCalcValidRects = wParam;
-                            var p = Marshal.PtrToStructure<NCCALCSIZE_PARAMS>(lParam);
-                            var bt = IsHandleCreated ? NormalizedPixelsToSystemPixels(BORDER_THICKNESS) : BORDER_THICKNESS;
-                            p.rgrc[0].Left += bt;
-                            //p.rgrc[0].Top += BORDER_THICKNESS;
-                            p.rgrc[0].Right -= bt;
-                            p.rgrc[0].Bottom -= bt;
-                            Marshal.StructureToPtr(p, lParam, false);
-                            return 0;
+                            if (!UseNativeWindowBorder)
+                            {
+                                var bCalcValidRects = wParam;
+                                var p = Marshal.PtrToStructure<NCCALCSIZE_PARAMS>(lParam);
+                                var bt = IsHandleCreated ? NormalizedPixelsToSystemPixels(BORDER_THICKNESS) : BORDER_THICKNESS;
+                                p.rgrc[0].Left += bt;
+                                //p.rgrc[0].Top += BORDER_THICKNESS;
+                                p.rgrc[0].Right -= bt;
+                                p.rgrc[0].Bottom -= bt;
+                                Marshal.StructureToPtr(p, lParam, false);
+                                return 0;
+                            }
+                            else
+                            {
+                                break;
+                            }
                         }
                     //case User32.StandardWindowMessages.WM_SIZING:
                     //    {
@@ -232,23 +259,33 @@ namespace MinimalWin32Test.UI
                         break;
                     case User32.StandardWindowMessages.WM_MOUSEMOVE:
                         {
-                            int y = User32.GET_Y_LPARAM(lParam);
-                            int x = User32.GET_X_LPARAM(lParam);
-                            if (y < NormalizedPixelsToSystemPixels(BrowserWindow.TOP_BORDER_THICKNESS))
+                            if (!UseNativeWindowBorder)
                             {
-                                User32.SetCursor(Cursor.SizeNS.HCursor);
+                                int y = User32.GET_Y_LPARAM(lParam);
+                                int x = User32.GET_X_LPARAM(lParam);
+                                if (y < NormalizedPixelsToSystemPixels(BrowserWindow.TOP_BORDER_THICKNESS))
+                                {
+                                    User32.SetCursor(Cursor.SizeNS.HCursor);
+                                }
                             }
                         }
                         break;
                     case User32.StandardWindowMessages.WM_LBUTTONDOWN:
                         {
-                            int y = User32.GET_Y_LPARAM(lParam);
-                            int x = User32.GET_X_LPARAM(lParam);
-                            if (y < NormalizedPixelsToSystemPixels(BrowserWindow.TOP_BORDER_THICKNESS))
+                            if (!UseNativeWindowBorder)
                             {
-                                User32.PostMessage(windowHandle.Handle, User32.StandardWindowMessages.WM_NCLBUTTONDOWN, (UIntPtr)User32.HT.TOP, 0);
+                                int y = User32.GET_Y_LPARAM(lParam);
+                                int x = User32.GET_X_LPARAM(lParam);
+                                if (y < NormalizedPixelsToSystemPixels(BrowserWindow.TOP_BORDER_THICKNESS))
+                                {
+                                    User32.PostMessage(windowHandle.Handle, User32.StandardWindowMessages.WM_NCLBUTTONDOWN, (UIntPtr)User32.HT.TOP, 0);
+                                }
+                                return 0;
                             }
-                            return 0;
+                            else
+                            {
+                                break;
+                            }
                         }
                     case User32.StandardWindowMessages.WM_SHOWWINDOW:
                         {
@@ -257,6 +294,14 @@ namespace MinimalWin32Test.UI
                         break;
                     case User32.StandardWindowMessages.WM_SYSCOMMAND:
                         {
+                            if (((nuint)wParam & 0xFFF0) == SysCommands.SC_CLOSE)
+                            {
+                                if (!OnCloseBoxClicked())
+                                {
+                                    return 0;
+                                }
+                            }
+
                             var result = User32.DefWindowProc(windowHandle.Handle, msg, wParam, lParam);
                             MaybeUpdateWindowState();
                             MaybeUpdateWindowSize();
@@ -312,6 +357,19 @@ namespace MinimalWin32Test.UI
             }
         }
 
+        protected virtual bool OnCloseBoxClicked()
+        {
+            if (_webView is not null)
+            {
+                _webView!.PostWebMessageAsJson($"{{ \"type\": \"closerequested\" }}");
+                return false;
+            }
+            else
+            {
+                return true;
+            }
+        }
+
         private Size _lastNotifiedClientSize = new Size(0, 0);
         private Rectangle _lastNotifiedWindowSize = new Rectangle(0, 0, 0, 0);
 
@@ -348,9 +406,18 @@ namespace MinimalWin32Test.UI
                     var width = clientRect.Width;
                     var height = clientRect.Height;
 
-                    _webViewController.Bounds = new System.Drawing.Rectangle(
-                        0, this.NormalizedPixelsToSystemPixels(BrowserWindow.TOP_BORDER_THICKNESS),
-                        width + 1, height - this.NormalizedPixelsToSystemPixels(BrowserWindow.TOP_BORDER_THICKNESS) + 1);
+                    if (!UseNativeWindowBorder)
+                    {
+                        _webViewController.Bounds = new System.Drawing.Rectangle(
+                            0, this.NormalizedPixelsToSystemPixels(BrowserWindow.TOP_BORDER_THICKNESS),
+                            width + 1, height - this.NormalizedPixelsToSystemPixels(BrowserWindow.TOP_BORDER_THICKNESS) + 1);
+                    }
+                    else
+                    {
+                        _webViewController.Bounds = new System.Drawing.Rectangle(
+                            0, 0,
+                            width + 1, height + 1);
+                    }
 
                     //_obm.OnWindowResize(width, height);
                     _webView!.PostWebMessageAsJson($"{{ \"type\": \"clientresize\", \"bounds\": [{width + 1},{height - NormalizedPixelsToSystemPixels(TOP_BORDER_THICKNESS) + 1}] }}");
@@ -482,6 +549,16 @@ namespace MinimalWin32Test.UI
             WriteToStartupLog("BrowserWindow.OnHandleCreating - Set Title");
         }
 
+        private bool UseNativeWindowBorder
+        {
+            get
+            {
+                var appCfg = _backend.GetServiceProviderAsync().Result.GetRequiredService<IAppConfiguration>();
+                var cfgNode = appCfg.GetArbitraryValue("global.useNativeWindowBorder");
+                return cfgNode?.GetValueKind() == JsonValueKind.True;
+            }
+        }
+
         protected override void OnHandleCreated()
         {
             var cwr = _backend.GetServiceProviderAsync().Result.GetRequiredService<ICommandableWindowRegistry>();
@@ -523,8 +600,9 @@ namespace MinimalWin32Test.UI
                 }
 
                 WriteToStartupLog("BrowserWindow.OnHandleCreated - Creating CoreWebView2Environment");
+                var bexdir = Program.GetBrowserExecutableFolder();
                 var cenv = await Microsoft.Web.WebView2.Core.CoreWebView2Environment.CreateAsync(
-                    browserExecutableFolder: null,
+                    browserExecutableFolder: bexdir,
                     userDataFolder: Path.Combine(appDataFolder, "WebView2Data"),
                     new Microsoft.Web.WebView2.Core.CoreWebView2EnvironmentOptions(
                         additionalBrowserArguments: String.Join(" ", browserArguments),
@@ -532,6 +610,11 @@ namespace MinimalWin32Test.UI
                         targetCompatibleBrowserVersion: null,
                         allowSingleSignOnUsingOSPrimaryAccount: false
                     ));
+                cenv.ProcessInfosChanged += (_, _) =>
+                {
+                    RefreshWebViewProcessIds(cenv);
+                };
+                RefreshWebViewProcessIds(cenv);
                 _cenv = cenv;
 
                 WriteToStartupLog("BrowserWindow.OnHandleCreated - Creating CoreWebView2Controller");
@@ -559,9 +642,18 @@ namespace MinimalWin32Test.UI
                 _webViewMemManager = new WebViewMemoryUsageManager(_backend, _app, _webView);
 
                 var bounds = this.WindowHandle.ClientRect;
-                _webViewController.Bounds = new System.Drawing.Rectangle(
-                    0, NormalizedPixelsToSystemPixels(TOP_BORDER_THICKNESS), 
-                    bounds.Width, bounds.Height - NormalizedPixelsToSystemPixels(TOP_BORDER_THICKNESS));
+                if (!UseNativeWindowBorder)
+                {
+                    _webViewController.Bounds = new System.Drawing.Rectangle(
+                        0, NormalizedPixelsToSystemPixels(TOP_BORDER_THICKNESS),
+                        bounds.Width, bounds.Height - NormalizedPixelsToSystemPixels(TOP_BORDER_THICKNESS));
+                }
+                else
+                {
+                    _webViewController.Bounds = new System.Drawing.Rectangle(
+                        0, 0,
+                        bounds.Width, bounds.Height);
+                }
 
                 var fn = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/index.html");
                 WriteToStartupLog("BrowserWindow.OnHandleCreated - Navigating to app");
@@ -583,6 +675,10 @@ namespace MinimalWin32Test.UI
                 {
                     launchParams.Add("devmode", "true");
                 }
+                if (this.UseNativeWindowBorder)
+                {
+                    launchParams.Add("webtitlebar", "false");
+                }
 
                 var navUrl = $"https://localhost:{assetPortNumber}/app/index.html?" +
                     String.Join("&", launchParams.Select(kvp => $"{kvp.Key}={HttpUtility.UrlEncode(kvp.Value)}"));
@@ -596,6 +692,19 @@ namespace MinimalWin32Test.UI
                 WriteToStartupLog("BrowserWindow.OnHandleCreated - done");
                 _fullyCreated = true;
             });
+        }
+
+        private void RefreshWebViewProcessIds(CoreWebView2Environment cenv)
+        {
+            var newPids = new HashSet<uint>();
+
+            foreach (var process in cenv.GetProcessInfos())
+            {
+                newPids.Add((uint)process.ProcessId);
+            }
+
+            var asdnm = _backend.GetServiceProviderAsync().Result.GetRequiredService<AudioSessionDisplayNameMonitor>();
+            asdnm.SetTargetProcessList(newPids);
         }
 
         private void HandleDownloadOperation(CoreWebView2DownloadOperation downloadOperation)

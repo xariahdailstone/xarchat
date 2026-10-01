@@ -6,11 +6,12 @@ import { ObservableValue } from "../../../util/Observable";
 import { ObservableBase, observableProperty } from "../../../util/ObservableBase";
 import { Collection } from "../../../util/ObservableCollection";
 import { ActiveLoginViewModel } from "../../ActiveLoginViewModel";
+import { CharacterProfileDetailViewModel } from "./CharacterProfileDetailViewModel";
 
 export class CharacterGuestbookViewModel extends ObservableBase {
     constructor(
         public readonly session: ActiveLoginViewModel,
-        public readonly character: CharacterName) {
+        public readonly parent: CharacterProfileDetailViewModel) {
 
         super();
         this.navigateToPageAsync(0, CancellationToken.NONE);
@@ -19,6 +20,8 @@ export class CharacterGuestbookViewModel extends ObservableBase {
     private readonly _page: ObservableValue<number> = new ObservableValue(-1);
     private readonly _hasNextPage: ObservableValue<boolean> = new ObservableValue(false);
     private readonly _hasPrevPage: ObservableValue<boolean> = new ObservableValue(false);
+
+    get character() { return this.parent.character; }
 
     get page(): number { return this._page.value; }
     get hasNextPage(): boolean { return this._hasNextPage.value; }
