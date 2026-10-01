@@ -26,7 +26,8 @@ namespace MinimalWin32Test
 {
     internal class Program
     {
-        private static readonly int? DEFAULT_FIXED_WEBVIEW_VERSION = 151;
+        //private static readonly int? DEFAULT_FIXED_WEBVIEW_VERSION = 151;
+        private static readonly int? DEFAULT_FIXED_WEBVIEW_VERSION = null;
 
         [STAThread]
         static int Main(string[] args)
@@ -54,9 +55,9 @@ namespace MinimalWin32Test
                 var profilePath = GetProfilePath();
                 writeStartupLog($"profilePath = {profilePath}");
 
-                writeStartupLog("Setting AUMID...");
-                var aumid = SetApplicationUserModelID(args, profilePath);
-                writeStartupLog($"AUMID = {aumid}");
+                //writeStartupLog("Setting AUMID...");
+                //var aumid = SetApplicationUserModelID(args, profilePath);
+                //writeStartupLog($"AUMID = {aumid}");
 
                 writeStartupLog($"Starting AutoUpdateManagerFactory...");
                 var autoUpdater = AutoUpdateManagerFactory.Create(
@@ -400,14 +401,17 @@ namespace MinimalWin32Test
         {
             var profilePath = GetProfilePath();
             var webviewRuntimesPath = Path.Combine(profilePath, "webview-runtimes");
-            foreach (var subdir in Directory.GetDirectories(webviewRuntimesPath))
+            if (Directory.Exists(webviewRuntimesPath))
             {
-                var subdirBaseName = Path.GetFileName(subdir);
-                if (neededVersion is null 
-                    || !Int32.TryParse(subdirBaseName, out var subdirVerInt)
-                    || subdirVerInt != neededVersion)
+                foreach (var subdir in Directory.GetDirectories(webviewRuntimesPath))
                 {
-                    DirectoryDeleteWithRetry(subdir, true);
+                    var subdirBaseName = Path.GetFileName(subdir);
+                    if (neededVersion is null
+                        || !Int32.TryParse(subdirBaseName, out var subdirVerInt)
+                        || subdirVerInt != neededVersion)
+                    {
+                        DirectoryDeleteWithRetry(subdir, true);
+                    }
                 }
             }
         }

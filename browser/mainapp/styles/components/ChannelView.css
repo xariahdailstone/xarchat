@@ -22,7 +22,7 @@
 
     display: grid;
     grid-template-columns: 1fr;
-    grid-template-rows: auto minmax(0, 1fr) 6px auto;
+    grid-template-rows: auto minmax(0, 1fr) auto auto;
     grid-template-areas:
         "header"
         "main"
@@ -35,7 +35,7 @@
 
 .header { grid-area: header; contain: strict; margin-left: calc(0px - var(--chatui-splitterhandle-width)); width: 100%; overflow: hidden; }
 .contentarea { grid-area: main; contain: strict;  }
-.tbsplitterhandle { grid-area: splitter; contain: strict;  }
+.tbsplitterhandle { grid-area: splitter; contain: strict; height: 6px;  }
 .textbox { grid-area: textbox; contain: strict;  }
 
 .contentarea {
@@ -75,4 +75,36 @@
 
 .userlist {
     overflow: hidden;
+}
+
+
+#elMain:has(.stream-admanager) {
+    .tbsplitterhandle { display: none; }
+    .textbox { display: none; }
+}
+.stream-admanager {
+    overflow: hidden;
+    height: 100%;
+    max-height: 100%;
+
+    contain: layout paint;
+
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-columns: 100%;
+    grid-template-areas:
+        "filtersbar"
+        "admanagerview";
+
+    .filtersbar {
+        grid-area: filtersbar;
+        /* display: none; */
+        height: 30px;
+        max-width: 100%;
+
+        background: var(--bg-level-3);
+    }
+    x-admanagerview {
+        grid-area: admanagerview;
+    }
 }

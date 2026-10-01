@@ -3,6 +3,12 @@ export interface Comparer<T> {
     compare(a: T, b: T): number;
 }
 
+export class DelegateComparer<T> implements Comparer<T> {
+    constructor(
+        public readonly compare: (a: T, b: T) => number) {
+    }
+}
+
 export class StringComparer implements Comparer<string> {
 
     static Ordinal: StringComparer = new StringComparer((a, b) => a < b ? -1 : a == b ? 0 : 1);
@@ -18,8 +24,18 @@ export class StringComparer implements Comparer<string> {
 }
 
 export class NumberComparer implements Comparer<number> {
+    static readonly instance: NumberComparer = new NumberComparer();
+
     compare(a: number, b: number): number {
         return a - b;
+    }
+}
+
+export class DateComparer implements Comparer<Date> {
+    static readonly instance = new DateComparer();
+
+    compare(a: Date, b: Date): number {
+        return a.getTime() - b.getTime();
     }
 }
 

@@ -699,7 +699,7 @@ namespace XarChat.Backend.UrlHandlers.XCHostFunctions
 
                 await this.WriteAsync("?getXDNApiKey");
 
-                await await Task.WhenAny(waiterTCS.Task, Task.Delay(-1, combinedCTS.Token));
+                await TaskUtil.WhenAnyWithCancellation(combinedCTS.Token, waiterTCS.Task);
                 var result = await waiterTCS.Task;
                 return result;
             }

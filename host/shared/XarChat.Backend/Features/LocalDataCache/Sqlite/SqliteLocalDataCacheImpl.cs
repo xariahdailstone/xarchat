@@ -146,7 +146,7 @@ namespace XarChat.Backend.Features.LocalDataCache.Sqlite
                 });
             }
 
-            var completedTask = await Task.WhenAny(Task.Delay(-1, cancellationToken), ce.ValueTask);
+            await TaskUtil.WhenAnyWithCancellation(cancellationToken, ce.ValueTask);
             if (cancellationToken.IsCancellationRequested)
             {
                 throw new OperationCanceledException(cancellationToken);

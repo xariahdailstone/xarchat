@@ -136,3 +136,6 @@
 * (Windows) Added an option to use the OS native window titlebar, for certain compatibility situations.
 * (Windows) The Windows volume mixer will now properly show the XarChat title and icon in the
   per-application volume mixer.
+* Fixed a small issue where XarChat might consume a (small) amount of CPU time unnecessarily after
+  it's been running for several days straight.
+* Inline images in guestbook posts now show up properly.
