@@ -49,9 +49,9 @@ namespace MinimalWin32Test
                 var profilePath = FindProfilePath(args);
                 writeStartupLog($"profilePath = {profilePath}");
 
-                writeStartupLog("Setting AUMID...");
-                var aumid = SetApplicationUserModelID(args, profilePath);
-                writeStartupLog($"AUMID = {aumid}");
+                //writeStartupLog("Setting AUMID...");
+                //var aumid = SetApplicationUserModelID(args, profilePath);
+                //writeStartupLog($"AUMID = {aumid}");
 
                 writeStartupLog($"Starting AutoUpdateManagerFactory...");
                 var autoUpdater = AutoUpdateManagerFactory.Create(
