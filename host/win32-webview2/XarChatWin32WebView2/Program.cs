@@ -401,14 +401,17 @@ namespace MinimalWin32Test
         {
             var profilePath = GetProfilePath();
             var webviewRuntimesPath = Path.Combine(profilePath, "webview-runtimes");
-            foreach (var subdir in Directory.GetDirectories(webviewRuntimesPath))
+            if (Directory.Exists(webviewRuntimesPath))
             {
-                var subdirBaseName = Path.GetFileName(subdir);
-                if (neededVersion is null 
-                    || !Int32.TryParse(subdirBaseName, out var subdirVerInt)
-                    || subdirVerInt != neededVersion)
+                foreach (var subdir in Directory.GetDirectories(webviewRuntimesPath))
                 {
-                    DirectoryDeleteWithRetry(subdir, true);
+                    var subdirBaseName = Path.GetFileName(subdir);
+                    if (neededVersion is null
+                        || !Int32.TryParse(subdirBaseName, out var subdirVerInt)
+                        || subdirVerInt != neededVersion)
+                    {
+                        DirectoryDeleteWithRetry(subdir, true);
+                    }
                 }
             }
         }
