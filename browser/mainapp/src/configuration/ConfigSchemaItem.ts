@@ -1159,6 +1159,15 @@ export const ConfigSchema: ConfigSchemaDefinition = {
                     configBlockKey: "chat.textbox.statusBarShown"
                 },
                 {
+                    id: "showChannelAdManagerTest",
+                    scope: getScopeArray(["global"]),
+                    title: "Show Channel Ad Manager (Test)",
+                    description: "Show the (currently in development) ad manager within channels with posted ads.  This feature is not complete yet.",
+                    type: "boolean",
+                    defaultValue: false,
+                    configBlockKey: "showChannelAdManagerTest"
+                },
+                {
                     scope: getScopeArray(["global"]),
                     sectionTitle: "Left Bar",
                     description: "",

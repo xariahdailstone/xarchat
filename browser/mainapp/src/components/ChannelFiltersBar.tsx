@@ -19,8 +19,10 @@ export class ChannelFiltersBar extends RenderingComponentBase<ChannelViewModel> 
         const vm = this.viewModel;
         if (!vm || !vm.channelFilters) { return VNodeUtils.createEmptyFragment(); }
 
+        const showAdManager = !!vm.getConfigSettingById("showChannelAdManagerTest");
+
         let elAdManagerButton: VNode | null = null;
-        if (vm instanceof ChatChannelViewModel) {
+        if (showAdManager && vm instanceof ChatChannelViewModel) {
             elAdManagerButton = <div classList="admanagerbutton">
                 <div classList={[ "filtertab", (vm.activePanel == ChannelActivePanel.AD_MANAGER ? "selected" : "") ]} on={{
                         "click": () => { vm.activePanel = ChannelActivePanel.AD_MANAGER; }
