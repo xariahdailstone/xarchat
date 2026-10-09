@@ -43,6 +43,7 @@ build-photino-mac-universal:
 		  $(SRC)/Photino.Mac.UiDelegate.mm\
 		  $(SRC)/Photino.Mac.WindowDelegate.mm\
 		  $(SRC)/Photino.Mac.NavigationDelegate.mm\
+		  $(SRC)/Photino.Mac.WebView.mm\
 		  $(SRC)/Photino.Mac.UrlSchemeHandler.mm\
 		  $(SRC)/Photino.Mac.NSWindowBorderless.mm\
 		  $(SRC)/Photino.Mac.Dialog.mm\
@@ -63,6 +64,7 @@ build-photino-mac-x64:
 		  $(SRC)/Photino.Mac.UiDelegate.mm\
 		  $(SRC)/Photino.Mac.WindowDelegate.mm\
 		  $(SRC)/Photino.Mac.NavigationDelegate.mm\
+		  $(SRC)/Photino.Mac.WebView.mm\
 		  $(SRC)/Photino.Mac.UrlSchemeHandler.mm\
 		  $(SRC)/Photino.Mac.NSWindowBorderless.mm\
 		  $(SRC)/Photino.Mac.Dialog.mm\
@@ -83,6 +85,7 @@ build-photino-mac-arm64:
 		  $(SRC)/Photino.Mac.UiDelegate.mm\
 		  $(SRC)/Photino.Mac.WindowDelegate.mm\
 		  $(SRC)/Photino.Mac.NavigationDelegate.mm\
+		  $(SRC)/Photino.Mac.WebView.mm\
 		  $(SRC)/Photino.Mac.UrlSchemeHandler.mm\
 		  $(SRC)/Photino.Mac.NSWindowBorderless.mm\
 		  $(SRC)/Photino.Mac.Dialog.mm\

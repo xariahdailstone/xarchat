@@ -36,6 +36,30 @@ public partial class PhotinoWindow
     static partial void Photino_Close(IntPtr instance);
 
 
+    //CONTEXT MENU
+    //These mutate the menu the platform is about to display and are only meaningful
+    //while the callback registered with Photino_SetContextMenuRequestedCallback is running.
+    //AutoString is wchar_t* on Windows and char* (UTF-8) everywhere else, which is exactly
+    //what CharSet.Auto selects at runtime, so these cannot use StringMarshalling.Utf8.
+    [DllImport(DLL_NAME, CallingConvention = CallingConvention.Cdecl, SetLastError = true, CharSet = CharSet.Auto)]
+    static extern void Photino_ContextMenu_AddItem(IntPtr instance, string label, int kind, [MarshalAs(UnmanagedType.I1)] bool enabled, [MarshalAs(UnmanagedType.I1)] bool isChecked, int customItemId, int index);
+
+    [LibraryImport(DLL_NAME, SetLastError = true)]
+    [UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+    static partial void Photino_ContextMenu_ClearItems(IntPtr instance);
+
+    [DllImport(DLL_NAME, CallingConvention = CallingConvention.Cdecl, SetLastError = true, CharSet = CharSet.Auto)]
+    static extern void Photino_ContextMenu_RemoveItem(IntPtr instance, string itemId);
+
+    [LibraryImport(DLL_NAME, SetLastError = true)]
+    [UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+    static partial void Photino_SetContextMenuRequestedCallback(IntPtr instance, CppContextMenuRequestedDelegate callback);
+
+    [LibraryImport(DLL_NAME, SetLastError = true)]
+    [UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+    static partial void Photino_SetContextMenuCustomItemCallback(IntPtr instance, CppContextMenuCustomItemDelegate callback);
+
+
     //GET
     [LibraryImport(DLL_NAME, SetLastError = true)]
     [UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]

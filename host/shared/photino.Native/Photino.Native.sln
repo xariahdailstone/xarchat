@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.3.32611.2
+# Visual Studio Version 18
+VisualStudioVersion = 18.10.12217.157 stable
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{8EA1A257-1E12-4052-9571-B5143BC86D04}"
 	ProjectSection(SolutionItems) = preProject
@@ -14,6 +14,8 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Photino.Native", "Photino.Native\Photino.Native.vcxproj", "{B326B50A-F623-40F1-92F7-1EC6A5A48DAC}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Photino.Test", "Photino.Test\Photino.Test.csproj", "{056ABF92-CFED-4800-8439-ECFA5C55B029}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Photino.NET", "..\photino.NET\Photino.NET\Photino.NET.csproj", "{FE020F43-15DF-51FB-F1AD-1BF0267EE0E1}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -58,6 +60,22 @@ Global
 		{056ABF92-CFED-4800-8439-ECFA5C55B029}.Release|x64.ActiveCfg = Release|Any CPU
 		{056ABF92-CFED-4800-8439-ECFA5C55B029}.Release|x64.Build.0 = Release|Any CPU
 		{056ABF92-CFED-4800-8439-ECFA5C55B029}.Release|x86.ActiveCfg = Release|Any CPU
+		{FE020F43-15DF-51FB-F1AD-1BF0267EE0E1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FE020F43-15DF-51FB-F1AD-1BF0267EE0E1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FE020F43-15DF-51FB-F1AD-1BF0267EE0E1}.Debug|ARM64.ActiveCfg = Debug|Any CPU
+		{FE020F43-15DF-51FB-F1AD-1BF0267EE0E1}.Debug|ARM64.Build.0 = Debug|Any CPU
+		{FE020F43-15DF-51FB-F1AD-1BF0267EE0E1}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{FE020F43-15DF-51FB-F1AD-1BF0267EE0E1}.Debug|x64.Build.0 = Debug|Any CPU
+		{FE020F43-15DF-51FB-F1AD-1BF0267EE0E1}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{FE020F43-15DF-51FB-F1AD-1BF0267EE0E1}.Debug|x86.Build.0 = Debug|Any CPU
+		{FE020F43-15DF-51FB-F1AD-1BF0267EE0E1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FE020F43-15DF-51FB-F1AD-1BF0267EE0E1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FE020F43-15DF-51FB-F1AD-1BF0267EE0E1}.Release|ARM64.ActiveCfg = Release|Any CPU
+		{FE020F43-15DF-51FB-F1AD-1BF0267EE0E1}.Release|ARM64.Build.0 = Release|Any CPU
+		{FE020F43-15DF-51FB-F1AD-1BF0267EE0E1}.Release|x64.ActiveCfg = Release|Any CPU
+		{FE020F43-15DF-51FB-F1AD-1BF0267EE0E1}.Release|x64.Build.0 = Release|Any CPU
+		{FE020F43-15DF-51FB-F1AD-1BF0267EE0E1}.Release|x86.ActiveCfg = Release|Any CPU
+		{FE020F43-15DF-51FB-F1AD-1BF0267EE0E1}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

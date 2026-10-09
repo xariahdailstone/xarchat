@@ -1514,6 +1514,8 @@ public partial class PhotinoWindow
         _startupParameters.FocusOutHandler = OnFocusOut;
         _startupParameters.WebMessageReceivedHandler = OnWebMessageReceived;
         _startupParameters.CustomSchemeHandler = OnCustomScheme;
+        _startupParameters.ContextMenuRequestedHandler = OnContextMenuRequested;
+        _startupParameters.ContextMenuCustomItemHandler = OnContextMenuCustomItem;
     }
 
     //FLUENT METHODS FOR INITIALIZING STARTUP PARAMETERS FOR NEW WINDOWS

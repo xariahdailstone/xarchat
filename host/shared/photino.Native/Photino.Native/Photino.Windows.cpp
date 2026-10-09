@@ -173,6 +173,8 @@ Photino::Photino(PhotinoInitParams* initParams)
 	_focusInCallback = (FocusInCallback)initParams->FocusInHandler;
 	_focusOutCallback = (FocusOutCallback)initParams->FocusOutHandler;
 	_customSchemeCallback = (WebResourceRequestedCallback)initParams->CustomSchemeHandler;
+	_contextMenuRequestedCallback = (ContextMenuRequestedCallback)initParams->ContextMenuRequestedHandler;
+	_contextMenuCustomItemCallback = (ContextMenuCustomItemCallback)initParams->ContextMenuCustomItemHandler;
 
 	//copy strings from the fixed size array passed, but only if they have a value.
 	for (int i = 0; i < 16; ++i)
@@ -653,12 +655,224 @@ void Photino::SetContextMenuEnabled(bool enabled)
 	_webviewWindow->Reload();
 }
 
+// Context menu customization.
+//
+// WebView2 hands us the menu that is about to be displayed along with a mutable
+// item collection, so unlike the other platforms we can let the managed handler
+// edit the real menu directly. The collection is only valid while the
+// ContextMenuRequested event is being processed, which is exactly the window in
+// which the managed handler runs.
+
+// The snapshot format is tab separated, so the fields themselves must not contain tabs.
+static std::wstring SanitizeContextMenuField(LPCWSTR value)
+{
+	std::wstring result(value == NULL ? L"" : value);
+	for (size_t i = 0; i < result.size(); ++i)
+	{
+		if (result[i] == L'\t' || result[i] == L'\n' || result[i] == L'\r')
+			result[i] = L' ';
+	}
+	return result;
+}
+
+void Photino::ContextMenuRemoveItem(AutoString itemId)
+{
+	if (_contextMenuItems.get() == NULL || itemId == NULL)
+		return;
+
+	UINT32 count = 0;
+	if (FAILED(_contextMenuItems->get_Count(&count)))
+		return;
+
+	// Walk backwards so removing an item does not shift the indices still to visit.
+	for (UINT32 i = count; i > 0; --i)
+	{
+		ICoreWebView2ContextMenuItem* item = NULL;
+		if (FAILED(_contextMenuItems->GetValueAtIndex(i - 1, &item)) || item == NULL)
+			continue;
+
+		LPWSTR name = NULL;
+		bool matches = SUCCEEDED(item->get_Name(&name)) && name != NULL && wcscmp(name, itemId) == 0;
+		if (name != NULL)
+			CoTaskMemFree(name);
+
+		item->Release();
+
+		if (matches)
+			_contextMenuItems->RemoveValueAtIndex(i - 1);
+	}
+}
+
+void Photino::ContextMenuClearItems()
+{
+	if (_contextMenuItems.get() == NULL)
+		return;
+
+	UINT32 count = 0;
+	if (FAILED(_contextMenuItems->get_Count(&count)))
+		return;
+
+	for (UINT32 i = count; i > 0; --i)
+		_contextMenuItems->RemoveValueAtIndex(i - 1);
+}
+
+void Photino::ContextMenuAddItem(AutoString label, int kind, bool enabled, bool isChecked, int customItemId, int index)
+{
+	if (_contextMenuItems.get() == NULL || label == NULL || _webviewEnvironment.get() == NULL)
+		return;
+
+	ICoreWebView2Environment9* environment9 = NULL;
+	if (FAILED(_webviewEnvironment->QueryInterface(&environment9)) || environment9 == NULL)
+		return;
+
+	ICoreWebView2ContextMenuItem* item = NULL;
+	if (SUCCEEDED(environment9->CreateContextMenuItem(label, NULL, (COREWEBVIEW2_CONTEXT_MENU_ITEM_KIND)kind, &item)) && item != NULL)
+	{
+		item->put_IsEnabled(enabled);
+		item->put_IsChecked(isChecked);
+
+		// The custom item id travels with the item so activation can report it back to managed code.
+		EventRegistrationToken token;
+		item->add_CustomItemSelected(
+			Callback<ICoreWebView2CustomItemSelectedEventHandler>(
+				[this, customItemId](ICoreWebView2ContextMenuItem* sender, IUnknown* args) -> HRESULT
+				{
+					InvokeContextMenuCustomItem(customItemId);
+					return S_OK;
+				})
+			.Get(), &token);
+
+		UINT32 count = 0;
+		if (FAILED(_contextMenuItems->get_Count(&count)))
+			count = 0;
+
+		UINT32 position = (index < 0 || (UINT32)index > count) ? count : (UINT32)index;
+		_contextMenuItems->InsertValueAtIndex(position, item);
+
+		item->Release();
+	}
+
+	environment9->Release();
+}
+
+void Photino::OnContextMenuRequested(ICoreWebView2ContextMenuRequestedEventArgs* args)
+{
+	if (_contextMenuRequestedCallback == NULL || args == NULL)
+		return;
+
+	ICoreWebView2ContextMenuItemCollection* items = NULL;
+	if (FAILED(args->get_MenuItems(&items)) || items == NULL)
+		return;
+
+	_contextMenuItems = items;
+	items->Release();
+
+	int targetKind = ContextMenuTargetKind_Page;
+	bool isEditable = false;
+	std::wstring linkUri;
+	std::wstring sourceUri;
+	std::wstring selectionText;
+	std::wstring pageUri;
+
+	ICoreWebView2ContextMenuTarget* target = NULL;
+	if (SUCCEEDED(args->get_ContextMenuTarget(&target)) && target != NULL)
+	{
+		COREWEBVIEW2_CONTEXT_MENU_TARGET_KIND kind;
+		if (SUCCEEDED(target->get_Kind(&kind)))
+			targetKind = (int)kind;
+
+		BOOL value = FALSE;
+		if (SUCCEEDED(target->get_IsEditable(&value)))
+			isEditable = value != FALSE;
+
+		LPWSTR text = NULL;
+		if (SUCCEEDED(target->get_HasLinkUri(&value)) && value && SUCCEEDED(target->get_LinkUri(&text)))
+		{
+			if (text != NULL) linkUri = text;
+		}
+		if (text != NULL) CoTaskMemFree(text);
+
+		text = NULL;
+		if (SUCCEEDED(target->get_HasSourceUri(&value)) && value && SUCCEEDED(target->get_SourceUri(&text)))
+		{
+			if (text != NULL) sourceUri = text;
+		}
+		if (text != NULL) CoTaskMemFree(text);
+
+		text = NULL;
+		if (SUCCEEDED(target->get_HasSelection(&value)) && value && SUCCEEDED(target->get_SelectionText(&text)))
+		{
+			if (text != NULL) selectionText = text;
+		}
+		if (text != NULL) CoTaskMemFree(text);
+
+		text = NULL;
+		if (SUCCEEDED(target->get_PageUri(&text)) && text != NULL)
+			pageUri = text;
+		if (text != NULL) CoTaskMemFree(text);
+
+		target->Release();
+	}
+
+	// Describe the menu the platform built so managed code knows what it can hide.
+	std::wstring snapshot;
+	UINT32 itemCount = 0;
+	if (SUCCEEDED(items->get_Count(&itemCount)))
+	{
+		for (UINT32 i = 0; i < itemCount; ++i)
+		{
+			ICoreWebView2ContextMenuItem* item = NULL;
+			if (FAILED(items->GetValueAtIndex(i, &item)) || item == NULL)
+				continue;
+
+			LPWSTR name = NULL;
+			LPWSTR label = NULL;
+			COREWEBVIEW2_CONTEXT_MENU_ITEM_KIND kind = COREWEBVIEW2_CONTEXT_MENU_ITEM_KIND_COMMAND;
+			item->get_Name(&name);
+			item->get_Label(&label);
+			item->get_Kind(&kind);
+
+			if (!snapshot.empty())
+				snapshot += L'\n';
+			snapshot += SanitizeContextMenuField(name);
+			snapshot += L'\t';
+			snapshot += SanitizeContextMenuField(label);
+			snapshot += L'\t';
+			snapshot += std::to_wstring((int)kind);
+
+			if (name != NULL) CoTaskMemFree(name);
+			if (label != NULL) CoTaskMemFree(label);
+
+			item->Release();
+		}
+	}
+
+	InvokeContextMenuRequested(
+		targetKind, isEditable,
+		linkUri.empty() ? NULL : (AutoString)linkUri.c_str(),
+		sourceUri.empty() ? NULL : (AutoString)sourceUri.c_str(),
+		selectionText.empty() ? NULL : (AutoString)selectionText.c_str(),
+		pageUri.empty() ? NULL : (AutoString)pageUri.c_str(),
+		snapshot.empty() ? NULL : (AutoString)snapshot.c_str());
+
+	_contextMenuItems.reset();
+}
+
 void Photino::SetDevToolsEnabled(bool enabled)
 {
 	ICoreWebView2Settings* settings;
 	HRESULT r = _webviewWindow->get_Settings(&settings);
 	settings->put_AreDevToolsEnabled(enabled);
 	_webviewWindow->Reload();
+}
+
+// NOTE: this was declared in Photino.h and exported from Exports.cpp but had no Windows
+// implementation, so the native project did not link. Added alongside the context menu work.
+void Photino::ShowDevTools()
+{
+	if (_webviewWindow.get() == NULL)
+		return;
+	_webviewWindow->OpenDevToolsWindow();
 }
 
 void Photino::SetFullScreen(bool fullScreen)
@@ -991,6 +1205,22 @@ void Photino::AttachWebView()
 								})
 							.Get(),
 									&permissionRequestedToken);
+
+						// Context menu customization requires the newer ICoreWebView2_11 interface.
+						ICoreWebView2_11* webview11 = NULL;
+						if (SUCCEEDED(_webviewWindow->QueryInterface(&webview11)) && webview11 != NULL)
+						{
+							EventRegistrationToken contextMenuRequestedToken;
+							webview11->add_ContextMenuRequested(
+								Callback<ICoreWebView2ContextMenuRequestedEventHandler>(
+									[this](ICoreWebView2* sender, ICoreWebView2ContextMenuRequestedEventArgs* args) -> HRESULT {
+										OnContextMenuRequested(args);
+										return S_OK;
+									})
+								.Get(),
+									&contextMenuRequestedToken);
+							webview11->Release();
+						}
 
 						if (_startUrl != NULL)
 							NavigateToUrl(_startUrl);

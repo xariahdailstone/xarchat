@@ -31,3 +31,62 @@ https://www.nuget.org/packages/Photino.NET
 If you want to build this library itself, you will need:
  * Windows 10+, Mac 10.15+, or Linux (Tested with Ubuntu 18.04+)
  * Make sure the Photino.Native Nuget package is added and up to date.
+
+## Context menu customization
+
+Right-clicking the webview shows the platform's own context menu. That menu can be customized:
+individual built-in entries can be hidden, and custom entries can be appended. Subscribe to
+`ContextMenuRequested` and mutate the menu from the handler.
+
+```csharp
+var window = new PhotinoWindow()
+    .RegisterContextMenuHandler((sender, e) =>
+    {
+        // e.Target describes what was right-clicked and e.MenuItems lists the
+        // built-in entries the platform is about to show.
+        e.MenuItems.Remove(ContextMenuItemId.Back);
+        e.MenuItems.Remove(ContextMenuItemId.Forward);
+        e.MenuItems.Remove(ContextMenuItemId.Inspect);
+
+        e.MenuItems.AddSeparator();
+        e.MenuItems.Add("Copy a bug report link", () => CopyBugReportLink());
+    });
+```
+
+Setting `ContextMenuEnabled` to false still suppresses the menu completely, which is the
+cheaper option when no customization is needed.
+
+### What is in e.MenuItems
+
+`e.MenuItems.Items` mirrors the menu the platform is about to display, in order, so the entries
+that can be hidden are discoverable at runtime. Each entry has an `Id` (what the engine calls it),
+a `Label` (the text shown to the user) and a `Kind`. `e.MenuItems.Find(...)` looks one up.
+Because the menu is rebuilt for every right-click, changes have to be made inside the handler and
+do not persist.
+
+`ContextMenuItemId` holds constants for the common entries. `Remove` and `Is` compare names
+loosely, so the spelling differences between engines do not matter - `ContextMenuItemId.Inspect`
+matches both `inspect` and `inspectElement`, and `ContextMenuItemId.SavePageAs` matches both
+`savePageAs` and `saveAs`. Any id that is not in the constant list can still be removed by passing
+the string reported in `Id`.
+
+### Platform behavior
+
+| | Windows (WebView2) | macOS (WKWebView) | Linux (WebKitGTK) |
+|---|---|---|---|
+| Item ids | lowerCamelCase, e.g. `saveImageAs` | lowerCamelCase, e.g. `saveImageAs` | stock action or title, best effort |
+| Hide a built-in entry | yes | yes | yes |
+| Disable a built-in entry | no, remove only | no, remove only | no, remove only |
+| Add custom entries | yes | yes | yes, plain commands only |
+| Check box / radio entries | yes | yes | rendered as plain commands |
+| Submenus | no | no | no |
+
+Additional notes:
+
+ * Only single level menus can be built. Windows reports submenus such as `moreTools` and
+   the writing direction entry as a single item and does not enumerate their children.
+ * There is no hit-test context available on macOS, so `Target.LinkUri`, `Target.SourceUri` and
+   `Target.SelectionText` are always null there. On macOS the target kind and the editable flag
+   are inferred from the entries WebKit chose to show.
+ * Custom entries only raise their callback while the platform is displaying the menu, so the
+   handler should stay short.

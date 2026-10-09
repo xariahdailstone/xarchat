@@ -201,6 +201,23 @@ extern "C"
 		instance->SetContextMenuEnabled(enabled);
 	}
 
+	// Context menu customization. These are only meaningful while the callback
+	// registered with Photino_SetContextMenuRequestedCallback is running.
+	EXPORTED void Photino_ContextMenu_AddItem(Photino* instance, AutoString label, int kind, bool enabled, bool isChecked, int customItemId, int index)
+	{
+		instance->ContextMenuAddItem(label, kind, enabled, isChecked, customItemId, index);
+	}
+
+	EXPORTED void Photino_ContextMenu_ClearItems(Photino* instance)
+	{
+		instance->ContextMenuClearItems();
+	}
+
+	EXPORTED void Photino_ContextMenu_RemoveItem(Photino* instance, AutoString itemId)
+	{
+		instance->ContextMenuRemoveItem(itemId);
+	}
+
 	EXPORTED void Photino_SetDevToolsEnabled(Photino* instance, bool enabled)
 	{
 		instance->SetDevToolsEnabled(enabled);
@@ -338,6 +355,16 @@ extern "C"
 	EXPORTED void Photino_SetResizedCallback(Photino* instance, ResizedCallback callback)
 	{
 		instance->SetResizedCallback(callback);
+	}
+
+	EXPORTED void Photino_SetContextMenuCustomItemCallback(Photino* instance, ContextMenuCustomItemCallback callback)
+	{
+		instance->SetContextMenuCustomItemCallback(callback);
+	}
+
+	EXPORTED void Photino_SetContextMenuRequestedCallback(Photino* instance, ContextMenuRequestedCallback callback)
+	{
+		instance->SetContextMenuRequestedCallback(callback);
 	}
 
 	EXPORTED void Photino_Invoke(Photino* instance, ACTION callback)

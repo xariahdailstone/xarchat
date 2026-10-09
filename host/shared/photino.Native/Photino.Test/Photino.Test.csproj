@@ -39,6 +39,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="..\..\photino.NET\Photino.NET\PhotinoContextMenu.cs" Link="PhotinoContextMenu.cs" />
     <Compile Include="..\..\photino.NET\Photino.NET\PhotinoDialogEnums.cs" Link="PhotinoDialogEnums.cs" />
     <Compile Include="..\..\photino.NET\Photino.NET\PhotinoDllImports.cs" Link="PhotinoDllImports.cs" />
     <Compile Include="..\..\photino.NET\Photino.NET\PhotinoMonitorStruct.cs" Link="PhotinoMonitorStruct.cs" />

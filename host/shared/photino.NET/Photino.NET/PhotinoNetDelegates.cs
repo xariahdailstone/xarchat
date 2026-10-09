@@ -373,4 +373,137 @@ public partial class PhotinoWindow
             return buffer;
         }
     }
+
+
+    //CONTEXT MENU
+
+    ///<summary>
+    ///Handlers for the entries added with ContextMenuItems.Add(). Identifiers are
+    ///allocated per menu, so the registrations of the previous menu are discarded
+    ///each time a new one is being built.
+    ///</summary>
+    private readonly Dictionary<int, Action> _contextMenuCustomItemHandlers = new Dictionary<int, Action>();
+
+    /// <summary>
+    /// Raised on the UI thread just before the webview context menu is displayed, so
+    /// that handlers can hide or add entries before the user sees it.
+    /// </summary>
+    /// <remarks>
+    /// By default the webview's own menu is displayed unchanged. Setting
+    /// <see cref="ContextMenuEnabled"/> to false suppresses the menu altogether and
+    /// this event is not raised.
+    /// </remarks>
+    public event EventHandler<ContextMenuRequestedEventArgs> ContextMenuRequested;
+
+    /// <summary>
+    /// Registers a user-defined handler method to customize the webview context menu
+    /// before it is displayed.
+    /// </summary>
+    /// <returns>
+    /// Returns the current <see cref="PhotinoWindow"/> instance.
+    /// </returns>
+    /// <param name="handler">The handler that receives the menu about to be displayed.</param>
+    public PhotinoWindow RegisterContextMenuHandler(EventHandler<ContextMenuRequestedEventArgs> handler)
+    {
+        ContextMenuRequested += handler;
+        return this;
+    }
+
+    internal void RegisterContextMenuCustomItemHandler(int customItemId, Action handler)
+    {
+        _contextMenuCustomItemHandlers[customItemId] = handler;
+    }
+
+    //The menu the platform is about to display is only reachable while the
+    //ContextMenuRequested handler is running, so these are only meaningful there.
+    internal void ContextMenuAddItem(string label, int kind, bool enabled, bool isChecked, int customItemId, int index)
+    {
+        if (_nativeInstance != IntPtr.Zero)
+            Photino_ContextMenu_AddItem(_nativeInstance, label, kind, enabled, isChecked, customItemId, index);
+    }
+
+    internal void ContextMenuClearItems()
+    {
+        if (_nativeInstance != IntPtr.Zero)
+            Photino_ContextMenu_ClearItems(_nativeInstance);
+    }
+
+    internal void ContextMenuRemoveItem(string itemId)
+    {
+        if (_nativeInstance != IntPtr.Zero && !string.IsNullOrEmpty(itemId))
+            Photino_ContextMenu_RemoveItem(_nativeInstance, itemId);
+    }
+
+    /// <summary>
+    /// Invokes the actions of the custom context menu entries the user activated.
+    /// </summary>
+    internal void OnContextMenuCustomItem(int customItemId)
+    {
+        if (_contextMenuCustomItemHandlers.TryGetValue(customItemId, out var handler))
+            handler?.Invoke();
+    }
+
+    /// <summary>
+    /// Invokes registered user-defined handler methods before the webview context menu
+    /// is displayed.
+    /// </summary>
+    /// <param name="targetKind">One of the values of <see cref="ContextMenuTargetKind"/>.</param>
+    /// <param name="isEditable">Non-zero when the target is an editable field.</param>
+    /// <param name="linkUri">URI of the link under the cursor, or null.</param>
+    /// <param name="sourceUri">URI of the image or media under the cursor, or null.</param>
+    /// <param name="selectionText">The selected text, or null.</param>
+    /// <param name="pageUri">URI of the page, or null.</param>
+    /// <param name="itemSnapshot">The entries the platform is about to display.</param>
+    internal void OnContextMenuRequested(int targetKind, byte isEditable, string linkUri, string sourceUri, string selectionText, string pageUri, string itemSnapshot)
+    {
+        var handler = ContextMenuRequested;
+        if (handler == null)
+            return;
+
+        _contextMenuCustomItemHandlers.Clear();
+
+        var kind = Enum.IsDefined(typeof(ContextMenuTargetKind), targetKind)
+            ? (ContextMenuTargetKind)targetKind
+            : ContextMenuTargetKind.Page;
+
+        var target = new ContextMenuTarget(kind, isEditable != 0);
+        var menuItems = new ContextMenuItems(this, ParseContextMenuItems(itemSnapshot));
+
+        handler.Invoke(this, new ContextMenuRequestedEventArgs(target, menuItems, linkUri, sourceUri, selectionText, pageUri));
+    }
+
+    /// <summary>
+    /// Turns the description of the platform's menu into items. The platform sends
+    /// newline separated records of "id", "label" and "kind", tab separated, with tabs
+    /// and newlines already stripped from the id and label.
+    /// </summary>
+    private static List<ContextMenuItem> ParseContextMenuItems(string itemSnapshot)
+    {
+        var items = new List<ContextMenuItem>();
+        if (string.IsNullOrEmpty(itemSnapshot))
+            return items;
+
+        foreach (var record in itemSnapshot.Split('\n'))
+        {
+            if (record.Length == 0)
+                continue;
+
+            var fields = record.Split('\t');
+
+            var id = fields.Length > 0 ? fields[0] : string.Empty;
+            var label = fields.Length > 1 ? fields[1] : string.Empty;
+
+            var kind = ContextMenuItemKind.Command;
+            if (fields.Length > 2
+                && int.TryParse(fields[2], out var parsedKind)
+                && Enum.IsDefined(typeof(ContextMenuItemKind), parsedKind))
+            {
+                kind = (ContextMenuItemKind)parsedKind;
+            }
+
+            items.Add(new ContextMenuItem(id, label, kind));
+        }
+
+        return items;
+    }
 }

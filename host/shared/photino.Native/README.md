@@ -30,4 +30,18 @@ The GitHub repository includes .yml files for automated CI/CD builds, packaging 
   
 * Linux - (Tested with Ubuntu 18.04 and 20.04) Install dependencies: `sudo apt-get update && sudo apt-get install libgtk-3-dev libwebkit2gtk-4.0-dev libnotify-dev`. To compile, run `gcc -std=c++11 -shared -DOS_LINUX Exports.cpp Photino.Linux.cpp -o x64/$(buildConfiguration)/Photino.Native.so 'pkg-config --cflags --libs gtk+-3.0 webkit2gtk-4.0 libnotify' -fPIC`
 
-* Mac - Install Xcode. To compile, run `gcc -shared -lstdc++ -DOS_MAC -framework Cocoa -framework WebKit Photino.Mac.mm Exports.cpp Photino.Mac.AppDelegate.mm Photino.Mac.UiDelegate.mm Photino.Mac.UrlSchemeHandler.mm -o x64/$(buildConfiguration)/Photino.Native.dylib`.
+* Mac - Install Xcode. To compile, run `gcc -shared -lstdc++ -DOS_MAC -framework Cocoa -framework WebKit Photino.Mac.mm Exports.cpp Photino.Mac.AppDelegate.mm Photino.Mac.UiDelegate.mm Photino.Mac.UrlSchemeHandler.mm Photino.Mac.WebView.mm -o x64/$(buildConfiguration)/Photino.Native.dylib`.
+
+## Context menu customization
+The context menu shown by the platform webview can be customized by the host language: built-in
+entries can be removed, and custom entries can be added. This is exposed through the
+`ContextMenuRequestedHandler` and `ContextMenuCustomItemHandler` members of `PhotinoInitParams`
+(plus the `Photino_SetContextMenuRequestedCallback` / `Photino_SetContextMenuCustomItemCallback`
+setters) and the `ContextMenuAddItem`, `ContextMenuRemoveItem` and `ContextMenuClearItems` methods
+on the `Photino` instance. The mutation methods are only honoured while the requested callback is
+running, because every platform rebuilds the menu on each right click.
+
+The item identifiers that can be removed are whatever the engine reports, which differs per
+platform. `Photino.Linux.cpp`, `Photino.Windows.cpp` and `Photino.Mac.WebView.mm` each normalise
+their native identifiers into lower camel case English names so that one set of names works
+everywhere. Refer to the Photino.NET README for the supported names and the per-platform caveats.

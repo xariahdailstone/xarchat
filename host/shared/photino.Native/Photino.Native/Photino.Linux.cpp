@@ -12,6 +12,7 @@
 #include <string>
 #include <sstream>
 #include <iomanip>
+#include <algorithm>
 #include <libnotify/notify.h>
 #include <dlfcn.h>	//for dynamically calling functions from shared libraries
 #include "json.hpp"
@@ -50,8 +51,10 @@ gboolean on_window_state_event(GtkWidget *widget, GdkEventWindowState *event, gp
 gboolean on_widget_deleted(GtkWidget *widget, GdkEvent *event, gpointer self);
 gboolean on_focus_in_event(GtkWidget *widget, GdkEvent *event, gpointer self);
 gboolean on_focus_out_event(GtkWidget *widget, GdkEvent *event, gpointer self);
+// The real WebKitGTK "context-menu" signal is
+// (WebKitWebView*, WebKitContextMenu*, WebKitHitTestResult*, gboolean).
 gboolean on_webview_context_menu(WebKitWebView *web_view,
-								 GtkWidget *default_menu,
+								 WebKitContextMenu *context_menu,
 								 WebKitHitTestResult *hit_test_result,
 								 gboolean triggered_with_keyboard,
 								 gpointer user_data);
@@ -166,6 +169,10 @@ Photino::Photino(PhotinoInitParams *initParams) : _webview(nullptr)
 	_minimizedCallback = (MinimizedCallback)initParams->MinimizedHandler;
 	_restoredCallback = (RestoredCallback)initParams->RestoredHandler;
 	_customSchemeCallback = (WebResourceRequestedCallback)initParams->CustomSchemeHandler;
+	_contextMenuRequestedCallback = (ContextMenuRequestedCallback)initParams->ContextMenuRequestedHandler;
+	_contextMenuCustomItemCallback = (ContextMenuCustomItemCallback)initParams->ContextMenuCustomItemHandler;
+
+	_contextMenu = NULL;
 
 	// copy strings from the fixed size array passed, but only if they have a value.
 	for (int i = 0; i < 16; ++i)
@@ -590,6 +597,180 @@ void Photino::SetTransparentEnabled(bool enabled)
 void Photino::SetContextMenuEnabled(bool enabled)
 {
 	_contextMenuEnabled = enabled;
+}
+
+// --- Context menu customization -------------------------------------------
+//
+// WebKitGTK hands the "context-menu" signal a WebKitContextMenu that may be
+// mutated in place before it is shown. There are no stable identifiers for
+// WebKit's built in items, so items are identified by their stock action when
+// WebKit reports one, then by their GAction name, and only as a last resort by
+// their (localized) title.
+//
+// The identifiers used are the lower camel case English names of the actions,
+// matching the convention WebView2 uses for the same purpose on Windows.
+static const char *ContextMenuItemIdForStockAction(WebKitContextMenuAction action)
+{
+	switch (action)
+	{
+	case WEBKIT_CONTEXT_MENU_ACTION_OPEN_LINK: return "openLink";
+	case WEBKIT_CONTEXT_MENU_ACTION_OPEN_LINK_IN_NEW_WINDOW: return "openLinkInNewWindow";
+	case WEBKIT_CONTEXT_MENU_ACTION_DOWNLOAD_LINK_TO_DISK: return "downloadLinkedFile";
+	case WEBKIT_CONTEXT_MENU_ACTION_COPY_LINK_TO_CLIPBOARD: return "copyLink";
+	case WEBKIT_CONTEXT_MENU_ACTION_OPEN_IMAGE_IN_NEW_WINDOW: return "openImageInNewWindow";
+	case WEBKIT_CONTEXT_MENU_ACTION_DOWNLOAD_IMAGE_TO_DISK: return "downloadImage";
+	case WEBKIT_CONTEXT_MENU_ACTION_COPY_IMAGE_TO_CLIPBOARD: return "copyImage";
+	case WEBKIT_CONTEXT_MENU_ACTION_COPY_IMAGE_URL_TO_CLIPBOARD: return "copyImageAddress";
+	case WEBKIT_CONTEXT_MENU_ACTION_OPEN_FRAME_IN_NEW_WINDOW: return "openFrameInNewWindow";
+	case WEBKIT_CONTEXT_MENU_ACTION_GO_BACK: return "back";
+	case WEBKIT_CONTEXT_MENU_ACTION_GO_FORWARD: return "forward";
+	case WEBKIT_CONTEXT_MENU_ACTION_STOP: return "stop";
+	case WEBKIT_CONTEXT_MENU_ACTION_RELOAD: return "reload";
+	case WEBKIT_CONTEXT_MENU_ACTION_COPY: return "copy";
+	case WEBKIT_CONTEXT_MENU_ACTION_CUT: return "cut";
+	case WEBKIT_CONTEXT_MENU_ACTION_PASTE: return "paste";
+	case WEBKIT_CONTEXT_MENU_ACTION_DELETE: return "delete";
+	case WEBKIT_CONTEXT_MENU_ACTION_SELECT_ALL: return "selectAll";
+	case WEBKIT_CONTEXT_MENU_ACTION_IGNORE_SPELLING: return "ignoreSpelling";
+	case WEBKIT_CONTEXT_MENU_ACTION_LEARN_SPELLING: return "learnSpelling";
+	case WEBKIT_CONTEXT_MENU_ACTION_IGNORE_GRAMMAR: return "ignoreGrammar";
+	case WEBKIT_CONTEXT_MENU_ACTION_INSPECT_ELEMENT: return "inspectElement";
+	case WEBKIT_CONTEXT_MENU_ACTION_OPEN_VIDEO_IN_NEW_WINDOW: return "openVideoInNewWindow";
+	case WEBKIT_CONTEXT_MENU_ACTION_OPEN_AUDIO_IN_NEW_WINDOW: return "openAudioInNewWindow";
+	case WEBKIT_CONTEXT_MENU_ACTION_COPY_VIDEO_LINK_TO_CLIPBOARD: return "copyVideoLink";
+	case WEBKIT_CONTEXT_MENU_ACTION_COPY_AUDIO_LINK_TO_CLIPBOARD: return "copyAudioLink";
+	case WEBKIT_CONTEXT_MENU_ACTION_TOGGLE_MEDIA_CONTROLS: return "toggleMediaControls";
+	case WEBKIT_CONTEXT_MENU_ACTION_TOGGLE_MEDIA_LOOP: return "toggleMediaLoop";
+	case WEBKIT_CONTEXT_MENU_ACTION_ENTER_VIDEO_FULLSCREEN: return "enterVideoFullscreen";
+	case WEBKIT_CONTEXT_MENU_ACTION_MEDIA_PLAY: return "mediaPlay";
+	case WEBKIT_CONTEXT_MENU_ACTION_MEDIA_PAUSE: return "mediaPause";
+	case WEBKIT_CONTEXT_MENU_ACTION_MEDIA_MUTE: return "mediaMute";
+	case WEBKIT_CONTEXT_MENU_ACTION_DOWNLOAD_VIDEO_TO_DISK: return "downloadVideo";
+	case WEBKIT_CONTEXT_MENU_ACTION_DOWNLOAD_AUDIO_TO_DISK: return "downloadAudio";
+	case WEBKIT_CONTEXT_MENU_ACTION_PASTE_AS_PLAIN_TEXT: return "pasteAsPlainText";
+	default: return NULL;
+	}
+}
+
+static std::string ContextMenuItemId(WebKitContextMenuItem *item)
+{
+	if (item == NULL || webkit_context_menu_item_is_separator(item))
+		return std::string();
+
+	WebKitContextMenuAction stockAction = webkit_context_menu_item_get_stock_action(item);
+	if (stockAction != WEBKIT_CONTEXT_MENU_ACTION_NO_ACTION)
+	{
+		const char *id = ContextMenuItemIdForStockAction(stockAction);
+		if (id != NULL)
+			return std::string(id);
+
+		char fallback[32];
+		g_snprintf(fallback, sizeof(fallback), "stockAction%d", (int)stockAction);
+		return std::string(fallback);
+	}
+
+	GAction *action = webkit_context_menu_item_get_gaction(item);
+	if (action != NULL)
+	{
+		const gchar *actionName = g_action_get_name(action);
+		if (actionName != NULL)
+			return std::string(actionName);
+	}
+
+	const gchar *title = webkit_context_menu_item_get_title(item);
+	return std::string(title == NULL ? "" : title);
+}
+
+struct ContextMenuCustomItemUserData
+{
+	Photino *instance;
+	int customItemId;
+};
+
+static void on_context_menu_custom_item_activate(GAction *action, GVariant *parameter, gpointer user_data)
+{
+	ContextMenuCustomItemUserData *data = (ContextMenuCustomItemUserData *)user_data;
+	if (data != NULL && data->instance != NULL)
+		data->instance->InvokeContextMenuCustomItem(data->customItemId);
+}
+
+static void on_context_menu_custom_item_user_data_destroy(gpointer data, GClosure *closure)
+{
+	delete (ContextMenuCustomItemUserData *)data;
+}
+
+void Photino::ContextMenuClearItems()
+{
+	if (_contextMenu == NULL)
+		return;
+
+	webkit_context_menu_remove_all(_contextMenu);
+}
+
+void Photino::ContextMenuRemoveItem(AutoString itemId)
+{
+	if (_contextMenu == NULL || itemId == NULL)
+		return;
+
+	std::string wanted(itemId);
+
+	// Walk backwards so that removing an item cannot disturb the positions of
+	// the items that still have to be inspected.
+	for (guint i = webkit_context_menu_get_n_items(_contextMenu); i > 0; --i)
+	{
+		WebKitContextMenuItem *item = webkit_context_menu_get_item_at_position(_contextMenu, i - 1);
+		if (item != NULL && ContextMenuItemId(item) == wanted)
+			webkit_context_menu_remove(_contextMenu, item);
+	}
+}
+
+void Photino::ContextMenuAddItem(AutoString label, int kind, bool enabled, bool isChecked, int customItemId, int index)
+{
+	if (_contextMenu == NULL || label == NULL)
+		return;
+
+	WebKitContextMenuItem *item = NULL;
+
+	if (kind == ContextMenuItemKind_Separator)
+		item = webkit_context_menu_item_new_separator();
+	else
+	{
+		// WebKitGTK exposes no way to render check boxes or radio buttons on an
+		// item created by an embedder, so those kinds fall back to a plain
+		// command item. Submenus are not supported and are skipped entirely.
+		if (kind == ContextMenuItemKind_Submenu)
+			return;
+
+		// The label is not a valid GAction name, so the action gets a
+		// generated name and the caller supplied label is shown instead.
+		char actionName[64];
+		g_snprintf(actionName, sizeof(actionName), "photino-context-menu-item-%d", customItemId);
+
+		GSimpleAction *action = g_simple_action_new(actionName, NULL);
+		g_simple_action_set_enabled(action, enabled ? TRUE : FALSE);
+
+		auto *userData = new ContextMenuCustomItemUserData{ this, customItemId };
+		g_signal_connect_data(action, "activate", G_CALLBACK(on_context_menu_custom_item_activate),
+			userData, on_context_menu_custom_item_user_data_destroy, (GConnectFlags)0);
+
+		item = webkit_context_menu_item_new_from_gaction(G_ACTION(action), label, NULL);
+		g_object_unref(action);
+	}
+
+	if (item == NULL)
+		return;
+
+	// WebKitContextMenuItem is a GInitiallyUnowned, so take the floating
+	// reference before handing the item to the menu.
+	g_object_ref_sink(item);
+
+	guint itemCount = webkit_context_menu_get_n_items(_contextMenu);
+	if (index < 0 || (guint)index >= itemCount)
+		webkit_context_menu_append(_contextMenu, item);
+	else
+		webkit_context_menu_insert(_contextMenu, item, index);
+
+	g_object_unref(item);
 }
 
 void Photino::SetDevToolsEnabled(bool enabled)
@@ -1069,11 +1250,89 @@ gboolean on_focus_out_event(GtkWidget *widget, GdkEvent *event, gpointer self)
 	return FALSE;
 }
 
-gboolean on_webview_context_menu(WebKitWebView *web_view, GtkWidget *default_menu,
+gboolean on_webview_context_menu(WebKitWebView *web_view, WebKitContextMenu *context_menu,
 								 WebKitHitTestResult *hit_test_result, gboolean triggered_with_keyboard, gpointer self)
 {
 	Photino *instance = ((Photino *)self);
-	return !instance->_contextMenuEnabled;
+
+	// A disabled context menu is suppressed entirely, exactly as before.
+	if (instance->_contextMenuEnabled == FALSE)
+		return TRUE;
+
+	int targetKind = ContextMenuTargetKind_Page;
+	bool isEditable = false;
+	const gchar *linkUri = NULL;
+	const gchar *sourceUri = NULL;
+
+	if (hit_test_result != NULL)
+	{
+		WebKitHitTestResultContext hitContext = webkit_hit_test_result_get_context(hit_test_result);
+
+		if ((hitContext & WEBKIT_HIT_TEST_RESULT_CONTEXT_IMAGE) != 0)
+		{
+			targetKind = ContextMenuTargetKind_Image;
+			sourceUri = webkit_hit_test_result_get_image_uri(hit_test_result);
+		}
+		else if ((hitContext & WEBKIT_HIT_TEST_RESULT_CONTEXT_MEDIA) != 0)
+		{
+			targetKind = ContextMenuTargetKind_Video;
+			sourceUri = webkit_hit_test_result_get_media_uri(hit_test_result);
+		}
+		else if ((hitContext & WEBKIT_HIT_TEST_RESULT_CONTEXT_SELECTION) != 0)
+			targetKind = ContextMenuTargetKind_SelectedText;
+
+		isEditable = (hitContext & WEBKIT_HIT_TEST_RESULT_CONTEXT_EDITABLE) != 0;
+		linkUri = webkit_hit_test_result_get_link_uri(hit_test_result);
+	}
+
+	const gchar *pageUri = webkit_web_view_get_uri(web_view);
+
+	// Describe the menu WebKit has built so that managed code knows what it can
+	// hide. Records are separated by newlines, fields by tabs.
+	std::string snapshot;
+	for (guint i = 0; i < webkit_context_menu_get_n_items(context_menu); ++i)
+	{
+		WebKitContextMenuItem *item = webkit_context_menu_get_item_at_position(context_menu, i);
+		if (item == NULL)
+			continue;
+
+		bool isSeparator = webkit_context_menu_item_is_separator(item) != FALSE;
+		std::string itemId = ContextMenuItemId(item);
+		const gchar *title = webkit_context_menu_item_get_title(item);
+		std::string label(title == NULL ? "" : title);
+
+		// The record and field separators must not appear inside a field.
+		std::replace(itemId.begin(), itemId.end(), '\t', ' ');
+		std::replace(itemId.begin(), itemId.end(), '\n', ' ');
+		std::replace(itemId.begin(), itemId.end(), '\r', ' ');
+		std::replace(label.begin(), label.end(), '\t', ' ');
+		std::replace(label.begin(), label.end(), '\n', ' ');
+		std::replace(label.begin(), label.end(), '\r', ' ');
+
+		if (!snapshot.empty())
+			snapshot += '\n';
+
+		snapshot += itemId;
+		snapshot += '\t';
+		snapshot += label;
+		snapshot += '\t';
+		snapshot += std::to_string(isSeparator ? ContextMenuItemKind_Separator : ContextMenuItemKind_Command);
+	}
+
+	// Valid for the duration of the callback only.
+	instance->_contextMenu = context_menu;
+
+	instance->InvokeContextMenuRequested(
+		targetKind, isEditable,
+		(AutoString)linkUri,
+		(AutoString)sourceUri,
+		NULL,	// WebKitGTK does not expose the selected text through the hit test result
+		(AutoString)pageUri,
+		snapshot.empty() ? NULL : (AutoString)snapshot.c_str());
+
+	instance->_contextMenu = NULL;
+
+	return FALSE;
 }
 
 gboolean on_permission_request(WebKitWebView *web_view, WebKitPermissionRequest *request, gpointer user_data)

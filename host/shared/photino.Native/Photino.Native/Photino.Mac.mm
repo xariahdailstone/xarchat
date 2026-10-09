@@ -7,6 +7,7 @@
 #include "Photino.Mac.UrlSchemeHandler.h"
 #include "Photino.Mac.NSWindowBorderless.h"
 #include "Photino.Mac.NavigationDelegate.h"
+#include "Photino.Mac.WebView.h"
 #include <vector>
 
 #include "json.hpp"
@@ -134,8 +135,8 @@ Photino::Photino(PhotinoInitParams* initParams)
 		strcpy(_temporaryFilesPath, initParams->TemporaryFilesPath);
 	}
 
-    _ignoreCertificateErrorsEnabled = initParams->IgnoreCertificateErrorsEnabled;
-	_contextMenuEnabled = true; //not configurable on mac //initParams->ContextMenuEnabled;
+	_ignoreCertificateErrorsEnabled = initParams->IgnoreCertificateErrorsEnabled;
+	_contextMenuEnabled = initParams->ContextMenuEnabled;
 	// _zoom = initParams->Zoom;
     _grantBrowserPermissions = initParams->GrantBrowserPermissions;
 
@@ -150,7 +151,11 @@ Photino::Photino(PhotinoInitParams* initParams)
 	_minimizedCallback = (MinimizedCallback)initParams->MinimizedHandler;
 	_restoredCallback = (RestoredCallback)initParams->RestoredHandler;
 	_customSchemeCallback = (WebResourceRequestedCallback)initParams->CustomSchemeHandler;
-    
+	_contextMenuRequestedCallback = (ContextMenuRequestedCallback)initParams->ContextMenuRequestedHandler;
+	_contextMenuCustomItemCallback = (ContextMenuCustomItemCallback)initParams->ContextMenuCustomItemHandler;
+
+	_contextMenu = nil;
+
 
 	//copy strings from the fixed size array passed, but only if they have a value.
 	for (int i = 0; i < 16; ++i)
@@ -619,7 +624,7 @@ void Photino::SetTransparentEnabled(bool enabled)
 
 void Photino::SetContextMenuEnabled(bool enabled)
 {
-    //! Not supported on macOS
+    _contextMenuEnabled = enabled;
 }
 
 void Photino::SetIconFile(AutoString filename)
@@ -917,9 +922,11 @@ void Photino::AttachWebView()
     _webviewConfiguration.userContentController = userContentController;
 
     _webview = [
-        [WKWebView alloc]
+        [PhotinoWebView alloc]
         initWithFrame: _window.contentView.frame
         configuration: _webviewConfiguration];
+
+    ((PhotinoWebView *)_webview)->photino = this;
 
     [_webview setAutoresizingMask: NSViewWidthSizable | NSViewHeightSizable];
     [_window.contentView addSubview: _webview];

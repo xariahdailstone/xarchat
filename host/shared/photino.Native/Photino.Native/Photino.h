@@ -53,6 +53,51 @@ typedef bool (*ClosingCallback)();
 typedef void (*FocusInCallback)();
 typedef void (*FocusOutCallback)();
 
+// Context menu customization.
+//
+// The kind values intentionally match COREWEBVIEW2_CONTEXT_MENU_TARGET_KIND and
+// COREWEBVIEW2_CONTEXT_MENU_ITEM_KIND so the Windows implementation can pass them through.
+enum ContextMenuTargetKind
+{
+	ContextMenuTargetKind_Page = 0,
+	ContextMenuTargetKind_Image = 1,
+	ContextMenuTargetKind_SelectedText = 2,
+	ContextMenuTargetKind_Audio = 3,
+	ContextMenuTargetKind_Video = 4
+};
+
+enum ContextMenuItemKind
+{
+	ContextMenuItemKind_Command = 0,
+	ContextMenuItemKind_CheckBox = 1,
+	ContextMenuItemKind_Radio = 2,
+	ContextMenuItemKind_Separator = 3,
+	ContextMenuItemKind_Submenu = 4
+};
+
+// Invoked on the UI thread just before the webview context menu is displayed.
+//
+//   targetKind    : one of ContextMenuTargetKind
+//   isEditable    : true when the target is an editable field
+//   linkUri       : URI of the link under the cursor, or NULL
+//   sourceUri     : URI of the image/media under the cursor, or NULL
+//   selectionText : currently selected text, or NULL
+//   pageUri       : URI of the page, or NULL
+//   itemSnapshot  : the items the platform is about to display, as newline
+//                   separated records of "id\tlabel\tkind", or NULL when the
+//                   platform cannot enumerate them.
+//
+// While this callback is running the handler may call ContextMenuRemoveItem,
+// ContextMenuClearItems and ContextMenuAddItem on the same instance. Those calls
+// mutate the live menu, so they only take effect from inside the callback.
+typedef void (*ContextMenuRequestedCallback)(
+	int targetKind, bool isEditable,
+	AutoString linkUri, AutoString sourceUri, AutoString selectionText, AutoString pageUri,
+	AutoString itemSnapshot);
+
+// Invoked when the user activates an item that was added with ContextMenuAddItem.
+typedef void (*ContextMenuCustomItemCallback)(int customItemId);
+
 class PhotinoDialog;
 class Photino;
 
@@ -87,6 +132,8 @@ struct PhotinoInitParams
 	wchar_t *CustomSchemeNamesWide[16];
 	char *CustomSchemeNames[16];
 	WebResourceRequestedCallback *CustomSchemeHandler;
+	ContextMenuRequestedCallback *ContextMenuRequestedHandler;
+	ContextMenuCustomItemCallback *ContextMenuCustomItemHandler;
 
 	int Left;
 	int Top;
@@ -136,6 +183,8 @@ private:
 	ClosingCallback _closingCallback;
 	FocusInCallback _focusInCallback;
 	FocusOutCallback _focusOutCallback;
+	ContextMenuRequestedCallback _contextMenuRequestedCallback;
+	ContextMenuCustomItemCallback _contextMenuCustomItemCallback;
 	std::vector<AutoString> _customSchemeNames;
 	WebResourceRequestedCallback _customSchemeCallback;
 
@@ -173,6 +222,9 @@ private:
 	wil::com_ptr<ICoreWebView2Environment> _webviewEnvironment;
 	wil::com_ptr<ICoreWebView2> _webviewWindow;
 	wil::com_ptr<ICoreWebView2Controller> _webviewController;
+	// Set for the duration of the ContextMenuRequested callback only.
+	wil::com_ptr<ICoreWebView2ContextMenuItemCollection> _contextMenuItems;
+	void OnContextMenuRequested(ICoreWebView2ContextMenuRequestedEventArgs* args);
 	bool EnsureWebViewIsInstalled();
 	bool InstallWebView2();
 	void AttachWebView();
@@ -217,6 +269,13 @@ private:
 public:
 	bool _contextMenuEnabled;
 
+	// Context menu customization. The item mutation methods below are only valid
+	// while a ContextMenuRequestedCallback is executing; calls made at any other
+	// time are ignored.
+	void ContextMenuAddItem(AutoString label, int kind, bool enabled, bool isChecked, int customItemId, int index);
+	void ContextMenuClearItems();
+	void ContextMenuRemoveItem(AutoString itemId);
+
 #ifdef _WIN32
 	static void Register(HINSTANCE hInstance);
 	static void SetWebView2RuntimePath(AutoString pathToWebView2);
@@ -240,8 +299,12 @@ public:
 	int _minHeight;
 	int _maxWidth;
 	int _maxHeight;
+	// Set for the duration of the context-menu signal handler only.
+	WebKitContextMenu *_contextMenu;
 #elif __APPLE__
 	static void Register();
+	// Set for the duration of the willOpenMenu: callback only.
+	NSMenu *_contextMenu;
 #endif
 
 	Photino(PhotinoInitParams *initParams);
@@ -316,8 +379,20 @@ public:
 	void SetMaximizedCallback(MaximizedCallback callback) { _maximizedCallback = callback; }
 	void SetRestoredCallback(RestoredCallback callback) { _restoredCallback = callback; }
 	void SetMinimizedCallback(MinimizedCallback callback) { _minimizedCallback = callback; }
+	void SetContextMenuRequestedCallback(ContextMenuRequestedCallback callback) { _contextMenuRequestedCallback = callback; }
+	void SetContextMenuCustomItemCallback(ContextMenuCustomItemCallback callback) { _contextMenuCustomItemCallback = callback; }
 
 	void Invoke(ACTION callback);
+	void InvokeContextMenuCustomItem(int customItemId)
+	{
+		if (_contextMenuCustomItemCallback)
+			_contextMenuCustomItemCallback(customItemId);
+	}
+	void InvokeContextMenuRequested(int targetKind, bool isEditable, AutoString linkUri, AutoString sourceUri, AutoString selectionText, AutoString pageUri, AutoString itemSnapshot)
+	{
+		if (_contextMenuRequestedCallback)
+			_contextMenuRequestedCallback(targetKind, isEditable, linkUri, sourceUri, selectionText, pageUri, itemSnapshot);
+	}
 	bool InvokeClose()
 	{
 		if (_closingCallback)

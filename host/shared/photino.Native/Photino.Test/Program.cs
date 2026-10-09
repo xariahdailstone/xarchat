@@ -123,6 +123,7 @@ namespace Photino.NET
                 .RegisterWindowClosingHandler(WindowIsClosing)
                 .RegisterFocusInHandler(WindowFocusIn)
                 .RegisterFocusOutHandler(WindowFocusOut)
+                .RegisterContextMenuHandler(ContextMenuOpening)
 
                 .SetLogVerbosity(_logEvents ? 2 : 0);
 
@@ -439,6 +440,25 @@ namespace Photino.NET
         private static void WindowCreating(object sender, EventArgs e)
         {
             Log(sender, "WindowCreating Callback Fired.");
+        }
+
+        private static int _customContextMenuItemCount;
+
+        private static void ContextMenuOpening(object sender, ContextMenuRequestedEventArgs e)
+        {
+            var itemDescription = string.Join(", ", e.MenuItems.Items.Select(item => item.IsSeparator ? "---" : item.Id));
+            Log(sender, $"ContextMenuRequested ({e.Target.Kind}, editable: {e.Target.IsEditable}): {itemDescription}");
+
+            //Hide the items we do not want to offer. Only the items listed above can be hidden.
+            e.MenuItems.Remove(ContextMenuItemId.Back);
+            e.MenuItems.Remove(ContextMenuItemId.Forward);
+            e.MenuItems.Remove(ContextMenuItemId.Inspect);
+
+            //Add our own entry. This runs for every menu that is opened, so the entry is
+            //added again each time.
+            var count = ++_customContextMenuItemCount;
+            e.MenuItems.Add($"Custom item ({count})", () => Log(sender, $"Custom context menu item {count} activated."));
+            e.MenuItems.AddSeparator();
         }
 
         private static void WindowCreated(object sender, EventArgs e)
