@@ -52,11 +52,13 @@ gboolean on_widget_deleted(GtkWidget *widget, GdkEvent *event, gpointer self);
 gboolean on_focus_in_event(GtkWidget *widget, GdkEvent *event, gpointer self);
 gboolean on_focus_out_event(GtkWidget *widget, GdkEvent *event, gpointer self);
 // The real WebKitGTK "context-menu" signal is
-// (WebKitWebView*, WebKitContextMenu*, WebKitHitTestResult*, gboolean).
+// (WebKitWebView*, WebKitContextMenu*, GdkEvent*, WebKitHitTestResult*). The event
+// comes third, so taking the hit test result for it shifts every later argument and
+// hands a GdkEvent to code that expects a WebKitHitTestResult.
 gboolean on_webview_context_menu(WebKitWebView *web_view,
 								 WebKitContextMenu *context_menu,
+								 GdkEvent *event,
 								 WebKitHitTestResult *hit_test_result,
-								 gboolean triggered_with_keyboard,
 								 gpointer user_data);
 gboolean on_permission_request(WebKitWebView *web_view, WebKitPermissionRequest *request, gpointer user_data);
 
@@ -1298,7 +1300,7 @@ gboolean on_focus_out_event(GtkWidget *widget, GdkEvent *event, gpointer self)
 }
 
 gboolean on_webview_context_menu(WebKitWebView *web_view, WebKitContextMenu *context_menu,
-								 WebKitHitTestResult *hit_test_result, gboolean triggered_with_keyboard, gpointer self)
+								 GdkEvent *event, WebKitHitTestResult *hit_test_result, gpointer self)
 {
 	Photino *instance = ((Photino *)self);
 
