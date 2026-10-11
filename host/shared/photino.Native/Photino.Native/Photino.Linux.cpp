@@ -602,10 +602,10 @@ void Photino::SetContextMenuEnabled(bool enabled)
 // --- Context menu customization -------------------------------------------
 //
 // WebKitGTK hands the "context-menu" signal a WebKitContextMenu that may be
-// mutated in place before it is shown. There are no stable identifiers for
-// WebKit's built in items, so items are identified by their stock action when
-// WebKit reports one, then by their GAction name, and only as a last resort by
-// their (localized) title.
+// mutated in place before it is shown. WebKit exposes no stable identifiers for
+// the items it builds, so an item is identified by its stock action when it has
+// one, then by the name of the GAction it wraps, and is left unnamed otherwise.
+// The label cannot serve as an identifier because it is localized.
 //
 // The identifiers used are the lower camel case English names of the actions,
 // matching the convention WebView2 uses for the same purpose on Windows.
@@ -652,13 +652,59 @@ static const char *ContextMenuItemIdForStockAction(WebKitContextMenuAction actio
 	}
 }
 
+// GTK marks the mnemonic character of a label with a single underscore and uses
+// a doubled underscore for a literal one. Neither belongs in the text handed to
+// managed code, which wants the label as the user sees it.
+static std::string StripMnemonics(const std::string &text)
+{
+	std::string result;
+	result.reserve(text.size());
+
+	for (size_t i = 0; i < text.size(); ++i)
+	{
+		if (text[i] != '_')
+		{
+			result += text[i];
+			continue;
+		}
+
+		if (i + 1 < text.size() && text[i + 1] == '_')
+		{
+			result += '_';
+			++i;
+		}
+	}
+
+	return result;
+}
+
+// WebKitGTK keeps the label of an item inside the GtkAction it wraps and exposes
+// no getter for it, so the deprecated action accessor is the only way to read it.
+static std::string ContextMenuItemLabel(WebKitContextMenuItem *item)
+{
+	if (item == NULL || webkit_context_menu_item_is_separator(item))
+		return std::string();
+
+	const gchar *text = NULL;
+
+	G_GNUC_BEGIN_IGNORE_DEPRECATIONS
+	GtkAction *action = webkit_context_menu_item_get_action(item);
+	if (action != NULL)
+		text = gtk_action_get_label(action);
+	G_GNUC_END_IGNORE_DEPRECATIONS
+
+	return text == NULL ? std::string() : StripMnemonics(text);
+}
+
 static std::string ContextMenuItemId(WebKitContextMenuItem *item)
 {
 	if (item == NULL || webkit_context_menu_item_is_separator(item))
 		return std::string();
 
+	// A separator reports NO_ACTION and an item built from a GAction reports
+	// CUSTOM; neither names the item, so both fall through to the action name.
 	WebKitContextMenuAction stockAction = webkit_context_menu_item_get_stock_action(item);
-	if (stockAction != WEBKIT_CONTEXT_MENU_ACTION_NO_ACTION)
+	if (stockAction != WEBKIT_CONTEXT_MENU_ACTION_NO_ACTION && stockAction != WEBKIT_CONTEXT_MENU_ACTION_CUSTOM)
 	{
 		const char *id = ContextMenuItemIdForStockAction(stockAction);
 		if (id != NULL)
@@ -677,8 +723,9 @@ static std::string ContextMenuItemId(WebKitContextMenuItem *item)
 			return std::string(actionName);
 	}
 
-	const gchar *title = webkit_context_menu_item_get_title(item);
-	return std::string(title == NULL ? "" : title);
+	// Nothing stable identifies this item, and the label is localized, so it is
+	// left unnamed rather than given an identifier that cannot be matched.
+	return std::string();
 }
 
 struct ContextMenuCustomItemUserData
@@ -1266,7 +1313,9 @@ gboolean on_webview_context_menu(WebKitWebView *web_view, WebKitContextMenu *con
 
 	if (hit_test_result != NULL)
 	{
-		WebKitHitTestResultContext hitContext = webkit_hit_test_result_get_context(hit_test_result);
+		// webkit_hit_test_result_get_context returns a guint, which C++ will not
+		// narrow to the flags enum implicitly.
+		WebKitHitTestResultContext hitContext = (WebKitHitTestResultContext)webkit_hit_test_result_get_context(hit_test_result);
 
 		if ((hitContext & WEBKIT_HIT_TEST_RESULT_CONTEXT_IMAGE) != 0)
 		{
@@ -1298,8 +1347,7 @@ gboolean on_webview_context_menu(WebKitWebView *web_view, WebKitContextMenu *con
 
 		bool isSeparator = webkit_context_menu_item_is_separator(item) != FALSE;
 		std::string itemId = ContextMenuItemId(item);
-		const gchar *title = webkit_context_menu_item_get_title(item);
-		std::string label(title == NULL ? "" : title);
+		std::string label = ContextMenuItemLabel(item);
 
 		// The record and field separators must not appear inside a field.
 		std::replace(itemId.begin(), itemId.end(), '\t', ' ');

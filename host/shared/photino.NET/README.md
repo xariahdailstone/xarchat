@@ -74,7 +74,7 @@ the string reported in `Id`.
 
 | | Windows (WebView2) | macOS (WKWebView) | Linux (WebKitGTK) |
 |---|---|---|---|
-| Item ids | lowerCamelCase, e.g. `saveImageAs` | lowerCamelCase, e.g. `saveImageAs` | stock action or title, best effort |
+| Item ids | lowerCamelCase, e.g. `saveImageAs` | lowerCamelCase, e.g. `saveImageAs` | stock action name, e.g. `saveImageAs`, else the name of the action the item wraps |
 | Hide a built-in entry | yes | yes | yes |
 | Disable a built-in entry | no, remove only | no, remove only | no, remove only |
 | Add custom entries | yes | yes | yes, plain commands only |
@@ -88,5 +88,8 @@ Additional notes:
  * There is no hit-test context available on macOS, so `Target.LinkUri`, `Target.SourceUri` and
    `Target.SelectionText` are always null there. On macOS the target kind and the editable flag
    are inferred from the entries WebKit chose to show.
+ * WebKitGTK publishes no identifiers for the entries it builds, so on Linux the id is derived from
+   the entry's stock action and, for entries with no stock action, from the name of the action the
+   entry wraps. An entry for which neither is available has an empty id, and separators always do.
  * Custom entries only raise their callback while the platform is displaying the menu, so the
    handler should stay short.
