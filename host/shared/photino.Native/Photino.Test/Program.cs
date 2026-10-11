@@ -446,13 +446,22 @@ namespace Photino.NET
 
         private static void ContextMenuOpening(object sender, ContextMenuRequestedEventArgs e)
         {
-            var itemDescription = string.Join(", ", e.MenuItems.Items.Select(item => item.IsSeparator ? "---" : item.Id));
-            Log(sender, $"ContextMenuRequested ({e.Target.Kind}, editable: {e.Target.IsEditable}): {itemDescription}");
+            //Log the id and the label of every item. The id is what a platform lets you
+            //match against, but each platform builds its ids differently, so the label is
+            //often the only way to see what the platform actually offered.
+            var itemDescription = string.Join(", ", e.MenuItems.Items.Select(item =>
+                item.IsSeparator ? "---" : $"{item.Id} \"{item.Label}\""));
+
+            Log(sender, $"ContextMenuRequested ({e.Target.Kind}, editable: {e.Target.IsEditable}, " +
+                $"page: {e.PageUri}, link: {e.LinkUri}, source: {e.SourceUri}, selection: {e.SelectionText})");
+            Log(sender, $"  Items ({e.MenuItems.Count}): {itemDescription}");
 
             //Hide the items we do not want to offer. Only the items listed above can be hidden.
-            e.MenuItems.Remove(ContextMenuItemId.Back);
-            e.MenuItems.Remove(ContextMenuItemId.Forward);
-            e.MenuItems.Remove(ContextMenuItemId.Inspect);
+            //Remove reports false when the platform did not offer an item with that id, which
+            //is what a platform whose ids do not match the constant would report.
+            Log(sender, $"  Remove back: {e.MenuItems.Remove(ContextMenuItemId.Back)}, " +
+                $"forward: {e.MenuItems.Remove(ContextMenuItemId.Forward)}, " +
+                $"inspect: {e.MenuItems.Remove(ContextMenuItemId.Inspect)}");
 
             //Add our own entry. This runs for every menu that is opened, so the entry is
             //added again each time.

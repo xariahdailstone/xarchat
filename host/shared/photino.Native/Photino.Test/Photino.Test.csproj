@@ -61,10 +61,20 @@
     </None>
   </ItemGroup>
 
+  <PropertyGroup>
+    <!-- The native library is built into lib/x64 or lib/arm64 by the makefile, but a plain
+         "dotnet build" leaves Platform at AnyCPU, which would look in lib/AnyCPU, so the host
+         architecture is used whenever an explicit x64 or arm64 platform is not set. -->
+    <PhotinoHostArch>$([System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture)</PhotinoHostArch>
+    <PhotinoLibPlatform Condition="'$(Platform)' == 'x64' Or '$(Platform)' == 'arm64'">$(Platform)</PhotinoLibPlatform>
+    <PhotinoLibPlatform Condition="'$(PhotinoLibPlatform)' == '' And '$(PhotinoHostArch)' == 'Arm64'">arm64</PhotinoLibPlatform>
+    <PhotinoLibPlatform Condition="'$(PhotinoLibPlatform)' == ''">x64</PhotinoLibPlatform>
+  </PropertyGroup>
+
   <Target Name="CopyNativeLibs" AfterTargets="Build">
     <!-- <Copy SourceFiles="../lib/x64/Photino.Native.dll" DestinationFolder="$(TargetDir)" Condition="$(IsWindows) == 'true'" /> -->
-    <Copy SourceFiles="../lib/$(Platform)/Photino.Native.dylib" DestinationFolder="$(TargetDir)" Condition="$(IsOSX) == 'true'" />
-    <Copy SourceFiles="../lib/$(Platform)/Photino.Native.so" DestinationFolder="$(TargetDir)" Condition="$(IsLinux) == 'true'" />
+    <Copy SourceFiles="../lib/$(PhotinoLibPlatform)/Photino.Native.dylib" DestinationFolder="$(TargetDir)" Condition="$(IsOSX) == 'true'" />
+    <Copy SourceFiles="../lib/$(PhotinoLibPlatform)/Photino.Native.so" DestinationFolder="$(TargetDir)" Condition="$(IsLinux) == 'true'" />
   </Target>
 
 </Project>

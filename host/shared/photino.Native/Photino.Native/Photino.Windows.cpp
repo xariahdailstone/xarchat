@@ -675,6 +675,33 @@ static std::wstring SanitizeContextMenuField(LPCWSTR value)
 	return result;
 }
 
+// Chromium marks the accelerator character of a label with a single ampersand and uses a
+// doubled ampersand for a literal one. The menu is drawn with those markers interpreted
+// rather than shown, so they are removed to leave the text the user actually sees.
+static std::wstring StripAccelerators(LPCWSTR value)
+{
+	std::wstring text(value == NULL ? L"" : value);
+	std::wstring result;
+	result.reserve(text.size());
+
+	for (size_t i = 0; i < text.size(); ++i)
+	{
+		if (text[i] != L'&')
+		{
+			result += text[i];
+			continue;
+		}
+
+		if (i + 1 < text.size() && text[i + 1] == L'&')
+		{
+			result += L'&';
+			++i;
+		}
+	}
+
+	return result;
+}
+
 void Photino::ContextMenuRemoveItem(AutoString itemId)
 {
 	if (_contextMenuItems.get() == NULL || itemId == NULL)
@@ -836,7 +863,7 @@ void Photino::OnContextMenuRequested(ICoreWebView2ContextMenuRequestedEventArgs*
 				snapshot += L'\n';
 			snapshot += SanitizeContextMenuField(name);
 			snapshot += L'\t';
-			snapshot += SanitizeContextMenuField(label);
+			snapshot += SanitizeContextMenuField(StripAccelerators(label).c_str());
 			snapshot += L'\t';
 			snapshot += std::to_wstring((int)kind);
 
