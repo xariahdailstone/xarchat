@@ -920,16 +920,18 @@ void Photino::AttachWebView()
     // WebKit hands the app the menu it has built but never the element it was
     // built for, so the link under the cursor is reported by this script instead.
     // The value is sent to the handler registered below, which caches it for the
-    // context menu callback. Reports are sent for the pointer moving (only when
-    // the link under it changes) and for every right click, so that the cached
-    // value is the one the cursor was over and not one it has already left.
+    // context menu callback.
+    //
+    // No hit testing is done here: the browser has already hit tested to decide
+    // what to dispatch the mouse event to, so the target of the event is the
+    // element under the pointer. A report is sent when the pointer moves onto an
+    // element, which is whenever the link under it can change, and again for every
+    // right click, which is the click that opens the menu.
     NSString *contextMenuScriptSource =
             "(function() {"
             "	if (window.__photinoContextMenu) return;"
             "	window.__photinoContextMenu = true;"
             "	var lastReported = null;"
-            "	var lastX = null;"
-            "	var lastY = null;"
             "	var postLink = function(linkUri) {"
             "		lastReported = linkUri;"
             "		try {"
@@ -937,9 +939,9 @@ void Photino::AttachWebView()
             "		} catch (error) {"
             "		}"
             "	};"
-            "	var linkUriFromPoint = function(x, y) {"
+            "	var linkUriFromEvent = function(event) {"
             "		try {"
-            "			var element = document.elementFromPoint(x, y);"
+            "			var element = event.target;"
             "			var link = element && element.closest ? element.closest('a[href]') : null;"
             "			if (!link) return '';"
             "			var href = link.getAttribute('href');"
@@ -949,17 +951,12 @@ void Photino::AttachWebView()
             "			return '';"
             "		}"
             "	};"
-            "	window.addEventListener('mousemove', function(event) {"
-            "		var x = event.clientX;"
-            "		var y = event.clientY;"
-            "		if (lastX !== null && Math.abs(x - lastX) < 2 && Math.abs(y - lastY) < 2) return;"
-            "		lastX = x;"
-            "		lastY = y;"
-            "		var linkUri = linkUriFromPoint(x, y);"
+            "	window.addEventListener('mouseover', function(event) {"
+            "		var linkUri = linkUriFromEvent(event);"
             "		if (linkUri !== lastReported) postLink(linkUri);"
             "	}, true);"
             "	window.addEventListener('contextmenu', function(event) {"
-            "		postLink(linkUriFromPoint(event.clientX, event.clientY));"
+            "		postLink(linkUriFromEvent(event));"
             "	}, true);"
             "})();";
 
