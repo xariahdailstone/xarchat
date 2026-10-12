@@ -13,11 +13,6 @@
 	Photino * photino;
 }
 
-// Name of the script message handler the injected context menu script posts to.
-// It has to match the name used in the script itself, which is built in
-// Photino::AttachWebView.
-extern NSString * const PhotinoContextMenuScriptMessageName;
-
 // Target of the menu items added by Photino::ContextMenuAddItem.
 - (void)photinoContextMenuItemSelected:(NSMenuItem *)sender;
 
@@ -26,4 +21,9 @@ extern NSString * const PhotinoContextMenuScriptMessageName;
 - (NSMenu *)menuForEvent:(NSEvent *)event;
 
 @end
+
+// Name of the script message handler the injected context menu script posts to.
+// It has to match the name used in the script itself, which is built in
+// Photino::AttachWebView.
+extern NSString * const PhotinoContextMenuScriptMessageName;
 #endif

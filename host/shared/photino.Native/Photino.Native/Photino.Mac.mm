@@ -928,7 +928,7 @@ void Photino::AttachWebView()
     // element, which is whenever the link under it can change, and again for every
     // right click, which is the click that opens the menu.
     NSString *contextMenuScriptSource =
-            "(function() {"
+            @"(function() {"
             "	if (window.__photinoContextMenu) return;"
             "	window.__photinoContextMenu = true;"
             "	var lastReported = null;"
