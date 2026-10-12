@@ -461,6 +461,12 @@ namespace Photino.NET
                 $"page: {e.PageUri}, link: {e.LinkUri}, source: {e.SourceUri}, selection: {e.SelectionText})");
             Log(sender, $"  Items ({e.MenuItems.Count}): {itemDescription}");
 
+            //macOS does not report the hit test result, so a link has to be recognised from
+            //the entries WebKit offered: these three are only ever added for a link.
+            if (e.LinkUri is null)
+                Log(sender, "  No link URI reported; link entries present: " +
+                    $"{e.MenuItems.Items.Any(item => item.Id is "openLink" or "copyLink" or "downloadLinkedFile")}");
+
             //Hide the items we do not want to offer. Only the items listed above can be hidden.
             //Remove reports false when the platform did not offer an item with that id, which
             //is what a platform whose ids do not match the constant would report.

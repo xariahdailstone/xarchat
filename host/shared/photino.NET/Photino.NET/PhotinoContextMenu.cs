@@ -473,6 +473,11 @@ public sealed class ContextMenuRequestedEventArgs : EventArgs
     /// The URI of the link under the cursor, or null when a link was not the target.
     /// Always null on macOS, which does not report the hit test result.
     /// </summary>
+    /// <remarks>
+    /// A link is still detectable on macOS, because WebKit only adds entries such as
+    /// <see cref="ContextMenuItemId.CopyLinkAddress"/> and
+    /// <see cref="ContextMenuItemId.DownloadLinkedFile"/> when the target is a link.
+    /// </remarks>
     public string LinkUri { get; }
 
     /// <summary>

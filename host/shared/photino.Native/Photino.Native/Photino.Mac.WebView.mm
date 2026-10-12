@@ -129,6 +129,10 @@ static void SanitizeContextMenuField(string &field)
 	// Valid for the duration of the callback only.
 	photino->_contextMenu = menu;
 
+	// WebKit keeps the hit test result to itself, so the link, its source and the
+	// selection cannot be read here. A link can still be recognised from the menu,
+	// because entries such as openLink, copyLink and downloadLinkedFile are only
+	// ever added for one.
 	photino->InvokeContextMenuRequested(
 		targetKind, isEditable,
 		NULL, NULL, NULL,
