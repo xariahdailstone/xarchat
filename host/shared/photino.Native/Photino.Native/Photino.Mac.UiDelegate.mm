@@ -6,15 +6,27 @@
 - (void)userContentController:(WKUserContentController *)userContentController
         didReceiveScriptMessage:(WKScriptMessage *)message
 {
-    // The injected context menu script reports the link under the cursor, which is
-    // kept for the context menu callback rather than passed on to the page.
+    // The injected context menu script reports the link and the media source under the
+    // cursor, which are kept for the context menu callback rather than passed on to the
+    // page. Anything that is not a string is treated as no report at all.
     if ([message.name isEqualToString: PhotinoContextMenuScriptMessageName])
     {
         if (photino == NULL)
             return;
 
-        NSString *linkUri = [message.body isKindOfClass: [NSString class]] ? message.body : nil;
-        photino->SetContextMenuReportedLinkUri(linkUri == nil ? NULL : (AutoString)[linkUri UTF8String]);
+        NSDictionary *body = [message.body isKindOfClass: [NSDictionary class]] ? message.body : nil;
+
+        AutoString linkUri = NULL;
+        NSString *reportedLinkUri = [body objectForKey: @"link"];
+        if ([reportedLinkUri isKindOfClass: [NSString class]])
+            linkUri = (AutoString)[reportedLinkUri UTF8String];
+
+        AutoString sourceUri = NULL;
+        NSString *reportedSourceUri = [body objectForKey: @"source"];
+        if ([reportedSourceUri isKindOfClass: [NSString class]])
+            sourceUri = (AutoString)[reportedSourceUri UTF8String];
+
+        photino->SetContextMenuReportedUris(linkUri, sourceUri);
 
         return;
     }

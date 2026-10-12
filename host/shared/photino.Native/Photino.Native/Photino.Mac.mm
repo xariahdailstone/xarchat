@@ -918,45 +918,71 @@ void Photino::AttachWebView()
         forMainFrameOnly: true];
 
     // WebKit hands the app the menu it has built but never the element it was
-    // built for, so the link under the cursor is reported by this script instead.
-    // The value is sent to the handler registered below, which caches it for the
-    // context menu callback.
+    // built for, so the link and the media source under the cursor are reported by
+    // this script instead. The values are sent to the handler registered below,
+    // which caches them for the context menu callback.
     //
     // No hit testing is done here: the browser has already hit tested to decide
     // what to dispatch the mouse event to, so the target of the event is the
     // element under the pointer. A report is sent when the pointer moves onto an
-    // element, which is whenever the link under it can change, and again for every
-    // right click, which is the click that opens the menu.
+    // element, which is whenever the target under it can change, and again for
+    // every right click, which is the click that opens the menu.
     NSString *contextMenuScriptSource =
             @"(function() {"
             "	if (window.__photinoContextMenu) return;"
             "	window.__photinoContextMenu = true;"
-            "	var lastReported = null;"
-            "	var postLink = function(linkUri) {"
-            "		lastReported = linkUri;"
+            "	var lastLinkUri = null;"
+            "	var lastSourceUri = null;"
+            "	var post = function(linkUri, sourceUri) {"
+            "		lastLinkUri = linkUri;"
+            "		lastSourceUri = sourceUri;"
             "		try {"
-            "			window.webkit.messageHandlers.photinocontextmenu.postMessage(linkUri);"
+            "			window.webkit.messageHandlers.photinocontextmenu.postMessage({ link: linkUri, source: sourceUri });"
             "		} catch (error) {"
+            "		}"
+            "	};"
+            "	var absoluteUri = function(href) {"
+            "		if (!href) return '';"
+            "		try {"
+            "			return new URL(href, document.baseURI).href;"
+            "		} catch (error) {"
+            "			return '';"
             "		}"
             "	};"
             "	var linkUriFromEvent = function(event) {"
             "		try {"
             "			var element = event.target;"
             "			var link = element && element.closest ? element.closest('a[href]') : null;"
-            "			if (!link) return '';"
-            "			var href = link.getAttribute('href');"
-            "			if (!href) return '';"
-            "			return new URL(href, document.baseURI).href;"
+            "			return link ? absoluteUri(link.getAttribute('href')) : '';"
             "		} catch (error) {"
             "			return '';"
             "		}"
             "	};"
-            "	window.addEventListener('mouseover', function(event) {"
+            "	var sourceUriFromEvent = function(event) {"
+            "		try {"
+            "			var element = event.target;"
+            "			var media = element && element.closest ? element.closest('img, video, audio') : null;"
+            "			if (!media) return '';"
+            "			var href = media.currentSrc || media.getAttribute('src');"
+            "			if (!href) {"
+            "				var source = media.querySelector('source[src]');"
+            "				href = source ? source.getAttribute('src') : '';"
+            "			}"
+            "			return absoluteUri(href);"
+            "		} catch (error) {"
+            "			return '';"
+            "		}"
+            "	};"
+            "	var report = function(event, always) {"
             "		var linkUri = linkUriFromEvent(event);"
-            "		if (linkUri !== lastReported) postLink(linkUri);"
+            "		var sourceUri = sourceUriFromEvent(event);"
+            "		if (always || linkUri !== lastLinkUri || sourceUri !== lastSourceUri) post(linkUri, sourceUri);"
+            "	};"
+            "	window.addEventListener('mouseover', function(event) {"
+            "		report(event, false);"
             "	}, true);"
             "	window.addEventListener('contextmenu', function(event) {"
-            "		postLink(linkUriFromEvent(event));"
+            "		report(event, true);"
             "	}, true);"
             "})();";
 

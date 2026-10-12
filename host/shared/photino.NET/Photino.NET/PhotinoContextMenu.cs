@@ -485,9 +485,16 @@ public sealed class ContextMenuRequestedEventArgs : EventArgs
     public string LinkUri { get; }
 
     /// <summary>
-    /// The URI of the image or media under the cursor, or null when neither was the
-    /// target. Always null on macOS, which does not report the hit test result.
+    /// The URI of the image or media under the cursor, or null when neither was the target.
     /// </summary>
+    /// <remarks>
+    /// Windows and Linux report this from the platform hit test result. macOS has no such result
+    /// to read, so the URI there is the media source a script injected into the page last reported
+    /// the pointer as being over, which makes it best effort in the same way <see cref="LinkUri"/>
+    /// is. The scripts also cannot report a source for targets whose URIs the hit test result takes
+    /// from somewhere other than an <c>img</c>, <c>video</c> or <c>audio</c> element, such as an
+    /// <c>iframe</c> or an <c>object</c>, so those are null on macOS even though Windows knows them.
+    /// </remarks>
     public string SourceUri { get; }
 
     /// <summary>

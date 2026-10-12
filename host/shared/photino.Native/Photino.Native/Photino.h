@@ -307,12 +307,14 @@ public:
 	NSMenu *_contextMenu;
 
 	// WebKit hands the menu it has built to the view and keeps the hit test result
-	// to itself, so the link under the cursor is reported by the script injected in
-	// Photino.Mac.mm instead. That report is asynchronous and comes from the page,
-	// so the value is a hint rather than an authoritative one.
-	void SetContextMenuReportedLinkUri(AutoString uri);
+	// to itself, so the link and the media source under the cursor are reported by
+	// the script injected in Photino.Mac.mm instead. Those reports are asynchronous
+	// and come from the page, so the values are hints rather than authoritative ones.
+	void SetContextMenuReportedUris(AutoString linkUri, AutoString sourceUri);
 	AutoString GetContextMenuReportedLinkUri();
+	AutoString GetContextMenuReportedSourceUri();
 	std::string _contextMenuReportedLinkUri;
+	std::string _contextMenuReportedSourceUri;
 #endif
 
 	Photino(PhotinoInitParams *initParams);

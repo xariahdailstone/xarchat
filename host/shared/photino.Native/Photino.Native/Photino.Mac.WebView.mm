@@ -131,15 +131,16 @@ static void SanitizeContextMenuField(string &field)
 	// Valid for the duration of the callback only.
 	photino->_contextMenu = menu;
 
-	// WebKit keeps the hit test result to itself, so the link under the cursor is
-	// reported by the injected script instead. That report is asynchronous and the
-	// page cannot be trusted to send it, so this is best effort. Its source and the
-	// selection are still not reported by anything.
+	// WebKit keeps the hit test result to itself, so the link and the media source
+	// under the cursor are reported by the injected script instead. Those reports
+	// are asynchronous and the page cannot be trusted to send them, so this is best
+	// effort. The selection is still not reported by anything.
 	AutoString linkUri = photino->GetContextMenuReportedLinkUri();
+	AutoString sourceUri = photino->GetContextMenuReportedSourceUri();
 
 	photino->InvokeContextMenuRequested(
 		targetKind, isEditable,
-		linkUri, NULL, NULL,
+		linkUri, sourceUri, NULL,
 		(AutoString)pageUri,
 		snapshot.empty() ? NULL : (AutoString)snapshot.c_str());
 
@@ -221,10 +222,17 @@ void Photino::ContextMenuAddItem(AutoString label, int kind, bool enabled, bool 
 		[_contextMenu insertItem:item atIndex:(NSInteger)index];
 }
 
-void Photino::SetContextMenuReportedLinkUri(AutoString uri)
+static string ReportedUri(AutoString uri)
 {
-	// An empty uri is a report of its own: the cursor is not over a link.
-	_contextMenuReportedLinkUri = uri == NULL ? string() : string(uri);
+	return uri == NULL ? string() : string(uri);
+}
+
+void Photino::SetContextMenuReportedUris(AutoString linkUri, AutoString sourceUri)
+{
+	// An empty uri is a report of its own: the cursor is over neither a link nor a
+	// media element, so the previous value must not linger.
+	_contextMenuReportedLinkUri = ReportedUri(linkUri);
+	_contextMenuReportedSourceUri = ReportedUri(sourceUri);
 }
 
 AutoString Photino::GetContextMenuReportedLinkUri()
@@ -234,6 +242,15 @@ AutoString Photino::GetContextMenuReportedLinkUri()
 
 	// Valid until the next report arrives.
 	return (AutoString)_contextMenuReportedLinkUri.c_str();
+}
+
+AutoString Photino::GetContextMenuReportedSourceUri()
+{
+	if (_contextMenuReportedSourceUri.empty())
+		return NULL;
+
+	// Valid until the next report arrives.
+	return (AutoString)_contextMenuReportedSourceUri.c_str();
 }
 
 #endif

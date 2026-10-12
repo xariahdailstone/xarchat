@@ -316,5 +316,15 @@
     </span>
 
     <canvas id="canvas" style="visibility:hidden">required to render the photo, but not visible</canvas>
+
+    <b>Context Menu Targets</b><br>
+    <img id="contextMenuImage" src="photino-logo.png" alt="Image target" width="64" height="64">
+    <a id="contextMenuLink" href="https://www.google.com"><img src="photino-logo.png" alt="Linked image target" width="32" height="32"></a>
+    <!-- Right click targets for the context menu only. The media files do not exist, so the
+         players stay empty, but the elements still name the source they would load. -->
+    <video id="contextMenuVideo" width="120" height="48" controls src="photino-logo.png"></video>
+    <video id="contextMenuVideoSource" width="120" height="48" controls><source src="photino-logo.png"></video>
+    <audio id="contextMenuAudio" controls src="photino-logo.png"></audio>
+    <p id="contextMenuSelection">Select this sentence and right click it to test the selected text target.</p>
 </body>
 </html>
