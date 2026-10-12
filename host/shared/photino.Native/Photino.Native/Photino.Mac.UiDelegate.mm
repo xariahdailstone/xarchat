@@ -1,10 +1,24 @@
 #ifdef __APPLE__
 #import "Photino.Mac.UiDelegate.h"
+#import "Photino.Mac.WebView.h"
 
 @implementation UiDelegate : NSObject
 - (void)userContentController:(WKUserContentController *)userContentController
         didReceiveScriptMessage:(WKScriptMessage *)message
 {
+    // The injected context menu script reports the link under the cursor, which is
+    // kept for the context menu callback rather than passed on to the page.
+    if ([message.name isEqualToString: PhotinoContextMenuScriptMessageName])
+    {
+        if (photino == NULL)
+            return;
+
+        NSString *linkUri = [message.body isKindOfClass: [NSString class]] ? message.body : nil;
+        photino->SetContextMenuReportedLinkUri(linkUri == nil ? NULL : (AutoString)[linkUri UTF8String]);
+
+        return;
+    }
+
     char *messageUtf8 = (char *)[message.body UTF8String];
     webMessageReceivedCallback(messageUtf8);
 }

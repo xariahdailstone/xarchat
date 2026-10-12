@@ -7,6 +7,8 @@
 
 using namespace std;
 
+NSString * const PhotinoContextMenuScriptMessageName = @"photinocontextmenu";
+
 // WebKit stamps every item it adds to the context menu with a stable
 // identifier whose value is a plain string such as
 // "WKMenuItemIdentifierOpenLink". Those strings are compared directly rather
@@ -129,13 +131,15 @@ static void SanitizeContextMenuField(string &field)
 	// Valid for the duration of the callback only.
 	photino->_contextMenu = menu;
 
-	// WebKit keeps the hit test result to itself, so the link, its source and the
-	// selection cannot be read here. A link can still be recognised from the menu,
-	// because entries such as openLink, copyLink and downloadLinkedFile are only
-	// ever added for one.
+	// WebKit keeps the hit test result to itself, so the link under the cursor is
+	// reported by the injected script instead. That report is asynchronous and the
+	// page cannot be trusted to send it, so this is best effort. Its source and the
+	// selection are still not reported by anything.
+	AutoString linkUri = photino->GetContextMenuReportedLinkUri();
+
 	photino->InvokeContextMenuRequested(
 		targetKind, isEditable,
-		NULL, NULL, NULL,
+		linkUri, NULL, NULL,
 		(AutoString)pageUri,
 		snapshot.empty() ? NULL : (AutoString)snapshot.c_str());
 
@@ -215,6 +219,21 @@ void Photino::ContextMenuAddItem(AutoString label, int kind, bool enabled, bool 
 		[_contextMenu addItem:item];
 	else
 		[_contextMenu insertItem:item atIndex:(NSInteger)index];
+}
+
+void Photino::SetContextMenuReportedLinkUri(AutoString uri)
+{
+	// An empty uri is a report of its own: the cursor is not over a link.
+	_contextMenuReportedLinkUri = uri == NULL ? string() : string(uri);
+}
+
+AutoString Photino::GetContextMenuReportedLinkUri()
+{
+	if (_contextMenuReportedLinkUri.empty())
+		return NULL;
+
+	// Valid until the next report arrives.
+	return (AutoString)_contextMenuReportedLinkUri.c_str();
 }
 
 #endif

@@ -86,10 +86,13 @@ Additional notes:
  * Only single level menus can be built. Windows reports submenus such as `moreTools` and
    the writing direction entry as a single item and does not enumerate their children.
  * There is no hit-test context available on macOS: WebKit hands the finished menu to the view and
-   keeps the hit test result to itself, so `Target.LinkUri`, `Target.SourceUri` and
-   `Target.SelectionText` are always null there. The target kind and the editable flag are inferred
-   from the entries WebKit chose to show, and a link is still detectable because WebKit only adds
-   `openLink`, `copyLink` and `downloadLinkedFile` when the target is a link.
+   keeps the hit test result to itself. `Target.SourceUri` and `Target.SelectionText` are therefore
+   always null there. `Target.LinkUri` comes from a script injected into each page, which reports
+   the link under the pointer as it moves and again on every right click, so it is best effort: it
+   is null when nothing has reported yet, and it can name the link the pointer left most recently
+   when the page moved under a still pointer. The target kind and the editable flag are inferred
+   from the entries WebKit chose to show, and a link can also be recognised because WebKit only
+   adds `openLink`, `copyLink` and `downloadLinkedFile` when the target is a link.
  * WebKitGTK publishes no identifiers for the entries it builds, so on Linux the id is derived from
    the entry's stock action and, for entries with no stock action, from the name of the action the
    entry wraps. An entry for which neither is available has an empty id, and separators always do.

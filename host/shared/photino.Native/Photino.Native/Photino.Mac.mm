@@ -917,8 +917,61 @@ void Photino::AttachWebView()
         injectionTime: WKUserScriptInjectionTimeAtDocumentStart
         forMainFrameOnly: true];
 
+    // WebKit hands the app the menu it has built but never the element it was
+    // built for, so the link under the cursor is reported by this script instead.
+    // The value is sent to the handler registered below, which caches it for the
+    // context menu callback. Reports are sent for the pointer moving (only when
+    // the link under it changes) and for every right click, so that the cached
+    // value is the one the cursor was over and not one it has already left.
+    NSString *contextMenuScriptSource =
+            "(function() {"
+            "	if (window.__photinoContextMenu) return;"
+            "	window.__photinoContextMenu = true;"
+            "	var lastReported = null;"
+            "	var lastX = null;"
+            "	var lastY = null;"
+            "	var postLink = function(linkUri) {"
+            "		lastReported = linkUri;"
+            "		try {"
+            "			window.webkit.messageHandlers.photinocontextmenu.postMessage(linkUri);"
+            "		} catch (error) {"
+            "		}"
+            "	};"
+            "	var linkUriFromPoint = function(x, y) {"
+            "		try {"
+            "			var element = document.elementFromPoint(x, y);"
+            "			var link = element && element.closest ? element.closest('a[href]') : null;"
+            "			if (!link) return '';"
+            "			var href = link.getAttribute('href');"
+            "			if (!href) return '';"
+            "			return new URL(href, document.baseURI).href;"
+            "		} catch (error) {"
+            "			return '';"
+            "		}"
+            "	};"
+            "	window.addEventListener('mousemove', function(event) {"
+            "		var x = event.clientX;"
+            "		var y = event.clientY;"
+            "		if (lastX !== null && Math.abs(x - lastX) < 2 && Math.abs(y - lastY) < 2) return;"
+            "		lastX = x;"
+            "		lastY = y;"
+            "		var linkUri = linkUriFromPoint(x, y);"
+            "		if (linkUri !== lastReported) postLink(linkUri);"
+            "	}, true);"
+            "	window.addEventListener('contextmenu', function(event) {"
+            "		postLink(linkUriFromPoint(event.clientX, event.clientY));"
+            "	}, true);"
+            "})();";
+
+    WKUserScript *contextMenuScript = [
+        [WKUserScript alloc]
+        initWithSource: contextMenuScriptSource
+        injectionTime: WKUserScriptInjectionTimeAtDocumentStart
+        forMainFrameOnly: false];
+
     WKUserContentController *userContentController = [WKUserContentController new];
     [userContentController addUserScript:initScript];
+    [userContentController addUserScript:contextMenuScript];
     _webviewConfiguration.userContentController = userContentController;
 
     _webview = [
@@ -944,6 +997,11 @@ void Photino::AttachWebView()
     [userContentController
         addScriptMessageHandler: uiDelegate
         name:@"photinointerop"];
+
+    // The name of this handler is repeated in the script above.
+    [userContentController
+        addScriptMessageHandler: uiDelegate
+        name: PhotinoContextMenuScriptMessageName];
 
     _webview.UIDelegate = uiDelegate;
     _webview.navigationDelegate = navDelegate;

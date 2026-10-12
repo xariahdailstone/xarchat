@@ -471,12 +471,16 @@ public sealed class ContextMenuRequestedEventArgs : EventArgs
 
     /// <summary>
     /// The URI of the link under the cursor, or null when a link was not the target.
-    /// Always null on macOS, which does not report the hit test result.
     /// </summary>
     /// <remarks>
-    /// A link is still detectable on macOS, because WebKit only adds entries such as
-    /// <see cref="ContextMenuItemId.CopyLinkAddress"/> and
-    /// <see cref="ContextMenuItemId.DownloadLinkedFile"/> when the target is a link.
+    /// Windows and Linux report this from the platform hit test result. macOS has no such
+    /// result to read, so the URI there is the link a script injected into the page last
+    /// reported the pointer as being over, which makes it best effort: it is null when
+    /// nothing has been reported yet, and it can name the link the pointer left most
+    /// recently when the page moved under a still pointer. A right click on a link can
+    /// always be recognised, on every platform, from the entries only offered for one,
+    /// such as <see cref="ContextMenuItemId.CopyLinkAddress"/> and
+    /// <see cref="ContextMenuItemId.DownloadLinkedFile"/>.
     /// </remarks>
     public string LinkUri { get; }
 
