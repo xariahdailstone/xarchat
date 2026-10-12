@@ -91,5 +91,8 @@ Additional notes:
  * WebKitGTK publishes no identifiers for the entries it builds, so on Linux the id is derived from
    the entry's stock action and, for entries with no stock action, from the name of the action the
    entry wraps. An entry for which neither is available has an empty id, and separators always do.
+ * WebKitGTK reports the hit test result, but not the selected text, and it exposes no way to read
+   the selection while the menu is being built, so `Target.SelectionText` is always null on Linux
+   as well. The target kind and the editable flag are still derived from the hit test result.
  * Custom entries only raise their callback while the platform is displaying the menu, so the
    handler should stay short.

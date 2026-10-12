@@ -352,16 +352,19 @@ void Photino::GetTransparentEnabled(bool *enabled)
 
 void Photino::GetContextMenuEnabled(bool *enabled)
 {
-	if (_contextMenuEnabled)
-		*enabled = true;
+	// The caller reads this back as the current state, so it must always be
+	// written, including when the result is false.
+	*enabled = _contextMenuEnabled;
 }
 
 void Photino::GetDevToolsEnabled(bool *enabled)
 {
 	WebKitSettings *settings = webkit_web_view_get_settings(WEBKIT_WEB_VIEW(_webview));
-	_devToolsEnabled = webkit_settings_get_enable_developer_extras(settings);
-	if (_devToolsEnabled)
-		*enabled = true;
+	_devToolsEnabled = webkit_settings_get_enable_developer_extras(settings) != FALSE;
+
+	// The caller reads this back as the current state, so it must always be
+	// written, including when the result is false.
+	*enabled = _devToolsEnabled;
 }
 
 void Photino::GetFullScreen(bool *fullScreen)
@@ -1376,7 +1379,10 @@ gboolean on_webview_context_menu(WebKitWebView *web_view, WebKitContextMenu *con
 		targetKind, isEditable,
 		(AutoString)linkUri,
 		(AutoString)sourceUri,
-		NULL,	// WebKitGTK does not expose the selected text through the hit test result
+		// WebKitGTK reports the hit test result but not the selected text, and it
+		// exposes no way to read the selection while the menu is being built, so
+		// the selected text is always NULL on Linux.
+		NULL,	// selection text
 		(AutoString)pageUri,
 		snapshot.empty() ? NULL : (AutoString)snapshot.c_str());
 

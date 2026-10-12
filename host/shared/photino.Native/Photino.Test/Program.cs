@@ -329,11 +329,15 @@ namespace Photino.NET
             }
             else if (string.Compare(message, "setcontextmenuenabled", true) == 0)
             {
-                currentWindow.SetContextMenuEnabled(!currentWindow.ContextMenuEnabled);
+                var wasEnabled = currentWindow.ContextMenuEnabled;
+                currentWindow.SetContextMenuEnabled(!wasEnabled);
+                Log(currentWindow, $"ContextMenuEnabled: {wasEnabled} -> {currentWindow.ContextMenuEnabled}");
             }
             else if (string.Compare(message, "setdevtoolsenabled", true) == 0)
             {
-                currentWindow.SetDevToolsEnabled(!currentWindow.DevToolsEnabled);
+                var wasEnabled = currentWindow.DevToolsEnabled;
+                currentWindow.SetDevToolsEnabled(!wasEnabled);
+                Log(currentWindow, $"DevToolsEnabled: {wasEnabled} -> {currentWindow.DevToolsEnabled}");
             }
             else if (string.Compare(message, "setgrantbrowserpermissions", true) == 0)
             {
@@ -381,6 +385,7 @@ namespace Photino.NET
             else if (string.Compare(message, "showproperties", true) == 0)
             {
                 var properties = GetPropertiesDisplay(currentWindow);
+                Log(currentWindow, $"Properties:{Environment.NewLine}{properties}");
                 currentWindow.ShowMessage("Settings", properties);
             }
             else if (string.Compare(message, "sendWebMessage", true) == 0)

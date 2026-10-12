@@ -482,8 +482,10 @@ public sealed class ContextMenuRequestedEventArgs : EventArgs
     public string SourceUri { get; }
 
     /// <summary>
-    /// The currently selected text, or null when there is no selection. Always null on
-    /// macOS, which does not report the hit test result.
+    /// The currently selected text, or null when there is no selection or the platform does
+    /// not report it. Always null on macOS, which does not report the hit test result, and on
+    /// Linux, where WebKitGTK exposes no way to read the selection while the menu is being
+    /// built.
     /// </summary>
     public string SelectionText { get; }
 
