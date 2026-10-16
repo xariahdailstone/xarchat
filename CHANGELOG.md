@@ -139,3 +139,5 @@
 * Fixed a small issue where XarChat might consume a (small) amount of CPU time unnecessarily after
   it's been running for several days straight.
 * Inline images in guestbook posts now show up properly.
+* Fixed an issue where some types of lines drawn in chat messages using the strikethrough tag
+  stopped showing properly.

@@ -107,6 +107,15 @@ export interface BBCodeParserSetupOptions {
     enableHRProcessing?: boolean;
 }
 
+// Chrome v155 has a behavior regression that impacts inline elements that contain white-space that
+// shouldn't be collapsed; but the white space in the inline element is not accompanied by non-white-space
+// characters in the same block.  This flag enables a workaround to insert some extra nodes into the
+// converted BBCode HTML to ensure this doesn't happen.
+// e.g.:  "test\n[s]   [/s]\ntest"
+//   In a broken browser, this will not display the strikethrough on the second line.
+// For compatibility with Horizon/FChat 3.0, we'll do this for now until it looks like browsers have fixed it.
+const ENABLE_WHITESPACE_WORKAROUND = true;
+
 export class BBCodeParser {
     constructor(options?: BBCodeParserSetupOptions) {
         this._parserOptions = options ?? {};
@@ -289,6 +298,9 @@ export class BBCodeParser {
         if (this._parserOptions.enableHRProcessing) {
             this.fixupHRs(resFragment);
         }
+        if (ENABLE_WHITESPACE_WORKAROUND) {
+            this.performWhitespaceWorkaround(resFragment);
+        }
 
         const result: BBCodeParseResult = {
             element: resFragment,
@@ -331,6 +343,34 @@ export class BBCodeParser {
         };
         
         return result;
+    }
+
+    private performWhitespaceWorkaround(node: HTMLElement) {
+        if (!node) return;
+
+        const makeWorkaroundNode = () => {
+            const n = document.createElement("span");
+            n.style.position = "relative";
+            n.style.display = "inline-block";
+            n.style.width = "0";
+            n.style.height = "0";
+            n.style.userSelect = "none";
+            n.setAttribute("data-copycontent", "");
+            n.innerHTML = "&ZeroWidthSpace;";
+            return n;
+        };
+
+        if (node.firstChild) {
+            node.insertBefore(makeWorkaroundNode(), node.firstChild);
+        }
+        node.appendChild(makeWorkaroundNode());
+
+        const brNodes = node.querySelectorAll("br");
+        for (let i = 0; i < brNodes.length; i++) {
+            const tbr = brNodes.item(i);
+            tbr.insertAdjacentElement("beforebegin", makeWorkaroundNode());
+            tbr.insertAdjacentElement("afterend", makeWorkaroundNode());
+        }
     }
 
     private fixupHRs(node: Node) {
