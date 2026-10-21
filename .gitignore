@@ -400,3 +400,6 @@ FodyWeavers.xsd
 # Flatpak build staging / output
 host/linux/flatpak/payload/
 **/.flatpak-builder/
+flatpak-out/
+flatpak-build/
+flatpak-repo/

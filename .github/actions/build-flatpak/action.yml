@@ -1,0 +1,135 @@
+# Composite action: builds the XarChat Flatpak bundle from a published linux-x64
+# executable and uploads it as a workflow artifact.
+#
+# The repository (including host/linux/flatpak) must already be checked out.
+
+name: "Build Flatpak Bundle"
+description: "Builds host/linux/flatpak into a .flatpak bundle and publishes it as an artifact"
+
+inputs:
+  exe-path:
+    description: "Path to the published xarchat executable, or a directory containing it."
+    required: true
+  timestamp:
+    description: "Build timestamp used in the bundle filename (e.g. 2026.10.20.1234.56)."
+    required: true
+  manifest-path:
+    description: "Path to the Flatpak manifest, relative to the workspace."
+    required: false
+    default: "host/linux/flatpak/net.xariah.xarchat.yml"
+  runtime-version:
+    description: "GNOME runtime/SDK version to build against."
+    required: false
+    default: "48"
+  output-dir:
+    description: "Directory (relative to the workspace) the bundle is written to."
+    required: false
+    default: "flatpak-out"
+  build-dir:
+    description: "flatpak-builder build directory (relative to the workspace)."
+    required: false
+    default: "flatpak-build"
+  repo-dir:
+    description: "flatpak-builder repository directory (relative to the workspace)."
+    required: false
+    default: "flatpak-repo"
+  artifact-name:
+    description: "Name of the uploaded artifact (empty to skip uploading)."
+    required: false
+    default: "linux-flatpak-x64"
+  artifact-retention-days:
+    description: "Artifact retention in days."
+    required: false
+    default: "5"
+
+outputs:
+  bundle-path:
+    description: "Path to the generated .flatpak bundle."
+    value: ${{ steps.create_bundle.outputs.bundle_path }}
+
+runs:
+  using: composite
+  steps:
+    - id: stage_payload
+      name: "Stage Flatpak Payload"
+      shell: bash
+      run: |
+        set -euo pipefail
+        EXE="${{ inputs.exe-path }}"
+        if [ -d "${EXE}" ]; then
+          EXE=$(find "${EXE}" -type f -name xarchat -print -quit)
+        fi
+        if [ -z "${EXE}" ] || [ ! -f "${EXE}" ]; then
+          echo "::error::Unable to find the xarchat executable (exe-path: ${{ inputs.exe-path }})"
+          exit 1
+        fi
+        mkdir -p "${GITHUB_WORKSPACE}/host/linux/flatpak/payload"
+        install -m755 "${EXE}" "${GITHUB_WORKSPACE}/host/linux/flatpak/payload/xarchat"
+        ls -l "${GITHUB_WORKSPACE}/host/linux/flatpak/payload"
+
+    - id: cache_flatpak_runtime
+      name: "Cache Flatpak Runtime"
+      uses: actions/cache@v4
+      with:
+        path: ~/.local/share/flatpak
+        key: flatpak-runtime-gnome-${{ inputs.runtime-version }}-v1
+
+    - id: install_flatpak
+      name: "Install Flatpak Runtime"
+      shell: bash
+      run: |
+        set -euo pipefail
+        if ! command -v flatpak-builder >/dev/null 2>&1; then
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends flatpak flatpak-builder
+        fi
+        flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+        flatpak install --user --noninteractive flathub \
+          "org.gnome.Platform//${{ inputs.runtime-version }}" \
+          "org.gnome.Sdk//${{ inputs.runtime-version }}"
+
+    - id: build_flatpak
+      name: "Build Flatpak"
+      shell: bash
+      run: |
+        set -euo pipefail
+        flatpak-builder \
+          --disable-rofiles-fuse \
+          --force-clean \
+          --repo="${GITHUB_WORKSPACE}/${{ inputs.repo-dir }}" \
+          "${GITHUB_WORKSPACE}/${{ inputs.build-dir }}" \
+          "${GITHUB_WORKSPACE}/${{ inputs.manifest-path }}"
+
+    - id: create_bundle
+      name: "Create Flatpak Bundle"
+      shell: bash
+      run: |
+        set -euo pipefail
+        OUT="${GITHUB_WORKSPACE}/${{ inputs.output-dir }}"
+        mkdir -p "${OUT}"
+        BUNDLE="${OUT}/xarchat_${{ inputs.timestamp }}_x64.flatpak"
+        flatpak build-bundle \
+          --runtime-repo=https://flathub.org/repo/flathub.flatpakrepo \
+          "${GITHUB_WORKSPACE}/${{ inputs.repo-dir }}" \
+          "${BUNDLE}" net.xariah.xarchat
+        ls -l "${OUT}"
+        echo "bundle_path=${BUNDLE}" >> "$GITHUB_OUTPUT"
+
+    - id: publish_artifact_flatpak
+      name: "Publish Flatpak Artifact"
+      if: ${{ inputs.artifact-name != '' }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: ${{ github.workspace }}/${{ inputs.output-dir }}/*.flatpak
+        retention-days: ${{ inputs.artifact-retention-days }}
+
+    - id: dump_logs
+      name: "Dump Flatpak Build Log"
+      if: failure()
+      shell: bash
+      run: |
+        BUILD_DIR="${GITHUB_WORKSPACE}/${{ inputs.build-dir }}"
+        [ -d "${BUILD_DIR}" ] || exit 0
+        find "${BUILD_DIR}" -name "*.log" | head -n 50
+        find "${BUILD_DIR}" -name "*.log" -exec sh -c 'echo "=== $1 ==="; tail -n 200 "$1"' _ {} \;
