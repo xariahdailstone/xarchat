@@ -79,9 +79,13 @@ runs:
       shell: bash
       run: |
         set -euo pipefail
-        if ! command -v flatpak-builder >/dev/null 2>&1; then
+        # `flatpak build-export` validates icons with gdk-pixbuf from the host, and
+        # librsvg2-common provides the gdk-pixbuf SVG loader needed for scalable
+        # icons.  Without it, exporting a .svg icon fails with "Format not recognized".
+        SVG_LOADER=$(ls /usr/lib/*/gdk-pixbuf-2.0/*/loaders/libpixbufloader-svg.so 2>/dev/null | head -n 1 || true)
+        if ! command -v flatpak-builder >/dev/null 2>&1 || [ -z "${SVG_LOADER}" ]; then
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends flatpak flatpak-builder
+          sudo apt-get install -y --no-install-recommends flatpak flatpak-builder librsvg2-common
         fi
         flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
         flatpak install --user --noninteractive flathub \
