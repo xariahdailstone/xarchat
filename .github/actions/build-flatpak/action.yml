@@ -20,7 +20,7 @@ inputs:
   runtime-version:
     description: "GNOME runtime/SDK version to build against."
     required: false
-    default: "48"
+    default: "51"
   output-dir:
     description: "Directory (relative to the workspace) the bundle is written to."
     required: false
