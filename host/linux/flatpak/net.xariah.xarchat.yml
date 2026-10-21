@@ -1,0 +1,45 @@
+# Flatpak manifest for XarChat (x64).
+#
+# The published linux-x64 build is a self-contained single-file executable, so
+# it only needs to be placed in the install tree.  To build locally:
+#
+#   mkdir -p host/linux/flatpak/payload
+#   cp <published>/xarchat host/linux/flatpak/payload/xarchat
+#   flatpak-builder --repo=repo --force-clean build-dir host/linux/flatpak/net.xariah.xarchat.yml
+#   flatpak build-bundle repo xarchat.flatpak net.xariah.xarchat
+#
+app-id: net.xariah.xarchat
+runtime: org.gnome.Platform
+runtime-version: '48'
+sdk: org.gnome.Sdk
+command: xarchat
+
+finish-args:
+  - --share=ipc
+  - --share=network
+  - --socket=fallback-x11
+  - --socket=wayland
+  - --device=dri
+  - --socket=pulseaudio
+  - --persist=.xarchat
+  - --talk-name=org.freedesktop.Notifications
+
+modules:
+  - name: xarchat
+    buildsystem: simple
+    build-commands:
+      - install -Dm755 xarchat /app/bin/xarchat
+      - install -Dm644 net.xariah.xarchat.desktop /app/share/applications/net.xariah.xarchat.desktop
+      - install -Dm644 net.xariah.xarchat.svg /app/share/icons/hicolor/scalable/apps/net.xariah.xarchat.svg
+      - install -Dm644 net.xariah.xarchat.png /app/share/icons/hicolor/256x256/apps/net.xariah.xarchat.png
+    sources:
+      - type: file
+        path: payload/xarchat
+      - type: file
+        path: net.xariah.xarchat.desktop
+      - type: file
+        path: ../DebRoot/usr/share/icons/hicolor/scalable/apps/xarchat.svg
+        dest-filename: net.xariah.xarchat.svg
+      - type: file
+        path: ../DebRoot/usr/share/icons/hicolor/256x256/apps/xarchat.png
+        dest-filename: net.xariah.xarchat.png
