@@ -487,6 +487,14 @@ jobs:
         path: ${{ github.workspace }}/preproot-deb/out
         retention-days: 5
 
+    - id: publish_artifact_flatpak
+      name: "Publish Flatpak Artifact"
+      if: ${{ env.should_produce_artifacts == 'true' }}
+      uses: ./.github/actions/build-flatpak
+      with:
+        exe-path: ${{ github.workspace }}/host-publish/linux-x64/xarchat
+        timestamp: ${{ needs.generate_build_branding.outputs.timestamp }}
+
   build-linux-arm64:
     if: ${{ github.event_name != 'workflow_dispatch' || inputs.build_linux_arm64 }}
     runs-on: ubuntu-24.04-arm

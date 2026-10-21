@@ -1,0 +1,13 @@
+[Desktop Entry]
+Version=1.5
+Type=Application
+Name=XarChat
+GenericName=F-List Chat Client
+Comment=Chat with other deviants online!
+TryExec=xarchat
+Exec=xarchat
+Icon=net.xariah.xarchat
+Categories=Network;Chat;
+MimeType=application/x-xarchat;
+StartupWMClass=net.xariah.xarchat
+SingleMainWindow=true
