@@ -75,9 +75,37 @@ jobs:
       name: "Generate Build Timestamp"
       shell: bash
       run: |
+        # Build version format: YYYY.MMDD.HHMM.SS  (e.g. 2026.1003.905.7 = 2026-10-03 09:05:07)
+        #   YYYY - 4-digit year
+        #   MMDD - month NOT zero-padded (it is the leading digits of the segment), day zero-padded to 2
+        #   HHMM - hour NOT zero-padded (leading digits), minute zero-padded to 2
+        #   SS   - seconds NOT zero-padded
+        # Padding the day/minute keeps the numeric value of each segment monotonically increasing
+        # with time (Oct 3 -> 1003 sorts after Jan 23 -> 123; 09:05 -> 905 sorts after 08:59 -> 859),
+        # which matters because apt/rpm/pacman and the auto-updater all order releases by version.
+        # Each segment must also stay an integer <= 65535 so the whole value is a valid dotted
+        # .NET System.Version (it is used as the assembly version).
         NOW=$(date +'%Y-%m-%d %Y.%-m%d.%-H%M.%-S')
         BUILD_DATE=${NOW%% *}
-        TIMESTAMP=${NOW#* }
+        RAW_TIMESTAMP=${NOW#* }
+
+        # Every consumer (dpkg/rpm/pacman, System.Version, the auto-updater) reads each dotted
+        # segment as an integer, so normalize to a canonical form with leading zeroes stripped:
+        # the padding above only exists to build the segment, "2026.1008.008.8" -> "2026.1008.8.8".
+        IFS='.' read -r -a VERSION_PARTS <<< "$RAW_TIMESTAMP"
+        if [[ ${#VERSION_PARTS[@]} -ne 4 ]]; then
+          echo "::error::Generated version '${RAW_TIMESTAMP}' does not have exactly 4 dotted components"
+          exit 1
+        fi
+        TIMESTAMP=""
+        for PART in "${VERSION_PARTS[@]}"; do
+          if ! [[ "$PART" =~ ^[0-9]+$ ]] || (( 10#$PART > 65535 )); then
+            echo "::error::Generated version '${RAW_TIMESTAMP}' has a component ('${PART}') that is not valid for a .NET System.Version"
+            exit 1
+          fi
+          TIMESTAMP="${TIMESTAMP:+${TIMESTAMP}.}$((10#$PART))"
+        done
+
         echo "timestamp=${TIMESTAMP}" >> $GITHUB_OUTPUT
         echo "builddate=${BUILD_DATE}" >> $GITHUB_OUTPUT
         echo "year=${BUILD_DATE%%-*}" >> $GITHUB_OUTPUT
