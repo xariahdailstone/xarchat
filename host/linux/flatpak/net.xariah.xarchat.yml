@@ -5,6 +5,7 @@
 #
 #   mkdir -p host/linux/flatpak/payload
 #   cp <published>/xarchat host/linux/flatpak/payload/xarchat
+#   sed -i 's/0\.0\.0/<version>/; s/1970-01-01/<yyyy-mm-dd>/' host/linux/flatpak/net.xariah.xarchat.metainfo.xml
 #   flatpak-builder --repo=repo --force-clean build-dir host/linux/flatpak/net.xariah.xarchat.yml
 #   flatpak build-bundle repo xarchat.flatpak net.xariah.xarchat
 #
@@ -32,11 +33,14 @@ modules:
       - install -Dm644 net.xariah.xarchat.desktop /app/share/applications/net.xariah.xarchat.desktop
       - install -Dm644 net.xariah.xarchat.svg /app/share/icons/hicolor/scalable/apps/net.xariah.xarchat.svg
       - install -Dm644 net.xariah.xarchat.png /app/share/icons/hicolor/256x256/apps/net.xariah.xarchat.png
+      - install -Dm644 net.xariah.xarchat.metainfo.xml /app/share/metainfo/net.xariah.xarchat.metainfo.xml
     sources:
       - type: file
         path: payload/xarchat
       - type: file
         path: net.xariah.xarchat.desktop
+      - type: file
+        path: net.xariah.xarchat.metainfo.xml
       - type: file
         path: ../DebRoot/usr/share/icons/hicolor/scalable/apps/xarchat.svg
         dest-filename: net.xariah.xarchat.svg

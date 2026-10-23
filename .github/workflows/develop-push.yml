@@ -46,6 +46,7 @@ jobs:
     outputs:
       branch: ${{ steps.extract_branch.outputs.branch }}
       timestamp: ${{ steps.extract_timestamp.outputs.timestamp }}
+      builddate: ${{ steps.extract_timestamp.outputs.builddate }}
       year: ${{ steps.extract_timestamp.outputs.year }}
       buildid: ${{ steps.generate_buildid.outputs.buildid }}
 
@@ -74,8 +75,12 @@ jobs:
       name: "Generate Build Timestamp"
       shell: bash
       run: |
-        echo "timestamp=$(date +'%Y.%-m%d.%-H%M.%-S')" >> $GITHUB_OUTPUT
-        echo "year=$(date +'%Y')" >> $GITHUB_OUTPUT
+        NOW=$(date +'%Y-%m-%d %Y.%-m%d.%-H%M.%-S')
+        BUILD_DATE=${NOW%% *}
+        TIMESTAMP=${NOW#* }
+        echo "timestamp=${TIMESTAMP}" >> $GITHUB_OUTPUT
+        echo "builddate=${BUILD_DATE}" >> $GITHUB_OUTPUT
+        echo "year=${BUILD_DATE%%-*}" >> $GITHUB_OUTPUT
 
     - id: generate_buildid
       name: "Generate Build Identifier"
@@ -104,7 +109,7 @@ jobs:
 
     - id: cache_nuget
       name: "Cache NuGet"
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ~/.nuget/packages
         key: ${{ runner.os }}-nuget
@@ -113,7 +118,7 @@ jobs:
 
     - id: cache_npm
       name: "Cache NPM"
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: browser/mainapp/node_modules
         key: ${{ runner.os }}-mainappnodemodules
@@ -494,6 +499,7 @@ jobs:
       with:
         exe-path: ${{ github.workspace }}/host-publish/linux-x64/xarchat
         timestamp: ${{ needs.generate_build_branding.outputs.timestamp }}
+        builddate: ${{ needs.generate_build_branding.outputs.builddate }}
 
   build-linux-arm64:
     if: ${{ github.event_name != 'workflow_dispatch' || inputs.build_linux_arm64 }}
@@ -604,6 +610,7 @@ jobs:
       with:
         exe-path: ${{ github.workspace }}/host-publish/linux-arm64/xarchat
         timestamp: ${{ needs.generate_build_branding.outputs.timestamp }}
+        builddate: ${{ needs.generate_build_branding.outputs.builddate }}
         artifact-name: linux-flatpak-arm64
         bundle-arch: arm64
         flatpak-arch: aarch64

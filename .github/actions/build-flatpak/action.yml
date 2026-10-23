@@ -11,7 +11,10 @@ inputs:
     description: "Path to the published xarchat executable, or a directory containing it."
     required: true
   timestamp:
-    description: "Build timestamp used in the bundle filename (e.g. 2026.10.20.1234.56)."
+    description: "Build timestamp (e.g. 2026.1020.1234.56); used as the app version and in the bundle filename."
+    required: true
+  builddate:
+    description: "Build date (YYYY-MM-DD) matching the timestamp; used as the AppStream release date."
     required: true
   manifest-path:
     description: "Path to the Flatpak manifest, relative to the workspace."
@@ -74,6 +77,19 @@ runs:
         mkdir -p "${GITHUB_WORKSPACE}/host/linux/flatpak/payload"
         install -m755 "${EXE}" "${GITHUB_WORKSPACE}/host/linux/flatpak/payload/xarchat"
         ls -l "${GITHUB_WORKSPACE}/host/linux/flatpak/payload"
+
+        # Flatpak refs are unversioned; the version users see comes from this
+        # AppStream release entry, so stamp the build timestamp into it.
+        METAINFO="${GITHUB_WORKSPACE}/host/linux/flatpak/net.xariah.xarchat.metainfo.xml"
+        BUILD_DATE="${{ inputs.builddate }}"
+        if [ -z "${BUILD_DATE}" ]; then
+          echo "::error::The builddate input is required (expected YYYY-MM-DD)."
+          exit 1
+        fi
+        sed -i -E \
+          "s|<release version=\"[^\"]*\" date=\"[^\"]*\"|<release version=\"${{ inputs.timestamp }}\" date=\"${BUILD_DATE}\"|" \
+          "${METAINFO}"
+        grep -o '<release [^/]*/>' "${METAINFO}"
 
     - id: cache_flatpak_runtime
       name: "Cache Flatpak Runtime"

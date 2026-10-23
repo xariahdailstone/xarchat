@@ -1,0 +1,360 @@
+# Publishes the XarChat Flatpak bundles built by the "develop push" workflow into
+# self-hosted Flatpak (OSTree) repositories stored in a Cloudflare R2 bucket.
+#
+# Each source branch gets its own repository under a separate R2 prefix, and each
+# repository is cumulative: previously published commits are retained so that a
+# client which installed an older build can update in place.  Pruning keeps the
+# retained history (and therefore the download/upload size of each run) bounded.
+#
+# Object layout in the bucket:
+#   flatpak/<branch>/repo/                  OSTree repository (served to clients)
+#   flatpak/<branch>/xarchat.flatpakrepo    remote definition users add
+#   flatpak/<branch>/xarchat.flatpakref     one-click install descriptor
+#
+# Required repository configuration:
+#   vars.R2_ENDPOINT              https://<account-id>.r2.cloudflarestorage.com
+#   vars.R2_BUCKET                bucket name
+#   vars.FLATPAK_BASE_URL         public base URL for the bucket, no trailing slash
+#   secrets.R2_ACCESS_KEY_ID      R2 API token access key id
+#   secrets.R2_SECRET_ACCESS_KEY  R2 API token secret access key
+#
+# Optional, enables signed repository metadata:
+#   secrets.FLATPAK_GPG_KEY_ID
+#   secrets.FLATPAK_GPG_PRIVATE_KEY   base64-encoded ASCII-armored private key
+
+name: "release"
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_run_id:
+        type: string
+        description: "develop push run ID to publish the Flatpak bundles from (blank = latest successful run of source_branch)"
+        required: false
+      source_branch:
+        type: choice
+        description: "Branch to publish when source_run_id is blank"
+        options:
+          - "develop"
+          - "master"
+        default: "master"
+      dry_run:
+        type: boolean
+        description: "Update the repository locally but do not upload it to R2"
+        default: false
+
+permissions:
+  actions: read
+  contents: read
+
+env:
+  APP_ID: net.xariah.xarchat
+  PRUNE_DEPTH: "5"
+  AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+  AWS_EC2_METADATA_DISABLED: "true"
+
+jobs:
+  publish-flatpak-repo:
+    runs-on: ubuntu-24.04
+
+    steps:
+    - id: source
+      name: "Resolve Source Run"
+      shell: bash
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        INPUT_RUN_ID: ${{ inputs.source_run_id }}
+        INPUT_BRANCH: ${{ inputs.source_branch }}
+      run: |
+        set -euo pipefail
+        if [ -n "${INPUT_RUN_ID}" ]; then
+          RUN_ID="${INPUT_RUN_ID}"
+        else
+          RUN_ID=$(gh run list --repo "${GITHUB_REPOSITORY}" --workflow develop-push.yml \
+            --branch "${INPUT_BRANCH}" --status success --limit 1 \
+            --json databaseId --jq '.[0].databaseId')
+        fi
+        if [ -z "${RUN_ID}" ] || [ "${RUN_ID}" = "null" ]; then
+          echo "::error::Unable to determine the source workflow run"
+          exit 1
+        fi
+        BRANCH=$(gh run view "${RUN_ID}" --repo "${GITHUB_REPOSITORY}" --json headBranch --jq '.headBranch')
+        if [ -z "${BRANCH}" ] || [ "${BRANCH}" = "null" ]; then
+          echo "::error::Unable to determine the source branch of run ${RUN_ID}"
+          exit 1
+        fi
+        echo "Publishing run ${RUN_ID} from branch ${BRANCH}"
+        echo "run_id=${RUN_ID}" >> "$GITHUB_OUTPUT"
+        echo "branch=${BRANCH}" >> "$GITHUB_OUTPUT"
+        echo "prefix=flatpak/${BRANCH}" >> "$GITHUB_OUTPUT"
+
+    - id: download
+      name: "Download Flatpak Bundles"
+      uses: actions/download-artifact@v4
+      with:
+        pattern: linux-flatpak-*
+        path: bundles
+        merge-multiple: true
+        run-id: ${{ steps.source.outputs.run_id }}
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+
+    - id: tools
+      name: "Install Flatpak Tooling"
+      shell: bash
+      run: |
+        set -euo pipefail
+        MISSING=()
+        command -v flatpak >/dev/null 2>&1 || MISSING+=(flatpak)
+        command -v ostree  >/dev/null 2>&1 || MISSING+=(ostree)
+        command -v aws     >/dev/null 2>&1 || MISSING+=(awscli)
+        if [ ${#MISSING[@]} -gt 0 ]; then
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends "${MISSING[@]}"
+        fi
+        flatpak --version
+        ostree --version
+        ls -l bundles
+
+    - id: gpg
+      name: "Import Signing Key"
+      shell: bash
+      env:
+        GPG_KEY_ID: ${{ secrets.FLATPAK_GPG_KEY_ID }}
+        GPG_PRIVATE_KEY: ${{ secrets.FLATPAK_GPG_PRIVATE_KEY }}
+      run: |
+        set -euo pipefail
+        if [ -z "${GPG_KEY_ID}" ]; then
+          echo "No signing key configured; repository metadata will not be signed"
+          exit 0
+        fi
+        if [ -z "${GPG_PRIVATE_KEY}" ]; then
+          echo "::error::FLATPAK_GPG_KEY_ID is set but FLATPAK_GPG_PRIVATE_KEY is not"
+          exit 1
+        fi
+        echo "${GPG_PRIVATE_KEY}" | base64 --decode | gpg --batch --import
+        gpg --list-secret-keys "${GPG_KEY_ID}"
+
+    - id: restore_repo
+      name: "Restore Published Repository"
+      shell: bash
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        AWS_DEFAULT_REGION: auto
+        R2_ENDPOINT: ${{ vars.R2_ENDPOINT }}
+        R2_BUCKET: ${{ vars.R2_BUCKET }}
+        PREFIX: ${{ steps.source.outputs.prefix }}
+      run: |
+        set -euo pipefail
+        mkdir -p repo
+        if [ -z "${R2_BUCKET}" ] || [ -z "${R2_ENDPOINT}" ]; then
+          echo "::warning::R2 is not configured; starting from an empty repository"
+          exit 0
+        fi
+        aws s3 sync "s3://${R2_BUCKET}/${PREFIX}/repo" repo \
+          --endpoint-url "${R2_ENDPOINT}" --only-show-errors
+        echo "Restored $(find repo -type f | wc -l) repository files"
+
+    - id: init_repo
+      name: "Initialize Repository"
+      shell: bash
+      run: |
+        set -euo pipefail
+        if [ ! -f repo/config ]; then
+          echo "Creating a new OSTree repository"
+          ostree init --repo=repo --mode=archive
+        fi
+
+    - id: import_bundles
+      name: "Import Flatpak Bundles"
+      shell: bash
+      env:
+        BRANCH: ${{ steps.source.outputs.branch }}
+        GPG_KEY_ID: ${{ secrets.FLATPAK_GPG_KEY_ID }}
+      run: |
+        set -euo pipefail
+        shopt -s nullglob
+        BUNDLES=(bundles/*.flatpak)
+        if [ ${#BUNDLES[@]} -eq 0 ]; then
+          echo "::error::No .flatpak bundles were found in the downloaded artifacts"
+          exit 1
+        fi
+        SIGN_ARGS=()
+        if [ -n "${GPG_KEY_ID}" ]; then
+          SIGN_ARGS+=(--gpg-sign="${GPG_KEY_ID}")
+        fi
+        for BUNDLE in "${BUNDLES[@]}"; do
+          case "${BUNDLE}" in
+            *_x64.flatpak)   ARCH=x86_64 ;;
+            *_arm64.flatpak) ARCH=aarch64 ;;
+            *)
+              echo "::error::Cannot determine the architecture of ${BUNDLE}"
+              exit 1
+              ;;
+          esac
+          REF="app/${APP_ID}/${ARCH}/${BRANCH}"
+          echo "Importing ${BUNDLE} as ${REF}"
+          flatpak build-import-bundle \
+            --no-update-summary \
+            --ref="${REF}" \
+            "${SIGN_ARGS[@]}" \
+            repo "${BUNDLE}"
+        done
+
+    - id: update_repo
+      name: "Update Repository Metadata"
+      shell: bash
+      env:
+        BRANCH: ${{ steps.source.outputs.branch }}
+        GPG_KEY_ID: ${{ secrets.FLATPAK_GPG_KEY_ID }}
+      run: |
+        set -euo pipefail
+        SIGN_ARGS=()
+        if [ -n "${GPG_KEY_ID}" ]; then
+          SIGN_ARGS+=(--gpg-sign="${GPG_KEY_ID}")
+        fi
+        flatpak build-update-repo \
+          --generate-static-deltas \
+          --prune \
+          --prune-depth="${PRUNE_DEPTH}" \
+          --title="XarChat (${BRANCH})" \
+          --comment="XarChat builds from the ${BRANCH} branch" \
+          --homepage="https://github.com/${GITHUB_REPOSITORY}" \
+          --default-branch="${BRANCH}" \
+          "${SIGN_ARGS[@]}" \
+          repo
+        echo "Repository refs:"
+        ostree --repo=repo refs
+        du -sh repo
+
+    - id: descriptors
+      name: "Create Repository Descriptors"
+      shell: bash
+      env:
+        BRANCH: ${{ steps.source.outputs.branch }}
+        PREFIX: ${{ steps.source.outputs.prefix }}
+        BASE_URL: ${{ vars.FLATPAK_BASE_URL }}
+        GPG_KEY_ID: ${{ secrets.FLATPAK_GPG_KEY_ID }}
+      run: |
+        set -euo pipefail
+        mkdir -p publish
+        BASE="${BASE_URL%/}"
+        if [ -z "${BASE}" ]; then
+          BASE="https://flatpak.invalid"
+          echo "::warning::FLATPAK_BASE_URL is not configured; using a placeholder URL"
+        fi
+        REPO_URL="${BASE}/${PREFIX}/repo"
+        FLATHUB="https://dl.flathub.org/repo/flathub.flatpakrepo"
+
+        {
+          echo "[Flatpak Repo]"
+          echo "Title=XarChat (${BRANCH})"
+          echo "Url=${REPO_URL}"
+          echo "Homepage=https://github.com/${GITHUB_REPOSITORY}"
+          echo "Comment=XarChat builds from the ${BRANCH} branch"
+          if [ -n "${GPG_KEY_ID}" ]; then
+            echo "GPGKey=$(gpg --batch --armor --export "${GPG_KEY_ID}" | sed ':a;N;$!ba;s/\n/\\n/g')"
+          fi
+        } > publish/xarchat.flatpakrepo
+
+        {
+          echo "[Flatpak Ref]"
+          echo "Title=XarChat (${BRANCH})"
+          echo "Name=${APP_ID}"
+          echo "Branch=${BRANCH}"
+          echo "Url=${REPO_URL}"
+          echo "RuntimeRepo=${FLATHUB}"
+          echo "IsRuntime=false"
+          if [ -n "${GPG_KEY_ID}" ]; then
+            echo "GPGKey=$(gpg --batch --armor --export "${GPG_KEY_ID}" | sed ':a;N;$!ba;s/\n/\\n/g')"
+          fi
+        } > publish/xarchat.flatpakref
+
+        cat publish/xarchat.flatpakrepo
+
+    - id: upload
+      name: "Upload Repository to R2"
+      if: ${{ !inputs.dry_run }}
+      shell: bash
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        AWS_DEFAULT_REGION: auto
+        R2_ENDPOINT: ${{ vars.R2_ENDPOINT }}
+        R2_BUCKET: ${{ vars.R2_BUCKET }}
+        PREFIX: ${{ steps.source.outputs.prefix }}
+      run: |
+        set -euo pipefail
+        if [ -z "${R2_BUCKET}" ] || [ -z "${R2_ENDPOINT}" ]; then
+          echo "::error::R2_BUCKET and R2_ENDPOINT must be configured to publish"
+          exit 1
+        fi
+        TARGET="s3://${R2_BUCKET}/${PREFIX}"
+        ENDPOINT=(--endpoint-url "${R2_ENDPOINT}" --only-show-errors)
+
+        # Content-addressed objects and deltas never change, so they are safe to
+        # cache forever.  The --delete passes also drop objects removed by pruning.
+        for DIR in objects deltas; do
+          if [ -d "repo/${DIR}" ]; then
+            aws s3 sync "repo/${DIR}" "${TARGET}/repo/${DIR}" \
+              --delete "${ENDPOINT[@]}" \
+              --cache-control "public, max-age=31536000, immutable"
+          fi
+        done
+
+        # Everything else (config, refs, summary, state) must be revalidated on
+        # every update check.
+        aws s3 sync repo "${TARGET}/repo" \
+          --delete "${ENDPOINT[@]}" \
+          --exclude "objects/*" --exclude "deltas/*" --exclude ".lock" \
+          --cache-control "no-cache"
+
+        aws s3 cp publish/xarchat.flatpakrepo "${TARGET}/xarchat.flatpakrepo" \
+          "${ENDPOINT[@]}" --cache-control "no-cache" --content-type "text/plain"
+        aws s3 cp publish/xarchat.flatpakref "${TARGET}/xarchat.flatpakref" \
+          "${ENDPOINT[@]}" --cache-control "no-cache" --content-type "text/plain"
+
+    - id: summary
+      name: "Publish Summary"
+      shell: bash
+      env:
+        BRANCH: ${{ steps.source.outputs.branch }}
+        PREFIX: ${{ steps.source.outputs.prefix }}
+        BASE_URL: ${{ vars.FLATPAK_BASE_URL }}
+        DRY_RUN: ${{ inputs.dry_run }}
+      run: |
+        set -euo pipefail
+        BASE="${BASE_URL%/}"
+        {
+          echo "## Flatpak repository: ${BRANCH}"
+          echo ""
+          echo "- Source run: ${{ steps.source.outputs.run_id }}"
+          echo "- Refs:"
+          while read -r REF; do echo "  - \`${REF}\`"; done < <(ostree --repo=repo refs)
+          echo ""
+          if [ "${DRY_RUN}" = "true" ]; then
+            echo "> Dry run: nothing was uploaded to R2."
+          else
+            echo "Remote: \`${BASE}/${PREFIX}/repo\`"
+            echo ""
+            echo "Users install/update with:"
+            echo ""
+            echo '```sh'
+            echo "flatpak remote-add --user xarchat-${BRANCH} ${BASE}/${PREFIX}/xarchat.flatpakrepo"
+            echo "flatpak install --user xarchat-${BRANCH} ${APP_ID}//${BRANCH}"
+            echo "flatpak update --user ${APP_ID}"
+            echo '```'
+          fi
+        } >> "$GITHUB_STEP_SUMMARY"
+
+    - id: dump_logs
+      name: "Dump Diagnostics"
+      if: failure()
+      shell: bash
+      run: |
+        echo "=== repo tree ==="
+        find repo -maxdepth 2 2>/dev/null | head -n 60 || true
+        echo "=== repo refs ==="
+        ostree --repo=repo refs 2>/dev/null || true
+        echo "=== bundles ==="
+        ls -lR bundles 2>/dev/null || true

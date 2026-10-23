@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  AppStream metadata for the Flatpak build.
+
+  The <release> version and date are placeholders: the build-flatpak composite
+  action rewrites them with the build timestamp and build date, so that flatpak
+  info, flatpak list and software centers show the actual build number.
+  Flatpak itself does not version refs; the version users see comes from here.
+-->
+<component type="desktop-application">
+  <id>net.xariah.xarchat</id>
+
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>Apache-2.0</project_license>
+
+  <name>XarChat</name>
+  <summary>Chat with other deviants online!</summary>
+
+  <description>
+    <p>
+      XarChat is a desktop client for F-List, an online text based roleplaying chat
+      service, packaged so that it runs as a native desktop application rather than
+      a browser tab.
+    </p>
+  </description>
+
+  <launchable type="desktop-id">net.xariah.xarchat.desktop</launchable>
+
+  <url type="homepage">https://xariah.net/xarchat/</url>
+  <url type="bugtracker">https://github.com/xariahdailstone/xarchat/issues</url>
+
+  <developer id="net.xariah">
+    <name>Xariah Dailstone</name>
+  </developer>
+
+  <categories>
+    <category>Network</category>
+    <category>Chat</category>
+  </categories>
+
+  <content_rating type="oars-1.1"/>
+
+  <releases>
+    <release version="0.0.0" date="1970-01-01" type="development"/>
+  </releases>
+</component>
