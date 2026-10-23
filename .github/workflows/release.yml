@@ -36,6 +36,11 @@
 #   secrets.R2_ACCESS_KEY_ID      R2 API token access key id
 #   secrets.R2_SECRET_ACCESS_KEY  R2 API token secret access key
 #
+# R2 rejects requests with the wrong signing region or a malformed secret, so the
+# resolve job verifies the configuration with a signed request before any publish
+# job runs and explains what to fix (wrong secret, stray whitespace, wrong endpoint,
+# missing bucket permission) instead of letting every job fail on its own upload.
+#
 # Optional, enables signed repository metadata:
 #   secrets.FLATPAK_GPG_KEY_ID
 #   secrets.FLATPAK_GPG_PRIVATE_KEY   base64-encoded ASCII-armored private key
@@ -72,7 +77,12 @@ permissions:
 env:
   APP_ID: net.xariah.xarchat
   PRUNE_DEPTH: "5"
+  # R2 rejects the flexible-checksum headers and the region AWS SDKs pick by default;
+  # signing with anything other than "auto" fails with SignatureDoesNotMatch.
+  AWS_REGION: auto
+  AWS_DEFAULT_REGION: auto
   AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+  AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
   AWS_EC2_METADATA_DISABLED: "true"
 
 jobs:
@@ -183,6 +193,130 @@ jobs:
             ;;
         esac
         echo "branch=${BRANCH}" >> "$GITHUB_OUTPUT"
+
+    - id: preflight
+      name: "Verify R2 Configuration"
+      if: ${{ inputs.dry_run != true }}
+      shell: bash
+      env:
+        R2_ACCESS_KEY: ${{ secrets.R2_ACCESS_KEY_ID }}
+        R2_SECRET: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        R2_ENDPOINT: ${{ vars.R2_ENDPOINT }}
+        R2_BUCKET: ${{ vars.R2_BUCKET }}
+      run: |
+        set -uo pipefail
+        if [ -z "${R2_ENDPOINT}" ] || [ -z "${R2_BUCKET}" ]; then
+          echo "::warning::vars.R2_ENDPOINT / vars.R2_BUCKET are not set; the publish jobs will not be able to upload"
+          exit 0
+        fi
+
+        FAIL=0
+        echo "aws CLI: $(aws --version 2>&1)"
+        echo "endpoint: ${R2_ENDPOINT}"
+        echo "bucket: ${R2_BUCKET}"
+        echo "signing region: AWS_REGION=${AWS_REGION:-unset} AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-unset}"
+        echo "checksum calculation: ${AWS_REQUEST_CHECKSUM_CALCULATION:-unset}"
+
+        if [ -z "${R2_ACCESS_KEY}" ] || [ -z "${R2_SECRET}" ]; then
+          echo "::error::secrets.R2_ACCESS_KEY_ID and secrets.R2_SECRET_ACCESS_KEY must both be set to an R2 API token's Access Key ID and Secret Access Key"
+          FAIL=1
+        fi
+
+        # A trailing newline pasted in with the secret is silently part of the value, and
+        # an R2 secret key never contains whitespace, so this cannot be a false positive.
+        for NAME in R2_ACCESS_KEY R2_SECRET; do
+          VALUE="${!NAME}"
+          if [ "${VALUE}" != "$(printf '%s' "${VALUE}" | tr -d '[:space:]')" ]; then
+            echo "::error::The ${NAME} value contains whitespace, most likely a trailing newline from pasting. Re-create the secret with exactly the value Cloudflare shows."
+            FAIL=1
+          fi
+        done
+
+        case "${R2_ENDPOINT}" in
+          https://*) ;;
+          *) echo "::error::vars.R2_ENDPOINT must start with https:// (got '${R2_ENDPOINT}')"; FAIL=1 ;;
+        esac
+        ENDPOINT_HOST="${R2_ENDPOINT#https://}"
+        case "${ENDPOINT_HOST}" in
+          */*)
+            echo "::error::vars.R2_ENDPOINT must be the bare account endpoint, with no path, bucket name, or trailing slash (got '${R2_ENDPOINT}')"
+            FAIL=1
+            ;;
+        esac
+        if [ "${FAIL}" -eq 0 ]; then
+          case "${R2_ENDPOINT}" in
+            https://*.r2.cloudflarestorage.com) ;;
+            *) echo "::warning::vars.R2_ENDPOINT does not look like https://<account-id>.r2.cloudflarestorage.com" ;;
+          esac
+        fi
+        if [ "${FAIL}" -ne 0 ]; then
+          exit 1
+        fi
+
+        fault() {
+          local context="$1" text="$2" code
+          code=$(printf '%s' "${text}" | grep -oE 'SignatureDoesNotMatch|InvalidAccessKeyId|AccessDenied|NoSuchBucket|InvalidBucketName|RequestTimeTooSkewed|NotImplemented' | head -n 1)
+          echo "::error::${context} (${code:-unrecognized error})"
+          case "${code}" in
+            SignatureDoesNotMatch)
+              echo "R2 found the access key id but the signature did not match, so it is the secret that is wrong."
+              echo "Check that secrets.R2_SECRET_ACCESS_KEY is the Secret Access Key of the same R2 API token as secrets.R2_ACCESS_KEY_ID."
+              echo "An AWS (non-R2) secret, a truncated paste, or stray characters all produce this."
+              ;;
+            InvalidAccessKeyId)
+              echo "secrets.R2_ACCESS_KEY_ID is not a valid R2 Access Key ID."
+              echo "Use the token's Access Key ID, not the token value or the Cloudflare account id."
+              ;;
+            AccessDenied)
+              echo "The credentials are valid but the token is not allowed to do this."
+              echo "The token needs Object Read & Write permission on the '${R2_BUCKET}' bucket (all-buckets scope also works)."
+              ;;
+            NoSuchBucket)
+              echo "vars.R2_BUCKET names a bucket that does not exist. Check the spelling and that the token can see it."
+              ;;
+            RequestTimeTooSkewed)
+              echo "The runner clock is too far from Cloudflare's. Re-run the workflow."
+              ;;
+            NotImplemented)
+              echo "R2 rejected part of the request. Make sure the AWS CLI is not sending flexible-checksum headers; this workflow sets AWS_REQUEST_CHECKSUM_CALCULATION=when_required for that reason."
+              ;;
+            *)
+              echo "Compare vars.R2_ENDPOINT and vars.R2_BUCKET with the R2 dashboard; the account endpoint is https://<account-id>.r2.cloudflarestorage.com"
+              ;;
+          esac
+        }
+
+        echo "Verifying read access to s3://${R2_BUCKET} ..."
+        ERR=$(aws s3api list-objects-v2 --bucket "${R2_BUCKET}" --max-keys 1 \
+          --endpoint-url "${R2_ENDPOINT}" 2>&1 >/dev/null)
+        RC=$?
+        if [ "${RC}" -ne 0 ]; then
+          echo "${ERR}"
+          fault "Unable to list s3://${R2_BUCKET} at ${R2_ENDPOINT}" "${ERR}"
+          exit 1
+        fi
+        echo "Read access verified"
+
+        # The publish steps upload the .exe, .dmg and flatpak objects with a multipart
+        # upload once they are over 8 MB, which a listing check never exercises, so
+        # start and immediately abort a real multipart upload instead.
+        PROBE_KEY=".xarchat-preflight-probe"
+        MPU=$(aws s3api create-multipart-upload --bucket "${R2_BUCKET}" --key "${PROBE_KEY}" \
+          --endpoint-url "${R2_ENDPOINT}" 2>&1)
+        RC=$?
+        if [ "${RC}" -ne 0 ]; then
+          echo "${MPU}"
+          fault "Unable to start a multipart upload in s3://${R2_BUCKET}" "${MPU}"
+          exit 1
+        fi
+        UPLOAD_ID=$(printf '%s' "${MPU}" | grep -o '"UploadId": *"[^"]*"' | head -n 1 | cut -d '"' -f 4)
+        if [ -n "${UPLOAD_ID}" ]; then
+          aws s3api abort-multipart-upload --bucket "${R2_BUCKET}" --key "${PROBE_KEY}" \
+            --upload-id "${UPLOAD_ID}" --endpoint-url "${R2_ENDPOINT}" >/dev/null 2>&1 \
+            || echo "::warning::Unable to abort the multipart upload probe ${UPLOAD_ID}; it holds no data and can be aborted from the bucket's settings"
+        fi
+        echo "Write access and multipart uploads verified"
+        exit 0
 
   publish-flatpak-repo:
     needs: resolve
@@ -552,8 +686,8 @@ jobs:
             exit 1
           fi
           if ! command -v aws >/dev/null 2>&1; then
-            sudo apt-get update
-            sudo apt-get install -y --no-install-recommends awscli
+            echo "::error::The aws CLI is required to publish to R2 but is not on this runner"
+            exit 1
           fi
           echo "Uploading ${EXE} to ${DEST}"
           aws s3 cp "${EXE}" "${DEST}" \
@@ -649,8 +783,8 @@ jobs:
             exit 1
           fi
           if ! command -v aws >/dev/null 2>&1; then
-            sudo apt-get update
-            sudo apt-get install -y --no-install-recommends awscli
+            echo "::error::The aws CLI is required to publish to R2 but is not on this runner"
+            exit 1
           fi
           echo "Uploading ${DMG} to ${DEST}"
           aws s3 cp "${DMG}" "${DEST}" \
