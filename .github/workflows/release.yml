@@ -36,9 +36,19 @@
 #   secrets.R2_ACCESS_KEY_ID      R2 API token access key id
 #   secrets.R2_SECRET_ACCESS_KEY  R2 API token secret access key
 #
+# R2 rejects requests with the wrong signing region or a malformed secret, so the
+# resolve job verifies the configuration with a signed request before any publish
+# job runs and explains what to fix (wrong secret, stray whitespace, wrong endpoint,
+# missing bucket permission) instead of letting every job fail on its own upload.
+# That step passes the same two secrets as AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY;
+# without them the CLI sends nothing to R2 and exits 253 (CONFIGURATION_ERROR_RC).
+#
 # Optional, enables signed repository metadata:
-#   secrets.FLATPAK_GPG_KEY_ID
-#   secrets.FLATPAK_GPG_PRIVATE_KEY   base64-encoded ASCII-armored private key
+#   secrets.FLATPAK_GPG_KEY_ID        fingerprint (or long key id) of the signing key
+#   secrets.FLATPAK_GPG_PRIVATE_KEY   the private key itself, either ASCII-armored
+#                                     (gpg --armor --export-secret-keys <FPR>) or
+#                                     base64 of it (| base64 -w0). Signing happens
+#                                     unattended, so the key must have no passphrase.
 
 name: "release"
 
@@ -72,7 +82,12 @@ permissions:
 env:
   APP_ID: net.xariah.xarchat
   PRUNE_DEPTH: "5"
+  # R2 rejects the flexible-checksum headers and the region AWS SDKs pick by default;
+  # signing with anything other than "auto" fails with SignatureDoesNotMatch.
+  AWS_REGION: auto
+  AWS_DEFAULT_REGION: auto
   AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+  AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
   AWS_EC2_METADATA_DISABLED: "true"
 
 jobs:
@@ -184,6 +199,190 @@ jobs:
         esac
         echo "branch=${BRANCH}" >> "$GITHUB_OUTPUT"
 
+    - id: preflight
+      name: "Verify R2 Configuration"
+      if: ${{ inputs.dry_run != true }}
+      shell: bash
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        R2_ACCESS_KEY: ${{ secrets.R2_ACCESS_KEY_ID }}
+        R2_SECRET: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        R2_ENDPOINT: ${{ vars.R2_ENDPOINT }}
+        R2_BUCKET: ${{ vars.R2_BUCKET }}
+      run: |
+        # `shell: bash` hands this script -e, which would abort it on the first
+        # failing probe before the failure could be explained. It is turned off
+        # deliberately; every command below inspects its own exit status instead.
+        set +e
+        set -uo pipefail
+        if [ -z "${R2_ENDPOINT}" ] || [ -z "${R2_BUCKET}" ]; then
+          echo "::warning::vars.R2_ENDPOINT / vars.R2_BUCKET are not set; the publish jobs will not be able to upload"
+          exit 0
+        fi
+
+        FAIL=0
+        echo "aws CLI: $(aws --version 2>&1)"
+        echo "endpoint: ${R2_ENDPOINT}"
+        echo "bucket: ${R2_BUCKET}"
+        echo "signing region: AWS_REGION=${AWS_REGION:-unset} AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-unset}"
+        echo "checksum calculation: ${AWS_REQUEST_CHECKSUM_CALCULATION:-unset}"
+        echo "credentials visible to the CLI: AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:+set} AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:+set}"
+
+        # A rejected signature nearly always means a value differs from the one the
+        # dashboard issued, so report the shape of each value (never its bytes) to
+        # make a truncated, swapped, or invisible-character paste visible. The
+        # fingerprint is of the secret, but 12 hex digits of a sha256 of a
+        # high-entropy value reveals nothing and allows a local comparison.
+        AK="${R2_ACCESS_KEY:-}"
+        SK="${R2_SECRET:-}"
+        ishex() {
+          case "$1" in ''|*[!0-9A-Fa-f]*) return 1 ;; esac
+          return 0
+        }
+        iscfToken() {
+          case "$1" in cf[a-z][a-z]_*) return 0 ;; esac
+          return 1
+        }
+        shape() {
+          local value="$1" charset="pure hex"
+          ishex "${value}" || charset="not pure hex"
+          printf '%s chars, %s, sha256 %s' "${#value}" "${charset}" \
+            "$(printf '%s' "${value}" | sha256sum | cut -c1-12)"
+        }
+        echo "access key id: $(shape "${AK}")"
+        echo "secret: $(shape "${SK}")"
+
+        # R2's S3 secret is the SHA-256 hex digest of the API token value, while
+        # the access key id is the token's id. Pasting the token value itself
+        # (cfut_ for user tokens, cfat_ for account tokens) into the secret is
+        # therefore both a common mistake and a detectable one.
+        if iscfToken "${SK}"; then
+          echo "::error::R2_SECRET_ACCESS_KEY holds a Cloudflare API token value, not the R2 secret access key. R2's S3 secret is the SHA-256 hex digest of that token value: derive it with \"printf %s '<token value>' | sha256sum\", or copy the Secret Access Key shown next to the Access Key ID on the R2 API token page."
+          FAIL=1
+        elif [ "${#SK}" -ne 0 ] && { [ "${#SK}" -ne 64 ] || ! ishex "${SK}"; }; then
+          echo "::warning::the secret is not a 64-character hex value, which is what R2 issues as a secret access key; it looks like the wrong field, a truncated paste, or the token value instead of its SHA-256 digest."
+        fi
+        if [ "${#AK}" -ne 0 ] && { [ "${#AK}" -ne 32 ] || ! ishex "${AK}"; }; then
+          echo "::warning::the access key id is not a 32-character hex value, which is what R2 issues as an access key id; it is the id of the API token, not the token value."
+        fi
+        if [ "${#AK}" -ne 0 ] && [ "${#AK}" -eq "${#SK}" ]; then
+          echo "::warning::the access key id and the secret are the same length (${#AK}); the same value was probably pasted into both"
+        fi
+
+        if [ -z "${R2_ACCESS_KEY:-}" ] || [ -z "${R2_SECRET:-}" ]; then
+          echo "::error::secrets.R2_ACCESS_KEY_ID and secrets.R2_SECRET_ACCESS_KEY must both be set to an R2 API token's Access Key ID and Secret Access Key"
+          FAIL=1
+        fi
+
+        # A trailing newline pasted in with the secret is silently part of the value, and
+        # an R2 secret key never contains whitespace, so this cannot be a false positive.
+        for NAME in R2_ACCESS_KEY R2_SECRET; do
+          VALUE="${!NAME:-}"
+          if [ "${VALUE}" != "$(printf '%s' "${VALUE}" | tr -d '[:space:]')" ]; then
+            echo "::error::The ${NAME} value contains whitespace, most likely a trailing newline from pasting. Re-create the secret with exactly the value Cloudflare shows."
+            FAIL=1
+          fi
+        done
+
+        case "${R2_ENDPOINT}" in
+          https://*) ;;
+          *) echo "::error::vars.R2_ENDPOINT must start with https:// (got '${R2_ENDPOINT}')"; FAIL=1 ;;
+        esac
+        ENDPOINT_HOST="${R2_ENDPOINT#https://}"
+        case "${ENDPOINT_HOST}" in
+          */*)
+            echo "::error::vars.R2_ENDPOINT must be the bare account endpoint, with no path, bucket name, or trailing slash (got '${R2_ENDPOINT}')"
+            FAIL=1
+            ;;
+        esac
+        if [ "${FAIL}" -eq 0 ]; then
+          case "${R2_ENDPOINT}" in
+            https://*.r2.cloudflarestorage.com) ;;
+            *) echo "::warning::vars.R2_ENDPOINT does not look like https://<account-id>.r2.cloudflarestorage.com" ;;
+          esac
+        fi
+        if [ "${FAIL}" -ne 0 ]; then
+          exit 1
+        fi
+
+        fault() {
+          local context="$1" text="$2" rc="$3" code
+          code=$(printf '%s' "${text}" | grep -oE 'SignatureDoesNotMatch|InvalidAccessKeyId|AccessDenied|NoSuchBucket|InvalidBucketName|RequestTimeTooSkewed|NotImplemented' | head -n 1)
+          echo "::error::${context} (aws exit ${rc}${code:+, ${code}})"
+          if [ -n "${text}" ]; then
+            printf '%s\n' "${text}"
+          else
+            echo "The CLI produced no output at all."
+          fi
+          case "${code}" in
+            SignatureDoesNotMatch)
+              echo "R2 found the access key id but the signature did not match, so it is the secret that is wrong."
+              echo "R2's secret access key is the SHA-256 hex digest of the API token value, not the token value itself, and is always 64 hex characters."
+              echo "If the shapes above are 32 and 64 hex characters then both values are well-formed and R2 is rejecting the pair, so re-copy both from the same token or create a new token and update both secrets."
+              ;;
+            InvalidAccessKeyId)
+              echo "secrets.R2_ACCESS_KEY_ID is not a valid R2 Access Key ID."
+              echo "Use the token's Access Key ID, not the token value or the Cloudflare account id."
+              ;;
+            AccessDenied)
+              echo "The credentials are valid but the token is not allowed to do this."
+              echo "The token needs Object Read & Write permission on the '${R2_BUCKET}' bucket (all-buckets scope also works)."
+              ;;
+            NoSuchBucket)
+              echo "vars.R2_BUCKET names a bucket that does not exist. Check the spelling and that the token can see it."
+              ;;
+            RequestTimeTooSkewed)
+              echo "The runner clock is too far from Cloudflare's. Re-run the workflow."
+              ;;
+            NotImplemented)
+              echo "R2 rejected part of the request. Make sure the AWS CLI is not sending flexible-checksum headers; this workflow sets AWS_REQUEST_CHECKSUM_CALCULATION=when_required for that reason."
+              ;;
+            *)
+              # No R2 error code in the output means R2 never answered, so fall back
+              # to the CLI's own exit status, which awscli/constants.py fixes as:
+              # 252 parameter validation, 253 configuration, 254 client, 255 general.
+              case "${rc}" in
+                252) echo "The AWS CLI rejected the command line before sending it. That is a bug in this workflow, not in your configuration." ;;
+                253) echo "The AWS CLI found no usable credentials, so nothing was sent to R2. AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY must both reach this step; if they are set, the value itself is malformed (a trailing newline from pasting is the usual cause)." ;;
+                254) echo "R2 rejected the request; the message above is its response." ;;
+                255) echo "The AWS CLI failed before reaching R2 (DNS, TLS, or proxy)." ;;
+                *) echo "Compare vars.R2_ENDPOINT and vars.R2_BUCKET with the R2 dashboard; the account endpoint is https://<account-id>.r2.cloudflarestorage.com" ;;
+              esac
+              ;;
+          esac
+        }
+
+        echo "Verifying read access to s3://${R2_BUCKET} ..."
+        ERR=$(aws s3api list-objects-v2 --bucket "${R2_BUCKET}" --max-keys 1 \
+          --endpoint-url "${R2_ENDPOINT}" 2>&1 >/dev/null)
+        RC=$?
+        if [ "${RC}" -ne 0 ]; then
+          fault "Unable to list s3://${R2_BUCKET} at ${R2_ENDPOINT}" "${ERR}" "${RC}"
+          exit 1
+        fi
+        echo "Read access verified"
+
+        # The publish steps upload the .exe, .dmg and flatpak objects with a multipart
+        # upload once they are over 8 MB, which a listing check never exercises, so
+        # start and immediately abort a real multipart upload instead.
+        PROBE_KEY=".xarchat-preflight-probe"
+        MPU=$(aws s3api create-multipart-upload --bucket "${R2_BUCKET}" --key "${PROBE_KEY}" \
+          --endpoint-url "${R2_ENDPOINT}" 2>&1)
+        RC=$?
+        if [ "${RC}" -ne 0 ]; then
+          fault "Unable to start a multipart upload in s3://${R2_BUCKET}" "${MPU}" "${RC}"
+          exit 1
+        fi
+        UPLOAD_ID=$(printf '%s' "${MPU}" | grep -o '"UploadId": *"[^"]*"' | head -n 1 | cut -d '"' -f 4)
+        if [ -n "${UPLOAD_ID}" ]; then
+          aws s3api abort-multipart-upload --bucket "${R2_BUCKET}" --key "${PROBE_KEY}" \
+            --upload-id "${UPLOAD_ID}" --endpoint-url "${R2_ENDPOINT}" >/dev/null 2>&1 \
+            || echo "::warning::Unable to abort the multipart upload probe ${UPLOAD_ID}; it holds no data and can be aborted from the bucket's settings"
+        fi
+        echo "Write access and multipart uploads verified"
+        exit 0
+
   publish-flatpak-repo:
     needs: resolve
     runs-on: ubuntu-24.04
@@ -232,8 +431,46 @@ jobs:
           echo "::error::FLATPAK_GPG_KEY_ID is set but FLATPAK_GPG_PRIVATE_KEY is not"
           exit 1
         fi
-        echo "${GPG_PRIVATE_KEY}" | base64 --decode | gpg --batch --import
-        gpg --list-secret-keys "${GPG_KEY_ID}"
+        # The secret holds either the armored key or its base64 encoding, and both
+        # are stripped of line breaks before use: a blob produced with
+        # "gpg --export-secret-keys | base64 | tr -d '\n'" on Windows keeps the CR
+        # of every CRLF pair, and base64 --decode rejects CR as "invalid input"
+        # before gpg ever sees a key.
+        case "${GPG_PRIVATE_KEY}" in
+          "-----BEGIN PGP PRIVATE KEY BLOCK-----"*)
+            KEY="${GPG_PRIVATE_KEY}"
+            ;;
+          *)
+            if ! KEY=$(printf '%s' "${GPG_PRIVATE_KEY}" | tr -d '\r\n \t' | base64 --decode 2>/dev/null); then
+              echo "::error::FLATPAK_GPG_PRIVATE_KEY is neither an ASCII-armored key nor valid base64. Re-store it with: gpg --armor --export-secret-keys <FPR> | base64 -w0"
+              exit 1
+            fi
+            ;;
+        esac
+        if ! printf '%s' "${KEY}" | gpg --batch --import; then
+          echo "::error::FLATPAK_GPG_PRIVATE_KEY does not contain an importable private key. Store the ASCII-armored export (gpg --armor --export-secret-keys <FPR>), which survives being held as text; a binary export does not."
+          exit 1
+        fi
+        if ! gpg --list-secret-keys --with-colons "${GPG_KEY_ID}" 2>/dev/null | grep -q '^sec'; then
+          echo "::error::no secret key matching FLATPAK_GPG_KEY_ID (${GPG_KEY_ID}) was imported; keys present after import:"
+          gpg --list-secret-keys --with-colons 2>/dev/null | awk -F: '/^fpr/ { print "  " $10 }'
+          exit 1
+        fi
+        FPR=$(gpg --list-secret-keys --with-colons "${GPG_KEY_ID}" 2>/dev/null | awk -F: '/^fpr/ { print $10; exit }')
+        echo "Imported signing key ${FPR}"
+
+        # Signing runs unattended further down the job, where a passphrase-protected
+        # key fails only after the bundles have been rebuilt, so prove that the key
+        # can sign right now.
+        PROBE=$(mktemp -d)
+        if ! printf 'probe' | gpg --batch --yes --detach-sign --local-user "${FPR}" -o "${PROBE}/probe.sig" 2>"${PROBE}/err"; then
+          echo "::error::the signing key ${FPR} cannot sign without a passphrase here:"
+          sed 's/^/  /' "${PROBE}/err"
+          echo "Use a dedicated repository-signing key with no passphrase."
+          rm -rf "${PROBE}"
+          exit 1
+        fi
+        rm -rf "${PROBE}"
 
     - id: restore_repo
       name: "Restore Published Repository"
@@ -552,8 +789,8 @@ jobs:
             exit 1
           fi
           if ! command -v aws >/dev/null 2>&1; then
-            sudo apt-get update
-            sudo apt-get install -y --no-install-recommends awscli
+            echo "::error::The aws CLI is required to publish to R2 but is not on this runner"
+            exit 1
           fi
           echo "Uploading ${EXE} to ${DEST}"
           aws s3 cp "${EXE}" "${DEST}" \
@@ -649,8 +886,8 @@ jobs:
             exit 1
           fi
           if ! command -v aws >/dev/null 2>&1; then
-            sudo apt-get update
-            sudo apt-get install -y --no-install-recommends awscli
+            echo "::error::The aws CLI is required to publish to R2 but is not on this runner"
+            exit 1
           fi
           echo "Uploading ${DMG} to ${DEST}"
           aws s3 cp "${DMG}" "${DEST}" \
