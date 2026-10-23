@@ -22,6 +22,13 @@
 # installer by develop-push.yml; the version input overrides it and is only needed
 # for runs built before version.txt existed.
 #
+# <branch> is the branch the source run was branded as, which is not always the
+# branch the run was started from: develop-push.yml accepts a branch_override input
+# so a run of, say, feature/foo can be branded (and therefore released) as develop.
+# develop-push.yml records that value in a small build-info artifact (branch.txt +
+# version.txt) which this workflow reads to pick the destination; runs that predate
+# that artifact fall back to the run's head branch.
+#
 # Required repository configuration:
 #   vars.R2_ENDPOINT              https://<account-id>.r2.cloudflarestorage.com
 #   vars.R2_BUCKET                bucket name
@@ -44,7 +51,7 @@ on:
         required: false
       source_branch:
         type: choice
-        description: "Branch to publish when source_run_id is blank"
+        description: "Head branch to publish when source_run_id is blank (runs branded via branch_override must be selected by source_run_id)"
         options:
           - "develop"
           - "master"
@@ -74,7 +81,7 @@ jobs:
 
     outputs:
       run_id: ${{ steps.source.outputs.run_id }}
-      branch: ${{ steps.source.outputs.branch }}
+      branch: ${{ steps.branch.outputs.branch }}
       has_win_x64: ${{ steps.artifacts.outputs.has_win_x64 }}
       has_win_arm64: ${{ steps.artifacts.outputs.has_win_arm64 }}
       has_macos_dmg: ${{ steps.artifacts.outputs.has_macos_dmg }}
@@ -105,9 +112,9 @@ jobs:
           echo "::error::Unable to determine the source branch of run ${RUN_ID}"
           exit 1
         fi
-        echo "Publishing run ${RUN_ID} from branch ${BRANCH}"
+        echo "Publishing run ${RUN_ID} (head branch ${BRANCH})"
         echo "run_id=${RUN_ID}" >> "$GITHUB_OUTPUT"
-        echo "branch=${BRANCH}" >> "$GITHUB_OUTPUT"
+        echo "head_branch=${BRANCH}" >> "$GITHUB_OUTPUT"
 
     - id: artifacts
       name: "Inspect Source Artifacts"
@@ -131,6 +138,51 @@ jobs:
         has has_win_x64 win32-exe-x64
         has has_win_arm64 win32-exe-arm64
         has has_macos_dmg macos-dmg
+        has has_build_info build-info
+
+    - id: build_info
+      name: "Download Build Info"
+      if: ${{ steps.artifacts.outputs.has_build_info == 'true' }}
+      uses: actions/download-artifact@v4
+      with:
+        name: build-info
+        path: build-info
+        run-id: ${{ steps.source.outputs.run_id }}
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+
+    - id: branch
+      name: "Resolve Release Branch"
+      shell: bash
+      env:
+        HEAD_BRANCH: ${{ steps.source.outputs.head_branch }}
+        HAS_BUILD_INFO: ${{ steps.artifacts.outputs.has_build_info }}
+      run: |
+        set -euo pipefail
+        BRANCH=${HEAD_BRANCH//\//-}
+        BRANCH_FILE=""
+        if [ "${HAS_BUILD_INFO}" = "true" ]; then
+          BRANCH_FILE=$(find build-info -type f -name branch.txt -print -quit 2>/dev/null || true)
+        fi
+        if [ -n "${BRANCH_FILE}" ]; then
+          BRANCH=$(tr -d '[:space:]' < "${BRANCH_FILE}")
+          echo "Using the branch recorded by the source run's build-info artifact: ${BRANCH}"
+          if [ "${BRANCH}" != "${HEAD_BRANCH}" ]; then
+            echo "The source run was started from ${HEAD_BRANCH} but is branded as ${BRANCH}"
+          fi
+        else
+          echo "The source run has no build-info artifact; falling back to its head branch: ${BRANCH}"
+        fi
+        case "${BRANCH}" in
+          ""|null)
+            echo "::error::Unable to determine the branch to publish"
+            exit 1
+            ;;
+          *[!0-9A-Za-z._-]*)
+            echo "::error::Branch '${BRANCH}' contains characters that are not safe for a release path"
+            exit 1
+            ;;
+        esac
+        echo "branch=${BRANCH}" >> "$GITHUB_OUTPUT"
 
   publish-flatpak-repo:
     needs: resolve

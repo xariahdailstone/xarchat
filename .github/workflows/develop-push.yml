@@ -29,6 +29,10 @@ on:
       notarize_macos:
         type: boolean
         description: "MacOS notarize"
+      branch_override:
+        type: string
+        description: "Override the branch name used for branding and for the release destination (blank = the branch that triggered the run)"
+        required: false
   pull_request:
     branches: [ "develop" ]
 
@@ -54,11 +58,25 @@ jobs:
     - id: extract_branch
       name: "Get Build Branch"
       shell: bash
+      env:
+        INPUT_BRANCH_OVERRIDE: ${{ inputs.branch_override }}
       run: |
         BRANCHNAME=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}
+        if [[ -n "${INPUT_BRANCH_OVERRIDE}" ]]; then
+          # A workflow_dispatch run can be branded as (and released to) a branch other than the one
+          # it was started from -- e.g. building a feature branch as "develop" before merging.
+          BRANCHNAME=$(printf '%s' "${INPUT_BRANCH_OVERRIDE}" | tr -d '[:space:]')
+          echo "using branch override '${BRANCHNAME}' (run was started from '${GITHUB_REF#refs/heads/}')"
+        fi
         echo "BRANCHNAME=$BRANCHNAME"
         FILTEREDBRANCHNAME=${BRANCHNAME//\//-}
         echo "FILTEREDBRANCHNAME=$FILTEREDBRANCHNAME"
+        if [[ -n "${INPUT_BRANCH_OVERRIDE}" ]]; then
+          if [[ -z "${FILTEREDBRANCHNAME}" ]] || [[ "${FILTEREDBRANCHNAME}" == *[!0-9A-Za-z._-]* ]]; then
+            echo "::error::Branch override '${BRANCHNAME}' is not usable as a branding/release branch name"
+            exit 1
+          fi
+        fi
         echo "outputting rawbranch=$BRANCHNAME"
         echo "outputting branch=$FILTEREDBRANCHNAME"
         echo "rawbranch=$BRANCHNAME" >> $GITHUB_OUTPUT
@@ -114,6 +132,25 @@ jobs:
       name: "Generate Build Identifier"
       shell: bash
       run: echo "buildid=${{ steps.extract_timestamp.outputs.timestamp }}-${{ steps.extract_branch.outputs.branch }}" >> $GITHUB_OUTPUT
+
+    - id: write_build_info
+      name: "Write Build Info"
+      if: ${{ env.should_produce_artifacts == 'true' }}
+      shell: bash
+      run: |
+        mkdir -p "${{ github.workspace }}/build-info"
+        echo "${{ steps.extract_branch.outputs.branch }}" > "${{ github.workspace }}/build-info/branch.txt"
+        echo "${{ steps.extract_timestamp.outputs.timestamp }}" > "${{ github.workspace }}/build-info/version.txt"
+        echo "build-info branch=$(cat "${{ github.workspace }}/build-info/branch.txt") version=$(cat "${{ github.workspace }}/build-info/version.txt")"
+
+    - id: publish_build_info
+      name: "Publish Build Info Artifact"
+      if: ${{ env.should_produce_artifacts == 'true' }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-info
+        path: ${{ github.workspace }}/build-info
+        retention-days: 5
 
   build-windows:
     if: ${{ github.event_name != 'workflow_dispatch' || inputs.build_windows_x64 || inputs.build_windows_arm64 }}
