@@ -1,5 +1,5 @@
-# Composite action: builds the XarChat Flatpak bundle from a published linux-x64
-# executable and uploads it as a workflow artifact.
+# Composite action: builds the XarChat Flatpak bundle from a published linux
+# executable (x64 or arm64) and uploads it as a workflow artifact.
 #
 # The repository (including host/linux/flatpak) must already be checked out.
 
@@ -41,6 +41,14 @@ inputs:
     description: "Artifact retention in days."
     required: false
     default: "5"
+  bundle-arch:
+    description: "Architecture suffix to append to the bundle filename (for example x64 or arm64)."
+    required: false
+    default: "x64"
+  flatpak-arch:
+    description: "Flatpak architecture to build against (for example x86_64 or aarch64)."
+    required: false
+    default: "x86_64"
 
 outputs:
   bundle-path:
@@ -88,7 +96,7 @@ runs:
           sudo apt-get install -y --no-install-recommends flatpak flatpak-builder librsvg2-common
         fi
         flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
-        flatpak install --user --noninteractive flathub \
+        flatpak install --user --noninteractive --arch=${{ inputs.flatpak-arch }} flathub \
           "org.gnome.Platform//${{ inputs.runtime-version }}" \
           "org.gnome.Sdk//${{ inputs.runtime-version }}"
 
@@ -111,9 +119,10 @@ runs:
         set -euo pipefail
         OUT="${GITHUB_WORKSPACE}/${{ inputs.output-dir }}"
         mkdir -p "${OUT}"
-        BUNDLE="${OUT}/xarchat_${{ inputs.timestamp }}_x64.flatpak"
+        BUNDLE="${OUT}/xarchat_${{ inputs.timestamp }}_${{ inputs.bundle-arch }}.flatpak"
         flatpak build-bundle \
           --runtime-repo=https://flathub.org/repo/flathub.flatpakrepo \
+          --arch=${{ inputs.flatpak-arch }} \
           "${GITHUB_WORKSPACE}/${{ inputs.repo-dir }}" \
           "${BUNDLE}" net.xariah.xarchat
         ls -l "${OUT}"

@@ -596,3 +596,14 @@ jobs:
         name: linux-deb-arm64
         path: ${{ github.workspace }}/preproot-deb/out
         retention-days: 5
+
+    - id: publish_artifact_flatpak
+      name: "Publish Flatpak Artifact"
+      if: ${{ env.should_produce_artifacts == 'true' }}
+      uses: ./.github/actions/build-flatpak
+      with:
+        exe-path: ${{ github.workspace }}/host-publish/linux-arm64/xarchat
+        timestamp: ${{ needs.generate_build_branding.outputs.timestamp }}
+        artifact-name: linux-flatpak-arm64
+        bundle-arch: arm64
+        flatpak-arch: aarch64
