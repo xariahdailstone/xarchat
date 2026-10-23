@@ -501,6 +501,18 @@ jobs:
         if [ ! -f repo/config ]; then
           echo "Creating a new OSTree repository"
           ostree init --repo=repo --mode=archive
+        else
+          # A round trip through R2 carries files but not directories, so every empty
+          # directory ostree init creates is missing from a restored repository. The
+          # prune-and-summary pass inside flatpak build-update-repo lists refs through
+          # ostree_repo_list_refs(), which opens refs/remotes without tolerating its
+          # absence, so a restored repository fails with "Listing refs:
+          # opendir(refs/remotes): No such file or directory" while a freshly created
+          # one works. Recreate the directory layout ostree init produces.
+          for DIR in extensions objects refs/heads refs/mirrors refs/remotes state tmp/cache; do
+            mkdir -p "repo/${DIR}"
+          done
+          echo "Restored repository structure repaired"
         fi
 
     - id: import_bundles
