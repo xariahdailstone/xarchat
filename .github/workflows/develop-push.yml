@@ -29,6 +29,10 @@ on:
       notarize_macos:
         type: boolean
         description: "MacOS notarize"
+      branch_override:
+        type: string
+        description: "Override the branch name used for branding and for the release destination (blank = the branch that triggered the run)"
+        required: false
   pull_request:
     branches: [ "develop" ]
 
@@ -46,6 +50,7 @@ jobs:
     outputs:
       branch: ${{ steps.extract_branch.outputs.branch }}
       timestamp: ${{ steps.extract_timestamp.outputs.timestamp }}
+      builddate: ${{ steps.extract_timestamp.outputs.builddate }}
       year: ${{ steps.extract_timestamp.outputs.year }}
       buildid: ${{ steps.generate_buildid.outputs.buildid }}
 
@@ -53,11 +58,25 @@ jobs:
     - id: extract_branch
       name: "Get Build Branch"
       shell: bash
+      env:
+        INPUT_BRANCH_OVERRIDE: ${{ inputs.branch_override }}
       run: |
         BRANCHNAME=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}
+        if [[ -n "${INPUT_BRANCH_OVERRIDE}" ]]; then
+          # A workflow_dispatch run can be branded as (and released to) a branch other than the one
+          # it was started from -- e.g. building a feature branch as "develop" before merging.
+          BRANCHNAME=$(printf '%s' "${INPUT_BRANCH_OVERRIDE}" | tr -d '[:space:]')
+          echo "using branch override '${BRANCHNAME}' (run was started from '${GITHUB_REF#refs/heads/}')"
+        fi
         echo "BRANCHNAME=$BRANCHNAME"
         FILTEREDBRANCHNAME=${BRANCHNAME//\//-}
         echo "FILTEREDBRANCHNAME=$FILTEREDBRANCHNAME"
+        if [[ -n "${INPUT_BRANCH_OVERRIDE}" ]]; then
+          if [[ -z "${FILTEREDBRANCHNAME}" ]] || [[ "${FILTEREDBRANCHNAME}" == *[!0-9A-Za-z._-]* ]]; then
+            echo "::error::Branch override '${BRANCHNAME}' is not usable as a branding/release branch name"
+            exit 1
+          fi
+        fi
         echo "outputting rawbranch=$BRANCHNAME"
         echo "outputting branch=$FILTEREDBRANCHNAME"
         echo "rawbranch=$BRANCHNAME" >> $GITHUB_OUTPUT
@@ -74,13 +93,64 @@ jobs:
       name: "Generate Build Timestamp"
       shell: bash
       run: |
-        echo "timestamp=$(date +'%Y.%-m%d.%-H%M.%-S')" >> $GITHUB_OUTPUT
-        echo "year=$(date +'%Y')" >> $GITHUB_OUTPUT
+        # Build version format: YYYY.MMDD.HHMM.SS  (e.g. 2026.1003.905.7 = 2026-10-03 09:05:07)
+        #   YYYY - 4-digit year
+        #   MMDD - month NOT zero-padded (it is the leading digits of the segment), day zero-padded to 2
+        #   HHMM - hour NOT zero-padded (leading digits), minute zero-padded to 2
+        #   SS   - seconds NOT zero-padded
+        # Padding the day/minute keeps the numeric value of each segment monotonically increasing
+        # with time (Oct 3 -> 1003 sorts after Jan 23 -> 123; 09:05 -> 905 sorts after 08:59 -> 859),
+        # which matters because apt/rpm/pacman and the auto-updater all order releases by version.
+        # Each segment must also stay an integer <= 65535 so the whole value is a valid dotted
+        # .NET System.Version (it is used as the assembly version).
+        NOW=$(date +'%Y-%m-%d %Y.%-m%d.%-H%M.%-S')
+        BUILD_DATE=${NOW%% *}
+        RAW_TIMESTAMP=${NOW#* }
+
+        # Every consumer (dpkg/rpm/pacman, System.Version, the auto-updater) reads each dotted
+        # segment as an integer, so normalize to a canonical form with leading zeroes stripped:
+        # the padding above only exists to build the segment, "2026.1008.008.8" -> "2026.1008.8.8".
+        IFS='.' read -r -a VERSION_PARTS <<< "$RAW_TIMESTAMP"
+        if [[ ${#VERSION_PARTS[@]} -ne 4 ]]; then
+          echo "::error::Generated version '${RAW_TIMESTAMP}' does not have exactly 4 dotted components"
+          exit 1
+        fi
+        TIMESTAMP=""
+        for PART in "${VERSION_PARTS[@]}"; do
+          if ! [[ "$PART" =~ ^[0-9]+$ ]] || (( 10#$PART > 65535 )); then
+            echo "::error::Generated version '${RAW_TIMESTAMP}' has a component ('${PART}') that is not valid for a .NET System.Version"
+            exit 1
+          fi
+          TIMESTAMP="${TIMESTAMP:+${TIMESTAMP}.}$((10#$PART))"
+        done
+
+        echo "timestamp=${TIMESTAMP}" >> $GITHUB_OUTPUT
+        echo "builddate=${BUILD_DATE}" >> $GITHUB_OUTPUT
+        echo "year=${BUILD_DATE%%-*}" >> $GITHUB_OUTPUT
 
     - id: generate_buildid
       name: "Generate Build Identifier"
       shell: bash
       run: echo "buildid=${{ steps.extract_timestamp.outputs.timestamp }}-${{ steps.extract_branch.outputs.branch }}" >> $GITHUB_OUTPUT
+
+    - id: write_build_info
+      name: "Write Build Info"
+      if: ${{ env.should_produce_artifacts == 'true' }}
+      shell: bash
+      run: |
+        mkdir -p "${{ github.workspace }}/build-info"
+        echo "${{ steps.extract_branch.outputs.branch }}" > "${{ github.workspace }}/build-info/branch.txt"
+        echo "${{ steps.extract_timestamp.outputs.timestamp }}" > "${{ github.workspace }}/build-info/version.txt"
+        echo "build-info branch=$(cat "${{ github.workspace }}/build-info/branch.txt") version=$(cat "${{ github.workspace }}/build-info/version.txt")"
+
+    - id: publish_build_info
+      name: "Publish Build Info Artifact"
+      if: ${{ env.should_produce_artifacts == 'true' }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-info
+        path: ${{ github.workspace }}/build-info
+        retention-days: 5
 
   build-windows:
     if: ${{ github.event_name != 'workflow_dispatch' || inputs.build_windows_x64 || inputs.build_windows_arm64 }}
@@ -104,7 +174,7 @@ jobs:
 
     - id: cache_nuget
       name: "Cache NuGet"
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ~/.nuget/packages
         key: ${{ runner.os }}-nuget
@@ -113,7 +183,7 @@ jobs:
 
     - id: cache_npm
       name: "Cache NPM"
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: browser/mainapp/node_modules
         key: ${{ runner.os }}-mainappnodemodules
@@ -175,13 +245,23 @@ jobs:
         rm XarChat.exe
         mv XarChat.signed.exe XarChat.exe
 
+    - id: write_version_x64
+      name: "Write Version File (x64)"
+      if: env.should_produce_artifacts == 'true' && (github.event_name != 'workflow_dispatch' || inputs.build_windows_x64)
+      shell: bash
+      run: |
+        mkdir -p "${{ github.workspace }}/host-publish/win-x64"
+        echo "${{ needs.generate_build_branding.outputs.timestamp }}" > "${{ github.workspace }}/host-publish/win-x64/version.txt"
+
     - id: publish_artifact_x64
       name: "Publish Artifact (x64)"
       if: env.should_produce_artifacts == 'true' && (github.event_name != 'workflow_dispatch' || inputs.build_windows_x64)
       uses: actions/upload-artifact@v4
       with:
         name: win32-exe-x64
-        path: ${{ github.workspace }}/host-publish/win-x64/XarChat.exe
+        path: |
+          ${{ github.workspace }}/host-publish/win-x64/XarChat.exe
+          ${{ github.workspace }}/host-publish/win-x64/version.txt
         retention-days: 5
 
     - id: csharp_build_arm64
@@ -214,13 +294,23 @@ jobs:
         rm XarChat.exe
         mv XarChat.signed.exe XarChat.exe
 
+    - id: write_version_arm64
+      name: "Write Version File (ARM64)"
+      if: env.should_produce_artifacts == 'true' && (github.event_name != 'workflow_dispatch' || inputs.build_windows_arm64)
+      shell: bash
+      run: |
+        mkdir -p "${{ github.workspace }}/host-publish/win-arm64"
+        echo "${{ needs.generate_build_branding.outputs.timestamp }}" > "${{ github.workspace }}/host-publish/win-arm64/version.txt"
+
     - id: publish_artifact_arm64
       name: "Publish Artifact (ARM64)"
       if: env.should_produce_artifacts == 'true' && (github.event_name != 'workflow_dispatch' || inputs.build_windows_arm64)
       uses: actions/upload-artifact@v4
       with:
         name: win32-exe-arm64
-        path: ${{ github.workspace }}/host-publish/win-arm64/XarChat.exe
+        path: |
+          ${{ github.workspace }}/host-publish/win-arm64/XarChat.exe
+          ${{ github.workspace }}/host-publish/win-arm64/version.txt
         retention-days: 5
 
   build-macos-arm64:
@@ -376,13 +466,22 @@ jobs:
         path: ${{ github.workspace }}/preproot
         retention-days: 5
 
+    - id: write_version_dmg
+      name: "Write Version File (DMG)"
+      if: ${{ env.should_produce_artifacts == 'true' }}
+      shell: bash
+      run: |
+        echo "${{ needs.generate_build_branding.outputs.timestamp }}" > "${{ github.workspace }}/version.txt"
+
     - id: publish_artifact
       name: "Publish DMG Artifact"
       if: ${{ env.should_produce_artifacts == 'true' }}
       uses: actions/upload-artifact@v4
       with:
         name: macos-dmg
-        path: ${{ github.workspace }}/XarChat-*.dmg
+        path: |
+          ${{ github.workspace }}/XarChat-*.dmg
+          ${{ github.workspace }}/version.txt
         retention-days: 5
 
   build-linux-x64:
@@ -494,6 +593,7 @@ jobs:
       with:
         exe-path: ${{ github.workspace }}/host-publish/linux-x64/xarchat
         timestamp: ${{ needs.generate_build_branding.outputs.timestamp }}
+        builddate: ${{ needs.generate_build_branding.outputs.builddate }}
 
   build-linux-arm64:
     if: ${{ github.event_name != 'workflow_dispatch' || inputs.build_linux_arm64 }}
@@ -604,6 +704,7 @@ jobs:
       with:
         exe-path: ${{ github.workspace }}/host-publish/linux-arm64/xarchat
         timestamp: ${{ needs.generate_build_branding.outputs.timestamp }}
+        builddate: ${{ needs.generate_build_branding.outputs.builddate }}
         artifact-name: linux-flatpak-arm64
         bundle-arch: arm64
         flatpak-arch: aarch64
