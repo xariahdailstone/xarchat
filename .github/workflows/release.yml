@@ -40,6 +40,8 @@
 # resolve job verifies the configuration with a signed request before any publish
 # job runs and explains what to fix (wrong secret, stray whitespace, wrong endpoint,
 # missing bucket permission) instead of letting every job fail on its own upload.
+# That step passes the same two secrets as AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY;
+# without them the CLI sends nothing to R2 and exits 253 (CONFIGURATION_ERROR_RC).
 #
 # Optional, enables signed repository metadata:
 #   secrets.FLATPAK_GPG_KEY_ID
@@ -199,11 +201,17 @@ jobs:
       if: ${{ inputs.dry_run != true }}
       shell: bash
       env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
         R2_ACCESS_KEY: ${{ secrets.R2_ACCESS_KEY_ID }}
         R2_SECRET: ${{ secrets.R2_SECRET_ACCESS_KEY }}
         R2_ENDPOINT: ${{ vars.R2_ENDPOINT }}
         R2_BUCKET: ${{ vars.R2_BUCKET }}
       run: |
+        # `shell: bash` hands this script -e, which would abort it on the first
+        # failing probe before the failure could be explained. It is turned off
+        # deliberately; every command below inspects its own exit status instead.
+        set +e
         set -uo pipefail
         if [ -z "${R2_ENDPOINT}" ] || [ -z "${R2_BUCKET}" ]; then
           echo "::warning::vars.R2_ENDPOINT / vars.R2_BUCKET are not set; the publish jobs will not be able to upload"
@@ -216,8 +224,9 @@ jobs:
         echo "bucket: ${R2_BUCKET}"
         echo "signing region: AWS_REGION=${AWS_REGION:-unset} AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-unset}"
         echo "checksum calculation: ${AWS_REQUEST_CHECKSUM_CALCULATION:-unset}"
+        echo "credentials visible to the CLI: AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:+set} AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:+set}"
 
-        if [ -z "${R2_ACCESS_KEY}" ] || [ -z "${R2_SECRET}" ]; then
+        if [ -z "${R2_ACCESS_KEY:-}" ] || [ -z "${R2_SECRET:-}" ]; then
           echo "::error::secrets.R2_ACCESS_KEY_ID and secrets.R2_SECRET_ACCESS_KEY must both be set to an R2 API token's Access Key ID and Secret Access Key"
           FAIL=1
         fi
@@ -225,7 +234,7 @@ jobs:
         # A trailing newline pasted in with the secret is silently part of the value, and
         # an R2 secret key never contains whitespace, so this cannot be a false positive.
         for NAME in R2_ACCESS_KEY R2_SECRET; do
-          VALUE="${!NAME}"
+          VALUE="${!NAME:-}"
           if [ "${VALUE}" != "$(printf '%s' "${VALUE}" | tr -d '[:space:]')" ]; then
             echo "::error::The ${NAME} value contains whitespace, most likely a trailing newline from pasting. Re-create the secret with exactly the value Cloudflare shows."
             FAIL=1
@@ -254,9 +263,14 @@ jobs:
         fi
 
         fault() {
-          local context="$1" text="$2" code
+          local context="$1" text="$2" rc="$3" code
           code=$(printf '%s' "${text}" | grep -oE 'SignatureDoesNotMatch|InvalidAccessKeyId|AccessDenied|NoSuchBucket|InvalidBucketName|RequestTimeTooSkewed|NotImplemented' | head -n 1)
-          echo "::error::${context} (${code:-unrecognized error})"
+          echo "::error::${context} (aws exit ${rc}${code:+, ${code}})"
+          if [ -n "${text}" ]; then
+            printf '%s\n' "${text}"
+          else
+            echo "The CLI produced no output at all."
+          fi
           case "${code}" in
             SignatureDoesNotMatch)
               echo "R2 found the access key id but the signature did not match, so it is the secret that is wrong."
@@ -281,7 +295,16 @@ jobs:
               echo "R2 rejected part of the request. Make sure the AWS CLI is not sending flexible-checksum headers; this workflow sets AWS_REQUEST_CHECKSUM_CALCULATION=when_required for that reason."
               ;;
             *)
-              echo "Compare vars.R2_ENDPOINT and vars.R2_BUCKET with the R2 dashboard; the account endpoint is https://<account-id>.r2.cloudflarestorage.com"
+              # No R2 error code in the output means R2 never answered, so fall back
+              # to the CLI's own exit status, which awscli/constants.py fixes as:
+              # 252 parameter validation, 253 configuration, 254 client, 255 general.
+              case "${rc}" in
+                252) echo "The AWS CLI rejected the command line before sending it. That is a bug in this workflow, not in your configuration." ;;
+                253) echo "The AWS CLI found no usable credentials, so nothing was sent to R2. AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY must both reach this step; if they are set, the value itself is malformed (a trailing newline from pasting is the usual cause)." ;;
+                254) echo "R2 rejected the request; the message above is its response." ;;
+                255) echo "The AWS CLI failed before reaching R2 (DNS, TLS, or proxy)." ;;
+                *) echo "Compare vars.R2_ENDPOINT and vars.R2_BUCKET with the R2 dashboard; the account endpoint is https://<account-id>.r2.cloudflarestorage.com" ;;
+              esac
               ;;
           esac
         }
@@ -291,8 +314,7 @@ jobs:
           --endpoint-url "${R2_ENDPOINT}" 2>&1 >/dev/null)
         RC=$?
         if [ "${RC}" -ne 0 ]; then
-          echo "${ERR}"
-          fault "Unable to list s3://${R2_BUCKET} at ${R2_ENDPOINT}" "${ERR}"
+          fault "Unable to list s3://${R2_BUCKET} at ${R2_ENDPOINT}" "${ERR}" "${RC}"
           exit 1
         fi
         echo "Read access verified"
@@ -305,8 +327,7 @@ jobs:
           --endpoint-url "${R2_ENDPOINT}" 2>&1)
         RC=$?
         if [ "${RC}" -ne 0 ]; then
-          echo "${MPU}"
-          fault "Unable to start a multipart upload in s3://${R2_BUCKET}" "${MPU}"
+          fault "Unable to start a multipart upload in s3://${R2_BUCKET}" "${MPU}" "${RC}"
           exit 1
         fi
         UPLOAD_ID=$(printf '%s' "${MPU}" | grep -o '"UploadId": *"[^"]*"' | head -n 1 | cut -d '"' -f 4)
