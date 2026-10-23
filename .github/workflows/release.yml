@@ -1,15 +1,26 @@
-# Publishes the XarChat Flatpak bundles built by the "develop push" workflow into
-# self-hosted Flatpak (OSTree) repositories stored in a Cloudflare R2 bucket.
+# Publishes the artifacts built by the "develop push" workflow:
+#   * the Flatpak bundles, into self-hosted Flatpak (OSTree) repositories, and
+#   * the Windows and macOS installers, into plain per-version directories.
 #
-# Each source branch gets its own repository under a separate R2 prefix, and each
-# repository is cumulative: previously published commits are retained so that a
-# client which installed an older build can update in place.  Pruning keeps the
-# retained history (and therefore the download/upload size of each run) bounded.
+# Everything lands in the same Cloudflare R2 bucket.  Each source branch gets its
+# own area.  The Flatpak repositories are cumulative: previously published commits
+# are retained so that a client which installed an older build can update in
+# place, and pruning keeps the retained history (and therefore the download/upload
+# size of each run) bounded.  The Windows/macOS directories are not repositories;
+# every version is a separate immutable directory.
 #
 # Object layout in the bucket:
-#   flatpak/<branch>/repo/                  OSTree repository (served to clients)
-#   flatpak/<branch>/xarchat.flatpakrepo    remote definition users add
-#   flatpak/<branch>/xarchat.flatpakref     one-click install descriptor
+#   flatpak/<branch>/repo/                       OSTree repository (served to clients)
+#   flatpak/<branch>/xarchat.flatpakrepo         remote definition users add
+#   flatpak/<branch>/xarchat.flatpakref          one-click install descriptor
+#   win-x64/<branch>/<version>/XarChat.exe
+#   win-arm64/<branch>/<version>/XarChat.exe
+#   macos-arm64/<branch>/<version>/XarChat-<version>.dmg
+#
+# The version is the build timestamp stamped into the source run.  The Windows and
+# macOS artifacts each carry it as a version.txt member, written alongside the
+# installer by develop-push.yml; the version input overrides it and is only needed
+# for runs built before version.txt existed.
 #
 # Required repository configuration:
 #   vars.R2_ENDPOINT              https://<account-id>.r2.cloudflarestorage.com
@@ -29,7 +40,7 @@ on:
     inputs:
       source_run_id:
         type: string
-        description: "develop push run ID to publish the Flatpak bundles from (blank = latest successful run of source_branch)"
+        description: "develop push run ID to publish from (blank = latest successful run of source_branch)"
         required: false
       source_branch:
         type: choice
@@ -38,9 +49,13 @@ on:
           - "develop"
           - "master"
         default: "master"
+      version:
+        type: string
+        description: "Override the build version (blank = use the version.txt inside each artifact)"
+        required: false
       dry_run:
         type: boolean
-        description: "Update the repository locally but do not upload it to R2"
+        description: "Do everything except upload to R2"
         default: false
 
 permissions:
@@ -54,8 +69,15 @@ env:
   AWS_EC2_METADATA_DISABLED: "true"
 
 jobs:
-  publish-flatpak-repo:
+  resolve:
     runs-on: ubuntu-24.04
+
+    outputs:
+      run_id: ${{ steps.source.outputs.run_id }}
+      branch: ${{ steps.source.outputs.branch }}
+      has_win_x64: ${{ steps.artifacts.outputs.has_win_x64 }}
+      has_win_arm64: ${{ steps.artifacts.outputs.has_win_arm64 }}
+      has_macos_dmg: ${{ steps.artifacts.outputs.has_macos_dmg }}
 
     steps:
     - id: source
@@ -86,8 +108,35 @@ jobs:
         echo "Publishing run ${RUN_ID} from branch ${BRANCH}"
         echo "run_id=${RUN_ID}" >> "$GITHUB_OUTPUT"
         echo "branch=${BRANCH}" >> "$GITHUB_OUTPUT"
-        echo "prefix=flatpak/${BRANCH}" >> "$GITHUB_OUTPUT"
 
+    - id: artifacts
+      name: "Inspect Source Artifacts"
+      shell: bash
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        RUN_ID: ${{ steps.source.outputs.run_id }}
+      run: |
+        set -euo pipefail
+        NAMES=$(gh api --paginate \
+          "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/artifacts" \
+          --jq '.artifacts[].name')
+        echo "${NAMES}" | sort
+        has() {
+          if grep -qxF "$2" <<< "${NAMES}"; then
+            echo "$1=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "$1=false" >> "$GITHUB_OUTPUT"
+          fi
+        }
+        has has_win_x64 win32-exe-x64
+        has has_win_arm64 win32-exe-arm64
+        has has_macos_dmg macos-dmg
+
+  publish-flatpak-repo:
+    needs: resolve
+    runs-on: ubuntu-24.04
+
+    steps:
     - id: download
       name: "Download Flatpak Bundles"
       uses: actions/download-artifact@v4
@@ -95,7 +144,7 @@ jobs:
         pattern: linux-flatpak-*
         path: bundles
         merge-multiple: true
-        run-id: ${{ steps.source.outputs.run_id }}
+        run-id: ${{ needs.resolve.outputs.run_id }}
         github-token: ${{ secrets.GITHUB_TOKEN }}
 
     - id: tools
@@ -143,7 +192,7 @@ jobs:
         AWS_DEFAULT_REGION: auto
         R2_ENDPOINT: ${{ vars.R2_ENDPOINT }}
         R2_BUCKET: ${{ vars.R2_BUCKET }}
-        PREFIX: ${{ steps.source.outputs.prefix }}
+        PREFIX: flatpak/${{ needs.resolve.outputs.branch }}
       run: |
         set -euo pipefail
         mkdir -p repo
@@ -169,7 +218,7 @@ jobs:
       name: "Import Flatpak Bundles"
       shell: bash
       env:
-        BRANCH: ${{ steps.source.outputs.branch }}
+        BRANCH: ${{ needs.resolve.outputs.branch }}
         GPG_KEY_ID: ${{ secrets.FLATPAK_GPG_KEY_ID }}
       run: |
         set -euo pipefail
@@ -205,7 +254,7 @@ jobs:
       name: "Update Repository Metadata"
       shell: bash
       env:
-        BRANCH: ${{ steps.source.outputs.branch }}
+        BRANCH: ${{ needs.resolve.outputs.branch }}
         GPG_KEY_ID: ${{ secrets.FLATPAK_GPG_KEY_ID }}
       run: |
         set -euo pipefail
@@ -231,8 +280,8 @@ jobs:
       name: "Create Repository Descriptors"
       shell: bash
       env:
-        BRANCH: ${{ steps.source.outputs.branch }}
-        PREFIX: ${{ steps.source.outputs.prefix }}
+        BRANCH: ${{ needs.resolve.outputs.branch }}
+        PREFIX: flatpak/${{ needs.resolve.outputs.branch }}
         BASE_URL: ${{ vars.FLATPAK_BASE_URL }}
         GPG_KEY_ID: ${{ secrets.FLATPAK_GPG_KEY_ID }}
       run: |
@@ -282,7 +331,7 @@ jobs:
         AWS_DEFAULT_REGION: auto
         R2_ENDPOINT: ${{ vars.R2_ENDPOINT }}
         R2_BUCKET: ${{ vars.R2_BUCKET }}
-        PREFIX: ${{ steps.source.outputs.prefix }}
+        PREFIX: flatpak/${{ needs.resolve.outputs.branch }}
       run: |
         set -euo pipefail
         if [ -z "${R2_BUCKET}" ] || [ -z "${R2_ENDPOINT}" ]; then
@@ -318,8 +367,8 @@ jobs:
       name: "Publish Summary"
       shell: bash
       env:
-        BRANCH: ${{ steps.source.outputs.branch }}
-        PREFIX: ${{ steps.source.outputs.prefix }}
+        BRANCH: ${{ needs.resolve.outputs.branch }}
+        PREFIX: flatpak/${{ needs.resolve.outputs.branch }}
         BASE_URL: ${{ vars.FLATPAK_BASE_URL }}
         DRY_RUN: ${{ inputs.dry_run }}
       run: |
@@ -328,7 +377,7 @@ jobs:
         {
           echo "## Flatpak repository: ${BRANCH}"
           echo ""
-          echo "- Source run: ${{ steps.source.outputs.run_id }}"
+          echo "- Source run: ${{ needs.resolve.outputs.run_id }}"
           echo "- Refs:"
           while read -r REF; do echo "  - \`${REF}\`"; done < <(ostree --repo=repo refs)
           echo ""
@@ -358,3 +407,213 @@ jobs:
         ostree --repo=repo refs 2>/dev/null || true
         echo "=== bundles ==="
         ls -lR bundles 2>/dev/null || true
+
+  publish-windows:
+    needs: resolve
+    if: ${{ needs.resolve.outputs.has_win_x64 == 'true' || needs.resolve.outputs.has_win_arm64 == 'true' }}
+    runs-on: ubuntu-24.04
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            artifact: win32-exe-x64
+            available: ${{ needs.resolve.outputs.has_win_x64 }}
+          - arch: arm64
+            artifact: win32-exe-arm64
+            available: ${{ needs.resolve.outputs.has_win_arm64 }}
+
+    steps:
+    - id: download
+      name: "Download Windows Build (${{ matrix.arch }})"
+      if: matrix.available == 'true'
+      uses: actions/download-artifact@v4
+      with:
+        name: ${{ matrix.artifact }}
+        path: dist
+        run-id: ${{ needs.resolve.outputs.run_id }}
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+
+    - id: version
+      name: "Resolve Version (${{ matrix.arch }})"
+      if: matrix.available == 'true'
+      shell: bash
+      env:
+        INPUT_VERSION: ${{ inputs.version }}
+        ARTIFACT: ${{ matrix.artifact }}
+      run: |
+        set -euo pipefail
+        ls -lR dist
+        VERSION=""
+        VERSION_FILE=$(find dist -type f -name version.txt -print -quit)
+        if [ -n "${VERSION_FILE}" ]; then
+          VERSION=$(head -n 1 "${VERSION_FILE}" | tr -d '[:space:]')
+        fi
+        if [ -z "${VERSION}" ]; then
+          VERSION="${INPUT_VERSION}"
+        fi
+        if [ -z "${VERSION}" ]; then
+          echo "::error::The ${ARTIFACT} artifact has no version.txt; pass the version input for older runs"
+          exit 1
+        fi
+        # The version becomes an R2 object key, so keep it to characters that are
+        # safe in a path segment.
+        case "${VERSION}" in
+          *[!0-9A-Za-z._-]*)
+            echo "::error::Version '${VERSION}' contains characters that are not safe for an object key"
+            exit 1
+            ;;
+        esac
+        echo "Version: ${VERSION}"
+        echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+    - id: upload
+      name: "Publish Windows Build to R2 (${{ matrix.arch }})"
+      if: matrix.available == 'true'
+      shell: bash
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        AWS_DEFAULT_REGION: auto
+        R2_ENDPOINT: ${{ vars.R2_ENDPOINT }}
+        R2_BUCKET: ${{ vars.R2_BUCKET }}
+        BRANCH: ${{ needs.resolve.outputs.branch }}
+        VERSION: ${{ steps.version.outputs.version }}
+        ARCH: ${{ matrix.arch }}
+        ARTIFACT: ${{ matrix.artifact }}
+        SOURCE_RUN: ${{ needs.resolve.outputs.run_id }}
+        DRY_RUN: ${{ inputs.dry_run }}
+      run: |
+        set -euo pipefail
+        EXE=$(find dist -type f -name '*.exe' -print -quit)
+        if [ -z "${EXE}" ]; then
+          echo "::error::No .exe was found in the ${ARTIFACT} artifact"
+          exit 1
+        fi
+        DEST="s3://${R2_BUCKET}/win-${ARCH}/${BRANCH}/${VERSION}/XarChat.exe"
+        if [ "${DRY_RUN}" = "true" ]; then
+          echo "Dry run: would upload ${EXE} to ${DEST}"
+        else
+          if [ -z "${R2_BUCKET}" ] || [ -z "${R2_ENDPOINT}" ]; then
+            echo "::error::R2_BUCKET and R2_ENDPOINT must be configured to publish"
+            exit 1
+          fi
+          if ! command -v aws >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y --no-install-recommends awscli
+          fi
+          echo "Uploading ${EXE} to ${DEST}"
+          aws s3 cp "${EXE}" "${DEST}" \
+            --endpoint-url "${R2_ENDPOINT}" --only-show-errors \
+            --content-type "application/octet-stream" \
+            --cache-control "public, max-age=31536000, immutable"
+        fi
+        {
+          echo "## Windows build: ${ARCH} ${VERSION}"
+          echo ""
+          echo "- Source run: ${SOURCE_RUN}"
+          if [ "${DRY_RUN}" = "true" ]; then
+            echo "> Dry run: nothing was uploaded to R2."
+            echo "- Would publish: \`${DEST}\`"
+          else
+            echo "- Published: \`${DEST}\`"
+          fi
+        } >> "$GITHUB_STEP_SUMMARY"
+
+  publish-macos:
+    needs: resolve
+    if: ${{ needs.resolve.outputs.has_macos_dmg == 'true' }}
+    runs-on: ubuntu-24.04
+
+    steps:
+    - id: download
+      name: "Download macOS Disk Image"
+      uses: actions/download-artifact@v4
+      with:
+        name: macos-dmg
+        path: dist
+        run-id: ${{ needs.resolve.outputs.run_id }}
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+
+    - id: version
+      name: "Resolve Version"
+      shell: bash
+      env:
+        INPUT_VERSION: ${{ inputs.version }}
+        ARTIFACT: macos-dmg
+      run: |
+        set -euo pipefail
+        ls -lR dist
+        VERSION=""
+        VERSION_FILE=$(find dist -type f -name version.txt -print -quit)
+        if [ -n "${VERSION_FILE}" ]; then
+          VERSION=$(head -n 1 "${VERSION_FILE}" | tr -d '[:space:]')
+        fi
+        if [ -z "${VERSION}" ]; then
+          VERSION="${INPUT_VERSION}"
+        fi
+        if [ -z "${VERSION}" ]; then
+          echo "::error::The ${ARTIFACT} artifact has no version.txt; pass the version input for older runs"
+          exit 1
+        fi
+        # The version becomes an R2 object key, so keep it to characters that are
+        # safe in a path segment.
+        case "${VERSION}" in
+          *[!0-9A-Za-z._-]*)
+            echo "::error::Version '${VERSION}' contains characters that are not safe for an object key"
+            exit 1
+            ;;
+        esac
+        echo "Version: ${VERSION}"
+        echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+    - id: upload
+      name: "Publish macOS Disk Image to R2"
+      shell: bash
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        AWS_DEFAULT_REGION: auto
+        R2_ENDPOINT: ${{ vars.R2_ENDPOINT }}
+        R2_BUCKET: ${{ vars.R2_BUCKET }}
+        BRANCH: ${{ needs.resolve.outputs.branch }}
+        VERSION: ${{ steps.version.outputs.version }}
+        SOURCE_RUN: ${{ needs.resolve.outputs.run_id }}
+        DRY_RUN: ${{ inputs.dry_run }}
+      run: |
+        set -euo pipefail
+        DMG=$(find dist -type f -name '*.dmg' -print -quit)
+        if [ -z "${DMG}" ]; then
+          echo "::error::No .dmg was found in the macos-dmg artifact"
+          exit 1
+        fi
+        DEST="s3://${R2_BUCKET}/macos-arm64/${BRANCH}/${VERSION}/$(basename "${DMG}")"
+        if [ "${DRY_RUN}" = "true" ]; then
+          echo "Dry run: would upload ${DMG} to ${DEST}"
+        else
+          if [ -z "${R2_BUCKET}" ] || [ -z "${R2_ENDPOINT}" ]; then
+            echo "::error::R2_BUCKET and R2_ENDPOINT must be configured to publish"
+            exit 1
+          fi
+          if ! command -v aws >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y --no-install-recommends awscli
+          fi
+          echo "Uploading ${DMG} to ${DEST}"
+          aws s3 cp "${DMG}" "${DEST}" \
+            --endpoint-url "${R2_ENDPOINT}" --only-show-errors \
+            --content-type "application/x-apple-diskimage" \
+            --cache-control "public, max-age=31536000, immutable"
+        fi
+        {
+          echo "## macOS build: arm64 ${VERSION}"
+          echo ""
+          echo "- Source run: ${SOURCE_RUN}"
+          if [ "${DRY_RUN}" = "true" ]; then
+            echo "> Dry run: nothing was uploaded to R2."
+            echo "- Would publish: \`${DEST}\`"
+          else
+            echo "- Published: \`${DEST}\`"
+          fi
+        } >> "$GITHUB_STEP_SUMMARY"

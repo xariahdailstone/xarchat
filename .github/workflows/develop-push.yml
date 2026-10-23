@@ -180,13 +180,23 @@ jobs:
         rm XarChat.exe
         mv XarChat.signed.exe XarChat.exe
 
+    - id: write_version_x64
+      name: "Write Version File (x64)"
+      if: env.should_produce_artifacts == 'true' && (github.event_name != 'workflow_dispatch' || inputs.build_windows_x64)
+      shell: bash
+      run: |
+        mkdir -p "${{ github.workspace }}/host-publish/win-x64"
+        echo "${{ needs.generate_build_branding.outputs.timestamp }}" > "${{ github.workspace }}/host-publish/win-x64/version.txt"
+
     - id: publish_artifact_x64
       name: "Publish Artifact (x64)"
       if: env.should_produce_artifacts == 'true' && (github.event_name != 'workflow_dispatch' || inputs.build_windows_x64)
       uses: actions/upload-artifact@v4
       with:
         name: win32-exe-x64
-        path: ${{ github.workspace }}/host-publish/win-x64/XarChat.exe
+        path: |
+          ${{ github.workspace }}/host-publish/win-x64/XarChat.exe
+          ${{ github.workspace }}/host-publish/win-x64/version.txt
         retention-days: 5
 
     - id: csharp_build_arm64
@@ -219,13 +229,23 @@ jobs:
         rm XarChat.exe
         mv XarChat.signed.exe XarChat.exe
 
+    - id: write_version_arm64
+      name: "Write Version File (ARM64)"
+      if: env.should_produce_artifacts == 'true' && (github.event_name != 'workflow_dispatch' || inputs.build_windows_arm64)
+      shell: bash
+      run: |
+        mkdir -p "${{ github.workspace }}/host-publish/win-arm64"
+        echo "${{ needs.generate_build_branding.outputs.timestamp }}" > "${{ github.workspace }}/host-publish/win-arm64/version.txt"
+
     - id: publish_artifact_arm64
       name: "Publish Artifact (ARM64)"
       if: env.should_produce_artifacts == 'true' && (github.event_name != 'workflow_dispatch' || inputs.build_windows_arm64)
       uses: actions/upload-artifact@v4
       with:
         name: win32-exe-arm64
-        path: ${{ github.workspace }}/host-publish/win-arm64/XarChat.exe
+        path: |
+          ${{ github.workspace }}/host-publish/win-arm64/XarChat.exe
+          ${{ github.workspace }}/host-publish/win-arm64/version.txt
         retention-days: 5
 
   build-macos-arm64:
@@ -381,13 +401,22 @@ jobs:
         path: ${{ github.workspace }}/preproot
         retention-days: 5
 
+    - id: write_version_dmg
+      name: "Write Version File (DMG)"
+      if: ${{ env.should_produce_artifacts == 'true' }}
+      shell: bash
+      run: |
+        echo "${{ needs.generate_build_branding.outputs.timestamp }}" > "${{ github.workspace }}/version.txt"
+
     - id: publish_artifact
       name: "Publish DMG Artifact"
       if: ${{ env.should_produce_artifacts == 'true' }}
       uses: actions/upload-artifact@v4
       with:
         name: macos-dmg
-        path: ${{ github.workspace }}/XarChat-*.dmg
+        path: |
+          ${{ github.workspace }}/XarChat-*.dmg
+          ${{ github.workspace }}/version.txt
         retention-days: 5
 
   build-linux-x64:
