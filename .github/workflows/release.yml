@@ -609,14 +609,36 @@ jobs:
         REPO_URL="${BASE}/${PREFIX}/repo"
         FLATHUB="https://dl.flathub.org/repo/flathub.flatpakrepo"
 
+        # GPGKey holds the binary public key, base64 encoded onto a single line.
+        # Flatpak base64-decodes the value verbatim and has no ASCII-armored fallback
+        # (flatpak_repo_new_from_keyfile), so an armored export published here would
+        # decode to garbage and leave installs unable to verify any signature.
+        GPG_KEY=""
+        if [ -n "${GPG_KEY_ID}" ]; then
+          if ! GPG_KEY=$(gpg --batch --export "${GPG_KEY_ID}" | base64 -w0); then
+            echo "::error::Could not export the public half of signing key ${GPG_KEY_ID}"
+            exit 1
+          fi
+          if [ -z "${GPG_KEY}" ]; then
+            echo "::error::The public key export for ${GPG_KEY_ID} is empty; refusing to publish a descriptor without a usable GPGKey"
+            exit 1
+          fi
+          # Flatpak only checks that the decoded blob is at least ten bytes long, so
+          # confirm the value round-trips into something gpg itself will accept.
+          if ! printf '%s' "${GPG_KEY}" | base64 --decode | gpg --batch --show-keys --with-colons > /dev/null 2>&1; then
+            echo "::error::The base64 export of signing key ${GPG_KEY_ID} does not decode to a public key gpg recognizes"
+            exit 1
+          fi
+        fi
+
         {
           echo "[Flatpak Repo]"
           echo "Title=XarChat (${BRANCH})"
           echo "Url=${REPO_URL}"
           echo "Homepage=https://github.com/${GITHUB_REPOSITORY}"
           echo "Comment=XarChat builds from the ${BRANCH} branch"
-          if [ -n "${GPG_KEY_ID}" ]; then
-            echo "GPGKey=$(gpg --batch --armor --export "${GPG_KEY_ID}" | sed ':a;N;$!ba;s/\n/\\n/g')"
+          if [ -n "${GPG_KEY}" ]; then
+            echo "GPGKey=${GPG_KEY}"
           fi
         } > publish/xarchat.flatpakrepo
 
@@ -628,8 +650,8 @@ jobs:
           echo "Url=${REPO_URL}"
           echo "RuntimeRepo=${FLATHUB}"
           echo "IsRuntime=false"
-          if [ -n "${GPG_KEY_ID}" ]; then
-            echo "GPGKey=$(gpg --batch --armor --export "${GPG_KEY_ID}" | sed ':a;N;$!ba;s/\n/\\n/g')"
+          if [ -n "${GPG_KEY}" ]; then
+            echo "GPGKey=${GPG_KEY}"
           fi
         } > publish/xarchat.flatpakref
 
