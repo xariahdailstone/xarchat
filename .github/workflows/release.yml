@@ -37,9 +37,10 @@
 # into the manifest already in the bucket, so the file is the sole record of what was
 # published previously -- nothing is rediscovered by listing the bucket.  A version
 # therefore stays listed even when its object is gone, and losing the file loses the
-# history.  Flatpak is not listed because those repositories are cumulative rather
-# than per-version directories.  Retention is the newest ten versions of each target
-# by version number, not by publish time.
+# history.  Flatpak appears as linux-flatpak-<arch>, sized by the .flatpak bundle built
+# for that version, because the repository those bundles feed is cumulative and holds
+# no per-version object of its own.  Retention is the newest ten versions of each
+# target by version number, not by publish time.
 #
 # Required repository configuration:
 #   vars.R2_ENDPOINT              https://<account-id>.r2.cloudflarestorage.com
@@ -644,6 +645,7 @@ jobs:
         AWS_DEFAULT_REGION: auto
         R2_ENDPOINT: ${{ vars.R2_ENDPOINT }}
         R2_BUCKET: ${{ vars.R2_BUCKET }}
+        BRANCH: ${{ needs.resolve.outputs.branch }}
         PREFIX: flatpak/${{ needs.resolve.outputs.branch }}
       run: |
         set -euo pipefail
@@ -675,6 +677,32 @@ jobs:
           "${ENDPOINT[@]}" --cache-control "no-cache" --content-type "text/plain"
         aws s3 cp publish/xarchat.flatpakref "${TARGET}/xarchat.flatpakref" \
           "${ENDPOINT[@]}" --cache-control "no-cache" --content-type "text/plain"
+
+        # What the release manifest records, as platform|branch|version|size.  The
+        # repository keeps no per-version file, so the bundle built for this version is
+        # what gets sized, and its filename (xarchat_<version>_<arch>.flatpak) names both
+        # the version and the architecture.
+        : > "${RUNNER_TEMP}/release-entry.txt"
+        for BUNDLE in bundles/*.flatpak; do
+          if [ ! -f "${BUNDLE}" ]; then
+            continue
+          fi
+          NAME=$(basename "${BUNDLE}" .flatpak)
+          BUNDLE_ARCH="${NAME##*_}"
+          case "${BUNDLE_ARCH}" in
+            x64|arm64) ;;
+            *)
+              echo "::warning::Cannot tell the architecture of ${BUNDLE}; it is left out of the release manifest"
+              continue
+              ;;
+          esac
+          BUNDLE_VERSION="${NAME%_*}"
+          BUNDLE_VERSION="${BUNDLE_VERSION#*_}"
+          printf '%s|%s|%s|%s\n' "linux-flatpak-${BUNDLE_ARCH}" "${BRANCH}" \
+            "${BUNDLE_VERSION}" "$(stat -c %s "${BUNDLE}")" \
+            >> "${RUNNER_TEMP}/release-entry.txt"
+        done
+        cat "${RUNNER_TEMP}/release-entry.txt"
 
     - id: summary
       name: "Publish Summary"
@@ -708,6 +736,16 @@ jobs:
             echo '```'
           fi
         } >> "$GITHUB_STEP_SUMMARY"
+
+    - id: report
+      name: "Hand Over Release Entry"
+      uses: actions/upload-artifact@v4
+      with:
+        name: release-entry-linux-flatpak
+        path: ${{ runner.temp }}/release-entry.txt
+        # A dry run writes no entry, so there is nothing to hand over.
+        if-no-files-found: ignore
+        retention-days: 1
 
     - id: dump_logs
       name: "Dump Diagnostics"
