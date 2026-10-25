@@ -16,6 +16,7 @@
 #   win-x64/<branch>/<version>/XarChat.exe
 #   win-arm64/<branch>/<version>/XarChat.exe
 #   macos-arm64/<branch>/<version>/XarChat-<version>.dmg
+#   release-manifest.json                        index of the per-version builds above
 #
 # The version is the build timestamp stamped into the source run.  The Windows and
 # macOS artifacts each carry it as a version.txt member, written alongside the
@@ -28,6 +29,18 @@
 # develop-push.yml records that value in a small build-info artifact (branch.txt +
 # version.txt) which this workflow reads to pick the destination; runs that predate
 # that artifact fall back to the run's head branch.
+#
+# release-manifest.json at the bucket root indexes the per-version directories so a
+# client can discover what is available without listing the bucket: one entry per
+# platform and branch, holding that target's newest versions with their sizes.  Each
+# publish job reports the version and size it uploaded, and a final job folds those
+# into the manifest already in the bucket, so the file is the sole record of what was
+# published previously -- nothing is rediscovered by listing the bucket.  A version
+# therefore stays listed even when its object is gone, and losing the file loses the
+# history.  Flatpak appears as linux-flatpak-<arch>, sized by the .flatpak bundle built
+# for that version, because the repository those bundles feed is cumulative and holds
+# no per-version object of its own.  Retention is the newest ten versions of each
+# target by version number, not by publish time.
 #
 # Required repository configuration:
 #   vars.R2_ENDPOINT              https://<account-id>.r2.cloudflarestorage.com
@@ -632,6 +645,7 @@ jobs:
         AWS_DEFAULT_REGION: auto
         R2_ENDPOINT: ${{ vars.R2_ENDPOINT }}
         R2_BUCKET: ${{ vars.R2_BUCKET }}
+        BRANCH: ${{ needs.resolve.outputs.branch }}
         PREFIX: flatpak/${{ needs.resolve.outputs.branch }}
       run: |
         set -euo pipefail
@@ -663,6 +677,32 @@ jobs:
           "${ENDPOINT[@]}" --cache-control "no-cache" --content-type "text/plain"
         aws s3 cp publish/xarchat.flatpakref "${TARGET}/xarchat.flatpakref" \
           "${ENDPOINT[@]}" --cache-control "no-cache" --content-type "text/plain"
+
+        # What the release manifest records, as platform|branch|version|size.  The
+        # repository keeps no per-version file, so the bundle built for this version is
+        # what gets sized, and its filename (xarchat_<version>_<arch>.flatpak) names both
+        # the version and the architecture.
+        : > "${RUNNER_TEMP}/release-entry.txt"
+        for BUNDLE in bundles/*.flatpak; do
+          if [ ! -f "${BUNDLE}" ]; then
+            continue
+          fi
+          NAME=$(basename "${BUNDLE}" .flatpak)
+          BUNDLE_ARCH="${NAME##*_}"
+          case "${BUNDLE_ARCH}" in
+            x64|arm64) ;;
+            *)
+              echo "::warning::Cannot tell the architecture of ${BUNDLE}; it is left out of the release manifest"
+              continue
+              ;;
+          esac
+          BUNDLE_VERSION="${NAME%_*}"
+          BUNDLE_VERSION="${BUNDLE_VERSION#*_}"
+          printf '%s|%s|%s|%s\n' "linux-flatpak-${BUNDLE_ARCH}" "${BRANCH}" \
+            "${BUNDLE_VERSION}" "$(stat -c %s "${BUNDLE}")" \
+            >> "${RUNNER_TEMP}/release-entry.txt"
+        done
+        cat "${RUNNER_TEMP}/release-entry.txt"
 
     - id: summary
       name: "Publish Summary"
@@ -696,6 +736,16 @@ jobs:
             echo '```'
           fi
         } >> "$GITHUB_STEP_SUMMARY"
+
+    - id: report
+      name: "Hand Over Release Entry"
+      uses: actions/upload-artifact@v4
+      with:
+        name: release-entry-linux-flatpak
+        path: ${{ runner.temp }}/release-entry.txt
+        # A dry run writes no entry, so there is nothing to hand over.
+        if-no-files-found: ignore
+        retention-days: 1
 
     - id: dump_logs
       name: "Dump Diagnostics"
@@ -809,6 +859,9 @@ jobs:
             --endpoint-url "${R2_ENDPOINT}" --only-show-errors \
             --content-type "application/octet-stream" \
             --cache-control "public, max-age=31536000, immutable"
+          # What the release manifest records, as platform|branch|version|size.
+          printf '%s|%s|%s|%s\n' "win-${ARCH}" "${BRANCH}" "${VERSION}" \
+            "$(stat -c %s "${EXE}")" > "${RUNNER_TEMP}/release-entry.txt"
         fi
         {
           echo "## Windows build: ${ARCH} ${VERSION}"
@@ -821,6 +874,17 @@ jobs:
             echo "- Published: \`${DEST}\`"
           fi
         } >> "$GITHUB_STEP_SUMMARY"
+
+    - id: report
+      name: "Hand Over Release Entry (${{ matrix.arch }})"
+      if: matrix.available == 'true'
+      uses: actions/upload-artifact@v4
+      with:
+        name: release-entry-win-${{ matrix.arch }}
+        path: ${{ runner.temp }}/release-entry.txt
+        # A dry run writes no entry, so there is nothing to hand over.
+        if-no-files-found: ignore
+        retention-days: 1
 
   publish-macos:
     needs: resolve
@@ -906,6 +970,9 @@ jobs:
             --endpoint-url "${R2_ENDPOINT}" --only-show-errors \
             --content-type "application/x-apple-diskimage" \
             --cache-control "public, max-age=31536000, immutable"
+          # What the release manifest records, as platform|branch|version|size.
+          printf '%s|%s|%s|%s\n' "macos-arm64" "${BRANCH}" "${VERSION}" \
+            "$(stat -c %s "${DMG}")" > "${RUNNER_TEMP}/release-entry.txt"
         fi
         {
           echo "## macOS build: arm64 ${VERSION}"
@@ -918,3 +985,253 @@ jobs:
             echo "- Published: \`${DEST}\`"
           fi
         } >> "$GITHUB_STEP_SUMMARY"
+
+    - id: report
+      name: "Hand Over Release Entry"
+      uses: actions/upload-artifact@v4
+      with:
+        name: release-entry-macos-arm64
+        path: ${{ runner.temp }}/release-entry.txt
+        # A dry run writes no entry, so there is nothing to hand over.
+        if-no-files-found: ignore
+        retention-days: 1
+
+  publish-manifest:
+    needs: [resolve, publish-flatpak-repo, publish-windows, publish-macos]
+    # Runs once every publish job has settled.  The manifest is the only record of what
+    # was released before, so it is never rebuilt by listing the bucket: this job folds
+    # what this run uploaded into the file that is already there.  It stands down when
+    # a publish job actually failed, and is excused only when the conditional jobs were
+    # skipped for lack of a matching artifact.
+    if: ${{ always() && !cancelled() && needs.resolve.result == 'success' && needs.publish-flatpak-repo.result == 'success' && contains(fromJSON('["success","skipped"]'), needs.publish-windows.result) && contains(fromJSON('["success","skipped"]'), needs.publish-macos.result) }}
+    runs-on: ubuntu-24.04
+
+    steps:
+    - id: entries
+      name: "Collect Release Entries"
+      # Each publish job hands over what it uploaded as a one-line artifact.  Artifacts
+      # rather than job outputs, because a matrix job does not keep outputs per leg:
+      # the leg that finished last would overwrite the other one's entry.  A dry run
+      # hands over nothing, so finding no artifact here is expected and not fatal.
+      uses: actions/download-artifact@v4
+      continue-on-error: true
+      with:
+        pattern: release-entry-*
+        path: ${{ runner.temp }}/release-entries
+
+    - id: manifest
+      name: "Update Release Manifest"
+      shell: bash
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        AWS_DEFAULT_REGION: auto
+        R2_ENDPOINT: ${{ vars.R2_ENDPOINT }}
+        R2_BUCKET: ${{ vars.R2_BUCKET }}
+        ENTRY_DIR: ${{ runner.temp }}/release-entries
+        MAX_VERSIONS: "10"
+        DRY_RUN: ${{ inputs.dry_run }}
+      run: |
+        set -euo pipefail
+        MANIFEST=release-manifest.json
+        if [ -z "${R2_BUCKET}" ] || [ -z "${R2_ENDPOINT}" ]; then
+          echo "::error::R2_BUCKET and R2_ENDPOINT must be configured to update the release manifest"
+          exit 1
+        fi
+        for TOOL in aws python3; do
+          if ! command -v "${TOOL}" >/dev/null 2>&1; then
+            echo "::error::${TOOL} is required to update the release manifest but is not on this runner"
+            exit 1
+          fi
+        done
+
+        ENDPOINT=(--endpoint-url "${R2_ENDPOINT}")
+        WORK=$(mktemp -d)
+        PREVIOUS="${WORK}/previous-${MANIFEST}"
+        ENTRIES="${WORK}/entries.txt"
+        SUMMARY="${WORK}/summary.md"
+        : > "${ENTRIES}"
+
+        # One line per artifact this run uploaded.  An unmatched pattern leaves the
+        # glob as it is, which is why the guard is needed.
+        for FILE in "${ENTRY_DIR}"/*/release-entry.txt; do
+          if [ ! -f "${FILE}" ]; then
+            continue
+          fi
+          while IFS= read -r LINE; do
+            if [ -n "${LINE}" ]; then
+              printf '%s\n' "${LINE}" >> "${ENTRIES}"
+              echo "Uploaded by this run: ${LINE}"
+            fi
+          done < "${FILE}"
+        done
+        if [ ! -s "${ENTRIES}" ]; then
+          echo "This run uploaded no per-version artifact; the manifest keeps its history as is"
+        fi
+
+        # The history comes from the file itself.  A brand new bucket has no object
+        # yet; anything else going wrong must stop the job, because publishing a
+        # manifest without the existing history would erase it.
+        if aws s3api get-object --bucket "${R2_BUCKET}" --key "${MANIFEST}" \
+             "${PREVIOUS}" "${ENDPOINT[@]}" > /dev/null 2> "${WORK}/err"; then
+          echo "Folding this run's versions into the existing ${MANIFEST}"
+        elif grep -qE 'NoSuchKey|Not Found|404' "${WORK}/err"; then
+          echo "No ${MANIFEST} in the bucket yet; this run creates it"
+          rm -f "${PREVIOUS}"
+        else
+          echo "::error::Unable to read s3://${R2_BUCKET}/${MANIFEST}; refusing to replace it without its history:"
+          sed 's/^/  /' "${WORK}/err"
+          exit 1
+        fi
+
+        python3 - "${MAX_VERSIONS}" "${ENTRIES}" "${PREVIOUS}" "${MANIFEST}" "${SUMMARY}" <<'PY'
+        import json
+        import os
+        import sys
+
+        max_versions = int(sys.argv[1])
+        entries_path, previous_path, manifest_path, summary_path = sys.argv[2:6]
+
+
+        def fail(message):
+            print("::error::" + message)
+            sys.exit(1)
+
+
+        def sort_key(version):
+            # A version is YYYY.MMDD.HHMM.SS with every part an integer, so sorting the
+            # strings would put 2026.1025.9.1 ahead of 2026.1025.132.1.
+            parts = version.split(".")
+            if all(part.isdigit() for part in parts):
+                return (0, tuple(int(part) for part in parts), version)
+            return (1, (), version)
+
+
+        targets = {}
+
+
+        def remember(platform, branch):
+            key = (platform, branch)
+            if key not in targets:
+                targets[key] = {}
+            return targets[key]
+
+
+        # Whatever the published file lists stays listed.  It is the history, and it is
+        # not rediscovered from the bucket, so a version stays put even after its
+        # object is gone.
+        if os.path.exists(previous_path):
+            try:
+                with open(previous_path, encoding="utf-8") as handle:
+                    previous = json.load(handle)
+                for release in previous["releases"]:
+                    versions = remember(release["platform"], release["branch"])
+                    for version in release["versions"]:
+                        versions[str(version["version"])] = int(version["size"])
+            except (OSError, ValueError, KeyError, TypeError) as error:
+                fail("the existing %s does not parse as a release manifest (%s); repair "
+                     "or delete it in the bucket, then rerun"
+                     % (os.path.basename(manifest_path), error))
+
+        published = []
+        with open(entries_path, encoding="utf-8") as handle:
+            for line in handle:
+                fields = [field.strip() for field in line.rstrip("\r\n").split("|")]
+                if (len(fields) != 4 or not fields[0] or not fields[1] or
+                        not fields[2] or not fields[3].isdigit()):
+                    fail("malformed release entry %r" % line.strip())
+                platform, branch, version = fields[0], fields[1], fields[2]
+                size = int(fields[3])
+                remember(platform, branch)[version] = size
+                published.append((platform, branch, version, size))
+
+        releases = []
+        dropped = 0
+        # Ordered by platform and branch so the file never depends on the order the
+        # artifacts happened to be downloaded in.
+        for key in sorted(targets):
+            versions = targets[key]
+            newest = sorted(versions.items(), key=lambda item: sort_key(item[0]),
+                            reverse=True)[:max_versions]
+            dropped += len(versions) - len(newest)
+            releases.append({"platform": key[0], "branch": key[1], "versions": newest})
+
+        # Laid out by hand so the file reads the way a person would write it; the
+        # result is parsed again below, and only the parsed form is published.
+        if releases:
+            lines = ['{', '  "releases": [']
+            for index, release in enumerate(releases):
+                lines.append("    {")
+                lines.append('      "platform": %s,' % json.dumps(release["platform"]))
+                lines.append('      "branch": %s,' % json.dumps(release["branch"]))
+                lines.append('      "versions": [')
+                for position, (version, size) in enumerate(release["versions"]):
+                    comma = "," if position < len(release["versions"]) - 1 else ""
+                    lines.append('        { "version": %s, "size": %d }%s'
+                                 % (json.dumps(version), size, comma))
+                lines.append("      ]")
+                lines.append("    }" + ("," if index < len(releases) - 1 else ""))
+            lines.append("  ]")
+            lines.append("}")
+            text = "\n".join(lines) + "\n"
+        else:
+            text = '{\n  "releases": []\n}\n'
+
+        expected = [{"platform": release["platform"], "branch": release["branch"],
+                     "versions": [{"version": version, "size": size}
+                                  for version, size in release["versions"]]}
+                    for release in releases]
+        if json.loads(text)["releases"] != expected:
+            fail("the manifest built for upload does not read back the same")
+
+        with open(manifest_path, "w", encoding="utf-8", newline="\n") as handle:
+            handle.write(text)
+
+        with open(summary_path, "w", encoding="utf-8", newline="\n") as summary:
+            if published:
+                summary.write("| Uploaded by this run | Branch | Version | Bytes |\n")
+                summary.write("| --- | --- | --- | --- |\n")
+                for platform, branch, version, size in published:
+                    summary.write("| %s | %s | %s | %d |\n"
+                                  % (platform, branch, version, size))
+                summary.write("\n")
+            summary.write("| Platform | Branch | Versions | Newest |\n")
+            summary.write("| --- | --- | --- | --- |\n")
+            for release in releases:
+                summary.write("| %s | %s | %d | %s |\n" % (
+                    release["platform"], release["branch"], len(release["versions"]),
+                    release["versions"][0][0]))
+            if not releases:
+                summary.write("| _none_ | | | |\n")
+
+        print("Manifest lists %d target(s), newest %d version(s) of each"
+              % (len(releases), max_versions))
+        if dropped:
+            print("Retention dropped %d older version(s)" % dropped)
+        PY
+
+        cat "${MANIFEST}"
+        if [ "${DRY_RUN}" = "true" ]; then
+          echo "Dry run: not uploading ${MANIFEST}"
+          NOTE="> Dry run: not uploaded. This run contributes no versions, so this is the manifest as it already stands."
+        else
+          aws s3 cp "${MANIFEST}" "s3://${R2_BUCKET}/${MANIFEST}" \
+            "${ENDPOINT[@]}" --only-show-errors \
+            --content-type "application/json; charset=utf-8" \
+            --cache-control "no-cache"
+          # Read the object back: an upload that reported success but stored something
+          # else would otherwise only surface on the client side.
+          aws s3 cp "s3://${R2_BUCKET}/${MANIFEST}" - "${ENDPOINT[@]}" --only-show-errors \
+            | cmp - "${MANIFEST}"
+          echo "Published and verified s3://${R2_BUCKET}/${MANIFEST}"
+          NOTE="Published and verified at \`s3://${R2_BUCKET}/${MANIFEST}\`."
+        fi
+
+        {
+          echo "## Release manifest"
+          echo ""
+          echo "${NOTE}"
+          echo ""
+          cat "${SUMMARY}"
+        } >> "$GITHUB_STEP_SUMMARY"
+        rm -rf "${WORK}"
